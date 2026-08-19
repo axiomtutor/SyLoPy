@@ -1,0 +1,11 @@
+
+
+
+1. Let a be an object. (Declare)
+2. Let P be a property. (Declare)
+3. P(a). (Premise)
+4. exists x, P(x). (Existential Introduction from 3)
+
+
+
+

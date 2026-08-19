@@ -1,0 +1,10 @@
+
+
+
+1. A -> B. (Premise)
+2. B -> C. (Premise)
+3. A -> C. (Hypothetical Syllogism from 1, 2)
+
+
+
+

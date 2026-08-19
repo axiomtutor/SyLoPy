@@ -1,0 +1,11 @@
+
+
+
+1. Let A, B, C be closed formulas. (Declare)
+2. A -> B. (Premise)
+3. B -> C. (Premise)
+4. A -> C. (Hypothetical Syllogism from 2, 3)
+
+
+
+

@@ -1,0 +1,43 @@
+
+
+
+(*
+Adapted from tests/setTheoryProofs/basicSTProofs.txt's second proof.
+That original cites "(Set property from 1)" for a step that actually
+needs Universal Instantiation against "X has no elements" (not yet
+sugar when that file was written), and never had a rule able to
+conclude "X = Y" from "X subset Y" and "Y subset X". Both now exist
+(see SetTheory.py's "has no elements" sugar and SetEqualityRule), so
+this version is written to use them by their real names, and to show
+proof #1's theorem being cited by name in proof #2 -- exactly the
+"(The empty set subset theorem)" pattern the original file used, now
+actually resolvable via ProofLogic.promote_theorem.
+*)
+# 1: The empty set subset theorem
+## Proof that
+### If X is any set
+### then the empty set is a subset of X
+1. Let X be any set. (Declaration)
+2. The empty set is a subset of X. (Subset proof below)
+ 2.1. Let a in the empty set. (Assumption for subset proof)
+ 2.2. a is not in the empty set. (Set property)
+ 2.3. a is in X. (Explosion from 2.1 and 2.2)
+
+# 2: The empty set is unique
+## Proof that
+### the empty set is unique
+1. Let X be any set. (Declaration)
+2. If (X has no elements) then (X = the empty set). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. X has no elements. (Assumption for Conditional Introduction)
+ 2.2. X is a subset of the empty set. (Subset proof below)
+  2.2.1. Let a in X. (Assumption for subset proof)
+  2.2.2. a is not in X. (Universal Instantiation from 2.1)
+  2.2.3. a is in the empty set. (Explosion from 2.2.1, 2.2.2)
+ 2.3. The empty set is a subset of X. (The empty set subset theorem)
+ 2.4. X = the empty set. (Set Equality from 2.2, 2.3)
+end subproof
+
+
+
+

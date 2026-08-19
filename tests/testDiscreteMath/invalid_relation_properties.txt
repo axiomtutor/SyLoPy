@@ -1,0 +1,35 @@
+
+
+# 1
+## Invalid proof that
+### symmetry does not imply transitivity
+1. Let X be any set, R be a symmetric relation on X, a, b, c be in X, and R(a,b) and R(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+
+# 2
+## Invalid proof that
+### transitivity does not reverse a pair
+1. Let X be any set, R be a transitive relation on X, a, b be in X, and R(a,b). (Declaration)
+2. R(b,a). (Relation Symmetry from 1)
+
+# 3
+## Invalid proof that
+### antisymmetry requires both directions
+1. Let X be any set, R be an antisymmetric relation on X, a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. a = b. (Relation Antisymmetry from 2, 2)
+
+# 4
+## Invalid proof that
+### transitivity requires the middle terms to match
+1. Let X be any set, R be a transitive relation on X, a, b, c, d be in X, and R(a,b) and R(c,d). (Declaration)
+2. R(a,d). (Relation Transitivity from 1, 1)
+
+# 5
+## Invalid proof that
+### a relation property belongs to the declared relation only
+1. Let X be any set, R be a transitive relation on X, S be a relation on X, a, b, c be in X, and S(a,b) and S(b,c). (Declaration)
+2. S(a,c). (Relation Transitivity from 1, 1)
+
+
+

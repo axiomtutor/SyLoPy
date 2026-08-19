@@ -1,0 +1,16 @@
+
+
+
+# 1: The empty set subset theorem
+## Proof that
+### If X is any set
+### then the empty set is a subset of X
+1. Let X be any set. (Declaration)
+2. The empty set is a subset of X. (Subset proof below)
+ 2.1. Let a in the empty set. (Assumption for subset proof)
+ 2.2. a is not in the empty set. (Set property)
+ 2.3. a is in X. (Explosion from 2.1 and 2.2)
+
+
+
+

@@ -1,0 +1,11 @@
+
+
+
+1. Nat(Zero). (Axiom)
+2. forall x, (Nat(x) -> Int(x)). (Axiom)
+3. Nat(Zero) -> Int(Zero). (Universal Instantiation from 2)
+4. Int(Zero). (Modus Ponens from 1, 3)
+
+
+
+

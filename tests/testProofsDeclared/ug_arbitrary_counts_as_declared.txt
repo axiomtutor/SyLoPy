@@ -1,0 +1,12 @@
+
+
+
+1. forall x, x = x. (Universal Generalization from subproof below)
+begin subproof
+ 1.0. let c be arbitrary. (Fresh Variable)
+ 1.1. c = c. (Reflexivity)
+end subproof
+
+
+
+

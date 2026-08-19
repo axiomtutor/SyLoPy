@@ -1,0 +1,32 @@
+
+
+
+# 1 
+## Proof that 
+### 
+### the empty set is unique.
+
+1. For every set X such that, (for all objects y, y is not in X), X = the empty set. (Universal Generalization from subproof below)
+begin subproof
+ 1.1. Let X be a set such that, for all objects y, y is not in X. (Fresh Variable)
+ 1.2. For every object y in the empty set, y is in X. (Universal Generalization from subproof below)
+ begin subproof
+  1.2.1. Let y be an object such that, y is in the empty set. (Fresh Variable)
+  1.2.2. y is not in the empty set. (Set Property from definition)
+  1.2.3. If y is in the empty set, then y is in X.  (Trivial Implication from 1.2.2)
+ end subproof
+ 1.3. The empty set is a subset of X. (Subset Definition from 1.2)
+ 1.4. For every object y in X, y is in the empty set.  (Universal Generalization from subproof below)
+ begin subproof
+  1.4.1. Let y be an object such that, y is in X.  (Fresh Variable)
+  1.4.2. y is not in X. (Set property from 1)
+  1.4.3. If y is in X, then y is in the empty set. (Trivial Implication from 1.3.2)
+ end subproof
+ 1.5. X is a subset of the empty set.  (Subset Definition from 1.4)
+ 1.6. X = the empty set. (Set Equality from 1.3 and 1.5)
+end subproof 
+2. The empty set is unique. (Definition of Unique from 1)
+
+
+
+

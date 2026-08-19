@@ -1,0 +1,28 @@
+
+
+
+# 1 
+## Proof that 
+### if a, b, c, are integers such that: a|b. a|c. 
+### then a|(b+c).
+
+1. Let a, b, c be integers such that: a|b. a|c. (Premise)
+2. There exist m, n such that am = b and an = c. (Definition of Divisibility from 1)
+3. b+c = am+an = a(m+n). (Substitution from 2; algebra)
+4. m+n is an integer. (Closure of Integers from 2)
+5. a|(b+c). (Definition of Divisibility from 3, 4)
+
+# 2
+## Proof that
+### if a, b, c, are integers such that: a|b and b|c.
+### then a|c.
+
+1. Let a, b, c be integers such that: a|b and b|c. (Premise)
+2. There exist m, n such that am = b and bn = c.  (Definition of Divisibility from 1)
+3. amn = c. (Substitution from 1)
+4. mn is an integer. (Closure of Integers from 2)
+5. a|c. (Definition of Divisibility from 3,4)
+
+
+
+

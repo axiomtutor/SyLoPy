@@ -1,0 +1,95 @@
+
+
+
+# 1
+## Proof that
+### if a, n are integers
+### then a|n if and only if (n/a is an integer)
+(* Further simplified: "Int" no longer needs its own "Let Int be a
+   predicate." line -- it's exempt automatically once IntTheory's axioms
+   are combined into the proof, the same way Nat/Zero already are.
+   "n = a(n/a)" now uses juxtaposition multiplication instead of
+   "n = Times(a, Quotient(n, a))" -- both are still accepted, this is
+   just the more natural reading. "Algebra" and "Definition of
+   Divisibility" remain the two placeholders: still not yet designed,
+   everything else here validates today (confirmed by standing in
+   axioms for just those two steps, with IntTheory's and NatTheory's
+   real axioms combined in for everything else). *)
+
+1. Let a, n be integers. (Premise)
+2. If n/a is an integer then a|n. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. n/a is an integer. (Assumption for Conditional Introduction)
+ 2.2. n = a(n/a). (Algebra from 2.1)
+ 2.3. n/a is an integer and n = a(n/a). (Conjunction Introduction from 2.1, 2.2)
+ 2.4. a|n. (Existential Introduction from 2.3)
+end subproof
+3. if a|n then (n/a is an integer). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. a|n. (Assumption for Conditional Introduction)
+ 3.2. n/a is an integer. (Existential Instantiation from subproof below)
+ begin subproof
+  3.2.1. Obtain m such that: Int(m) and n = Times(a, m), from 3.1.
+  3.2.2. Int(m). (Conjunction Elimination from 3.2.1)
+  3.2.3. n/a = m. (Algebra from 3.2.1)
+  3.2.4. n/a is an integer. (Substitution from 3.2.2, 3.2.3)
+ end subproof
+end subproof
+4. a|n if and only if (n/a is an integer). (Biconditional Introduction from 2, 3)
+
+# 2 
+## Proof that
+### if x, y are integers such that: not both x, y = 0, 
+### then there exists an integer combination of x, y = (x, y)
+
+1. Let x, y be integers such that: not both x, y = 0. (Premise)
+2. x =/= 0. (WLOG)
+3. L = set{ax + by : a,b are integers; ax+by>0}. (Define to)
+4. x > 0 or x < 0. (Linear Order Trichotomy from 2)
+5. L is not empty. (Proof by Cases from 2, subproofs below)
+ 5.case1.1. x > 0. (Assumption for Case 1)
+ 5.case1.2. a = 1, b = 0. (Define to)
+ 5.case1.3. ax + by > 0. (Algebra from 5.case1.1, 5.case1.2, 1)
+ 5.case1.4. (ax + by) is in L. (Set Property from 5.case1.3)
+
+ 5.case2.1. x < 0. (Assumption for Case 2)
+ 5.case2.2. a = -1, b = 0. (Define to)
+ 5.case2.3. (ax+by)>0. (Algebra from 5.case2.1, 5.case2.2)
+ 5.case2.4. (ax+by) is in L. (Set Membership from 3, 5.case2.3)
+6. 0 is a lower bound of L. (Lower Bound from subproof below)
+ 6.1. Let ax+by in L. (Assumption for Lower Bound)
+ 6.2. ax+by>0. (Set Property)
+ 6.3. 0 <= ax+by (Algebra from 6.2)
+7. min(L) exists. (Well Ordered Principle from 5, 6)
+8. ax+by = min(L) = d. (Define to)
+9. d|x. (Subproof below)
+ 9.1. Let x = qd+r be the QRD of x/d. (QRD) (* QRD stands for "quotient remainder decomposition" *)
+ 9.2. x = q(ax+by)+r. (Substitution from 8, 9.1)
+ 9.3. r = (1-aq)x - bqy. (Algebra from 9.2)
+ 9.4. 0 <= r < d. (Definition from 9.1)
+ 9.5. r <= 0. (Proof by Contradiction from subproof below)
+  9.5.1. r > 0. (Assumption for Proof by Contradiction)
+  9.5.2. r is in L.  (Set Property from 9.3, 9.5.1)
+  9.5.3. d is not a lower bound of L. (Lower Bound from 9.4, 9.5.2)
+  9.5.4. d =/= min(L). (Definition from 9.5.3)
+  9.5.5. d = min(L) and d =/= min(L). (Conjunction from 9, 9.5.4)
+ 9.6. r = 0. (Antisymmetry from 9.4, 9.5) 
+ 9.7. x = qd. (Algebra from 9.1, 9.6)
+ 9.8. d|x. (Definition of Divisibility from 9.7)
+ 9.9. min(L)|x. (Substitution from 8, 9.8)
+10. d|y. (Mutatis mutandis, x in for y, 9.1 to 9.9)
+11. d is a common divisor of x and y. (Definition of Common Divisor from 9, 10)
+12. For all integers d', if d' is a common divisor of x and y, then d'|d. (Subproof below)
+ 12.1. Let d' be a common divisor of x and y. (Assumption)
+ 12.2. Let g, h be integers such that: x = gd'; y = hd'. (Definition of Divisibility from 12.1)
+ 12.3. a(gd')+b(hd') = d. (Algebra from 8)
+ 12.4. (ag+bh)d' = d. (Algebra from 12.3)
+ 12.5. d'|d. (Definition of Divisibility from 12.4)
+13. For all integers d', if d' is a common divisor of x and y, then d' <= d. (Divisibility Partial Ordering from 12)
+14. d = (x,y). (Definition of GCD from 11, 13)
+15. ax+by is an integer combination of x and y, equal to (x,y). (Definition from 8, 14)
+16. There is an integer combination of x and y, equal to (x,y). (Existential generalization from 15)
+
+
+
+

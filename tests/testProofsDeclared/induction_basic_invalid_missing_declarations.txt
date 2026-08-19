@@ -1,0 +1,10 @@
+
+
+
+1. P(Zero). (Premise)
+2. forall n, ((Nat(n) and P(n)) -> P(Succ(n))). (Premise)
+3. forall x, (Nat(x) -> P(x)). (Induction from 1, 2)
+
+
+
+

@@ -1,0 +1,11 @@
+
+
+
+1. Let P be a property. (Declare)
+2. P(Zero). (Premise)
+3. forall n, ((Nat(n) and P(n)) -> P(Succ(n))). (Premise)
+4. forall x, (Nat(x) -> P(x)). (Induction from 2, 3)
+
+
+
+

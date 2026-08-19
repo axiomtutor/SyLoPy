@@ -1,0 +1,37 @@
+
+
+
+Write an extensive test suite. -- DONE (290 passing, pytest_tests/).
+
+Implement types as annotations. -- PARTIALLY DONE. Declaration/DeclarationKind
+give every symbol a checked kind and arity, and symbols must always be
+declared now (no opt-out -- see DECLARATION_FIXES.md). Overlapping types
+(a Nat is an Int, per NumberTheory.py's axiom 1) work as an ordinary axiom,
+not as a first-class "type hierarchy" the checker reasons about generally --
+there's no notion yet of the checker itself knowing Int implies a term is
+also whatever supertype comes next (Rational, Real, ...) without an explicit
+axiom spelling out each link.
+
+Implement axioms of set theory and number theory. -- PARTIALLY DONE.
+SetTheory.py: membership, subset (with a working "Subset proof below"
+elaborator), the empty set, "X has no elements", and set equality
+(antisymmetry of subset). NumberTheory.py: Int extending Nat, closure
+under Plus/Times/Neg, and Quotient's two defining axioms, enough to check
+the "a|n iff n/a is an integer" divisibility proof end to end. Neither
+module has order relations, well-ordering, or the real numbers yet -- the
+GCD/Bezout proof in basicNT.txt's second half needs all of that and
+remains unimplemented.
+
+Implement a system in which proved theorems become inference rules in
+later proofs. -- DONE. ProofLogic.promote_theorem()/TheoremRule generalize
+a checked proof's conclusion (and any premises) over whatever it declared
+"for any X" at the top level, producing a rule later proofs can cite by
+name. MultiproofParser.run_multi_proof_file() does this automatically for
+every titled ("# N: Title") proof that validates, making it available to
+every later case in the same file -- see
+tests/testSetTheory/empty_set_subset_and_uniqueness.txt for the empty-set
+subset theorem being cited by name to prove the empty set is unique.
+
+
+
+

@@ -1,0 +1,11 @@
+
+
+
+1. Nat(Zero). (Premise)
+2. forall x, (Nat(x) -> Nat(Succ(x))). (Axiom)
+3. Nat(Zero) -> Nat(Succ(Zero)). (Universal Instantiation from 2)
+4. Nat(Succ(Zero)). (Modus Ponens from 1, 3)
+
+
+
+

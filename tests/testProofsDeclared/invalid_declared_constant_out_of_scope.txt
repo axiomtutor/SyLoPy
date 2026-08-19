@@ -1,0 +1,14 @@
+
+
+
+1. Nat(a). (Declare)
+2. begin subproof
+    2.1. A. (Assume)
+    2.2. Nat(b). (Declare)
+    2.3. b = b. (Reflexivity)
+end subproof
+3. b = b. (Reflexivity)
+
+
+
+

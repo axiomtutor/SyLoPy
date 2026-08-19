@@ -1,0 +1,9 @@
+
+
+
+1. P(a). (Premise)
+2. exists x, P(x). (Existential Introduction from 1)
+
+
+
+

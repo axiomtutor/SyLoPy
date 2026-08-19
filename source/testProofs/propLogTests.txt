@@ -1,0 +1,493 @@
+
+
+
+(* 
+Note on formatting: Anything inside of paren-stars is a comment, and not read by the proof checker.
+A comment can occur on any line, anywhere in the document.
+Proofs are formatted by 
+- A hash and a number indicating a new proof.
+- A double-hash and a line indicating that it is a "proof that". For testing purposes, this can also indicate "invalid proof", but the typical user will not need this.
+- A triple-hash and a line indicating the premises of the theorem.
+- A triple-hash and a line indicating the conclusion of the thoerem.
+- An empty line.
+- The proof, indexed starting at 1, with the first line stating "Let" and then writing out the premises.  This line declares the object types, and any assumed statements about them.
+- An empty line.
+Additional white space beyond this is ignored by the checker.
+*)
+# 1 
+## Proof that 
+### if A, B, C are closed formulas such that: A -> B. B -> C. C -> A. 
+### then A -> C.
+(* Proof with unnecessary steps. *)
+
+1. Let A, B, C be closed formulas such that: A -> B. B -> C. C -> A. (Premise)
+2. A -> C. (Hypothetical Syllogism from 1)
+3. A <-> C. (Biconditional Introduction from 1,2)
+4. C -> A. (Biconditional Elimination from 3)
+5. A -> C. (Biconditional Elimination from 3)
+
+(* Post-script: Comments in a test file can occur at any line *)
+
+# 2
+## Proof that 
+### if A, B are closed formulas such that: not (if A then B). 
+### then A and not B.
+
+1. Let A, B be closed formulas such that: not (if A then B). (Premise)
+(* Comments can even come in the middle of a proof. *)
+2. A and not B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (A and not B). (Assumption for Contradiction)
+ 2.2. not A or not (not B). (De Morgans from 2.1)
+ 2.3. not A or B. (Double Negation from 2.2)
+ 2.4. if A then B. (Conditional Equivalence from 2.3)
+ 2.5. (if A then B) and not (if A then B). (Conjunction Introduction from 2.4, 1)
+end subproof
+
+# 3
+## Proof that 
+### if A, B are closed formulas.
+### then A -> (B -> A).
+(* Doubly nested subproofs. *)
+
+1. Let A, B be closed formulas.
+2. A -> (B -> A). (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for conditional introduction)
+ 1.2. B -> A. (Conditional Introduction from subproof below)
+ begin subproof
+  1.2.1. B. (Assumption for conditional introduction)
+  1.2.2. A. (Reiteration from 1.1)
+ end subproof
+end subproof
+
+# 4
+## Proof that 
+### if A, B are closed formuals such that: not (A and not B).
+### then not A or B.
+
+1. Let A, B, be closed formulas such that: not (A and not B). (Premise)
+2. not A or not (not B). (De Morgans from 1)
+3. not A or B. (Double Negation from 2)
+
+# 5
+## Proof that 
+### if P, Q, R are closed formulas such that: P or Q. if P then R. Q -> R.
+### then R.
+
+1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)
+2. R. (Proof by Cases from 1, subproofs below)
+begin subproof
+ 2.1.case1. P. (Case)
+ 2.2.case1. R. (Modus Ponens from 1, 2.1.case1)
+end subproof
+begin subproof
+ 2.1.case2. Q. (Case)
+ 2.2.case2. R. (Modus Ponens from 1, 2.1.case2)
+end subproof
+
+# 6
+## Proof that 
+### if A, B are closed formulas such that:
+### A or B.
+### not A.
+### not B.
+### then B.
+
+1. Let A, B be closed formulas such that: A or B. not A. not B. (Premise)
+2. A. (Disjunctive Syllogism from 1)
+3. B. (Disjunctive Syllogism from 1)
+
+# 7
+## Proof that 
+### if A, B, C are closed formulas such that:
+### if A then B.
+### if B then C.
+### then if A then C.
+
+1. Let A, B, C be closed formulas such that: if A then B. (Premise)
+2. if B then C. (Premise)
+3. A -> B. (Premise)
+4. A -> C. (Hypothetical Syllogism from 1,2)
+
+# 8 
+## Proof that 
+### if A, B are closed formulas such that: A iff B.
+### then if B then A.
+
+1. Let A, B be closed formulas such that: A <-> B. (Premise)
+2. A -> B. (Biconditional Elimination from 1)
+3. B -> A. (Biconditional Elimination from 1)
+
+# 9
+## Invalid proof.
+### Invalid use of Disjunction Elimination.
+
+1. Let P, Q, R, S be closed formulas such that: P or Q, P -> R, Q -> S. (Premise)
+2. R. (Disjunction Elimination from 1, subproofs below)
+begin subproof
+ 2.1.case1. P. (Case)
+ 2.2.case1. R. (Modus Ponens from 1, 2.1.case1)
+end subproof
+begin subproof
+ 2.1.case2. Q. (Case)
+ 2.2.case2. S. (Modus Ponens from 1, 2.1.case2)
+end subproof
+
+# 10
+## Proof that
+### if A, B are closed formulas such that: A iff B.
+### then A iff B.
+
+1. Let A, B be closed formulas such that: A <-> B. (Premise)
+2. A -> B. (Biconditional Elimination from 1)
+3. B -> A. (Biconditional Elimination from 1)
+4. A <-> B. (Biconditional Introduction from 2, 3)
+
+# 11
+## Proof that
+### if A, B are closed formulas such that: A iff B.
+### then if A then B.
+
+1. Let A, B be closed formulas such that: A <-> B. (Premise)
+2. A -> B. (Biconditional Elimination from 1)
+
+# 12
+## Invalid proof.
+### Invalid use of Distribution.
+
+1. Let A, B, C be closed formulas such that: A or (B and C). (Premise)
+2. (A or B) and C. (Distribution from 1)
+
+# 13
+## Invalid proof.
+### Invalid escape from a subproof.
+
+1. Let A be a closed formula.
+2. A or not A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (A or not A). (Assumption for Contradiction)
+ 2.2. (not A) and not (not A). (De Morgans from 2.1)
+ 2.3. not A. (Conjunction Elimination from 2.2)
+ 2.4. (not A) and not (not A). (Reiteration from 2.2)
+end subproof
+3. not A. (Reiteration from 2.3)
+
+# 14
+## Invalid proof.
+### Invalid existential elimination due to reuse of the same witness.
+
+1. Let P, Q be predicates such that: exists x, P(x). exists y, Q(y).  
+2. exists z, (P(z) and Q(z)). (Existential Elimination from subproof below)
+begin subproof
+ 2.1. P(c). (Assumption for Existential Elimination)
+ 2.2. exists z, (P(z) and Q(z)). (Existential Elimination from 3, subproof below)
+ begin subproof
+  2.2.1. Q(c). (Assumption for Existential Elimination)
+  2.2.2. P(c). (Reiteration from 4.1)
+  2.2.3. P(c) and Q(c). (Conjunction Introduction from 4.2.2, 4.2.1)
+  2.2.4. exists z, (P(z) and Q(z)). (Existential Introduction from 4.2.3)
+ end subproof
+end subproof
+
+# 15
+## Invalid proof.
+### Missing justification.
+
+1. Let A be a predicate. (Declare)
+2. A(a). (Premise)
+3. A(a). (Reiteration from 2)
+
+# 16
+## Proof that
+### if P is a predicate and a, b are objects such that: forall x, forall y, P(f(x), g(y)).
+### then exists w, exists z, P(w, z).
+
+1. Let a, b be objects. (Declare)
+2. Let P be a predicate such that: forall x, forall y, P(f(x), g(y)). (Premise)
+3. forall y, P(f(a), g(y)). (Universal Instantiation from 2)
+4. P(f(a), g(b)). (Universal Instantiation from 3)
+5. exists z, P(f(a), z). (Existential Introduction from 4)
+6. exists w, exists z, P(w, z). (Existential Introduction from 5)
+
+# 17
+## Proof that
+### if P is a predicate and a is an object such that P(a).
+### then exists x, P(x).
+
+1. Let a be an object. (Declare)
+2. Let P be a predicate such that P(a). (Premise)
+3. exists x, P(x). (Existential Introduction from 2)
+
+# 18
+## Invalid proof.
+### Invalid proof by contradiction.
+### The contradiction is not of the required form.
+
+1. Let A, B be closed formulas such that: not (if A then B). (Premise)
+2. A and not B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (A and not B). (Assumption for Contradiction)
+ 2.2. not A or not (not B). (De Morgans from 2.1)
+ 2.3. not A or B. (Double Negation from 2.2)
+ 2.4. if A then B. (Conditional Equivalence from 2.3)
+ 2.5. (if A then B) and not (if A then B). (Conjunction Introduction from 2.4, 1)
+ 2.6. (if A then B) and (not (if A then B)) and (not A or B). (Conjunction Introduction from 2.3, 2.5)
+end subproof
+
+# 19
+## Invalid proof.
+### Invalid proof by contradiction.
+### The assumed formula does not negate the conclusion.
+
+1. Let A, B, C be closed formulas. (Declare)
+2. B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. C and not C. (Conjunction Introduction from 2.1, 2.1)
+end subproof
+
+# 20
+## Invalid proof.
+### Invalid proof by contradiction.
+### The subproof does not derive a contradiction.
+
+1. Let A, B be closed formulas. (Declare)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. B. (Premise)
+end subproof
+
+# 21
+## Invalid proof.
+### Invalid proof by contradiction.
+### The final line is not a contradiction.
+
+1. Let A, B, C be closed formulas. (Declare)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. B and C. (Conjunction Introduction from 2.1, 2.1)
+end subproof
+
+# 22
+## Invalid proof.
+### Invalid proof by contradiction.
+### The assumption is not the negation of the conclusion.
+
+1. Let A, B be closed formulas. (Declare)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Contradiction)
+ 2.2. B and not B. (Conjunction Introduction from 2.1, 2.1)
+end subproof
+
+# 23
+## Invalid proof.
+### Invalid premise.
+### Types not declared.
+
+1. P(a). (Premise)
+2. exists x, P(x). (Existential Introduction from 1)
+
+# 28
+## Proof that
+### if A.
+### then A.
+
+1. Let A be a closed formula such that: A. (Premise)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. A. (Reiteration from 1)
+ 2.3. A and not A. (Conjunction Introduction from 2.2, 2.1)
+end subproof
+
+# 24
+## Invalid proof.
+### Invalid existential elimination.
+### The existential witness is improperly declared arbitrary.
+
+1. Let P be a predicate such that: exists x, P(x). (Premise)
+2. forall x, P(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 2.1. P(c). (Assumption for Existential Elimination)
+ 2.2. forall x, P(x). (Universal Generalization from subproof below)
+ begin subproof
+  2.2.1. let c be arbitrary. (Arbitrary)
+  2.2.2. P(c). (Reiteration from 2.1)
+ end subproof
+end subproof
+
+# 25
+## Invalid proof.
+### Invalid use of Universal Instantiation.
+
+1. Let P be a predicate and Q be a predicate such that: forall x, P(x). (Premise)
+2. Q(a). (Universal Instantiation from 1)
+
+# 26
+## Proof that
+### if (A or B) -> (C and D). (not A) -> exists x, P(x). not C. forall y, (P(y) -> not Q(y)).
+### then exists z, not Q(z).
+
+1. Let c be an object. (Declare)
+2. Let P, Q be predicates and A, B, C, D be closed formulas such that: (A or B) -> (C and D). (not A) -> exists x, P(x). not C. forall y, (P(y) -> not Q(y)). (Premise)
+3. (not C) or not D. (Disjunction Introduction from 2)
+4. not (C and D). (De Morgans from 3)
+5. not (A or B). (Modus Tollens from 2, 4)
+6. (not A) and not B. (De Morgans from 5)
+7. not A. (Conjunction Elimination from 6)
+8. exists x, P(x). (Modus Ponens from 2, 7)
+9. exists z, not Q(z). (Existential Elimination from 8, subproof below)
+begin subproof
+ 9.1. P(c). (Assumption for Existential Elimination)
+ 9.2. P(c) -> not Q(c). (Universal Instantiation from 2)
+ 9.3. not Q(c). (Modus Ponens from 9.1, 9.2)
+ 9.4. exists z, not Q(z). (Existential Introduction from 9.3)
+end subproof
+
+# 27
+## Proof that
+### if A -> B. not B.
+### then not A.
+
+1. Let A, B be closed formulas such that: A -> B. not B. (Premise)
+2. not A. (Modus Tollens from 1)
+
+# 29
+## Proof that
+### if A, C are predicates and a is an object such that: A(a). A(a) -> C(a).
+### then C(a).
+
+1. Let a be an object. (Declare)
+2. Let A, C be predicates such that: A(a). A(a) -> C(a). (Premise)
+3. C(a). (Modus Ponens from 2)
+
+# 30
+## Proof that
+### if A.
+### then A.
+
+1. Let A be a closed formula such that: A. (Premise)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. A. (Proof by Contradiction from subproof below)
+ begin subproof
+  2.2.1. not A. (Assumption for Contradiction)
+  2.2.2. A. (Reiteration from 1)
+  2.2.3. not A. (Reiteration from 2.2.1)
+  2.2.4. A and not A. (Conjunction Introduction from 2.2.2, 2.2.3)
+ end subproof
+ 2.3. not A. (Reiteration from 2.1)
+ 2.4. A and not A. (Conjunction Introduction from 2.2, 2.3)
+end subproof
+
+# 31
+## Proof that
+### if P.
+### then P or Q.
+
+1. Let P, Q be closed formulas such that: P. (Premise)
+2. P or Q. (Disjunction Introduction from 1)
+
+# 32
+## Proof that
+### if P.
+### then R or P.
+
+1. Let P, Q, R be closed formulas such that: P. (Premise)
+2. R or P. (Disjunction Introduction from 1)
+
+# 33
+## Proof that
+### if A is a closed formula.
+### then A or not A.
+
+1. Let A be a closed formula.
+2. A or not A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (A or not A). (Assumption for Contradiction)
+ 2.2. (not A) and not (not A). (De Morgans from 2.1)
+end subproof
+
+# 34
+## Proof that
+### if A or (B and C). A -> D. not D.
+### then not not (C and B).
+
+1. Let A, B, C, D be closed formulas such that: A or (B and C). A -> D. not D. (Premise)
+2. not A. (Modus Tollens from 1)
+3. B and C. (Disjunctive Syllogism from 1, 2)
+4. C. (Conjunction Elimination from 3)
+5. B. (Conjunction Elimination from 3)
+6. C and B. (Conjunction Introduction from 4, 5)
+7. not not (C and B). (Double Negation from 6)
+
+# 35
+## Proof that
+### if P is a predicate and a is an object such that: exists x, forall y, P(x, y).
+### then forall y, exists x, P(x, y).
+
+1. Let a be an object. (Declare)
+2. Let P be a predicate such that: exists x, forall y, P(x, y). (Premise)
+3. forall y, exists x, P(x, y). (Universal Generalization from subproof below)
+begin subproof
+ 3.1. let b be arbitrary. (Arbitrary)
+ 3.2. exists x, P(x, b). (Existential Elimination from 2, subproof below)
+ begin subproof
+  3.2.1. forall y, P(a, y). (Assumption for Existential Elimination)
+  3.2.2. P(a, b). (Universal Instantiation from 3.2.1)
+  3.2.3. exists x, P(x, b). (Existential Introduction from 3.2.2)
+ end subproof
+end subproof
+
+# 36
+## Proof that
+### if A. not A.
+### then A and not A.
+
+1. Let A be a closed formula such that: A. not A. (Premise)
+2. A and not A. (Conjunction Introduction from 1)
+
+# 37
+## Proof that
+### forall x, (P(x) or not P(x)).
+
+1. Let P be a predicate.
+2. forall x, (P(x) or not P(x)). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. P(c) or not P(c). (Proof by Contradiction from subproof below)
+ begin subproof
+  2.1.1. not (P(c) or not P(c)). (Assumption for Contradiction)
+  2.1.2. (not P(c)) and not not P(c). (De Morgans from 2.1.1)
+ end subproof
+end subproof
+
+# 38
+## Proof that
+### if P is a predicate such that: forall y, P(y).
+### then forall x, P(x).
+
+1. Let P be a predicate such that: forall y, P(y). (Premise)
+2. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. P(c). (Universal Instantiation from 1)
+end subproof
+
+# 39
+## Proof that
+### if P is a predicate and a is an object such that: forall x, P(x).
+### then P(a).
+
+1. Let a be an object. (Declare)
+2. Let P be a predicate such that: forall x, P(x). (Premise)
+3. P(a). (Universal Instantiation from 2)
+
+
+
+

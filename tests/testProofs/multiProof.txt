@@ -1,0 +1,117 @@
+
+
+
+(*
+Note on formatting: Anything inside of paren-stars is a comment.
+This mirrors the format described in the attached example, with
+constants declared per the "constants still need declaring" decision.
+*)
+# 1
+## Proof that
+### if A, B, C are closed formulas such that: A -> B. B -> C. C -> A.
+### then A -> C.
+(* Proof with unnecessary steps. *)
+
+1. Let A, B, C be closed formulas such that: A -> B. B -> C. C -> A. (Premise)
+2. A -> C. (Hypothetical Syllogism from 1)
+3. A <-> C. (Biconditional Introduction from 1,2)
+4. C -> A. (Biconditional Elimination from 3)
+5. A -> C. (Biconditional Elimination from 3)
+
+(* Post-script: comments can occur at any line *)
+
+# 2
+## Proof that
+### if A, B are closed formulas such that: not (if A then B).
+### then A and not B.
+
+1. Let A, B be closed formulas such that: not (if A then B). (Premise)
+(* Comments can even come in the middle of a proof. *)
+2. A and not B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (A and not B). (Assumption for Contradiction)
+ 2.2. not A or not (not B). (De Morgans from 2.1)
+ 2.3. not A or B. (Double Negation from 2.2)
+ 2.4. if A then B. (Conditional Equivalence from 2.3)
+ 2.5. (if A then B) and not (if A then B). (Conjunction Introduction from 2.4, 1)
+end subproof
+
+# 3
+## Proof that
+### if A, B are closed formulas.
+### then A -> (B -> A).
+(* Doubly nested subproofs. *)
+
+1. Let A, B be closed formulas. (Premise)
+2. A -> (B -> A). (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for conditional introduction)
+ 1.2. B -> A. (Conditional Introduction from subproof below)
+ begin subproof
+  1.2.1. B. (Assumption for conditional introduction)
+  1.2.2. A. (Reiteration from 1.1)
+ end subproof
+end subproof
+
+# 4
+## Proof that
+### if P, Q, R are closed formulas such that: P or Q. if P then R. Q -> R.
+### then R.
+
+1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)
+2. R. (Proof by Cases from 1, subproofs below)
+begin subproof
+ 2.1.case1. P. (Case)
+ 2.2.case1. R. (Modus Ponens from 1, 2.1.case1)
+end subproof
+begin subproof
+ 2.1.case2. Q. (Case)
+ 2.2.case2. R. (Modus Ponens from 1, 2.1.case2)
+end subproof
+
+# 5
+## Invalid proof.
+### Invalid use of Disjunction Elimination.
+
+1. Let P, Q, R, S be closed formulas such that: P or Q. P -> R. Q -> S. (Premise)
+2. R. (Disjunction Elimination from 1, subproofs below)
+begin subproof
+ 2.1.case1. P. (Case)
+ 2.2.case1. R. (Modus Ponens from 1, 2.1.case1)
+end subproof
+begin subproof
+ 2.1.case2. Q. (Case)
+ 2.2.case2. S. (Modus Ponens from 1, 2.1.case2)
+end subproof
+
+# 6
+## Proof that
+### if a, b are objects and P is a predicate such that: forall x, forall y, P(f(x), g(y)).
+### then exists w, exists z, P(w, z).
+
+1. Let a, b be objects. (Premise)
+2. Let P be a predicate such that: forall x, forall y, P(f(x), g(y)). (Premise)
+3. forall y, P(f(a), g(y)). (Universal Instantiation from 2)
+4. P(f(a), g(b)). (Universal Instantiation from 3)
+5. exists z, P(f(a), z). (Existential Introduction from 4)
+6. exists w, exists z, P(w, z). (Existential Introduction from 5)
+
+# 7
+## Proof that
+### if A, B are closed formulas such that: A -> B. not B.
+### then not A.
+
+1. Let A, B be closed formulas such that: A -> B. not B. (Premise)
+2. not A. (Modus Tollens from 1)
+
+# 8
+## Invalid proof.
+### Correctly derivable, but the stated conclusion is deliberately wrong (tests conclusion-verification).
+### then A and B.
+
+1. Let A, B be closed formulas such that: A and B. (Premise)
+2. A. (Conjunction Elimination from 1)
+
+
+
+

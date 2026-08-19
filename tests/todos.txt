@@ -1,0 +1,39 @@
+
+
+
+Before using any symbol it must be introduced. That includes objects,
+propositions, and variables which refer to sets or integers, predicates,
+relations, etc. The only exceptions are constants declared inside a
+module. For example, the empty set in set theory, the in relation in set
+theory, specific numbers in the integers, rationals, reals.
+-- DONE. Declaration checking is unconditional now: ProofLogic.Proof/
+ProofValidator have no opt-out (the old require_declared_constants flag
+is gone entirely, not just defaulted on). A symbol is legal only if the
+proof itself declares it (Let .../`(Declare)`) or a combined-in theory
+module's own `declarations` supplies it -- exactly this rule.
+
+Write an extensive test suite. -- DONE (290 passing, pytest_tests/).
+
+Implement types as annotations. Types can be overlapping, so that
+integers are rationals and rationals are reals, etc.
+-- PARTIALLY DONE. See root todos.txt for the current state -- the
+overlap itself (Nat -> Int) is just an axiom, not a general subtyping
+mechanism the checker reasons about.
+
+Implement axioms of set theory and number theory, and the real numbers.
+Number theory is different from natural number theory.
+-- PARTIALLY DONE. NumberTheory.py is now its own module (Int, Plus,
+Times, Neg, Quotient), separate from NatThry.py's Peano naturals and
+built on top of it, per the root todos.txt entry. No real numbers yet.
+
+Allow for one file to contain multiple independent proofs. Allow for
+comment regions delimited by (* *).
+-- DONE (MultiproofParser.py; comments handled by ProofParser.py's own
+comment-stripping, shared by both single- and multi-proof files).
+
+Implement a system in which proved theorems become inference rules in
+later proofs? -- DONE. See root todos.txt for details.
+
+
+
+

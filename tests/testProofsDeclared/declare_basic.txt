@@ -1,0 +1,11 @@
+
+
+
+1. Nat(a). (Declare)
+2. forall x, (Nat(x) -> x = x). (Premise)
+3. Nat(a) -> a = a. (Universal Instantiation from 2)
+4. a = a. (Modus Ponens from 1, 3)
+
+
+
+

@@ -1,0 +1,29 @@
+
+
+
+1. Let a, n be integers. (Premise)
+2. If n/a is an integer then a|n. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. n/a is an integer. (Assumption for Conditional Introduction)
+ 2.2. n = Times(a, n/a). (Quotient Defining Property from 2.1)
+ 2.3. n/a is an integer and n = Times(a, n/a). (Conjunction Introduction from 2.1, 2.2)
+ 2.4. a|n. (Existential Introduction from 2.3)
+end subproof
+3. If a|n then n/a is an integer. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. a|n. (Assumption for Conditional Introduction)
+ 3.2. Let m be an object. (Declare)
+ 3.3. n/a is an integer. (Existential Elimination from 3.1, subproof below)
+ begin subproof
+  3.3.1. Int(m) and n = Times(a, m). (Assumption for Existential Elimination)
+  3.3.2. Int(m). (Conjunction Elimination from 3.3.1)
+  3.3.3. n = Times(a, m). (Conjunction Elimination from 3.3.1)
+  3.3.4. n/a = m. (Quotient Uniqueness from 3.3.2, 3.3.3)
+  3.3.5. n/a is an integer. (Substitution from 3.3.2, 3.3.4)
+ end subproof
+end subproof
+4. a|n if and only if n/a is an integer. (Biconditional Introduction from 2, 3)
+
+
+
+

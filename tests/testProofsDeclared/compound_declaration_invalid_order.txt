@@ -1,0 +1,6 @@
+
+
+1. Let R be a relation on X, X be any set. (Declaration)
+
+
+

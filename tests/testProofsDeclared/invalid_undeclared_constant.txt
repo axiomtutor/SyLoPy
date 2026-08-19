@@ -1,0 +1,9 @@
+
+
+
+1. forall x, (Nat(x) -> x = x). (Premise)
+2. Nat(a) -> a = a. (Universal Instantiation from 1)
+
+
+
+

@@ -1,0 +1,9 @@
+
+
+
+1. Let a, n, m be integers such that: n = Times(a, m). (Premise)
+2. n/a = m. (Quotient Uniqueness from 1)
+
+
+
+
