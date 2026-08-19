@@ -5,7 +5,7 @@ from .support import pp, pl, fl, tl
 
 def test_split_top_level_respects_nesting():
     assert pp.split_top_level("A and (B and C) and D", " and ") == ["A", "(B and C)", "D"]
-    assert pp.split_top_level("f(x, g(y, z)), w", ",") == ["f(x, g(y, z)), w"]
+    assert pp.split_top_level("f(x, g(y, z)), w", ",") == ["f(x, g(y, z))", "w"]
     assert pp.split_top_level("", ",") == []
 
 
