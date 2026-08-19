@@ -30,6 +30,16 @@ Use discrete math.
     assert "Malformed rule justification" in results[0][3]
 
 
+def test_fixture_validator_preserves_cross_case_theorem_promotion():
+    project = Path(__file__).resolve().parents[1]
+    path = project / "tests" / "testSetTheory" / "empty_set_subset_and_uniqueness.txt"
+    results = validator.check_file(path)
+    assert [(result.proof_id, result.passed) for result in results] == [
+        ("1", True),
+        ("2", True),
+    ]
+
+
 def test_current_discrete_math_fixture_is_valid():
     project = Path(__file__).resolve().parents[1]
     results = validator.check_file(
