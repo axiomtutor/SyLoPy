@@ -1,88 +1,97 @@
+# SyLoPy development TODO
 
+## Current baseline
 
+- `pytest`: 322 tests passing.
+- Enforced proof fixtures: 43/44 passing.
+- Informational fixtures remain intentionally non-blocking, but their failures
+  should be reduced as the corresponding language and theory features mature.
+- The complete local test command is `./run_tests.sh`.
 
-Write an extensive test suite. -- DONE (290 passing, pytest_tests/).
+## Parser and surface language
 
-Implement types as annotations. -- PARTIALLY DONE. Declaration/DeclarationKind
-give every symbol a checked kind and arity, and symbols must always be
-declared now (no opt-out -- see DECLARATION_FIXES.md). Overlapping types
-(a Nat is an Int, per NumberTheory.py's axiom 1) work as an ordinary axiom,
-not as a first-class "type hierarchy" the checker reasons about generally --
-there's no notion yet of the checker itself knowing Int implies a term is
-also whatever supertype comes next (Rational, Real, ...) without an explicit
-axiom spelling out each link.
-
-Implement axioms of set theory and number theory. -- PARTIALLY DONE.
-SetTheory.py: membership, subset (with a working "Subset proof below"
-elaborator), the empty set, "X has no elements", and set equality
-(antisymmetry of subset). NumberTheory.py: Int extending Nat, closure
-under Plus/Times/Neg, and Quotient's two defining axioms, enough to check the
-"a|n iff n/a is an integer" divisibility proof end to end. Neither
-module has order relations, well-ordering, or the real numbers yet -- the
-GCD/Bezout proof in basicNT.txt's second half needs all of that and
-remains unimplemented.
-
-Implement a system in which proved theorems become inference rules in
-later proofs. -- DONE. ProofLogic.promote_theorem()/TheoremRule generalize
-a checked proof's conclusion (and any premises) over whatever it declared
-"for any X" at the top level, producing a rule later proofs can cite by
-name. MultiproofParser.run_multi_proof_file() does this automatically for
-every titled ("# N: Title") proof that validates, making it available to
-every later case in the same file -- see
-tests/testSetTheory/empty_set_subset_and_uniqueness.txt for the empty-set
-subset theorem being cited by name to prove the empty set is unique.
-
-
-NEXT DEVELOPMENT ROUND
-
-Parser and surface language
-- Finish the staged parsing architecture and make declarations, coordinated
-  clauses, grouped names, and proof blocks consistently parse into the
-  intended surface AST.
+- Finish the staged parsing architecture so declarations, coordinated clauses,
+  grouped names, formulas, and proof blocks consistently produce the intended
+  surface AST.
+- Remove remaining duplicate or legacy parsing paths once their behavior is
+  covered by the staged parser.
 - Improve syntax and source-location diagnostics.
 - Add regression tests for ambiguous and malformed constructions.
 
-AST and elaboration
-- Review the AST now that the surface language has become more sophisticated.
-- Ensure the AST represents semantic structure rather than merely mirroring
-  surface syntax.
-- Establish stable interfaces between parsing, elaboration, and validation.
-- Continue the elaboration/desugaring architecture while preserving source
-  origins for generated core steps.
+## AST and elaboration
 
-Proof elaboration and validation
+- Review the surface AST so that it represents semantic structure rather than
+  merely mirroring surface syntax.
+- Establish stable interfaces between parsing, elaboration, and validation.
+- Complete the elaboration/desugaring architecture while preserving source
+  origins for generated core steps.
+- Introduce an explicit proof context for declarations, assumptions, labels,
+  theorem visibility, and nested scopes.
+- Make declaration ordering and scope rules explicit and test them directly.
+
+## Proof elaboration and validation
+
 - Make theorem/lemma promotion semantics explicit and robust.
 - Establish precise rules for what a proof may reference.
-- Validate dependency ordering and scope.
-- Keep parsing errors, name-resolution errors, typing errors, and
-  proof-validation errors distinct.
+- Keep parsing errors, name-resolution errors, typing errors, elaboration
+  errors, and proof-validation errors distinct.
+- Continue consolidating validation around the canonical `Proof.check()` API.
+- Remove obsolete validation interfaces and compatibility code.
 
-Discrete mathematics proof infrastructure
+## Theory infrastructure
+
+- Keep theory-specific syntax and semantic interpretation behind
+  `TheoryEnvironment` and theory-specific declaration recipes.
+- Finish moving remaining theory-specific surface parsing out of generic
+  parser code.
+- Continue this pattern for future order-theory and algebraic syntax.
+- Add order relations, well-ordering, and real-number infrastructure when the
+  parser/elaboration/validation foundations are stable.
+
+## Discrete mathematics and mathematical development
+
 - Continue implementing discrete-mathematics proof objects and inference
-  rules.
-- Formalize the existing proof examples as executable tests.
-- Ensure proof fixtures exercise the intended validator rather than merely
-  testing parser acceptance.
+  rules where they are needed by the language and theory architecture.
+- Formalize additional mathematical examples as executable tests.
+- Expand set theory and number theory incrementally after the architectural
+  work is stable.
+- Implement the remaining number-theory infrastructure needed for the GCD /
+  Bezout development.
 
-Test architecture and regression protection
+## Test architecture and regression protection
+
 - Treat the complete test suite as the authoritative regression suite.
-- Add targeted tests for every newly implemented language and semantic
-  feature.
-- Freeze current parser/validator behavior with comprehensive regression
-  coverage before making further semantic changes.
-- Keep the complete local test command and the CI test command identical.
-- Verify and repair GitHub Actions so that CI actually records runs and
-  results for pushed commits.
+- Bring the enforced fixture corpus to 44/44.
+- Add targeted regression tests for every newly implemented language and
+  semantic feature.
+- Ensure fixture failures distinguish expected negative results from genuine
+  implementation failures.
+- Keep the local test command and CI test command consistent.
+- Verify that GitHub Actions records useful CI results for pushed commits.
+- Reduce the informational fixture failures as their underlying features are
+  implemented; do not weaken enforced tests merely to increase the pass rate.
 
-Recommended implementation order
-1. Parser and surface-language behavior.
-2. AST and elaboration interfaces.
-3. Elaboration and name resolution.
-4. Validator and semantic rules.
-5. Regression and feature tests.
-6. CI verification.
+## Legacy removal
 
-Do not begin by adding large numbers of new mathematical rules. First make
-parser, AST, elaboration, validation, and regression behavior sufficiently
-stable that subsequent mathematical extensions can be developed against a
-reliable baseline.
+- Audit remaining historical parser and elaboration code.
+- Migrate any still-used legacy functionality to the staged AST/elaboration
+  pipeline.
+- Delete obsolete parser representations, helpers, compatibility wrappers,
+  and dead imports after migration and regression coverage are complete.
+- Keep architecture documentation synchronized with the implementation.
+
+## Recommended implementation order
+
+1. Resolve the remaining enforced fixture failure.
+2. Finish parser and surface-AST consolidation.
+3. Consolidate elaboration and introduce explicit proof context.
+4. Remove remaining legacy parser/elaboration machinery.
+5. Strengthen validator and semantic regression tests.
+6. Expand mathematical theories and proof infrastructure.
+7. Continue reducing informational fixture failures.
+8. Verify CI continuously throughout the process.
+
+Do not add large numbers of new mathematical rules while parser, AST,
+elaboration, and validation interfaces are still changing. New mathematical
+features should build on the stabilized architecture rather than introducing
+new parallel mechanisms.
