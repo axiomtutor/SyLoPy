@@ -6,6 +6,28 @@ cd "$ROOT"
 
 export PYTHONPATH="$(cd "$ROOT/.." && pwd)${PYTHONPATH:+:$PYTHONPATH}"
 
+# Proof-fixture inspection commands are intentionally separate from the full
+# validation run.  --suite and --list-suites are useful for inspecting the
+# fixture corpus without rerunning the Python implementation tests.
+validator_args=()
+for arg in "$@"; do
+    case "$arg" in
+        --suite|--list-suites|--verbose)
+            validator_args+=("$arg")
+            ;;
+        *)
+            echo "Unknown option: $arg" >&2
+            echo "Usage: $0 [--suite NAME] [--list-suites] [--verbose]" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if (( ${#validator_args[@]} > 0 )); then
+    python3 "$ROOT/source/validate_all_proofs.py" "${validator_args[@]}"
+    exit $?
+fi
+
 pytest_status=0
 coverage_status=0
 fixture_status=0
