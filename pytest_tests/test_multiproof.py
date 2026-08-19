@@ -3,11 +3,7 @@
 
 from pathlib import Path
 
-import pytest
-
-from .support import mp, pl, fl, pp, A, B, C
-
-REAL_PROOF = pl.Proof
+from .support import mp, pl, fl, A, B, C
 
 
 def sample_multi_text():
@@ -102,23 +98,7 @@ def test_conclusion_is_derived_is_structural():
     assert mp.conclusion_is_derived(entries, None)
 
 
-class ProofAdapter:
-    """Compatibility wrapper for MultiproofParser's stale constructor call."""
-
-    def __init__(self, entries, axioms=None, rules=None, declarations=None):
-        self._proof = REAL_PROOF(
-            entries,
-            axioms=axioms,
-            rules=rules,
-            declarations=declarations,
-        )
-
-    def check(self):
-        return self._proof.check()
-
-
-def test_run_multi_proof_file_with_constructor_compatibility(monkeypatch):
-    monkeypatch.setattr(mp.pl, "Proof", ProofAdapter)
+def test_run_multi_proof_file():
     results = mp.run_multi_proof_file(sample_multi_text())
     assert [(n, expected, ok) for n, expected, ok, _ in results] == [
         ("1", True, True),
@@ -126,8 +106,7 @@ def test_run_multi_proof_file_with_constructor_compatibility(monkeypatch):
     ]
 
 
-def test_run_multi_detects_unproved_stated_conclusion(monkeypatch):
-    monkeypatch.setattr(mp.pl, "Proof", ProofAdapter)
+def test_run_multi_detects_unproved_stated_conclusion():
     text = """
 # 1
 ## Proof that
@@ -139,8 +118,7 @@ def test_run_multi_detects_unproved_stated_conclusion(monkeypatch):
     assert "never derived" in result[3]
 
 
-def test_run_multi_warns_about_duplicate_numbers(monkeypatch, capsys):
-    monkeypatch.setattr(mp.pl, "Proof", ProofAdapter)
+def test_run_multi_warns_about_duplicate_numbers(capsys):
     text = """
 # 1
 ## Proof that
@@ -168,11 +146,11 @@ def test_run_multi_works_without_compatibility_adapter():
     assert result[0][2] is True
 
 
-def test_main_returns_zero_when_all_expectations_match(monkeypatch, tmp_path):
-    monkeypatch.setattr(mp.pl, "Proof", ProofAdapter)
+def test_main_returns_zero_when_all_expectations_match(tmp_path, capsys):
     path = tmp_path / "proofs.txt"
     path.write_text(sample_multi_text())
     assert mp.main(str(path)) == 0
+    assert "Total: 2" in capsys.readouterr().out
 
 
 def test_titled_set_theory_proof_runs_through_multiproof_pipeline():
@@ -184,8 +162,6 @@ def test_titled_set_theory_proof_runs_through_multiproof_pipeline():
     assert mp.run_multi_proof_file(text) == [
         ("1", True, True, None)
     ]
-
-
 
 
 def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cases():
@@ -205,5 +181,4 @@ def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cas
         ('2', True, True),
     ]
     assert 'Malformed rule justification' in results[0][3]
-
 
