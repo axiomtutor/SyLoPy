@@ -42,7 +42,21 @@ class RelationDeclarationRecipe:
         if carrier_match is None:
             raise ValueError("relation declaration must specify a carrier, e.g. 'relation on X'")
         carrier = carrier_match.group(1)
-        matched_alias = next((alias for alias in self._aliases if re.search(rf"\b{re.escape(alias)}\b", descriptor)), None)
+
+        # If the carrier is not declared by an earlier clause, decline the
+        # recipe and let the generic elaborator's existing left-to-right
+        # validation report the precise undeclared-carrier error.
+        previous_names = {name for previous in clauses[:index] for name in getattr(previous, "names", ())}
+        if carrier not in previous_names:
+            return None
+
+        # Match longer descriptors first so "strict partial order" cannot be
+        # captured by the shorter "partial order" alias.
+        matched_alias = next(
+            (alias for alias in sorted(self._aliases, key=len, reverse=True)
+             if re.search(rf"\b{re.escape(alias)}\b", descriptor)),
+            None,
+        )
         properties = set(self._aliases.get(matched_alias, ()))
         for property_name in self._properties:
             if re.search(rf"\b{property_name}\b", descriptor, re.I):
