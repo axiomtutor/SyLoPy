@@ -1,6 +1,3 @@
-
-
-
 from pathlib import Path
 
 from .support import mp, pl, fl, A, B, C
@@ -141,27 +138,18 @@ def test_multi_fixture_is_split_into_expected_cases():
     assert expected["8"] is False
 
 
-def test_run_multi_works_without_compatibility_adapter():
+def test_multi_proof_runner_uses_single_proof_parser():
     result = mp.run_multi_proof_file(sample_multi_text())
     assert result[0][2] is True
 
 
-def test_main_returns_zero_when_all_expectations_match(tmp_path, capsys):
-    path = tmp_path / "proofs.txt"
-    path.write_text(sample_multi_text())
-    assert mp.main(str(path)) == 0
-    assert "Total: 2" in capsys.readouterr().out
-
-
-def test_titled_set_theory_proof_runs_through_multiproof_pipeline():
+def test_titled_set_theory_proof_runs_through_fixture_pipeline():
     project = Path(__file__).resolve().parents[1]
     text = (project / "tests" / "setTheoryProofs" / "empty_set_subset.txt").read_text()
     cases = mp.parse_multi_proof_file(text)
     assert [case.number for case in cases] == ["1"]
     assert cases[0].description[-1] == "then the empty set is a subset of X"
-    assert mp.run_multi_proof_file(text) == [
-        ("1", True, True, None)
-    ]
+    assert mp.run_multi_proof_file(text) == [("1", True, True, None)]
 
 
 def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cases():
@@ -182,3 +170,12 @@ def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cas
     ]
     assert 'Malformed rule justification' in results[0][3]
 
+
+def test_check_file_handles_a_multi_proof_file(tmp_path):
+    path = tmp_path / "proofs.txt"
+    path.write_text(sample_multi_text())
+    results = mp.check_file(path)
+    assert [(r.proof_id, r.expected_valid, r.ok) for r in results] == [
+        ("1", True, True),
+        ("2", False, False),
+    ]
