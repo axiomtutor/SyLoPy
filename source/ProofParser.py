@@ -9,12 +9,18 @@ from __future__ import annotations
 from SyLoPy.source import ProofParserLegacy as _legacy
 from SyLoPy.source.ProofParserLegacy import *  # noqa: F401,F403
 from SyLoPy.source.ProofJustification import parse_justification
+from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
 
 # The legacy parser calls its module-global parse_justification while parsing
 # proof lines. Patch that dependency once so all existing parsing paths use the
 # deterministic resolver without changing the surface parser implementation.
 _legacy.parse_justification = parse_justification
+
+# Preserve an explicit physical line break after a comma in a `Let ...`
+# declaration.  The patch changes only the internal logical representation;
+# source spans and raw_lines still contain the user's original text.
+_install_line_break_syntax(_legacy)
 
 
 def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
@@ -117,7 +123,8 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     raise ValueError(
         f"Unrecognized formula syntax: {s!r}. Expected a logical connective, "
         "an atomic predicate like 'P(x)', a simple atomic proposition name, "
-        "or syntax registered by an imported theory module."
+        "or syntax registered by an imported theory module -- not a raw, "
+        "unrecognized expression silently treated as an opaque atom."
     )
 
 
@@ -125,7 +132,3 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
 # by its elaboration code use the conventional grammar.
 _legacy.parse_formula = _parse_formula_conventional
 parse_formula = _parse_formula_conventional
-
-
-def __getattr__(name):
-    return getattr(_legacy, name)
