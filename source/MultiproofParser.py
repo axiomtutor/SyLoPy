@@ -130,8 +130,8 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
             if ok and case.title:
                 try:
                     promoted.append(pl.promote_theorem(case.title, proof))
-                except ValueError:
-                    pass
+                except ValueError as exc:
+                    print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
         except Exception as exc:
             ok, msg = False, f'parse/check error: {exc}'
         results.append((case.number, case.expected_valid, ok, msg))
