@@ -16,8 +16,8 @@ Implement axioms of set theory and number theory. -- PARTIALLY DONE.
 SetTheory.py: membership, subset (with a working "Subset proof below"
 elaborator), the empty set, "X has no elements", and set equality
 (antisymmetry of subset). NumberTheory.py: Int extending Nat, closure
-under Plus/Times/Neg, and Quotient's two defining axioms, enough to check
-the "a|n iff n/a is an integer" divisibility proof end to end. Neither
+under Plus/Times/Neg, and Quotient's two defining axioms, enough to check the
+"a|n iff n/a is an integer" divisibility proof end to end. Neither
 module has order relations, well-ordering, or the real numbers yet -- the
 GCD/Bezout proof in basicNT.txt's second half needs all of that and
 remains unimplemented.
@@ -33,5 +33,56 @@ tests/testSetTheory/empty_set_subset_and_uniqueness.txt for the empty-set
 subset theorem being cited by name to prove the empty set is unique.
 
 
+NEXT DEVELOPMENT ROUND
 
+Parser and surface language
+- Finish the staged parsing architecture and make declarations, coordinated
+  clauses, grouped names, and proof blocks consistently parse into the
+  intended surface AST.
+- Improve syntax and source-location diagnostics.
+- Add regression tests for ambiguous and malformed constructions.
 
+AST and elaboration
+- Review the AST now that the surface language has become more sophisticated.
+- Ensure the AST represents semantic structure rather than merely mirroring
+  surface syntax.
+- Establish stable interfaces between parsing, elaboration, and validation.
+- Continue the elaboration/desugaring architecture while preserving source
+  origins for generated core steps.
+
+Proof elaboration and validation
+- Make theorem/lemma promotion semantics explicit and robust.
+- Establish precise rules for what a proof may reference.
+- Validate dependency ordering and scope.
+- Keep parsing errors, name-resolution errors, typing errors, and
+  proof-validation errors distinct.
+
+Discrete mathematics proof infrastructure
+- Continue implementing discrete-mathematics proof objects and inference
+  rules.
+- Formalize the existing proof examples as executable tests.
+- Ensure proof fixtures exercise the intended validator rather than merely
+  testing parser acceptance.
+
+Test architecture and regression protection
+- Treat the complete test suite as the authoritative regression suite.
+- Add targeted tests for every newly implemented language and semantic
+  feature.
+- Freeze current parser/validator behavior with comprehensive regression
+  coverage before making further semantic changes.
+- Keep the complete local test command and the CI test command identical.
+- Verify and repair GitHub Actions so that CI actually records runs and
+  results for pushed commits.
+
+Recommended implementation order
+1. Parser and surface-language behavior.
+2. AST and elaboration interfaces.
+3. Elaboration and name resolution.
+4. Validator and semantic rules.
+5. Regression and feature tests.
+6. CI verification.
+
+Do not begin by adding large numbers of new mathematical rules. First make
+parser, AST, elaboration, validation, and regression behavior sufficiently
+stable that subsequent mathematical extensions can be developed against a
+reliable baseline.
