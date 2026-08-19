@@ -1,6 +1,3 @@
-
-
-
 import pytest
 
 from .support import pp, pl, fl, tl
@@ -80,9 +77,11 @@ def test_parentheses_control_grouping():
     assert repr(right) == "(A() ∧ (B() → C()))"
 
 
-def test_documented_nonstandard_precedence_is_stable():
-    assert repr(pp.parse_formula("A -> B and C")) == "((A() → B()) ∧ C())"
-    assert repr(pp.parse_formula("A and B -> C")) == "(A() ∧ (B() → C()))"
+def test_conventional_precedence():
+    assert repr(pp.parse_formula("A -> B and C")) == "(A() → (B() ∧ C()))"
+    assert repr(pp.parse_formula("A and B -> C")) == "((A() ∧ B()) → C())"
+    assert repr(pp.parse_formula("A or B and C")) == "(A() ∨ (B() ∧ C()))"
+    assert repr(pp.parse_formula("A and B iff C")) == "((A() ∧ B()) ↔ C())"
 
 
 def test_bare_if_and_only_if_parses_as_iff():
@@ -111,6 +110,8 @@ def test_nested_quantifier_and_equality_parse():
         ("Proof by Cases from 1, 2, 3", "rule", pl.DisjunctionEliminationRule, ["1", "2", "3"]),
         ("Biconditional Introduction from 1, 2", "rule", pl.BiconditionalIntroductionRule, ["1", "2"]),
         ("Biconditional Elimination from 1", "rule", pl.BiconditionalEliminationRule, ["1"]),
+        ("Conditional Elimination from 1", "rule", pl.BiconditionalEliminationRule, ["1"]),
+        ("Conditional Equivalence from 1", "rule", pl.PropositionalEquivalenceRule, ["1"]),
         ("Reiteration from 1", "rule", pl.ReiterationRule, ["1"]),
         ("Double Negation from 1", "rule", pl.PropositionalEquivalenceRule, ["1"]),
         ("Leibniz Substitution from 1, 2", "rule", pl.LeibnizSubstitutionRule, ["1", "2"]),
@@ -276,11 +277,6 @@ def test_object_predicate_and_function_declaration_prefixes():
     ]
 
 
-
-
 def test_parse_justification_rejects_trailing_from():
-    import pytest
     with pytest.raises(ValueError, match="Malformed rule justification"):
         pp.parse_justification("Relation Transitivity from")
-
-
