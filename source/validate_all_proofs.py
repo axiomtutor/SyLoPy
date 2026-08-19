@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the project's proof fixture corpora.
-
-The default output is suite-oriented: each fixture directory is reported as
-one line with its number of passing proofs.  ``--suite`` selects one fixture
-suite for detailed inspection, ``--verbose`` prints individual proof results,
-and ``--list-suites`` lists the available enforced and informational suites.
-"""
+"""Validate the project's proof fixture corpora."""
 
 from __future__ import annotations
 
@@ -20,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.MultiproofParser as mp
+import SyLoPy.source.NatThry as nt
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,8 +36,8 @@ INFORMATIONAL_DIRS = [
     "source/testProofs",
 ]
 
-_NAT_AXIOMS, _NAT_SCHEMA_RULES = pl.combine_types(pl.NAT_TYPE)
-_NAT_DECLARATIONS = pl.combine_type_declarations(pl.NAT_TYPE)
+_NAT_AXIOMS, _NAT_SCHEMA_RULES = pl.combine_types(nt.NAT_TYPE)
+_NAT_DECLARATIONS = pl.combine_type_declarations(nt.NAT_TYPE)
 BARE_PROOF_RULES = pl.default_rules() + _NAT_SCHEMA_RULES
 BARE_PROOF_AXIOMS = list(_NAT_AXIOMS)
 BARE_PROOF_DECLARATIONS = list(_NAT_DECLARATIONS)
@@ -115,24 +110,16 @@ def _suite_name(rel_dir: str) -> str:
 
 
 def available_suites() -> List[tuple[str, str]]:
-    return [("enforced", d) for d in ENFORCED_DIRS] + [
-        ("informational", d) for d in INFORMATIONAL_DIRS
-    ]
+    return [("enforced", d) for d in ENFORCED_DIRS] + [("informational", d) for d in INFORMATIONAL_DIRS]
 
 
 def _resolve_suite(name: str) -> tuple[str, str]:
     normalized = name.rstrip("/")
-    candidates = {
-        d: category for category, d in available_suites()
-    }
+    candidates = {d: category for category, d in available_suites()}
     if normalized in candidates:
         return candidates[normalized], normalized
 
-    basename_matches = [
-        (category, d)
-        for category, d in available_suites()
-        if _suite_name(d) == normalized
-    ]
+    basename_matches = [(category, d) for category, d in available_suites() if _suite_name(d) == normalized]
     if len(basename_matches) == 1:
         return basename_matches[0]
     if not basename_matches:
@@ -142,80 +129,42 @@ def _resolve_suite(name: str) -> tuple[str, str]:
     raise ValueError(f"suite name {name!r} is ambiguous; use one of: {matches}")
 
 
-def _print_suite_results(
-    title: str,
-    results: List[ProofResult],
-    enforced: bool,
-    verbose: bool,
-) -> int:
-    unexpected = [r for r in results if not r.passed]
-    passed = len(results) - len(unexpected)
+def _print_suite_summary(rel_dir: str, results: List[ProofResult], enforced: bool) -> int:
+    failures = sum(not r.passed for r in results)
+    passed = len(results) - failures
+    status = "PASS" if failures == 0 else "FAIL"
+    qualifier = "enforced" if enforced else "informational"
+    print(f"{status:<5} {rel_dir:<32} {passed}/{len(results)} proofs pass ({qualifier})")
+    return failures if enforced else 0
 
-    print(f"\n=== {title} ({'enforced' if enforced else 'informational -- not counted toward exit code'}) ===")
+
+def _print_selected_suite(rel_dir: str, results: List[ProofResult], enforced: bool, verbose: bool) -> int:
+    failures = sum(not r.passed for r in results)
+    passed = len(results) - failures
+    print(f"\n=== {rel_dir} ({'enforced' if enforced else 'informational'}) ===")
     if verbose:
         for r in results:
             status = "PASS" if r.passed else "FAIL"
             detail = f" {r.message}" if r.message else ""
-            print(
-                f"{status}: {r.file:45s} #{r.proof_id:4s} "
-                f"expected={r.expected_valid!s:5s} got={r.ok!s:5s}{detail}"
-            )
-
-    print(f"{title}: {passed}/{len(results)} proofs pass")
-    return len(unexpected) if enforced else 0
-
-
-def _print_suite_summary(
-    title: str,
-    rel_dir: str,
-    results: List[ProofResult],
-    enforced: bool,
-) -> int:
-    unexpected = len(results) - sum(r.passed for r in results)
-    passed = len(results) - unexpected
-    status = "PASS" if unexpected == 0 else "FAIL"
-    qualifier = "enforced" if enforced else "informational"
-    print(f"{status:<5} {rel_dir:<32} {passed}/{len(results)} proofs pass ({qualifier})")
-    return unexpected if enforced else 0
-
-
-def _print_selected_suite(
-    rel_dir: str,
-    results: List[ProofResult],
-    enforced: bool,
-    verbose: bool,
-) -> int:
-    return _print_suite_results(rel_dir, results, enforced, verbose)
+            print(f"{status}: {r.file:45s} #{r.proof_id:4s} expected={r.expected_valid!s:5s} got={r.ok!s:5s}{detail}")
+    print(f"{rel_dir}: {passed}/{len(results)} proofs pass")
+    return failures if enforced else 0
 
 
 def _list_suites() -> None:
     print("Enforced suites:")
     for rel_dir in ENFORCED_DIRS:
-        print(f"  {_suite_name(rel_dir):<24} {rel_dir}")
+        print(f"  {_suite_name(rel_dir):24s} {rel_dir}")
     print("\nInformational suites:")
     for rel_dir in INFORMATIONAL_DIRS:
-        print(f"  {_suite_name(rel_dir):<24} {rel_dir}")
+        print(f"  {_suite_name(rel_dir):24s} {rel_dir}")
 
 
 def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Validate SyLoPy proof fixtures by suite."
-    )
-    parser.add_argument(
-        "--suite",
-        metavar="NAME",
-        help="run and report only the named proof-fixture suite",
-    )
-    parser.add_argument(
-        "--list-suites",
-        action="store_true",
-        help="list available proof-fixture suites and exit",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="show individual proof results instead of only suite summaries",
-    )
+    parser = argparse.ArgumentParser(description="Validate SyLoPy proof fixtures by suite.")
+    parser.add_argument("--suite", metavar="NAME", help="run and report only the named proof-fixture suite")
+    parser.add_argument("--list-suites", action="store_true", help="list available proof-fixture suites and exit")
+    parser.add_argument("--verbose", action="store_true", help="show individual proof results")
     return parser.parse_args(argv)
 
 
@@ -228,35 +177,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.suite:
         try:
-            enforced, rel_dir = _resolve_suite(args.suite)
+            category, rel_dir = _resolve_suite(args.suite)
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        results = run([rel_dir])
-        return _print_selected_suite(rel_dir, results, enforced == "enforced", args.verbose)
+        return _print_selected_suite(rel_dir, run([rel_dir]), category == "enforced", args.verbose)
 
-    print("\n=== Enforced fixture corpus ===")
     enforced_fails = 0
+    print("\n=== Enforced fixture corpus ===")
     for rel_dir in ENFORCED_DIRS:
-        results = run([rel_dir])
-        enforced_fails += _print_suite_summary("", rel_dir, results, True)
+        enforced_fails += _print_suite_summary(rel_dir, run([rel_dir]), True)
 
     print("\n=== Informational fixture corpus ===")
     for rel_dir in INFORMATIONAL_DIRS:
-        results = run([rel_dir])
-        _print_suite_summary("", rel_dir, results, False)
+        _print_suite_summary(rel_dir, run([rel_dir]), False)
 
     enforced_results = run(ENFORCED_DIRS)
     informational_results = run(INFORMATIONAL_DIRS)
     total = len(enforced_results) + len(informational_results)
     enforced_passed = sum(r.passed for r in enforced_results)
     informational_passed = sum(r.passed for r in informational_results)
-
-    print(
-        f"\nTotal proofs checked: {total} "
-        f"(enforced: {enforced_passed}/{len(enforced_results)}, "
-        f"informational: {informational_passed}/{len(informational_results)})"
-    )
+    print(f"\nTotal proofs checked: {total} (enforced: {enforced_passed}/{len(enforced_results)}, informational: {informational_passed}/{len(informational_results)})")
     if enforced_fails:
         print(f"\n{enforced_fails} unexpected result(s) in the enforced fixture corpus.")
         return 1
