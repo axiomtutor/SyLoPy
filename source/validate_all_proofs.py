@@ -106,15 +106,19 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
 
 
 def _check_multi_proof_file(path: Path) -> List[ProofResult]:
-    """Validate a multi-proof file without depending on compatibility APIs.
+    """Validate a multi-proof file through the canonical multi-proof runner.
 
-    ``parse_multi_proof_file`` is the structured parser API.  The older
-    ``parse_multiproof_text`` tuple API is intentionally not used here; the
-    validator should exercise the same representation used by the current
-    multi-proof runner.
+    This is deliberately the same execution path used by the multi-proof
+    fixture tests. In particular, titled proofs are promoted before later
+    cases are checked, so theorem citations have identical semantics here.
     """
     try:
-        cases = mp.parse_multi_proof_file(path.read_text())
+        results = mp.run_multi_proof_file(
+            path.read_text(),
+            axioms=BARE_PROOF_AXIOMS,
+            rules=BARE_PROOF_RULES,
+            declarations=BARE_PROOF_DECLARATIONS,
+        )
     except Exception as exc:
         return [
             ProofResult(
@@ -126,49 +130,21 @@ def _check_multi_proof_file(path: Path) -> List[ProofResult]:
             )
         ]
 
-    results: List[ProofResult] = []
-    for case in cases:
-        if case.parse_error:
-            results.append(
-                ProofResult(
-                    path.name,
-                    str(case.number),
-                    case.expected_valid,
-                    False,
-                    case.parse_error,
-                )
-            )
-            continue
-
-        try:
-            ok = _validate_entries(case.entries)
-            if ok and case.stated_conclusion is not None:
-                ok = mp.conclusion_is_derived(case.entries, case.stated_conclusion)
-            results.append(
-                ProofResult(
-                    path.name,
-                    str(case.number),
-                    case.expected_valid,
-                    ok,
-                    None if ok else "proof did not validate",
-                )
-            )
-        except Exception as exc:
-            results.append(
-                ProofResult(
-                    path.name,
-                    str(case.number),
-                    case.expected_valid,
-                    False,
-                    f"{type(exc).__name__}: {exc}",
-                )
-            )
-
-    if not results:
-        results.append(
+    converted = [
+        ProofResult(
+            path.name,
+            str(proof_id),
+            expected_valid,
+            ok,
+            message,
+        )
+        for proof_id, expected_valid, ok, message in results
+    ]
+    if not converted:
+        converted.append(
             ProofResult(path.name, "?", True, False, "file contains no proof cases")
         )
-    return results
+    return converted
 
 
 def check_file(path: Path) -> List[ProofResult]:
