@@ -36,7 +36,7 @@ def _alias_map() -> Dict[str, RuleFactory]:
     add(pl.DisjunctionIntroductionRule, "Disjunction Introduction", "Disjunction Introduction Rule", "Or Introduction", "Or Intro", "Addition")
     add(pl.DisjunctionEliminationRule, "Disjunction Elimination", "Disjunction Elimination Rule", "Or Elimination", "Or Elim", "Proof by Cases", "Cases")
     add(pl.BiconditionalIntroductionRule, "Biconditional Introduction", "Biconditional Introduction Rule", "Conditional Equivalence Introduction")
-    add(pl.BiconditionalEliminationRule, "Biconditional Elimination", "Biconditional Elimination Rule", "Conditional Equivalence", "Conditional Equivalence Elimination", "Conditional Elimination")
+    add(pl.BiconditionalEliminationRule, "Biconditional Elimination", "Biconditional Elimination Rule", "Conditional Elimination")
     add(pl.ConditionalIntroductionRule, "Conditional Introduction", "Conditional Introduction Rule", "Conditional Intro")
     add(pl.ProofByContradictionRule, "Proof by Contradiction", "Proof by Contradiction Rule", "Reductio", "Reductio Ad Absurdum")
     add(pl.ModusPonensRule, "Modus Ponens", "Modus Ponens Rule")
@@ -49,7 +49,7 @@ def _alias_map() -> Dict[str, RuleFactory]:
     add(pl.SymmetryRule, "Symmetry", "Symmetry Rule")
     add(pl.TransitivityRule, "Transitivity", "Transitivity Rule")
     add(pl.ReflexivityRule, "Reflexivity", "Reflexivity Rule")
-    add(pl.PropositionalEquivalenceRule, "De Morgan", "De Morgan's", "De Morgans", "De Morgan's Laws", "Distribution", "Distributivity", "Double Negation", "Propositional Equivalence", "Logical Equivalence", "Equivalence")
+    add(pl.PropositionalEquivalenceRule, "De Morgan", "De Morgan's", "De Morgans", "De Morgan's Laws", "Distribution", "Distributivity", "Double Negation", "Propositional Equivalence", "Logical Equivalence", "Equivalence", "Conditional Equivalence")
     return mapping
 
 _ALIASES = _alias_map()
@@ -83,8 +83,6 @@ def _rule(name: str):
     target = placeholders.get(_normalize(name))
     if target is not None:
         return pl.NamedRulePlaceholder(target)
-    if _normalize(name) and "from" not in _normalize(name) and "subproof" not in _normalize(name):
-        return pl.NamedRulePlaceholder(name.strip())
     raise ValueError(f"Unknown inference rule '{name.strip()}' in justification")
 
 
@@ -131,5 +129,5 @@ def parse_justification(s: str):
     if normalized in {"set property", "empty set property"}:
         return ("rule", pl.NamedRulePlaceholder("EmptySetProperty"), [])
     if "from" not in low and "subproof" not in low:
-        return ("rule", _rule(s), [])
+        return ("rule", pl.NamedRulePlaceholder(s), [])
     raise ValueError(f"Invalid justification format: '{s}'")
