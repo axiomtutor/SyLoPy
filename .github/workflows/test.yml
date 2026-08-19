@@ -17,4 +17,4 @@ jobs:
       - name: Run pytest
         run: pytest
       - name: Run proof fixtures
-        run: python tests/validate_all_proofs.py
+        run: python source/validate_all_proofs.py
