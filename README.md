@@ -68,9 +68,10 @@ validated titled proofs automatically for later cases in the same file.
 
 ## Parser architecture
 
-`ProofParser.py` is the public parser facade. The historical implementation is
-retained in `ProofParserLegacy.py` while language-policy components are being
-moved behind explicit extension boundaries.
+`ProofParser.py` is the public parser facade. Language-policy components are
+being consolidated behind explicit extension boundaries; see
+`ELABORATION_ARCHITECTURE.md` and `ARCHITECTURE_STATUS.md` for the current
+consolidation plan.
 
 `ProofJustification.py` resolves rule names through explicit aliases rather
 than substring matching. This makes phrases such as `Conditional Equivalence`
@@ -89,8 +90,27 @@ Theory modules extend `TheoryEnvironment` with syntax, declaration recipes,
 rules, axioms, and built-in declarations. Discrete mathematics now exposes a
 `RelationDeclarationRecipe` through that interface.
 
-See `ELABORATION_ARCHITECTURE.md` and `ARCHITECTURE_STATUS.md` for the extension
-contract and current consolidation plan.
+## Test runner
+
+`run_tests.sh` runs the Python tests and enforced proof-fixture corpus. Fixture
+suites can be selected by name:
+
+```bash
+./run_tests.sh --list-suites
+./run_tests.sh --suite testProofsDeclared --verbose
+```
+
+The suite list is defined by `validate_all_proofs.py`; `--list-suites` exposes
+that same list for tools such as shell completion, so suite names do not need
+to be duplicated in completion configuration.
+
+For Bash completion, source `completion/run_tests.bash` once per shell:
+
+```bash
+source completion/run_tests.bash
+```
+
+To enable it automatically, add that `source` command to `~/.bashrc`.
 
 ## Main APIs
 
@@ -118,36 +138,11 @@ ok, error = pp.check_proof_text(text)
 
 - `source/ProofElaboration.py` — surface AST, source spans, theory environments,
   and elaborated-entry metadata.
-- `source/ProofParser.py` — public parser facade and language grammar policy.
-- `source/ProofParserLegacy.py` — retained parser/elaborator implementation
-  during the architectural migration.
-- `source/ProofJustification.py` — deterministic justification-name resolver.
-- `source/SetTheory.py` — set notation and subset/set-equality reasoning.
-- `source/NatThry.py` — natural-number vocabulary and induction.
-- `source/NumberTheory.py` — integer, divisibility, and quotient reasoning.
-- `source/DiscreteMath.py` — relation vocabulary, declaration recipe, and
-  declaration-sensitive relation rules.
-- `source/ProofLogic.py` — core inference rules, validator, and theorem
+- `source/ProofParser.py` — public parsing and elaboration facade.
+- `source/ProofLogic.py` — core proof representation, rules, axioms, and
+  validation.
+- `source/MultiproofParser.py` — sequential multi-proof parsing and theorem
   promotion.
-- `source/MultiproofParser.py` — multi-proof files and theorem promotion.
-- `source/validate_all_proofs.py` — proof-fixture validator.
-- `tests/testDiscreteMath/` — positive and negative relation-property fixtures.
-
-## Tests
-
-```bash
-python -m pip install -r requirements-test.txt
-./run_tests.sh
-```
-
-`run_tests.sh` has two independent validation stages:
-
-1. the Python/pytest suite, run once under coverage;
-2. `source/validate_all_proofs.py`, which scans the enforced proof fixture
-   corpus, including `tests/testDiscreteMath/`.
-
-The repository deliberately does not hard-code a test count in documentation;
-current results are determined by the test runner and CI.
-
-GitHub Actions runs the same `run_tests.sh` entry point on pushes and pull
-requests.
+- `source/validate_all_proofs.py` — enforced and informational fixture runner.
+- `completion/run_tests.bash` — Bash completion for test-runner options and
+  dynamically discovered suite names.

@@ -54,24 +54,34 @@ class ProofResult(NamedTuple):
     expected_valid: bool
     ok: bool
     message: Optional[str]
+    implementation_error: bool = False
 
     @property
     def passed(self) -> bool:
-        return self.expected_valid == self.ok
+        # An implementation exception is never a successful fixture result,
+        # even when the fixture is supposed to be invalid.  A real validator
+        # rejection, by contrast, is a legitimate result for an invalid case.
+        return not self.implementation_error and self.expected_valid == self.ok
 
 
 def _looks_like_multi_proof(text: str) -> bool:
     return any(re.match(r"^\s*#\s*\d", line) for line in text.splitlines())
 
 
-def _validate_entries(entries) -> bool:
+def _validate_entries(entries):
+    """Validate entries through the canonical Proof API.
+
+    ``Proof.validate()`` was an obsolete compatibility API.  The proof kernel
+    now exposes ``check()`` and ``check_detailed()``; this runner deliberately
+    uses the same API as the multi-proof path.
+    """
     proof = pl.Proof(
         entries,
         axioms=BARE_PROOF_AXIOMS,
         rules=BARE_PROOF_RULES,
         declarations=BARE_PROOF_DECLARATIONS,
     )
-    return proof.validate()
+    return proof.check()
 
 
 def _check_bare_proof_file(path: Path) -> List[ProofResult]:
@@ -81,19 +91,18 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
         if not entries:
             return [
                 ProofResult(
-                    path.name, "1", expected_valid, False, "file has no proof lines"
+                    path.name, "1", expected_valid, False, "file has no proof lines", True
                 )
             ]
+        ok, message = _validate_entries(entries)
         return [
-            ProofResult(
-                path.name,
-                "1",
-                expected_valid,
-                _validate_entries(entries),
-                None,
-            )
+            ProofResult(path.name, "1", expected_valid, ok, message, False)
         ]
-    except Exception as exc:
+    except pp.ElaborationError as exc:
+        # An elaboration error is a legitimate rejection of an invalid
+        # fixture, just like a validator returning ok=False.  It is an
+        # implementation failure only when the fixture was expected to be
+        # valid.
         return [
             ProofResult(
                 path.name,
@@ -101,6 +110,22 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
                 expected_valid,
                 False,
                 f"{type(exc).__name__}: {exc}",
+                expected_valid,
+            )
+        ]
+    except Exception as exc:
+        # Unexpected exceptions are implementation failures regardless of
+        # whether the fixture happens to be marked invalid.  In particular,
+        # an AttributeError or TypeError must never be allowed to masquerade
+        # as a correctly rejected negative fixture.
+        return [
+            ProofResult(
+                path.name,
+                "1",
+                expected_valid,
+                False,
+                f"{type(exc).__name__}: {exc}",
+                True,
             )
         ]
 
@@ -127,22 +152,38 @@ def _check_multi_proof_file(path: Path) -> List[ProofResult]:
                 True,
                 False,
                 f"{type(exc).__name__}: {exc}",
+                True,
             )
         ]
 
-    converted = [
-        ProofResult(
-            path.name,
-            str(proof_id),
-            expected_valid,
-            ok,
-            message,
+    converted = []
+    for proof_id, expected_valid, ok, message in results:
+        implementation_error = bool(
+            message and (
+                message.startswith("parse/check error:")
+                or message.startswith("parse error:")
+            )
         )
-        for proof_id, expected_valid, ok, message in results
-    ]
+        converted.append(
+            ProofResult(
+                path.name,
+                str(proof_id),
+                expected_valid,
+                ok,
+                message,
+                implementation_error,
+            )
+        )
     if not converted:
         converted.append(
-            ProofResult(path.name, "?", True, False, "file contains no proof cases")
+            ProofResult(
+                path.name,
+                "?",
+                True,
+                False,
+                "file contains no proof cases",
+                True,
+            )
         )
     return converted
 
