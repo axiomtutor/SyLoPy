@@ -98,7 +98,26 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
         return [
             ProofResult(path.name, "1", expected_valid, ok, message, False)
         ]
+    except pp.ElaborationError as exc:
+        # An elaboration error is a legitimate rejection of an invalid
+        # fixture, just like a validator returning ok=False.  It is an
+        # implementation failure only when the fixture was expected to be
+        # valid.
+        return [
+            ProofResult(
+                path.name,
+                "1",
+                expected_valid,
+                False,
+                f"{type(exc).__name__}: {exc}",
+                expected_valid,
+            )
+        ]
     except Exception as exc:
+        # Unexpected exceptions are implementation failures regardless of
+        # whether the fixture happens to be marked invalid.  In particular,
+        # an AttributeError or TypeError must never be allowed to masquerade
+        # as a correctly rejected negative fixture.
         return [
             ProofResult(
                 path.name,
