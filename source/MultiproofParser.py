@@ -4,7 +4,7 @@
 import os
 import re
 import sys
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if PROJECT_ROOT not in sys.path:
@@ -106,20 +106,6 @@ def parse_multi_proof_file(text):
                                _stated_conclusion_from(description), entries,
                                raw_lines, title, error))
     return cases
-
-def parse_multiproof_text(text):
-    """Return the historical ``(proof_id, proof_text, expected_valid)`` API."""
-    text = _COMMENT_RE.sub(' ', text)
-    lines = text.splitlines()
-    positions = [i for i, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
-    result = []
-    for k, start in enumerate(positions):
-        end = positions[k + 1] if k + 1 < len(positions) else len(lines)
-        block = lines[start:end]
-        header = _PROOF_HEADER_RE.match(block[0].strip())
-        expected, _, body_start = _split_header_block(block)
-        result.append((header.group(1), '\n'.join(block[body_start:]), expected))
-    return result
 
 def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
     cases = parse_multi_proof_file(text)
