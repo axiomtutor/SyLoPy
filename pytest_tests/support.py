@@ -1,14 +1,4 @@
-
-
-
-"""Shared imports and small AST constructors for the SyLoPy test suite.
-
-The aliases are intentional: the current source mixes package-qualified imports
-(`SyLoPy.source.FormulaLogic`) with top-level imports (`FormulaLogic`).  Binding
-the top-level names to the package modules lets behavioral tests exercise one
-coherent set of AST classes.  Separate import-contract tests run in clean
-subprocesses and document the packaging defect without this compatibility layer.
-"""
+"""Shared imports and small AST constructors for the SyLoPy test suite."""
 from __future__ import annotations
 
 import importlib
@@ -36,19 +26,11 @@ pl = importlib.import_module("SyLoPy.source.ProofLogic")
 nt = importlib.import_module("SyLoPy.source.NatThry")
 numt = importlib.import_module("SyLoPy.source.NumberTheory")
 st = importlib.import_module("SyLoPy.source.SetTheory")
-
-# Compatibility aliases for ProofParser's unqualified imports.
-sys.modules["TermLogic"] = tl
-sys.modules["FormulaLogic"] = fl
-sys.modules["ProofLogic"] = pl
 pp = importlib.import_module("SyLoPy.source.ProofParser")
 
-# Compatibility aliases for MultiproofParser's erroneous SyLoPy.tests imports.
-tests_pkg = importlib.import_module("SyLoPy.tests")
-for name, module in (("TermLogic", tl), ("FormulaLogic", fl), ("ProofLogic", pl), ("ProofParser", pp)):
-    setattr(tests_pkg, name, module)
-    sys.modules[f"SyLoPy.tests.{name}"] = module
-mp = importlib.import_module("SyLoPy.source.MultiproofParser")
+# The fixture runner owns the #N multi-proof container format. There is no
+# second parser module; the proof language itself is parsed only by ProofParser.
+mp = importlib.import_module("SyLoPy.source.validate_all_proofs")
 
 
 def c(name: str, value=None):
@@ -82,21 +64,7 @@ S = prop("S")
 
 
 def _with_auto_declarations(entries, premises, axioms, declarations, auto_declare):
-    """`declarations`, extended with everything `pl.infer_declarations` can
-    derive from `premises`, `axioms`, and every formula in `entries`, when
-    `auto_declare` is set.
-
-    `ProofLogic.Proof` requires every symbol to be declared unconditionally
-    now (see `ProofValidator`) -- there is no `require_declared_constants`
-    toggle to skip that check. Most of this suite is testing rule mechanics
-    with bare propositions (`A`, `B`, ...), not declaration scoping itself
-    (that has its own dedicated tests below), so `assert_valid`/
-    `assert_invalid` auto-declare by default -- the equivalent of a real
-    proof adding `(Declare)` lines for everything it uses. Tests that
-    specifically exercise undeclared-symbol rejection pass
-    `auto_declare=False` to keep constructing a `Proof` that hasn't had its
-    symbols pre-declared.
-    """
+    """Extend declarations with symbols inferred from the proof formulas."""
     if not auto_declare:
         return declarations
     formulas = list(premises or []) + list(axioms or []) + pl.collect_formulas_from_entries(entries)
@@ -135,7 +103,3 @@ def assert_invalid(entries, category: str, *, label=None, premises=None, axioms=
     if label is not None:
         assert err.label == label
     return err
-
-
-
-
