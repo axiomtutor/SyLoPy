@@ -130,8 +130,12 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
             if ok and case.title:
                 try:
                     promoted.append(pl.promote_theorem(case.title, proof))
-                except ValueError:
-                    pass
+                except ValueError as exc:
+                    # Promotion is deliberately best-effort: a proof can be
+                    # valid without producing a reusable theorem.  Report the
+                    # condition so users can distinguish it from successful
+                    # promotion, but do not turn it into a proof failure.
+                    print(f"Warning: theorem '{case.title}' was not promoted: {exc}")
         except Exception as exc:
             ok, msg = False, f'parse/check error: {exc}'
         results.append((case.number, case.expected_valid, ok, msg))
