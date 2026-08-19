@@ -18,14 +18,14 @@ _install_line_break_syntax(_legacy)
 
 # The legacy declaration grammar historically required `such that:`. The
 # surface language uses the natural phrase without requiring punctuation, so
-# normalize both forms at the facade boundary before the legacy parser builds
-# its SurfaceDeclarationStatement.
+# normalize the unpunctuated form at the facade boundary while preserving the
+# existing `such that:` form.
 _original_parse_surface_declaration_statement = _legacy.parse_surface_declaration_statement
 
 
 def _parse_surface_declaration_statement(text, span):
     import re
-    normalized = re.sub(r'\bsuch\s+that\s*(?=\S)', 'such that: ', text, count=1, flags=re.I)
+    normalized = re.sub(r'\bsuch\s+that\s*(?!:)', 'such that: ', text, count=1, flags=re.I)
     return _original_parse_surface_declaration_statement(normalized, span)
 
 
