@@ -11,16 +11,16 @@ proof text
     -> ProofLogic.Proof
 ```
 
-`ProofParser` is now the public parser facade. The existing parsing machinery
-is retained in `ProofParserLegacy` for compatibility while language-policy
-components are extracted from it. In particular, justification names are
-resolved by explicit aliases in `ProofJustification`, and formula parsing uses
-conventional precedence (`not`, `and`, `or`, implication, biconditional).
+`ProofParser` is the public parser facade. Parsing produces the surface
+representation before elaboration converts it into the strict entry language
+checked by `ProofLogic`. Source-origin metadata is retained through
+elaboration so errors in generated core steps can still be reported against
+the user's source.
 
 Theory modules extend `TheoryEnvironment` with syntax and core resources.
-Discrete mathematics now exposes its relation declaration interpretation as a
+Discrete mathematics exposes its relation declaration interpretation as a
 `RelationDeclarationRecipe`, rather than requiring the generic elaborator to
-know the relation's semantic representation.
+construct the relation's semantic representation itself.
 
 ## Current theory boundary
 
@@ -36,21 +36,26 @@ A theory should provide, as appropriate:
 - built-in declarations.
 
 Adding a structure should therefore normally mean adding a recipe and core
-rules to a theory module rather than modifying the generic parser.
+rules to a theory module rather than modifying generic elaboration logic.
 
 ## Remaining consolidation work
 
-The legacy parser still contains historical theory-specific surface parsing.
-That code is retained deliberately while the corresponding theory recipes are
-introduced and tested. The next refactor should move relation declaration
-recognition itself behind the theory environment, then apply the same pattern
-to future order-theory and algebraic syntax.
+The main remaining architectural work is to identify and remove any duplicated
+parser/elaboration paths that are still reachable, then move additional
+theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
+The same pattern should be used for future order-theory and algebraic syntax.
 
-The `Use discrete math.` directive is currently validated and accepted, but
+An explicit proof context for declarations, assumptions, labels, theorem
+visibility, and nested scopes remains a planned refinement. Declaration order
+and scope rules should become explicit context operations rather than being
+reconstructed independently by different stages.
+
+The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available
 theory modules. A future language-version change can make directives select
-theory environments strictly after the existing proof corpus has been updated.
+theory environments strictly after the existing proof corpus has been
+updated.
 
-The repository now has `.gitignore` hygiene and GitHub Actions that run both
-pytest and the proof-fixture validator. Test counts are intentionally not
-hard-coded into documentation.
+The repository has `.gitignore` hygiene and GitHub Actions that run the same
+complete test command used locally. Test counts are intentionally not
+hard-coded into architecture documentation.

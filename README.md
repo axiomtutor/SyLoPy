@@ -68,10 +68,10 @@ validated titled proofs automatically for later cases in the same file.
 
 ## Parser architecture
 
-`ProofParser.py` is the public parser facade. Language-policy components are
-being consolidated behind explicit extension boundaries; see
-`ELABORATION_ARCHITECTURE.md` and `ARCHITECTURE_STATUS.md` for the current
-consolidation plan.
+`ProofParser.py` is the public parser facade. It parses into the surface AST and
+then elaborates that representation into core entries. Remaining architectural
+work is tracked in `ARCHITECTURE_STATUS.md`; the staged parser/elaborator
+pipeline is the canonical implementation path.
 
 `ProofJustification.py` resolves rule names through explicit aliases rather
 than substring matching. This makes phrases such as `Conditional Equivalence`

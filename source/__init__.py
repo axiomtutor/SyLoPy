@@ -1,7 +1,7 @@
 """Core SyLoPy source package."""
 
-# Import the parser once and install its language-policy extensions.  The
-# policy module is deliberately separate from the parser implementation so
-# the parser no longer depends on a legacy compatibility module.
+# Keep the public parser facade available as ``source.ProofParser`` and expose
+# its language-policy module explicitly.  Language-policy extensions are kept
+# separate from the parser implementation.
 from . import ProofParser as ProofParser
 from . import ProofParserPolicy as ProofParserPolicy
