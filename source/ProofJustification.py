@@ -37,6 +37,8 @@ def _alias_map() -> Dict[str, RuleFactory]:
     add(pl.DisjunctionEliminationRule, "Disjunction Elimination", "Disjunction Elimination Rule", "Or Elimination", "Or Elim", "Proof by Cases", "Cases")
     add(pl.BiconditionalIntroductionRule, "Biconditional Introduction", "Biconditional Introduction Rule", "Conditional Equivalence Introduction")
     add(pl.BiconditionalEliminationRule, "Biconditional Elimination", "Biconditional Elimination Rule", "Conditional Equivalence", "Conditional Equivalence Elimination")
+    add(pl.ConditionalIntroductionRule, "Conditional Introduction", "Conditional Introduction Rule", "Conditional Intro")
+    add(pl.ProofByContradictionRule, "Proof by Contradiction", "Proof by Contradiction Rule", "Reductio", "Reductio Ad Absurdum")
     add(pl.ModusPonensRule, "Modus Ponens", "Modus Ponens Rule")
     add(pl.ModusTollensRule, "Modus Tollens", "Modus Tollens Rule")
     add(pl.DisjunctiveSyllogismRule, "Disjunctive Syllogism", "Disjunctive Syllogism Rule")
