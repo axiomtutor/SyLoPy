@@ -1,0 +1,6 @@
+# 1: Membership characterization
+## Proof that
+### a set can be characterized by its membership condition
+1. Let X be a set such that a is in X iff a =/= a. (Declaration)
+
+
