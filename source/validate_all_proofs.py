@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the project's proof fixture corpora.
+"""Validate SyLoPy's proof fixture corpora.
 
-Default output is suite-oriented. ``--suite`` selects one fixture suite,
-``--verbose`` prints individual proof results, and ``--list-suites`` lists
-available suites.
+A fixture file may contain one proof or multiple ``# N`` proof blocks. The
+proof parser remains the single proof-language parser; this module owns the
+fixture-file container format and validation/reporting policy.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ sys.path.insert(0, str(_REPOSITORY_ROOT.parent))
 
 import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
-import SyLoPy.source.MultiproofParser as mp
+import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.NatThry as nt
 
 ROOT = _REPOSITORY_ROOT
@@ -47,6 +47,153 @@ BARE_PROOF_RULES = pl.default_rules() + _NAT_SCHEMA_RULES
 BARE_PROOF_AXIOMS = list(_NAT_AXIOMS)
 BARE_PROOF_DECLARATIONS = list(_NAT_DECLARATIONS)
 
+_COMMENT_RE = re.compile(r"\(\*.*?\*\)", re.DOTALL)
+_PROOF_HEADER_RE = re.compile(r"^#\s*(\d+)(?:\s*:\s*(.*?))?\s*$")
+_VALIDITY_LINE_RE = re.compile(r"^##(?!#)\s*(.+?)\s*$")
+_DESCRIPTION_LINE_RE = re.compile(r"^###\s*(.+?)\s*$")
+_THEN_LINE_RE = re.compile(r"^then\b\s*(.*)$", re.I)
+_DERIVED_TAGS = {"rule", "rule_below", "rule_hybrid"}
+
+
+class ProofCase(NamedTuple):
+    number: str
+    expected_valid: bool
+    description: List[str]
+    stated_conclusion: Optional[fl.Formula]
+    entries: list
+    raw_lines: List[str]
+    title: Optional[str] = None
+    parse_error: Optional[str] = None
+
+
+def _top_level_formulas(entries: list) -> List[fl.Formula]:
+    result = []
+    for entry in entries:
+        parsed = pl._classify_entry(entry)
+        if isinstance(parsed, str) or parsed.is_subproof_block:
+            continue
+        justification = parsed.justification
+        if not isinstance(justification, tuple) or not justification or justification[0] not in _DERIVED_TAGS:
+            continue
+        phi = parsed.phi
+        if isinstance(phi, list):
+            result.extend(f for f in phi if isinstance(f, fl.Formula))
+        elif isinstance(phi, fl.Formula):
+            result.append(phi)
+    return result
+
+
+def conclusion_is_derived(entries, stated_conclusion):
+    if stated_conclusion is None:
+        return True
+    return any(pl._ast_eq(stated_conclusion, formula) for formula in _top_level_formulas(entries))
+
+
+def _split_header_block(block):
+    expected_valid = True
+    description = []
+    body_start = 1
+    for index in range(1, len(block)):
+        stripped = block[index].strip()
+        if not stripped:
+            body_start = index + 1
+            continue
+        match = _VALIDITY_LINE_RE.match(stripped)
+        if match:
+            if "invalid" in match.group(1).lower():
+                expected_valid = False
+            body_start = index + 1
+            continue
+        match = _DESCRIPTION_LINE_RE.match(stripped)
+        if match:
+            description.append(match.group(1))
+            body_start = index + 1
+            continue
+        break
+    return expected_valid, description, body_start
+
+
+def _stated_conclusion_from(description):
+    for description_line in description:
+        match = _THEN_LINE_RE.match(description_line.strip())
+        if match:
+            text = match.group(1).strip().rstrip(".").strip()
+            if text:
+                return pp.parse_formula(text)
+    return None
+
+
+def parse_multi_proof_file(text):
+    """Parse a fixture file containing ``# N`` proof blocks."""
+    text = _COMMENT_RE.sub(" ", text)
+    lines = text.splitlines()
+    positions = [index for index, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
+    cases = []
+    for position, start in enumerate(positions):
+        end = positions[position + 1] if position + 1 < len(positions) else len(lines)
+        block = lines[start:end]
+        header = _PROOF_HEADER_RE.match(block[0].strip())
+        expected, description, body_start = _split_header_block(block)
+        body = "\n".join(block[body_start:])
+        try:
+            entries, raw_lines = pp.parse_proof_text(body) if body.strip() else ([], [])
+            error = None
+        except Exception as exc:
+            entries, raw_lines = [], []
+            error = f"{type(exc).__name__}: {exc}"
+        title = header.group(2).strip() if header.group(2) and header.group(2).strip() else None
+        cases.append(
+            ProofCase(
+                header.group(1),
+                expected,
+                description,
+                _stated_conclusion_from(description),
+                entries,
+                raw_lines,
+                title,
+                error,
+            )
+        )
+    return cases
+
+
+def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
+    """Parse and validate all proof blocks, promoting titled proofs in order."""
+    cases = parse_multi_proof_file(text)
+    results = []
+    promoted = []
+    seen = set()
+    for case in cases:
+        if case.number in seen:
+            print(f"Warning: proof number '{case.number}' appears more than once in this file")
+        seen.add(case.number)
+        if case.parse_error:
+            results.append((case.number, case.expected_valid, False, case.parse_error))
+            continue
+        try:
+            proof = pl.Proof(
+                case.entries,
+                axioms=axioms or [],
+                rules=(rules or pl.default_rules()) + promoted,
+                declarations=declarations or [],
+            )
+            ok, message = proof.check()
+            if ok and case.stated_conclusion is not None and not conclusion_is_derived(case.entries, case.stated_conclusion):
+                ok = False
+                message = (
+                    "every line validated, but the proof never derived its stated "
+                    f"conclusion {case.stated_conclusion!r}"
+                )
+            if ok and case.title:
+                try:
+                    promoted.append(pl.promote_theorem(case.title, proof))
+                except ValueError as exc:
+                    print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
+        except Exception as exc:
+            ok, message = False, f"parse/check error: {exc}"
+        results.append((case.number, case.expected_valid, ok, message))
+    return results
+
 
 class ProofResult(NamedTuple):
     file: str
@@ -58,23 +205,14 @@ class ProofResult(NamedTuple):
 
     @property
     def passed(self) -> bool:
-        # An implementation exception is never a successful fixture result,
-        # even when the fixture is supposed to be invalid.  A real validator
-        # rejection, by contrast, is a legitimate result for an invalid case.
         return not self.implementation_error and self.expected_valid == self.ok
 
 
 def _looks_like_multi_proof(text: str) -> bool:
-    return any(re.match(r"^\s*#\s*\d", line) for line in text.splitlines())
+    return any(_PROOF_HEADER_RE.match(line.strip()) for line in text.splitlines())
 
 
 def _validate_entries(entries):
-    """Validate entries through the canonical Proof API.
-
-    ``Proof.validate()`` was an obsolete compatibility API.  The proof kernel
-    now exposes ``check()`` and ``check_detailed()``; this runner deliberately
-    uses the same API as the multi-proof path.
-    """
     proof = pl.Proof(
         entries,
         axioms=BARE_PROOF_AXIOMS,
@@ -89,20 +227,10 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
     try:
         entries, _ = pp.parse_proof_text(path.read_text())
         if not entries:
-            return [
-                ProofResult(
-                    path.name, "1", expected_valid, False, "file has no proof lines", True
-                )
-            ]
+            return [ProofResult(path.name, "1", expected_valid, False, "file has no proof lines", True)]
         ok, message = _validate_entries(entries)
-        return [
-            ProofResult(path.name, "1", expected_valid, ok, message, False)
-        ]
+        return [ProofResult(path.name, "1", expected_valid, ok, message, False)]
     except pp.ElaborationError as exc:
-        # An elaboration error is a legitimate rejection of an invalid
-        # fixture, just like a validator returning ok=False.  It is an
-        # implementation failure only when the fixture was expected to be
-        # valid.
         return [
             ProofResult(
                 path.name,
@@ -114,10 +242,6 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
             )
         ]
     except Exception as exc:
-        # Unexpected exceptions are implementation failures regardless of
-        # whether the fixture happens to be marked invalid.  In particular,
-        # an AttributeError or TypeError must never be allowed to masquerade
-        # as a correctly rejected negative fixture.
         return [
             ProofResult(
                 path.name,
@@ -131,60 +255,24 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
 
 
 def _check_multi_proof_file(path: Path) -> List[ProofResult]:
-    """Validate a multi-proof file through the canonical multi-proof runner.
-
-    This is deliberately the same execution path used by the multi-proof
-    fixture tests. In particular, titled proofs are promoted before later
-    cases are checked, so theorem citations have identical semantics here.
-    """
     try:
-        results = mp.run_multi_proof_file(
+        results = run_multi_proof_file(
             path.read_text(),
             axioms=BARE_PROOF_AXIOMS,
             rules=BARE_PROOF_RULES,
             declarations=BARE_PROOF_DECLARATIONS,
         )
     except Exception as exc:
-        return [
-            ProofResult(
-                path.name,
-                "?",
-                True,
-                False,
-                f"{type(exc).__name__}: {exc}",
-                True,
-            )
-        ]
+        return [ProofResult(path.name, "?", True, False, f"{type(exc).__name__}: {exc}", True)]
 
     converted = []
     for proof_id, expected_valid, ok, message in results:
         implementation_error = bool(
-            message and (
-                message.startswith("parse/check error:")
-                or message.startswith("parse error:")
-            )
+            message and (message.startswith("parse/check error:") or message.startswith("parse error:"))
         )
-        converted.append(
-            ProofResult(
-                path.name,
-                str(proof_id),
-                expected_valid,
-                ok,
-                message,
-                implementation_error,
-            )
-        )
+        converted.append(ProofResult(path.name, str(proof_id), expected_valid, ok, message, implementation_error))
     if not converted:
-        converted.append(
-            ProofResult(
-                path.name,
-                "?",
-                True,
-                False,
-                "file contains no proof cases",
-                True,
-            )
-        )
+        converted.append(ProofResult(path.name, "?", True, False, "file contains no proof cases", True))
     return converted
 
 
@@ -208,9 +296,7 @@ def _suite_name(rel_dir: str) -> str:
 
 
 def available_suites():
-    return [("enforced", d) for d in ENFORCED_DIRS] + [
-        ("informational", d) for d in INFORMATIONAL_DIRS
-    ]
+    return [("enforced", d) for d in ENFORCED_DIRS] + [("informational", d) for d in INFORMATIONAL_DIRS]
 
 
 def _resolve_suite(name: str):
@@ -218,18 +304,15 @@ def _resolve_suite(name: str):
     candidates = {d: c for c, d in available_suites()}
     if name in candidates:
         return candidates[name], name
-
     matches = [(c, d) for c, d in available_suites() if _suite_name(d) == name]
     if len(matches) == 1:
         return matches[0]
     if not matches:
         raise ValueError(
-            f"unknown suite {name!r}; available suites: "
-            f"{', '.join(_suite_name(d) for _, d in available_suites())}"
+            f"unknown suite {name!r}; available suites: {', '.join(_suite_name(d) for _, d in available_suites())}"
         )
     raise ValueError(
-        f"suite name {name!r} is ambiguous; use one of: "
-        f"{', '.join(d for _, d in matches)}"
+        f"suite name {name!r} is ambiguous; use one of: {', '.join(d for _, d in matches)}"
     )
 
 
@@ -240,10 +323,7 @@ def _print_selected_suite(rel_dir, results, enforced, verbose):
         for r in results:
             status = "PASS" if r.passed else "FAIL"
             detail = f" {r.message}" if r.message else ""
-            print(
-                f"{status}: {r.file} #{r.proof_id} "
-                f"expected={r.expected_valid} got={r.ok}{detail}"
-            )
+            print(f"{status}: {r.file} #{r.proof_id} expected={r.expected_valid} got={r.ok}{detail}")
     elif failures:
         for r in failures:
             detail = f": {r.message}" if r.message else ""
@@ -284,35 +364,29 @@ def main(argv=None):
     if args.list_suites:
         _list_suites()
         return 0
-
     if args.suite:
         try:
             category, rel_dir = _resolve_suite(args.suite)
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        return _print_selected_suite(
-            rel_dir,
-            run([rel_dir]),
-            category == "enforced",
-            args.verbose,
-        )
+        return _print_selected_suite(rel_dir, run([rel_dir]), category == "enforced", args.verbose)
 
     enforced_fails = 0
     print("=== Enforced fixture corpus ===")
-    for d in ENFORCED_DIRS:
-        enforced_fails += _print_suite_summary(d, run([d]), True)
+    for directory in ENFORCED_DIRS:
+        enforced_fails += _print_suite_summary(directory, run([directory]), True)
 
     print("\n=== Informational fixture corpus ===")
-    for d in INFORMATIONAL_DIRS:
-        _print_suite_summary(d, run([d]), False)
+    for directory in INFORMATIONAL_DIRS:
+        _print_suite_summary(directory, run([directory]), False)
 
-    er = run(ENFORCED_DIRS)
-    ir = run(INFORMATIONAL_DIRS)
+    enforced = run(ENFORCED_DIRS)
+    informational = run(INFORMATIONAL_DIRS)
     print(
-        f"\nTotal proofs checked: {len(er) + len(ir)} "
-        f"(enforced: {sum(r.passed for r in er)}/{len(er)}, "
-        f"informational: {sum(r.passed for r in ir)}/{len(ir)})"
+        f"\nTotal proofs checked: {len(enforced) + len(informational)} "
+        f"(enforced: {sum(r.passed for r in enforced)}/{len(enforced)}, "
+        f"informational: {sum(r.passed for r in informational)}/{len(informational)})"
     )
     if enforced_fails:
         print(f"\n{enforced_fails} unexpected result(s) in the enforced fixture corpus.")
