@@ -29,14 +29,14 @@ def _alias_map() -> Dict[str, RuleFactory]:
             mapping[_normalize(alias)] = factory
     add(pl.UniversalInstantiationRule, "Universal Instantiation", "Universal Instantiation Rule")
     add(pl.UniversalGeneralizationRule, "Universal Generalization", "Universal Generalization Rule")
-    add(pl.ExistentialIntroductionRule, "Existential Introduction", "Existential Introduction Rule")
-    add(pl.ExistentialEliminationRule, "Existential Elimination", "Existential Elimination Rule")
+    add(pl.ExistentialIntroductionRule, "Existential Introduction", "Existential Introduction Rule", "Existential Generalization")
+    add(pl.ExistentialEliminationRule, "Existential Elimination", "Existential Elimination Rule", "Existential Instantiation")
     add(pl.ConjunctionEliminationRule, "Conjunction Elimination", "Conjunction Elimination Rule", "And Elimination", "And Elim")
     add(pl.ConjunctionIntroductionRule, "Conjunction Introduction", "Conjunction Introduction Rule", "And Introduction", "And Intro")
     add(pl.DisjunctionIntroductionRule, "Disjunction Introduction", "Disjunction Introduction Rule", "Or Introduction", "Or Intro", "Addition")
     add(pl.DisjunctionEliminationRule, "Disjunction Elimination", "Disjunction Elimination Rule", "Or Elimination", "Or Elim", "Proof by Cases", "Cases")
     add(pl.BiconditionalIntroductionRule, "Biconditional Introduction", "Biconditional Introduction Rule", "Conditional Equivalence Introduction")
-    add(pl.BiconditionalEliminationRule, "Biconditional Elimination", "Biconditional Elimination Rule", "Conditional Equivalence", "Conditional Equivalence Elimination")
+    add(pl.BiconditionalEliminationRule, "Biconditional Elimination", "Biconditional Elimination Rule", "Conditional Equivalence", "Conditional Equivalence Elimination", "Conditional Elimination")
     add(pl.ConditionalIntroductionRule, "Conditional Introduction", "Conditional Introduction Rule", "Conditional Intro")
     add(pl.ProofByContradictionRule, "Proof by Contradiction", "Proof by Contradiction Rule", "Reductio", "Reductio Ad Absurdum")
     add(pl.ModusPonensRule, "Modus Ponens", "Modus Ponens Rule")
@@ -49,7 +49,7 @@ def _alias_map() -> Dict[str, RuleFactory]:
     add(pl.SymmetryRule, "Symmetry", "Symmetry Rule")
     add(pl.TransitivityRule, "Transitivity", "Transitivity Rule")
     add(pl.ReflexivityRule, "Reflexivity", "Reflexivity Rule")
-    add(pl.PropositionalEquivalenceRule, "De Morgan", "De Morgan's", "De Morgans", "De Morgan's Laws", "Distribution", "Distributivity", "Double Negation", "Propositional Equivalence", "Logical Equivalence")
+    add(pl.PropositionalEquivalenceRule, "De Morgan", "De Morgan's", "De Morgans", "De Morgan's Laws", "Distribution", "Distributivity", "Double Negation", "Propositional Equivalence", "Logical Equivalence", "Equivalence")
     return mapping
 
 _ALIASES = _alias_map()
