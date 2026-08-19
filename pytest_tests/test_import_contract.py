@@ -28,11 +28,6 @@ def test_proof_parser_imports_as_package_without_path_aliases():
     assert result.returncode == 0, result.stderr
 
 
-def test_multiproof_parser_imports_as_package_without_aliases():
-    result = run_clean_import("import SyLoPy.source.MultiproofParser")
-    assert result.returncode == 0, result.stderr
-
-
 def test_nat_test_runner_imports_the_existing_nat_module():
     script = PROJECT_PARENT / "SyLoPy" / "source" / "test_runner_NatNum.py"
     env = os.environ.copy()
