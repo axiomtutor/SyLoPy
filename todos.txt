@@ -3,95 +3,112 @@
 ## Current baseline
 
 - `pytest`: 322 tests passing.
-- Enforced proof fixtures: 43/44 passing.
-- Informational fixtures remain intentionally non-blocking, but their failures
-  should be reduced as the corresponding language and theory features mature.
+- Enforced proof fixtures: 44/44 passing.
+- Informational fixtures remain intentionally non-blocking. Treat their
+  failures and warnings as a development backlog, not as regressions in the
+  enforced baseline.
 - The complete local test command is `./run_tests.sh`.
+- The staged parser → AST → elaboration → proof-kernel architecture is now the
+  canonical implementation.
 
-## Parser and surface language
+## Proof context and semantic scope
 
-- Finish the staged parsing architecture so declarations, coordinated clauses,
-  grouped names, formulas, and proof blocks consistently produce the intended
-  surface AST.
-- Remove remaining duplicate or legacy parsing paths once their behavior is
-  covered by the staged parser.
-- Improve syntax and source-location diagnostics.
-- Add regression tests for ambiguous and malformed constructions.
-
-## AST and elaboration
-
-- Review the surface AST so that it represents semantic structure rather than
-  merely mirroring surface syntax.
-- Establish stable interfaces between parsing, elaboration, and validation.
-- Complete the elaboration/desugaring architecture while preserving source
-  origins for generated core steps.
 - Introduce an explicit proof context for declarations, assumptions, labels,
   theorem visibility, and nested scopes.
 - Make declaration ordering and scope rules explicit and test them directly.
+- Define precise visibility and dependency rules for theorem/lemma references.
+- Make theorem/lemma promotion semantics explicit, including the conditions
+  under which a proof produces a promotable top-level conclusion.
+- Ensure the proof context provides a clean boundary between elaboration and
+  kernel validation.
 
-## Proof elaboration and validation
+## Parser and elaboration
 
-- Make theorem/lemma promotion semantics explicit and robust.
-- Establish precise rules for what a proof may reference.
+- Audit the staged parser/elaborator for duplicated, compatibility-oriented,
+  or unnecessarily indirect paths.
+- Improve syntax, elaboration, and source-location diagnostics.
+- Preserve source origins when elaboration generates core proof steps.
+- Strengthen regression coverage for ambiguous, malformed, and semantically
+  invalid constructions.
+- Keep the public parser API and elaboration interfaces small and stable.
+
+## Proof validation and error model
+
+- Continue consolidating validation around the canonical `Proof.check()` and
+  `Proof.check_detailed()` APIs.
+- Remove obsolete validation interfaces and compatibility code when regression
+  coverage makes their removal safe.
 - Keep parsing errors, name-resolution errors, typing errors, elaboration
   errors, and proof-validation errors distinct.
-- Continue consolidating validation around the canonical `Proof.check()` API.
-- Remove obsolete validation interfaces and compatibility code.
+- Ensure unexpected implementation exceptions can never masquerade as valid
+  rejection of negative fixtures.
 
 ## Theory infrastructure
 
 - Keep theory-specific syntax and semantic interpretation behind
   `TheoryEnvironment` and theory-specific declaration recipes.
-- Finish moving remaining theory-specific surface parsing out of generic
-  parser code.
-- Continue this pattern for future order-theory and algebraic syntax.
-- Add order relations, well-ordering, and real-number infrastructure when the
-  parser/elaboration/validation foundations are stable.
+- Audit remaining generic parser code for theory-specific behavior that should
+  live in theory modules.
+- Use the theory-extension mechanism consistently for future mathematical
+  domains rather than introducing parallel parsing or validation mechanisms.
+- After the proof-context and elaboration interfaces stabilize, extend the
+  infrastructure to order theory, algebra, and eventually real-number
+  developments.
 
 ## Discrete mathematics and mathematical development
 
-- Continue implementing discrete-mathematics proof objects and inference
-  rules where they are needed by the language and theory architecture.
-- Formalize additional mathematical examples as executable tests.
-- Expand set theory and number theory incrementally after the architectural
-  work is stable.
+- Continue implementing discrete-mathematics proof objects and inference rules
+  where they expose useful requirements of the core architecture.
+- Formalize additional mathematical examples as executable proofs and tests.
+- Expand set theory and number theory incrementally using the current theory
+  infrastructure.
 - Implement the remaining number-theory infrastructure needed for the GCD /
   Bezout development.
+- Prefer representative mathematical developments that exercise declarations,
+  scopes, theorem references, and theory extensions over adding isolated rules.
 
 ## Test architecture and regression protection
 
 - Treat the complete test suite as the authoritative regression suite.
-- Bring the enforced fixture corpus to 44/44.
-- Add targeted regression tests for every newly implemented language and
-  semantic feature.
+- Preserve the 44/44 enforced fixture baseline.
+- Add targeted regression tests for every newly implemented language or
+  semantic feature, especially scope and visibility behavior.
 - Ensure fixture failures distinguish expected negative results from genuine
   implementation failures.
 - Keep the local test command and CI test command consistent.
 - Verify that GitHub Actions records useful CI results for pushed commits.
-- Reduce the informational fixture failures as their underlying features are
-  implemented; do not weaken enforced tests merely to increase the pass rate.
+- Classify informational fixture failures and warnings as one of: missing
+  feature, obsolete fixture, or intentionally unsupported behavior.
+- Promote mature informational fixtures into the enforced corpus when their
+  semantics are stable.
+- Do not weaken enforced tests merely to increase the pass rate.
 
-## Legacy removal
+## Legacy removal and repository hygiene
 
-- Audit remaining historical parser and elaboration code.
-- Migrate any still-used legacy functionality to the staged AST/elaboration
-  pipeline.
-- Delete obsolete parser representations, helpers, compatibility wrappers,
-  and dead imports after migration and regression coverage are complete.
-- Keep architecture documentation synchronized with the implementation.
+- Audit remaining historical parser, elaboration, and validation compatibility
+  code rather than assuming an old parser architecture is still in use.
+- Remove obsolete representations, helpers, wrappers, and dead imports when
+  they are demonstrably superseded and covered by regression tests.
+- Keep architecture and parser documentation synchronized with the actual
+  implementation.
+- Remove one-time migration machinery once it is no longer useful for
+  maintaining or verifying the repository.
 
 ## Recommended implementation order
 
-1. Resolve the remaining enforced fixture failure.
-2. Finish parser and surface-AST consolidation.
-3. Consolidate elaboration and introduce explicit proof context.
-4. Remove remaining legacy parser/elaboration machinery.
-5. Strengthen validator and semantic regression tests.
-6. Expand mathematical theories and proof infrastructure.
-7. Continue reducing informational fixture failures.
-8. Verify CI continuously throughout the process.
+1. Introduce the explicit proof context and semantic scope model.
+2. Formalize theorem/lemma visibility, dependencies, and promotion semantics.
+3. Audit and simplify the staged parser/elaborator around those interfaces.
+4. Strengthen semantic and diagnostic regression coverage.
+5. Remove compatibility and legacy machinery that the stabilized architecture
+   makes unnecessary.
+6. Classify and reduce the informational fixture backlog.
+7. Expand discrete mathematics, set theory, and number theory using the stable
+   infrastructure.
+8. Add broader theory extensions such as order theory and algebra.
+9. Verify CI continuously throughout the process.
 
-Do not add large numbers of new mathematical rules while parser, AST,
-elaboration, and validation interfaces are still changing. New mathematical
-features should build on the stabilized architecture rather than introducing
-new parallel mechanisms.
+Do not add large numbers of isolated mathematical rules while proof-context,
+elaboration, and validation interfaces are still changing. Prefer mathematical
+developments that exercise and validate the architecture, then promote the
+resulting abstractions into reusable theory infrastructure.
