@@ -1,4 +1,4 @@
-
+Use set theory.
 
 # 1: Compound declaration
 ## Proof that
@@ -6,7 +6,7 @@
 1. Let X be any set,
     R be a reflexive, antisymmetric, transitive relation on X,
     a, b, c be in X,
-    and R(a,b) and R(b,c). (Declaration)
+    R(a,b) and R(b,c). (Declaration)
 
 
 
