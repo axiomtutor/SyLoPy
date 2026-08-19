@@ -1,5 +1,5 @@
 # 1: Membership characterization requires a fresh variable
-## Proof that
+## Invalid proof that
 ### an existing declaration cannot be captured by a membership characterization
 1. Let a be an object. (Declaration)
 2. Let X be a set such that a is in X iff a =/= a. (Declaration)
