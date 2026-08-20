@@ -38,21 +38,41 @@ A theory should provide, as appropriate:
 Adding a structure should therefore normally mean adding a recipe and core
 rules to a theory module rather than modifying generic elaboration logic.
 
+## Semantic context boundary
+
+`ProofContext` is now the authoritative lexical environment used by the proof
+validator. `ContextProofValidator` adapts the existing rule-validation logic
+to one shared context, so labels and declarations are resolved from the same
+scope. Recursive subproofs receive child contexts; local bindings therefore
+do not leak into their parent.
+
+`seen` remains separate from `ProofContext`: it is ordered proof history used
+for temporal and freshness checks, not a namespace. This distinction avoids
+turning the context into a catch-all proof-state object.
+
+The old `ProofValidator` implementation and its `DeclarationScope`/`LabelScope`
+classes remain in `ProofLogic.py` temporarily as migration scaffolding. The
+package initialization layer installs `ContextProofValidator` as the
+validator used by `Proof.check_detailed()`. The next consolidation step is to
+move the context-backed implementation into `ProofLogic.py` itself and delete
+the legacy scope machinery once the full test corpus confirms behavioral
+parity.
+
 ## Remaining consolidation work
 
-The main remaining architectural work is to identify and remove any duplicated
-parser/elaboration paths that are still reachable, then move additional
-theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
-The same pattern should be used for future order-theory and algebraic syntax.
+The next architectural work is therefore:
 
-`ProofContext` already exists as a standalone lexical environment, with unit
-tests in `pytest_tests/test_proof_context.py`. Elaboration still uses
-`ProofLogic.DeclarationScope`, and `ProofValidator` still threads
-`DeclarationScope` plus `LabelScope`. Remaining work is to adopt
-`ProofContext` as the shared boundary rather than introducing a third
-independent table. Declaration order and scope rules should become explicit
-context operations instead of being reconstructed independently by different
-stages.
+1. move the context-backed validator into the kernel module rather than
+   activating it through the package initialization layer;
+2. remove the obsolete `LabelScope` and `DeclarationScope` implementations;
+3. make elaboration consume the same declaration/context boundary rather than
+   maintaining a separate declaration environment;
+4. identify and remove any duplicated parser/elaboration paths that are still
+   reachable;
+5. move additional theory-specific syntax behind `TheoryEnvironment` and its
+   declaration recipes.
+
+The same pattern should be used for future order-theory and algebraic syntax.
 
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available
