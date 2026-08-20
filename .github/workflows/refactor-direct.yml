@@ -16,12 +16,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Apply direct validator refactor
+      - name: Apply direct ProofContext refactor
         run: |
           cat > /tmp/direct_refactor.py <<'PY'
           from __future__ import annotations
@@ -81,13 +79,12 @@ jobs:
               raise RuntimeError(f'bad _validate_block signature: {positional_names}')
 
           loaded = {n.id for n in ast.walk(transformed_class) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
-          builtin_names = set(dir(builtins)) | {'Any','Dict','Iterable','Iterator','List','NamedTuple','Optional','Tuple','Union',
-              'ProofContext','DuplicateBindingError','UnknownBindingError','itertools','re'}
-          import ProofLogic as _unused if False else None
-          import_lines = []
-          for name in sorted(loaded - builtin_names - {'ProofValidator'}):
-              if hasattr(__import__('SyLoPy.source.ProofLogic', fromlist=[name]), name):
-                  import_lines.append(f'{name} = pl.{name}')
+          builtin_names = set(dir(builtins)) | {
+              'Any','Dict','Iterable','Iterator','List','NamedTuple','Optional','Tuple','Union',
+              'ProofContext','DuplicateBindingError','UnknownBindingError','itertools','re'
+          }
+          pl = __import__('SyLoPy.source.ProofLogic', fromlist=['*'])
+          import_lines = [f'{name} = pl.{name}' for name in sorted(loaded - builtin_names - {'ProofValidator'}) if hasattr(pl, name)]
 
           validator_module = '''"""Proof validation driven by one lexical ProofContext."""\n\nfrom __future__ import annotations\nfrom typing import *\nimport itertools\nimport re\nfrom .ProofContext import DuplicateBindingError, ProofContext, UnknownBindingError\nfrom . import ProofLogic as pl\n\n''' + '\n'.join(import_lines) + '\n\n' + class_source + '\n\n__all__ = ["ProofValidator"]\n'
           (root / 'source' / 'ProofValidator.py').write_text(validator_module)
@@ -100,15 +97,14 @@ jobs:
           adapter = root / 'source' / 'ContextProofValidator.py'
           if adapter.exists(): adapter.unlink()
 
-          test_path = root / 'tests' / 'test_proof_validator_context_integration.py'
-          test_path.write_text('''from SyLoPy.source.ProofContext import ProofContext, DuplicateBindingError\nfrom SyLoPy.source.ProofValidator import ProofValidator\n\n\ndef test_validator_context_scopes():\n    context = ProofContext()\n    context.bind_label("L1", "formula")\n    child = context.child()\n    child.bind_label("L2", "child-formula")\n    assert child.require_label("L1").value == "formula"\n    assert context.lookup_label("L2") is None\n\n\ndef test_context_namespace_rejects_declaration_label_collision():\n    context = ProofContext()\n    class Declaration:\n        name = "x"\n    context.declare(Declaration())\n    try:\n        context.bind_label("x", "formula")\n    except DuplicateBindingError:\n        pass\n    else:\n        raise AssertionError("declaration and label must share the proof namespace")\n\n\ndef test_direct_validator_has_context_state():\n    assert "context" in ProofValidator._validate_block.__code__.co_varnames\n''')
+          (root / 'tests' / 'test_proof_validator_context_integration.py').write_text('''from SyLoPy.source.ProofContext import ProofContext, DuplicateBindingError\nfrom SyLoPy.source.ProofValidator import ProofValidator\n\n\ndef test_validator_context_scopes():\n    context = ProofContext()\n    context.bind_label("L1", "formula")\n    child = context.child()\n    child.bind_label("L2", "child-formula")\n    assert child.require_label("L1").value == "formula"\n    assert context.lookup_label("L2") is None\n\n\ndef test_context_namespace_rejects_declaration_label_collision():\n    context = ProofContext()\n    class Declaration:\n        name = "x"\n    context.declare(Declaration())\n    try:\n        context.bind_label("x", "formula")\n    except DuplicateBindingError:\n        pass\n    else:\n        raise AssertionError("declaration and label must share the proof namespace")\n\n\ndef test_direct_validator_has_context_state():\n    assert "context" in ProofValidator._validate_block.__code__.co_varnames\n''')
           ast.parse(logic_path.read_text())
           ast.parse((root / 'source' / 'ProofValidator.py').read_text())
+          print('direct validator refactor generated successfully')
           PY
           python /tmp/direct_refactor.py
           python -m pip install -r requirements-test.txt
           bash run_tests.sh
-
       - name: Commit refactor
         run: |
           git config user.name 'github-actions[bot]'
