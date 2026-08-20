@@ -1,0 +1,41 @@
+name: Apply validator refactor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - refactor_validator
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply direct ProofContext refactor
+        run: python tools/perform_validator_refactor.py
+      - name: Compile refactored sources
+        run: python -m compileall -q source
+      - name: Run complete test suite
+        run: bash run_tests.sh
+      - name: Commit refactor
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add source/ProofLogic.py source/ProofValidator.py source/ContextProofValidator.py tools/perform_validator_refactor.py .github/workflows/apply-validator-refactor.yml
+          git commit -m 'refactor validator to use ProofContext'
+          git push
+      - name: Remove one-shot machinery
+        if: success()
+        run: |
+          git rm tools/perform_validator_refactor.py .github/workflows/apply-validator-refactor.yml
+          git commit -m 'remove temporary validator refactor machinery'
+          git push
