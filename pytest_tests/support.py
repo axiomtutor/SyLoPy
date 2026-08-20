@@ -29,7 +29,7 @@ st = importlib.import_module("SyLoPy.source.SetTheory")
 pp = importlib.import_module("SyLoPy.source.ProofParser")
 
 # The fixture runner owns the #N multi-proof container format. There is no
-# second parser module; the proof language itself is parsed only by ProofParser.
+# MultiproofParser module; the proof language itself is parsed only by ProofParser.
 mp = importlib.import_module("SyLoPy.source.validate_all_proofs")
 
 

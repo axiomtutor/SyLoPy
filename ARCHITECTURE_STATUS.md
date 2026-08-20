@@ -45,10 +45,14 @@ parser/elaboration paths that are still reachable, then move additional
 theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
 The same pattern should be used for future order-theory and algebraic syntax.
 
-An explicit proof context for declarations, assumptions, labels, theorem
-visibility, and nested scopes remains a planned refinement. Declaration order
-and scope rules should become explicit context operations rather than being
-reconstructed independently by different stages.
+`ProofContext` already exists as a standalone lexical environment, with unit
+tests in `pytest_tests/test_proof_context.py`. Elaboration still uses
+`ProofLogic.DeclarationScope`, and `ProofValidator` still threads
+`DeclarationScope` plus `LabelScope`. Remaining work is to adopt
+`ProofContext` as the shared boundary rather than introducing a third
+independent table. Declaration order and scope rules should become explicit
+context operations instead of being reconstructed independently by different
+stages.
 
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available

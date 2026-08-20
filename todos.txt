@@ -2,7 +2,7 @@
 
 ## Current baseline
 
-- `pytest`: 322 tests passing.
+- `pytest`: 336 tests passing.
 - Enforced proof fixtures: 44/44 passing.
 - Informational fixtures remain intentionally non-blocking. Treat their
   failures and warnings as a development backlog, not as regressions in the
@@ -13,8 +13,9 @@
 
 ## Proof context and semantic scope
 
-- Introduce an explicit proof context for declarations, assumptions, labels,
-  theorem visibility, and nested scopes.
+- `ProofContext` is implemented and unit-tested, but elaboration and
+  `ProofValidator` do not use it yet. Adopt it as the shared scope model
+  (declarations, assumptions, labels, theorem visibility, nested scopes).
 - Make declaration ordering and scope rules explicit and test them directly.
 - Define precise visibility and dependency rules for theorem/lemma references.
 - Make theorem/lemma promotion semantics explicit, including the conditions
@@ -96,7 +97,7 @@
 
 ## Recommended implementation order
 
-1. Introduce the explicit proof context and semantic scope model.
+1. Adopt `ProofContext` in elaboration and `ProofValidator`.
 2. Formalize theorem/lemma visibility, dependencies, and promotion semantics.
 3. Audit and simplify the staged parser/elaborator around those interfaces.
 4. Strengthen semantic and diagnostic regression coverage.

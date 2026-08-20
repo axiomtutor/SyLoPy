@@ -43,7 +43,7 @@ A `Proof` is built from a list of *entries*. Each entry is one of:
                                             immediately below (paired with
                                             the 4-tuple entry form above)
 
-Worked example -- the plain-text proof (see testProofs/mp_premises.txt)
+Worked example -- the plain-text proof
 
     1. A(a). (Premise)
     2. A(a) -> C(a). (Premise)
@@ -292,7 +292,7 @@ def collect_formulas_from_entries(entries: list, *, skip_self_declaring: bool = 
     """Every `Formula` referenced anywhere in `entries`, including inside
     nested and standalone subproofs, for feeding to `infer_declarations`.
 
-    Unlike `MultiproofParser._top_level_formulas`, this collects *every*
+    Unlike `validate_all_proofs._top_level_formulas`, this collects *every*
     formula regardless of how it was justified (premise, axiom, rule
     conclusion, ...), not just ones a proof actually derived -- inference
     needs to see every symbol the proof *uses*, not just what it proves.
@@ -876,7 +876,7 @@ class ReiterationRule(InferenceRule):
 class ModusPonensRule(InferenceRule):
     """Modus Ponens (MP): from `A` and `A -> B`, infer `B`.
 
-    Example (testProofs/mp_premises.txt)::
+    Example::
 
         1. A(a). (Premise)
         2. A(a) -> C(a). (Premise)
@@ -1580,7 +1580,7 @@ class ProofByContradictionRule(InferenceRule):
     from a subproof that assumes `A` and derives a contradiction, infer
     `not A`.
 
-    Example (testProofs/proof_by_contradiction.txt)::
+    Example::
 
         1. A or not A. (Proof by Contradiction from subproof below)
         begin subproof
@@ -2295,8 +2295,8 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     for declarations; the same discipline applies here.
 
     `conclusion` defaults to the last top-level formula the proof actually
-    *derived* (see `MultiproofParser._top_level_formulas`'s docstring for
-    why "derived", not "premised", is the right notion); pass it
+    *derived* (see `validate_all_proofs._top_level_formulas` for why
+    "derived", not "premised", is the right notion); pass it
     explicitly for a proof whose intended theorem isn't simply its final
     line (e.g. one proving several things and stating the one that matters
     via a multi-proof file's `### then ...` line).
@@ -2328,9 +2328,9 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
 
 def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
     """Every formula a top-level (non-subproof) entry actually derived by
-    inference, in order -- the same notion `MultiproofParser._top_level_formulas`
-    uses, reimplemented here so `ProofLogic` doesn't depend on `MultiproofParser`
-    (the dependency runs the other way already).
+    inference, in order -- the same notion `validate_all_proofs._top_level_formulas`
+    uses, reimplemented here so `ProofLogic` doesn't depend on the fixture
+    runner (the dependency runs the other way already).
     """
     derived_tags = {'rule', 'rule_below', 'rule_hybrid'}
     result: List[fl.Formula] = []
@@ -2514,7 +2514,7 @@ class NamedRulePlaceholder:
     the text can't supply: citing "Induction" doesn't say *which* type's
     induction (Nat's `Zero`/`Succ`, or some other type defined later), and
     that configuration lives in whichever `Type` the proof was built with
-    (e.g. `NatTheory.NAT_TYPE`), not in the justification text.
+    (e.g. `NatThry.NAT_TYPE`), not in the justification text.
 
     ProofParser produces `NamedRulePlaceholder('Induction')` for such a
     citation; `ProofValidator._validate_rule` resolves it by looking up a
@@ -3434,8 +3434,8 @@ class Proof:
 
         `message` is `str(err)` for the `ValidationError` `check_detailed`
         returns -- this method's `(bool, str)` contract is unchanged from
-        before `ValidationError` existed, so existing callers (including
-        `test_runner.py`, which only compares the boolean) are unaffected.
+        before `ValidationError` existed, so existing callers that only
+        compare the boolean remain unaffected.
         Prefer `check_detailed()` for anything that wants to branch on
         *why* a proof failed, or needs the bare offending line label,
         rather than parsing this string.

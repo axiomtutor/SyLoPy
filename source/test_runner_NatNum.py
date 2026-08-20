@@ -2,22 +2,12 @@
 
 
 #!/usr/bin/env python3
-"""Runs testProofsNat/*.txt the same way test_runner.py runs testProofs/*.txt,
-with one difference: these proofs rely on Nat's axioms and/or Induction, so
-each `Proof` here is built with `NAT_TYPE`'s axioms and schema rules combined
-in, via `ProofLogic.combine_types` -- exactly the configuration
-`NatTheory.py`'s own `__main__` self-check uses.
+"""Optional runner for ``tests/testProofsNat/*.txt``.
 
-test_runner.py itself is intentionally left unmodified: every fixture in
-testProofs/ (including the new equality ones -- Reflexivity, Symmetry,
-Transitivity, Substitution are all in `default_rules()` now, so they need no
-special configuration at all) runs with a bare `Proof(entries)`, same as
-before. Only fixtures that specifically need a *Type* combined in (Nat's own
-axioms, or a citation of "Induction") get their own runner here, kept in a
-separate directory rather than mixed into testProofs/, so it's obvious at a
-glance which fixtures need which configuration -- and so that a future
-theory's fixtures (Int, Set, ...) each get their own directory and runner the
-same way, without this one growing an increasing number of special cases.
+The canonical command is ``./run_tests.sh --suite testProofsNat`` (via
+``validate_all_proofs.py``). This script is a standalone Nat-only check:
+each proof is built with ``NatThry.NAT_TYPE`` axioms, induction, and
+declarations combined in through ``ProofLogic.combine_types``.
 """
 import glob
 import os

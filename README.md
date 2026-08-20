@@ -63,15 +63,21 @@ relations actually declared in the proof.
 ### Theorem-to-rule promotion
 
 `ProofLogic.promote_theorem(name, proof)` turns an already-checked proof into
-an inference rule later proofs can cite by name. `MultiproofParser` can promote
-validated titled proofs automatically for later cases in the same file.
+an inference rule later proofs can cite by name. A multi-proof fixture file
+(`# N` blocks, parsed by `validate_all_proofs.py`) can promote a validated
+titled proof automatically for later cases in the same file. The proof
+language itself is always parsed by `ProofParser`.
 
 ## Parser architecture
 
 `ProofParser.py` is the public parser facade. It parses into the surface AST and
-then elaborates that representation into core entries. Remaining architectural
-work is tracked in `ARCHITECTURE_STATUS.md`; the staged parser/elaborator
-pipeline is the canonical implementation path.
+then elaborates that representation into core entries. Importing
+`SyLoPy.source` also loads `ProofParserPolicy`, which installs the public
+formula grammar (conventional connective precedence), justification parser,
+declaration wording, and line-break handling onto that facade.
+
+Remaining architectural work is tracked in `ARCHITECTURE_STATUS.md`; the staged
+parser/elaborator pipeline is the canonical implementation path.
 
 `ProofJustification.py` resolves rule names through explicit aliases rather
 than substring matching. This makes phrases such as `Conditional Equivalence`
@@ -89,6 +95,11 @@ Parentheses remain available for explicit grouping.
 Theory modules extend `TheoryEnvironment` with syntax, declaration recipes,
 rules, axioms, and built-in declarations. Discrete mathematics now exposes a
 `RelationDeclarationRecipe` through that interface.
+
+`ProofContext.py` is a standalone lexical environment for declarations, labels,
+theorems, assumptions, and nested scopes. It has unit tests, but elaboration
+and `ProofValidator` still use their own scope tables; adopting it there is
+tracked as remaining work.
 
 ## Test runner
 
@@ -139,10 +150,17 @@ ok, error = pp.check_proof_text(text)
 - `source/ProofElaboration.py` — surface AST, source spans, theory environments,
   and elaborated-entry metadata.
 - `source/ProofParser.py` — public parsing and elaboration facade.
+- `source/ProofParserPolicy.py` — public language policy installed onto the
+  parser at import (precedence, justifications, declaration wording).
+- `source/ProofJustification.py` — deterministic justification aliases.
 - `source/ProofLogic.py` — core proof representation, rules, axioms, and
   validation.
-- `source/MultiproofParser.py` — sequential multi-proof parsing and theorem
-  promotion.
-- `source/validate_all_proofs.py` — enforced and informational fixture runner.
+- `source/ProofContext.py` — lexical proof context (not yet used by the
+  validator).
+- `source/validate_all_proofs.py` — multi-proof fixture container format,
+  theorem promotion across cases, and the enforced/informational fixture runner.
+- `pytest_tests/` — collected Python tests. Proof fixtures live under `tests/`
+  (enforced) and a few informational directories listed in
+  `validate_all_proofs.py`.
 - `completion/run_tests.bash` — Bash completion for test-runner options and
   dynamically discovered suite names.

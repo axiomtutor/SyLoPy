@@ -28,7 +28,7 @@ later ("from 2.1"). A logical line may be wrapped across several physical
 text lines (see `parse_proof_text`); only lines that *start* a new numbered
 entry or a subproof delimiter begin a new logical line.
 
-Given (testProofs/mp_premises.txt)::
+Given::
 
     1. A(a). (Premise)
     2. A(a) -> C(a). (Premise)
@@ -42,7 +42,7 @@ Given (testProofs/mp_premises.txt)::
         (None, AtomicFormula('C', [a]), ('rule', ModusPonensRule(), ['1', '2'])),
     ]
 
-ready to hand to ``ProofLogic.Proof(entries)``. A subproof (testProofs/proof_by_contradiction.txt)::
+ready to hand to ``ProofLogic.Proof(entries)``. A subproof::
 
     1. A or not A. (Proof by Contradiction from subproof below)
     begin subproof
@@ -61,22 +61,17 @@ subproof's own (recursively parsed) entry list::
 --------------------------------------------------------------------------
 Two things worth knowing before writing new proof text
 --------------------------------------------------------------------------
-1. **Connective precedence in `parse_formula` is not the textbook one.**
-   Checks run in this order: quantifiers, ``and``, ``or``, parenthesized
-   unwrap, ``not``, the ``<->``/``iff`` family, ``->``/``implies``/``if...then``.
-   Whichever pattern is tried *first* ends up as the outermost (loosest-
-   binding) connective for an unparenthesized string, so -- unlike most
-   textbooks, where ``and`` binds *tighter* than ``->`` -- here ``and``/``or``
-   are split before ``->`` is even considered, making them the *looser*
-   connective when both appear unparenthesized in the same string:
-   ``parse_formula("A -> B and C")`` parses as ``(A -> B) and C``, not
-   ``A -> (B and C)``. Every formula in testProofs/ that mixes connectives
-   uses explicit parentheses specifically to sidestep this; new proof text
-   should do the same rather than rely on implicit precedence.
+1. **Connective precedence is the conventional textbook order.**
+   Importing ``SyLoPy.source`` (or ``ProofParserPolicy``) replaces
+   ``parse_formula`` with the conventional grammar: quantifiers outermost,
+   then biconditional, implication, ``or``, ``and``, parentheses, ``not``,
+   equality, then atoms. So ``parse_formula("A -> B and C")`` is
+   ``A -> (B and C)``. Parentheses remain available for explicit grouping.
 
 2. **Natural-language biconditional wording is supported.** The phrase
-   ``A if and only if B`` is recognized before the top-level ``and`` split,
-   so its embedded word "and" does not interfere with biconditional parsing.
+   ``A if and only if B`` is recognized as a biconditional before ``and``
+   is treated as conjunction, so the embedded word "and" does not split the
+   formula.
 """
 
 import re
@@ -1018,8 +1013,9 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
 def parse_formula(s: str, bound_vars=None, environment: Optional[TheoryEnvironment] = None):
     """Parse a formula from its plain-text notation.
 
-    Recognizes, in this order (see the module docstring's precedence note
-    for why order matters):
+    The body originally defined in this module is replaced at import by
+    ``ProofParserPolicy._parse_formula_conventional``. Callers of
+    ``ProofParser.parse_formula`` therefore see conventional precedence:
 
       1. ``let X be in the domain.`` / ``let X be arbitrary`` -- the special
          "fresh constant" flag formula (see `ProofLogic.SubproofRecord`'s
@@ -1027,17 +1023,15 @@ def parse_formula(s: str, bound_vars=None, environment: Optional[TheoryEnvironme
          UniversalGeneralizationRule)
       2. ``for all x, ...`` / ``forall x, ...`` -- the comma is optional
       3. ``exists x, ...`` / ``there exists x, ...`` -- comma optional
-      4. top-level ``if and only if`` / biconditional wording
-      5. top-level ``and`` (N-ary: ``A and B and C`` all becomes one `And`)
-      6. top-level ``or`` (N-ary, same idea)
-      7. a fully parenthesized remainder, e.g. ``(A and B)`` -> unwrap and
-         re-parse the inside
-      7. ``not ...`` / ``¬...``
-      8. ``<->`` / ``<=>`` / ``↔`` / ``iff`` / ``if and only if`` (see the
-         module docstring for the "if and only if" caveat)
-      10. ``->`` / ``implies`` / ``if X then Y``
-      11. ``pred(arg, arg, ...)`` -- an atomic predicate with arguments
-      12. (fallback) a bare atomic proposition, `AtomicFormula(s, [])`
+      4. biconditional (``if and only if`` / ``<->`` / ``iff``, ...)
+      5. implication (``if ... then``, ``->``, ``implies``)
+      6. ``or`` (N-ary)
+      7. ``and`` (N-ary)
+      8. a fully parenthesized remainder, then ``not`` / ``¬``
+      9. equality (``=/=`` then ``=``)
+      10. theory nested parsers, then ``pred(arg, ...)``, then a bare atom
+
+    So ``parse_formula("A -> B and C")`` is ``A -> (B and C)``.
 
     `environment` supplies theory-specific formula syntax (e.g. SetTheory's
     "a is in X", NumberTheory's "a|n") via its `nested_formula_parsers`,

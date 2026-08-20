@@ -1,3 +1,9 @@
+"""Unit tests for the standalone `ProofContext` module.
+
+These tests cover the lexical API itself. Elaboration and `ProofValidator`
+do not yet use `ProofContext`; they still maintain their own scope tables.
+"""
+
 import pytest
 
 from SyLoPy.source.ProofContext import (

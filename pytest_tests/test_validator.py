@@ -403,5 +403,11 @@ def test_theory_declarations_supply_builtin_symbols():
     assert_valid(entries, axioms=[entries[1][1]], declarations=declarations)
 
 
+def test_empty_proof_is_rejected_not_vacuously_valid():
+    ok, err = pl.Proof([]).check_detailed()
+    assert ok is False
+    assert err is not None and err.category == pl.CATEGORY_EMPTY_SUBPROOF and "no lines" in err.detail
+
+
 
 

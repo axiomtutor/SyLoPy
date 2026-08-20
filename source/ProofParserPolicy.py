@@ -1,9 +1,11 @@
 """Language-policy extensions for the proof parser.
 
-The parser implementation lives in :mod:`ProofParser`.  This module contains
-small, explicit policy extensions that used to be installed by a compatibility
-facade.  Keeping them separate avoids putting theory-specific surface syntax
-into the core parser while avoiding any dependency on a legacy parser module.
+The parser implementation lives in :mod:`ProofParser`.  Importing this module
+installs the public language policy onto that facade: conventional connective
+precedence, the justification parser, ``such that`` wording, membership
+characterization, and declaration line-break handling.  Those extensions stay
+here so theory-specific surface syntax does not accumulate inside the core
+parser module.
 """
 from __future__ import annotations
 

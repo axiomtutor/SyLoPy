@@ -280,3 +280,53 @@ def test_object_predicate_and_function_declaration_prefixes():
 def test_parse_justification_rejects_trailing_from():
     with pytest.raises(ValueError, match="Malformed rule justification"):
         pp.parse_justification("Relation Transitivity from")
+
+
+def test_declaration_clause_parsing_recognizes_all_three_target_shapes():
+    plain = pp.parse_declaration_clause("n be a natural number")
+    assert plain.names == ["n"] and not plain.is_tuple and plain.domain is None
+
+    tup = pp.parse_declaration_clause("(W, <) be a well-ordered poset")
+    assert tup.names == ["W", "<"] and tup.is_tuple
+
+    typed = pp.parse_declaration_clause("f: W -> W be an increasing function")
+    assert typed.names == ["f"] and typed.domain == "W" and typed.codomain == "W"
+
+
+def test_declaration_recipe_registry_dispatches_a_registered_structure_type_generically():
+    def expand_widget(clauses, start):
+        dc = clauses[start]
+        if getattr(dc, "normalized_descriptor", "") != "widget":
+            return None
+        name = dc.names[0]
+        decls = [pl.Declaration(name, pl.DeclarationKind.OBJECT)]
+        formula = fl.AtomicFormula("Widget", [tl.ConstantTerm(name, name)])
+        return (1, decls, [formula], [])
+
+    recipe = pl.DeclarationRecipe("Widget", expand_widget)
+    fake_environment = pp.TheoryEnvironment(
+        name="widget theory", declaration_recipes=[recipe]
+    )
+    environment = pp.default_theory_environment().extended(fake_environment)
+
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be a widget. (Declaration)\n",
+        environment=environment,
+    )
+    label, formula, justification = entries[0]
+    assert repr(formula) == "Widget(X)"
+    tag, declarations = justification
+    assert tag == "premise"
+    assert [(d.name, d.kind) for d in declarations] == [
+        ("X", pl.DeclarationKind.OBJECT),
+    ]
+
+
+def test_implication_binds_looser_than_equality():
+    formula = pp.parse_formula("Nat(x) -> x = x")
+    assert isinstance(formula, fl.Implies)
+    assert repr(formula.antecedent) == "Nat(x)"
+    assert isinstance(formula.consequent, fl.Equals)
+
+    quantified = pp.parse_formula("forall x, (Nat(x) -> x = x)")
+    assert isinstance(quantified, fl.ForAll) and isinstance(quantified.body, fl.Implies)

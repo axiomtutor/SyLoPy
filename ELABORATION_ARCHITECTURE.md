@@ -24,7 +24,7 @@ The empty set is a subset of X. (Subset proof below)
 - `SurfaceSubproof`
 - `SourceSpan`
 
-The surface AST preserves formula text, justification text, explicit or implicit subproof boundaries, proof labels, physical source lines, and original text.
+The surface AST preserves formula text, justification text, explicit or implicit subproof boundaries, proof labels, physical source lines, and original text. Public formula parsing (`ProofParser.parse_formula`) uses conventional connective precedence, installed by `ProofParserPolicy`.
 
 ### Core entries
 

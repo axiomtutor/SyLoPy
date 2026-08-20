@@ -12,7 +12,7 @@ is gone entirely, not just defaulted on). A symbol is legal only if the
 proof itself declares it (Let .../`(Declare)`) or a combined-in theory
 module's own `declarations` supplies it -- exactly this rule.
 
-Write an extensive test suite. -- DONE (290 passing, pytest_tests/).
+Write an extensive test suite. -- DONE (pytest_tests/; source/ no longer holds a parallel uncollected copy).
 
 Implement types as annotations. Types can be overlapping, so that
 integers are rationals and rationals are reals, etc.
@@ -28,8 +28,9 @@ built on top of it, per the root todos.txt entry. No real numbers yet.
 
 Allow for one file to contain multiple independent proofs. Allow for
 comment regions delimited by (* *).
--- DONE (MultiproofParser.py; comments handled by ProofParser.py's own
-comment-stripping, shared by both single- and multi-proof files).
+-- DONE (`validate_all_proofs.py` owns the `# N` multi-proof fixture format;
+comments are stripped by `ProofParser.py`, shared by single- and multi-proof
+files).
 
 Implement a system in which proved theorems become inference rules in
 later proofs? -- DONE. See root todos.txt for details.

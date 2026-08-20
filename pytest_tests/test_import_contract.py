@@ -41,6 +41,7 @@ def test_nat_test_runner_imports_the_existing_nat_module():
         text=True,
         capture_output=True,
     )
+    assert result.returncode == 0, result.stderr
     assert "No module named 'NatTheory'" not in result.stderr
 
 
