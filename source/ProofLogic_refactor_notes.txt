@@ -1,1 +1,0 @@
-Temporary implementation note: validator refactor is being performed through the GitHub contents API because direct repository execution is unavailable. This file will be removed after the refactor.
