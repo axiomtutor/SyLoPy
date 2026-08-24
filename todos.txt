@@ -66,21 +66,56 @@ The existing inheritance/non-leakage behavior is preserved.
 The phase-1 tests document the intended namespace policy and preserve the
 scope invariants needed by the later elaboration migration.
 
-Phase 1 does **not** yet make elaboration use `ProofContext`; that is the next
-phase. The existing elaborator's separate state must remain in place until the
-migration is completed and covered by end-to-end regression tests.
-
 ## Phase 2 — integrate ProofContext into elaboration
 
-- [ ] Add `ProofContext` to the elaboration state while keeping
-      `TheoryEnvironment` separate.
-- [ ] Register declarations through `ProofContext.declare()`.
-- [ ] Register proof-line labels through `ProofContext.bind_label()`.
-- [ ] Register assumptions and arbitrary bindings through the context.
-- [ ] Resolve declaration and label references through the context.
-- [ ] Pass child contexts through recursive nested-subproof elaboration.
-- [ ] Preserve source origins and existing elaborated core representations.
-- [ ] Add end-to-end tests proving parent visibility and child non-leakage.
+### Current progress
+
+Phase 2 is being developed on the isolated `phase-2-proof-context` branch.
+The branch intentionally has not modified `master`.
+
+Completed groundwork:
+
+- [x] Add a small `ProofElaborationContext` bridge from
+      `TheoryEnvironment.declarations` to a root `ProofContext`.
+- [x] Add `root_context_from_environment()` so theory configuration remains
+      separate from lexical proof state.
+- [x] Add `ElaborationLexicalState`, a thin adapter whose `context` is the
+      sole lexical authority and which exposes child-scope, declaration, and
+      label operations needed by the parser migration.
+- [x] Add tests for root environment seeding, declaration lookup, label
+      binding/lookup, and child-scope inheritance/non-leakage.
+
+Current implementation commits on this branch include `315a729`, `398fe1d`,
+`323d2f8`, `fc97c6c`, and `febb10c`. These commits are preparatory; they do
+not yet make `_ElaborationContext` in `ProofParser.py` use the new adapter.
+
+The next implementation step is deliberately narrow:
+
+- [ ] Put an `ElaborationLexicalState`/`ProofContext` instance directly into
+      `_ElaborationContext`.
+- [ ] Seed that state from the current `TheoryEnvironment` at elaboration
+      start.
+- [ ] Change `lookup_declaration()` and `register_declaration()` to delegate
+      to the context, preserving current `ElaborationError` diagnostics.
+- [ ] Register labels only after successful elaboration of a labeled line.
+- [ ] Give each nested `SurfaceSubproof` a child lexical state.
+
+After those changes are working, continue with assumptions, arbitrary
+bindings, reference resolution, and end-to-end scope tests. Do not remove the
+existing `DeclarationScope` or `formula_by_label` yet; they are compatibility
+bookkeeping until the context-backed paths are proven equivalent.
+
+### Phase 2 design constraints
+
+- `TheoryEnvironment` remains the source of fixed theory resources; it is not
+  folded into `ProofContext`.
+- `ProofContext` is the sole authority for lexical visibility once elaboration
+  enters a proof.
+- `ElaboratedEntries` remains a result object and does not own lexical state.
+- Existing source-origin metadata and core entry shapes must remain unchanged.
+- Existing compatibility state may remain temporarily when it serves a
+  genuinely different purpose, but it must not become a second authority for
+  lexical visibility.
 
 ## Phase 3 — theorem and lemma semantics
 
