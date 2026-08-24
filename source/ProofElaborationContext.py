@@ -9,7 +9,7 @@ is migrated incrementally.
 
 from __future__ import annotations
 
-from typing import Iterable, Any
+from typing import Any, Iterable
 
 from SyLoPy.source.ProofContext import ProofContext
 
@@ -19,13 +19,24 @@ def root_context(declarations: Iterable[Any] = ()) -> ProofContext:
 
     Declarations supplied by a ``TheoryEnvironment`` are part of the initial
     proof vocabulary, so they must be present before user proof lines are
-    elaborated.  User declarations can then be added to this same context
-    and are subject to the normal ``ProofContext`` duplicate-name rules.
+    elaborated. User declarations can then be added to this same context and
+    are subject to the normal ``ProofContext`` duplicate-name rules.
     """
     context = ProofContext()
     for declaration in declarations:
         context.declare(declaration)
     return context
+
+
+def root_context_from_environment(environment: Any) -> ProofContext:
+    """Create the root lexical context from a theory environment.
+
+    This is deliberately a small adapter rather than making ``ProofContext``
+    depend on ``TheoryEnvironment``. The two objects have different roles:
+    the environment supplies fixed theory resources, while the context owns
+    lexical visibility during elaboration.
+    """
+    return root_context(getattr(environment, "declarations", ()))
 
 
 def subproof_context(context: ProofContext) -> ProofContext:
