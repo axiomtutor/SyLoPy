@@ -154,7 +154,6 @@ class ElaboratedEntries(list):
         required_rules: Optional[Sequence[Any]] = None,
         required_axioms: Optional[Sequence[Any]] = None,
         required_declarations: Optional[Sequence[Any]] = None,
-        context: Optional[ProofContext] = None,
     ):
         super().__init__(values)
         self.origin_by_label: Dict[str, CoreOrigin] = dict(origin_by_label or {})
@@ -162,7 +161,6 @@ class ElaboratedEntries(list):
         self.required_rules = list(required_rules or [])
         self.required_axioms = list(required_axioms or [])
         self.required_declarations = list(required_declarations or [])
-        self.context = context
 
 
 class ElaborationError(ValueError):
@@ -211,7 +209,5 @@ class TheoryEnvironment:
             result.nested_formula_parsers.extend(environment.nested_formula_parsers)
             result.declaration_recipes.extend(environment.declaration_recipes)
         return result
-
-
 
 
