@@ -1,19 +1,24 @@
 """Lexical semantic context for Fitch-style proofs.
 
 The context is deliberately independent of parsing and inference-rule
-implementation.  It owns the names and bindings that are visible at a point
+implementation. It owns the names and bindings that are visible at a point
 in a proof and provides child contexts for nested proof scopes.
 
-A child context inherits the parent's declarations, labels, theorems, and
-assumptions.  Bindings created in the child never become visible in the
-parent.  In particular, closing a subproof does not leak its local labels or
-assumptions into the enclosing proof.
+A child context inherits the parent's declarations, labels, theorems,
+and assumptions. Bindings created in the child never become visible in the
+parent. The context uses explicit namespaces rather than treating every
+identifier as one global namespace:
 
-Declarations are intentionally accepted structurally rather than importing
-ProofLogic.Declaration.  This keeps the context module independent of the
-proof kernel and allows ProofLogic to adopt it without creating an import
-cycle.  A declaration is expected to expose at least ``name``; its remaining
-semantics stay with the declaration owner.
+* declarations form the vocabulary namespace;
+* theorem/lemma names form the theorem namespace;
+* arbitrary bindings form the term-variable namespace;
+* proof-line labels and labeled assumptions share the proof-reference
+  namespace.
+
+This namespace policy is deliberately explicit so that elaboration can rely
+on the context for visibility without accidentally imposing cross-category
+name collisions. Declaration validation remains the responsibility of the
+owner of the declaration type.
 """
 
 from __future__ import annotations
@@ -27,7 +32,7 @@ class ContextError(Exception):
 
 
 class DuplicateBindingError(ContextError):
-    """Raised when a name is already visible in the current environment."""
+    """Raised when a name is already visible in its namespace."""
 
 
 class UnknownBindingError(ContextError):
@@ -78,18 +83,9 @@ class ProofContext:
     """Lexical environment for one point in a proof.
 
     ``ProofContext`` is mutable within its own scope but has no operation that
-    mutates an ancestor.  ``child()`` therefore gives the validator a simple
-    and explicit scope transition:
-
-        outer = ProofContext()
-        inner = outer.child()
-        ...
-        # discard inner; outer is unchanged
-
-    Names are not shadowable.  This is intentional: proof labels, theorem
-    names, and declared vocabulary are identifiers rather than ordinary
-    lexical variables.  A nested proof may introduce a fresh arbitrary
-    variable, but it cannot silently replace an already-visible declaration.
+    mutates an ancestor. ``child()`` and ``enter_subproof()`` therefore give
+    elaboration an explicit scope transition: bindings created in the child
+    disappear when that child is discarded.
     """
 
     __slots__ = (
@@ -98,6 +94,7 @@ class ProofContext:
         "_labels",
         "_theorems",
         "_assumptions",
+        "_assumption_labels",
         "_arbitrary",
     )
 
@@ -106,7 +103,8 @@ class ProofContext:
         self._declarations: Dict[str, Any] = {}
         self._labels: Dict[str, LabelBinding] = {}
         self._theorems: Dict[str, TheoremBinding] = {}
-        self._assumptions: Dict[str, AssumptionBinding] = {}
+        self._assumptions: List[AssumptionBinding] = []
+        self._assumption_labels: Dict[str, AssumptionBinding] = {}
         self._arbitrary: Dict[str, ArbitraryBinding] = {}
 
     @property
@@ -126,6 +124,10 @@ class ProofContext:
         """Create an empty child scope inheriting this context."""
         return ProofContext(parent=self)
 
+    def enter_subproof(self) -> "ProofContext":
+        """Create the context for a nested proof scope."""
+        return self.child()
+
     def _visible(self, table_name: str, name: str) -> Any:
         context: Optional[ProofContext] = self
         while context is not None:
@@ -136,14 +138,26 @@ class ProofContext:
             context = context._parent
         return None
 
-    def _already_visible(self, name: str) -> bool:
-        return (
-            self.lookup_declaration(name) is not None
-            or self.lookup_label(name) is not None
-            or self.lookup_theorem(name) is not None
-            or self.lookup_assumption(name) is not None
-            or self.lookup_arbitrary(name) is not None
-        )
+    def _visible_assumption_label(self, label: str) -> Optional[AssumptionBinding]:
+        context: Optional[ProofContext] = self
+        while context is not None:
+            binding = context._assumption_labels.get(label)
+            if binding is not None:
+                return binding
+            context = context._parent
+        return None
+
+    def _declaration_name_available(self, name: str) -> bool:
+        return self.lookup_declaration(name) is None
+
+    def _label_name_available(self, name: str) -> bool:
+        return self.lookup_label(name) is None and self.lookup_assumption(name) is None
+
+    def _theorem_name_available(self, name: str) -> bool:
+        return self.lookup_theorem(name) is None
+
+    def _arbitrary_name_available(self, name: str) -> bool:
+        return self.lookup_arbitrary(name) is None
 
     def _require_name(self, name: str) -> str:
         if not isinstance(name, str) or not name.strip():
@@ -157,17 +171,15 @@ class ProofContext:
     def declare(self, declaration: Any) -> None:
         """Add a declaration to this scope.
 
-        Declaration validation remains the responsibility of the declaration
-        type (currently ``ProofLogic.Declaration``).  The context enforces the
-        semantic visibility rule: a declaration cannot shadow anything already
-        visible in the proof environment.
+        Declarations may not shadow another declaration, including one in an
+        ancestor scope. Other namespaces are intentionally independent.
         """
         if declaration is None or not hasattr(declaration, "name"):
             raise TypeError("declaration must expose a name")
         name = self._require_name(declaration.name)
-        if self._already_visible(name):
+        if not self._declaration_name_available(name):
             raise DuplicateBindingError(
-                f"name {name!r} is already visible in this proof context"
+                f"declaration name {name!r} is already visible"
             )
         self._declarations[name] = declaration
 
@@ -200,9 +212,9 @@ class ProofContext:
         source: Any = None,
     ) -> LabelBinding:
         label = self._require_name(label)
-        if self._already_visible(label):
+        if not self._label_name_available(label):
             raise DuplicateBindingError(
-                f"name {label!r} is already visible in this proof context"
+                f"proof-reference label {label!r} is already visible"
             )
         binding = LabelBinding(label, value, kind, source)
         self._labels[label] = binding
@@ -237,9 +249,9 @@ class ProofContext:
         source: Any = None,
     ) -> TheoremBinding:
         name = self._require_name(name)
-        if self._already_visible(name):
+        if not self._theorem_name_available(name):
             raise DuplicateBindingError(
-                f"name {name!r} is already visible in this proof context"
+                f"theorem name {name!r} is already visible"
             )
         binding = TheoremBinding(name, value, kind, source)
         self._theorems[name] = binding
@@ -273,35 +285,38 @@ class ProofContext:
         kind: str = "assume",
         source: Any = None,
     ) -> AssumptionBinding:
+        """Record an assumption, optionally under a proof-reference label."""
         if label is not None:
             label = self._require_name(label)
-            if self._already_visible(label):
+            if not self._label_name_available(label):
                 raise DuplicateBindingError(
-                    f"name {label!r} is already visible in this proof context"
+                    f"proof-reference label {label!r} is already visible"
                 )
-        key = label if label is not None else f"__assumption_{len(self._assumptions)}"
         binding = AssumptionBinding(label, formula, kind, source)
-        self._assumptions[key] = binding
+        self._assumptions.append(binding)
+        if label is not None:
+            self._assumption_labels[label] = binding
         return binding
 
     def lookup_assumption(self, label: str) -> Optional[AssumptionBinding]:
-        return self._visible("_assumptions", self._require_name(label))
+        return self._visible_assumption_label(self._require_name(label))
 
     def assumptions_here(self) -> List[AssumptionBinding]:
-        return list(self._assumptions.values())
+        return list(self._assumptions)
 
     def visible_assumptions(self) -> Iterator[AssumptionBinding]:
-        seen = set()
+        contexts: List[ProofContext] = []
         context: Optional[ProofContext] = self
         while context is not None:
-            for key, binding in context._assumptions.items():
-                if key not in seen:
-                    seen.add(key)
-                    yield binding
+            contexts.append(context)
             context = context._parent
+        for context in contexts:
+            yield from context._assumptions
 
     def has_assumption(self, formula: Any) -> bool:
-        return any(binding.formula == formula for binding in self.visible_assumptions())
+        return any(
+            binding.formula == formula for binding in self.visible_assumptions()
+        )
 
     # ------------------------------------------------------------------
     # Arbitrary/fresh objects
@@ -316,9 +331,9 @@ class ProofContext:
         source: Any = None,
     ) -> ArbitraryBinding:
         name = self._require_name(name)
-        if self._already_visible(name):
+        if not self._arbitrary_name_available(name):
             raise DuplicateBindingError(
-                f"name {name!r} is already visible in this proof context"
+                f"arbitrary name {name!r} is already visible"
             )
         binding = ArbitraryBinding(name, value, kind, source)
         self._arbitrary[name] = binding
@@ -335,7 +350,15 @@ class ProofContext:
     # ------------------------------------------------------------------
 
     def contains(self, name: str) -> bool:
-        return self._already_visible(self._require_name(name))
+        """Return whether *name* occurs in any visible namespace."""
+        name = self._require_name(name)
+        return (
+            self.lookup_declaration(name) is not None
+            or self.lookup_label(name) is not None
+            or self.lookup_theorem(name) is not None
+            or self.lookup_assumption(name) is not None
+            or self.lookup_arbitrary(name) is not None
+        )
 
     def require_label(self, label: str) -> LabelBinding:
         binding = self.lookup_label(label)
@@ -361,6 +384,6 @@ class ProofContext:
             "declarations": list(self._declarations.values()),
             "labels": list(self._labels.values()),
             "theorems": list(self._theorems.values()),
-            "assumptions": list(self._assumptions.values()),
+            "assumptions": list(self._assumptions),
             "arbitrary": list(self._arbitrary.values()),
         }
