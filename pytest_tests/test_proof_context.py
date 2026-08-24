@@ -38,6 +38,14 @@ def test_child_inherits_parent_bindings_without_mutating_parent():
     assert root.lookup_assumption("b") is None
 
 
+def test_enter_subproof_is_an_explicit_child_scope_operation():
+    root = ProofContext()
+    child = root.enter_subproof()
+
+    assert child.parent is root
+    assert child.depth == 1
+
+
 def test_nested_scopes_do_not_leak_local_bindings():
     root = ProofContext()
     child = root.child()
@@ -80,21 +88,44 @@ def test_visible_bindings_are_reported_nearest_scope_first():
     assert [d.name for d in child.visible_declarations()] == ["Q", "P"]
 
 
-def test_duplicate_names_cannot_shadow_any_visible_binding():
+def test_namespaces_are_explicit_rather_than_globally_colliding():
+    context = ProofContext()
+    context.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
+    context.bind_theorem("A", "theorem-A")
+    context.bind_arbitrary("A", "arbitrary-A")
+    context.bind_label("A", "label-A")
+
+    assert context.lookup_declaration("A").name == "A"
+    assert context.lookup_theorem("A").value == "theorem-A"
+    assert context.lookup_arbitrary("A").value == "arbitrary-A"
+    assert context.lookup_label("A").value == "label-A"
+    assert context.contains("A")
+
+
+def test_declarations_cannot_shadow_visible_declarations():
     root = ProofContext()
     root.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
     child = root.child()
 
     with pytest.raises(DuplicateBindingError):
-        child.bind_label("A", "A")
-    with pytest.raises(DuplicateBindingError):
-        child.bind_theorem("A", "A")
-    with pytest.raises(DuplicateBindingError):
-        child.assume("A", label="A")
-    with pytest.raises(DuplicateBindingError):
-        child.bind_arbitrary("A")
-    with pytest.raises(DuplicateBindingError):
         child.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
+
+
+def test_labels_and_assumption_labels_share_the_proof_reference_namespace():
+    context = ProofContext()
+    context.bind_label("1", "P")
+
+    with pytest.raises(DuplicateBindingError):
+        context.assume("Q", label="1")
+
+    child = context.child()
+    with pytest.raises(DuplicateBindingError):
+        child.assume("Q", label="1")
+
+    context2 = ProofContext()
+    context2.assume("P", label="1")
+    with pytest.raises(DuplicateBindingError):
+        context2.bind_label("1", "P")
 
 
 def test_label_binding_and_theorem_binding_have_distinct_semantics():
@@ -110,25 +141,32 @@ def test_label_binding_and_theorem_binding_have_distinct_semantics():
     assert context.lookup_theorem("T") is theorem
 
 
-def test_assumptions_preserve_label_and_formula():
+def test_assumptions_preserve_order_and_label_and_formula():
     context = ProofContext()
-    assumption = context.assume("P", label="2.1", kind="case")
+    first = context.assume("P", label="2.1", kind="case")
+    second = context.assume("Q")
 
-    assert isinstance(assumption, AssumptionBinding)
-    assert assumption.label == "2.1"
-    assert assumption.formula == "P"
-    assert assumption.kind == "case"
-    assert context.has_assumption("P")
-
-
-def test_unlabelled_assumptions_are_still_tracked():
-    context = ProofContext()
-    context.assume("P")
-    context.assume("Q")
-
+    assert isinstance(first, AssumptionBinding)
+    assert first.label == "2.1"
+    assert first.formula == "P"
+    assert first.kind == "case"
+    assert second.label is None
     assert [a.formula for a in context.assumptions_here()] == ["P", "Q"]
+    assert context.lookup_assumption("2.1") is first
     assert context.has_assumption("P")
     assert context.has_assumption("Q")
+
+
+def test_visible_assumptions_are_nearest_scope_first_without_synthetic_keys():
+    root = ProofContext()
+    root.assume("P")
+    root.assume("Q", label="q")
+    child = root.child()
+    child.assume("R")
+    child.assume("S", label="s")
+
+    assert [a.formula for a in child.visible_assumptions()] == ["R", "S", "P", "Q"]
+    assert [a.formula for a in root.visible_assumptions()] == ["P", "Q"]
 
 
 def test_arbitrary_bindings_are_explicit_and_inherited():
@@ -139,6 +177,27 @@ def test_arbitrary_bindings_are_explicit_and_inherited():
     assert isinstance(binding, ArbitraryBinding)
     assert child.lookup_arbitrary("x") is binding
     assert child.is_arbitrary("x")
+
+
+def test_each_namespace_rejects_duplicates_across_visible_scopes():
+    root = ProofContext()
+    root.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
+    root.bind_label("1", "P")
+    root.bind_theorem("T", "P")
+    root.bind_arbitrary("x")
+    root.assume("Q", label="2")
+    child = root.child()
+
+    with pytest.raises(DuplicateBindingError):
+        child.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
+    with pytest.raises(DuplicateBindingError):
+        child.bind_label("1", "P")
+    with pytest.raises(DuplicateBindingError):
+        child.bind_label("2", "Q")
+    with pytest.raises(DuplicateBindingError):
+        child.bind_theorem("T", "P")
+    with pytest.raises(DuplicateBindingError):
+        child.bind_arbitrary("x")
 
 
 def test_require_methods_distinguish_missing_bindings():
