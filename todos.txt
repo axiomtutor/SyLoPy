@@ -1,115 +1,165 @@
 # SyLoPy development TODO
 
-## Current baseline
+## Baseline
 
-- The staged parser -> AST -> elaboration -> proof-kernel architecture is the
-  canonical implementation.
-- `ProofContext` now exists as the dedicated lexical-scope abstraction; the
-  next step is to make elaboration use it as the authoritative visibility
-  mechanism.
-- The complete local test command is `./run_tests.sh`.
+- `master` is the canonical development branch.
+- The staged parser -> surface AST -> elaboration -> proof-kernel architecture is
+  the canonical implementation.
+- The complete local regression command is `./run_tests.sh`.
 - Enforced proof fixtures are the regression baseline; informational fixtures
-  remain development backlog until their semantics are stable.
+  remain backlog until their semantics are stable.
 
-## Proof context and semantic scope
+## Current architectural project: ProofContext integration
 
-- Integrate `ProofContext` into elaboration so declarations, assumptions,
-  labels, theorem visibility, arbitrary bindings, and nested scopes are not
-  reconstructed by separate bookkeeping paths.
-- Make declaration ordering and scope rules explicit and test them directly.
-- Define precise visibility and dependency rules for theorem/lemma references.
-- Make theorem/lemma promotion semantics explicit, including the conditions
-  under which a proof produces a promotable top-level conclusion.
-- Keep `ProofContext` as the boundary between elaboration and kernel validation.
+The goal is to make `ProofContext` the authoritative lexical environment used
+by elaboration, while keeping theory configuration in `TheoryEnvironment` and
+keeping proof validation in the kernel.
 
-## Parser and elaboration cleanup
+Target architecture:
 
-- Audit the staged parser/elaborator for duplicated, compatibility-oriented,
-  or unnecessarily indirect paths.
-- Remove demonstrably unused declaration-prefix, formula-bundle, and legacy
-  justification parsing once their callers are migrated to the canonical
-  surface-AST/elaboration path.
-- Keep `ProofJustification` as the sole rule-name resolution implementation.
-- Keep syntax, elaboration, and source-location diagnostics distinct.
-- Preserve source origins when elaboration generates core proof steps.
-- Keep the public parser API and elaboration interfaces small and stable.
+    surface proof
+        -> elaboration + ProofContext
+        -> elaborated core entries
+        -> ProofLogic validation
 
-## Proof validation and error model
+`ProofContext` should own proof-local visibility. The kernel should not rebuild
+lexical scope from separate declaration/label bookkeeping.
 
-- Continue consolidating validation around the canonical `Proof.check()` and
-  `Proof.check_detailed()` APIs.
-- Remove obsolete validation interfaces and compatibility code when regression
-  coverage makes their removal safe.
-- Keep parsing errors, name-resolution errors, typing errors, elaboration
-  errors, and proof-validation errors distinct.
-- Ensure unexpected implementation exceptions can never masquerade as valid
-  rejection of negative fixtures.
+### Phase 1 — context API and scope semantics
 
-## Theory infrastructure
+- [x] Define explicit namespaces rather than treating all identifiers as one
+      global namespace.
+- [x] Keep declarations in a vocabulary namespace and forbid declaration
+      shadowing across visible scopes.
+- [x] Keep theorem/lemma names in their own namespace.
+- [x] Keep arbitrary/fresh bindings in their own namespace.
+- [x] Make proof-line labels and labeled assumptions share a proof-reference
+      namespace.
+- [x] Replace synthetic assumption dictionary keys with ordered assumption
+      storage plus an explicit label index.
+- [x] Add an explicit `enter_subproof()` scope operation while retaining
+      `child()` as the primitive.
+- [x] Add regression tests for namespace independence, duplicate detection,
+      assumption ordering, label collisions, and nested-scope behavior.
 
-- Keep theory-specific syntax and semantic interpretation behind
-  `TheoryEnvironment` and theory-specific declaration recipes.
-- Audit remaining generic parser code for theory-specific behavior that should
-  live in theory modules.
-- Use the theory-extension mechanism consistently for future mathematical
-  domains rather than introducing parallel parsing or validation mechanisms.
-- After proof-context and elaboration interfaces stabilize, extend the
-  infrastructure to order theory, algebra, and eventually real-number
-  developments.
+### Phase 1 implementation notes
 
-## Discrete mathematics and mathematical development
+Implemented on `master` in commits `d2ded74` and `fdd74af`.
 
-- Continue implementing discrete-mathematics proof objects and inference rules
-  where they expose useful requirements of the core architecture.
-- Formalize additional mathematical examples as executable proofs and tests.
-- Expand set theory and number theory incrementally using the current theory
-  infrastructure.
-- Implement the remaining number-theory infrastructure needed for the GCD /
-  Bezout development.
-- Prefer representative mathematical developments that exercise declarations,
-  scopes, theorem references, and theory extensions over isolated rules.
+`ProofContext` now has five explicitly separated categories of state:
 
-## Test architecture and regression protection
+- declarations;
+- proof-line labels;
+- theorem/lemma bindings;
+- assumptions plus a label index;
+- arbitrary/fresh bindings.
 
-- Treat the complete test suite as the authoritative regression suite.
-- Preserve the enforced fixture baseline.
-- Add targeted regression tests for every newly implemented language or
-  semantic feature, especially scope and visibility behavior.
-- Ensure fixture failures distinguish expected negative results from genuine
-  implementation failures.
-- Keep the local test command and CI test command consistent.
-- Verify that GitHub Actions records useful CI results for pushed commits.
-- Classify informational fixture failures and warnings as missing features,
-  obsolete fixtures, or intentionally unsupported behavior.
-- Promote mature informational fixtures into the enforced corpus when their
-  semantics are stable.
-- Do not weaken enforced tests merely to increase the pass rate.
+The previous `_already_visible()` global collision rule has been removed. Each
+binding operation now checks only the namespace whose semantics it owns. Labels
+and labeled assumptions intentionally share the proof-reference namespace.
+Unlabeled assumptions are stored directly in insertion order rather than under
+synthetic names such as `__assumption_0`.
 
-## Legacy removal and repository hygiene
+`enter_subproof()` is an explicit alias for creating a child lexical context.
+The existing inheritance/non-leakage behavior is preserved.
 
-- Audit remaining historical parser, elaboration, and validation compatibility
-  code rather than assuming an old parser architecture is still in use.
-- Remove obsolete representations, helpers, wrappers, dead imports, and stale
-  duplicate documentation when they are demonstrably superseded and covered
-  by regression tests.
-- Keep architecture and parser documentation synchronized with the actual
-  implementation.
-- Remove one-time migration machinery once it is no longer useful for
-  maintaining or verifying the repository.
+The phase-1 tests document the intended namespace policy and preserve the
+scope invariants needed by the later elaboration migration.
+
+Phase 1 does **not** yet make elaboration use `ProofContext`; that is the next
+phase. The existing elaborator's separate state must remain in place until the
+migration is completed and covered by end-to-end regression tests.
+
+## Phase 2 — integrate ProofContext into elaboration
+
+- [ ] Add `ProofContext` to the elaboration state while keeping
+      `TheoryEnvironment` separate.
+- [ ] Register declarations through `ProofContext.declare()`.
+- [ ] Register proof-line labels through `ProofContext.bind_label()`.
+- [ ] Register assumptions and arbitrary bindings through the context.
+- [ ] Resolve declaration and label references through the context.
+- [ ] Pass child contexts through recursive nested-subproof elaboration.
+- [ ] Preserve source origins and existing elaborated core representations.
+- [ ] Add end-to-end tests proving parent visibility and child non-leakage.
+
+## Phase 3 — theorem and lemma semantics
+
+- [ ] Define exactly when theorem/lemma bindings enter a context.
+- [ ] Define theorem/lemma dependency and visibility rules.
+- [ ] Define promotion semantics, including when a proof produces a
+      promotable top-level conclusion.
+- [ ] Add positive and negative regression tests for theorem visibility and
+      dependencies.
+
+## Phase 4 — remove duplicated lexical bookkeeping
+
+- [ ] Identify every remaining declaration, label, assumption, and scope
+      registry in the elaborator and kernel.
+- [ ] Remove redundant elaborator bookkeeping once the context-backed paths
+      are proven equivalent.
+- [ ] Determine which parts of `ProofLogic.DeclarationScope` are genuinely
+      kernel semantics and which duplicate lexical elaboration state.
+- [ ] Remove only the redundant lexical portion of `DeclarationScope` after
+      end-to-end regression coverage is in place.
+
+## Phase 5 — parser/elaboration cleanup
+
+- [ ] Audit compatibility-oriented and duplicated parser/elaborator paths.
+- [ ] Remove superseded declaration-prefix, formula-bundle, and legacy
+      justification paths only after their callers have migrated.
+- [ ] Keep `ProofJustification` as the sole rule-name resolution mechanism.
+- [ ] Keep syntax, elaboration, name-resolution, and source-location
+      diagnostics distinct.
+- [ ] Keep the public parser and elaboration interfaces small and stable.
+
+## Phase 6 — validation and regression architecture
+
+- [ ] Consolidate validation around `Proof.check()` and `Proof.check_detailed()`.
+- [ ] Remove obsolete validation interfaces when regression coverage makes
+      removal safe.
+- [ ] Ensure implementation exceptions cannot masquerade as expected negative
+      fixture failures.
+- [ ] Add targeted regression coverage for every new scope or semantic rule.
+- [ ] Keep local and CI test commands consistent.
+- [ ] Classify informational fixture failures as missing features, obsolete
+      fixtures, or intentionally unsupported behavior.
+- [ ] Promote mature informational fixtures into the enforced corpus.
+
+## Phase 7 — mathematical development
+
+- [ ] Continue discrete-mathematics proof objects and inference rules that
+      exercise the core architecture.
+- [ ] Expand set theory and number theory incrementally through the theory
+      infrastructure.
+- [ ] Implement remaining number-theory infrastructure needed for the GCD /
+      Bezout development.
+- [ ] Add representative mathematical developments involving declarations,
+      nested scopes, theorem references, and theory extensions.
+- [ ] Extend to order theory and algebra after the proof-context and
+      elaboration interfaces stabilize.
+
+## Repository hygiene
+
+- [ ] Keep architecture and parser documentation synchronized with the actual
+      implementation.
+- [ ] Remove obsolete helpers, wrappers, dead imports, stale duplicate
+      documentation, and one-time migration machinery when demonstrably
+      superseded and covered by tests.
+- [ ] Do not add large numbers of isolated mathematical rules while the proof
+      context, elaboration, and validation interfaces are changing.
 
 ## Recommended implementation order
 
-1. Make `ProofContext` authoritative for elaboration scope and visibility.
-2. Formalize theorem/lemma visibility, dependencies, and promotion semantics.
-3. Finish the parser/elaborator legacy audit and remove superseded paths.
-4. Strengthen semantic and diagnostic regression coverage.
-5. Classify and reduce the informational fixture backlog.
-6. Expand discrete mathematics, set theory, and number theory using the stable
-   infrastructure.
-7. Add broader theory extensions such as order theory and algebra.
-8. Verify CI continuously throughout the process.
+1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
+2. [ ] Integrate `ProofContext` into elaboration.
+3. [ ] Formalize theorem/lemma visibility, dependencies, and promotion.
+4. [ ] Remove duplicated lexical scope bookkeeping.
+5. [ ] Finish parser/elaborator legacy cleanup.
+6. [ ] Strengthen semantic and diagnostic regression coverage.
+7. [ ] Classify and reduce the informational fixture backlog.
+8. [ ] Expand discrete mathematics, set theory, and number theory.
+9. [ ] Add broader theory extensions such as order theory and algebra.
+10. [ ] Verify CI continuously throughout the process.
 
-Do not add large numbers of isolated mathematical rules while proof-context,
-elaboration, and validation interfaces are still changing. Prefer mathematical
-developments that exercise and validate the architecture, then promote the
-resulting abstractions into reusable theory infrastructure.
+Prefer mathematical developments that exercise and validate the architecture,
+then promote the resulting abstractions into reusable theory infrastructure.
