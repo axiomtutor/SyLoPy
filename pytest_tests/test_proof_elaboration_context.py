@@ -1,10 +1,24 @@
-from SyLoPy.source.ProofElaborationContext import root_context, subproof_context
+from SyLoPy.source.ProofElaborationContext import (
+    root_context,
+    root_context_from_environment,
+    subproof_context,
+)
+from SyLoPy.source.ProofElaboration import TheoryEnvironment
 from SyLoPy.source.ProofLogic import Declaration
 
 
 def test_root_context_seeds_environment_declarations():
     declaration = Declaration("A", "object")
     context = root_context([declaration])
+
+    assert context.lookup_declaration("A") is declaration
+
+
+def test_root_context_from_environment_seeds_declarations():
+    declaration = Declaration("A", "object")
+    environment = TheoryEnvironment(declarations=[declaration])
+
+    context = root_context_from_environment(environment)
 
     assert context.lookup_declaration("A") is declaration
 
