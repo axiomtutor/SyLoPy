@@ -259,4 +259,3 @@ def _elaborate_membership_characterization(entry, context):
 
 
 _parser.elaborate_compound_declaration = _elaborate_membership_characterization
-_parser._split_trailing_parenthetical = _parser._split_trailing_parenthetical
