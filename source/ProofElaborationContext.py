@@ -9,9 +9,50 @@ is migrated incrementally.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from dataclasses import dataclass
+from typing import Any, Iterable, Optional
 
 from SyLoPy.source.ProofContext import ProofContext
+
+
+@dataclass
+class ElaborationLexicalState:
+    """Lexical state owned by one elaboration pass.
+
+    This is deliberately a thin adapter rather than a second scope system.
+    ``context`` is the sole authority for proof-local visibility. The adapter
+    exists so ``ProofParser._ElaborationContext`` can acquire the context
+    without coupling ``ProofContext`` to theory-environment details.
+    """
+
+    context: ProofContext
+
+    def child(self) -> "ElaborationLexicalState":
+        """Return the lexical state for a nested subproof."""
+        return ElaborationLexicalState(self.context.enter_subproof())
+
+    def register_declaration(self, declaration: Any) -> None:
+        """Register a proof declaration in the current lexical scope."""
+        self.context.declare(declaration)
+
+    def lookup_declaration(self, name: str) -> Optional[Any]:
+        """Look up a declaration using lexical visibility rules."""
+        return self.context.lookup_declaration(name)
+
+    def bind_label(
+        self,
+        label: str,
+        value: Any,
+        *,
+        kind: str = "line",
+        source: Any = None,
+    ) -> Any:
+        """Register a proof-line label in the current lexical scope."""
+        return self.context.bind_label(label, value, kind=kind, source=source)
+
+    def lookup_label(self, label: str) -> Optional[Any]:
+        """Look up a proof-line label using lexical visibility rules."""
+        return self.context.lookup_label(label)
 
 
 def root_context(declarations: Iterable[Any] = ()) -> ProofContext:
@@ -26,6 +67,11 @@ def root_context(declarations: Iterable[Any] = ()) -> ProofContext:
     for declaration in declarations:
         context.declare(declaration)
     return context
+
+
+def root_lexical_state(declarations: Iterable[Any] = ()) -> ElaborationLexicalState:
+    """Create the lexical state for a root elaboration pass."""
+    return ElaborationLexicalState(root_context(declarations))
 
 
 def root_context_from_environment(environment: Any) -> ProofContext:
