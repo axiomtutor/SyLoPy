@@ -178,3 +178,73 @@ def test_duplicate_compound_declaration_still_raises_elaboration_error():
             "1. Let X be any set. (Declaration)\n"
             "2. Let X be any set. (Declaration)\n"
         )
+
+
+# --------------------------------------------------------------------
+# ProofContext integration, phase 2 continued: `elaborate_subproof_body`
+# gives every subproof its own child `ProofContext`, and `elaborate_entry`
+# now also dual-writes each label into it.
+# --------------------------------------------------------------------
+
+def test_sibling_subproofs_can_reuse_the_same_label():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
+        "2. R. (Proof by Cases from 1, subproofs below)\n"
+        "begin subproof\n"
+        " 2.1. P. (Case)\n"
+        " 2.2. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+        "begin subproof\n"
+        " 2.1. Q. (Case)\n"
+        " 2.2. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+    )
+    for entry in surface.entries:
+        context.elaborate_entry(entry)  # must not raise DuplicateBindingError
+    assert context.context.lookup_label("2.1") is None
+    assert context.context.lookup_label("2.2") is None
+
+
+@pytest.mark.xfail(
+    reason="self.declarations (DeclarationScope) is not yet subproof-scoped "
+           "the way self.context (ProofContext) now is -- see todos.txt's "
+           "'ProofContext integration' project, phase 2. A compound "
+           "declaration name reused across sibling subproofs still "
+           "collides via that pre-existing flat structure, independent "
+           "of anything ProofContext-related. Tracked here so this test "
+           "flips to an unexpected pass (visible, not silent) the day "
+           "self.declarations gets the same scoping treatment.",
+)
+def test_sibling_subproofs_cannot_yet_reuse_a_compound_declaration_name():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
+        "2. R. (Proof by Cases from 1, subproofs below)\n"
+        "begin subproof\n"
+        " 2.1. P. (Case)\n"
+        " 2.2. Let X be any set. (Declaration)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+        "begin subproof\n"
+        " 2.1. Q. (Case)\n"
+        " 2.2. Let X be any set. (Declaration)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+    )
+    for entry in surface.entries:
+        context.elaborate_entry(entry)
+
+
+def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. A -> A. (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 1.1. A. (Assumption)\n"
+        " 1.2. Let X be any set. (Declaration)\n"
+        " 1.3. A. (Reiteration from 1.1)\n"
+        "end subproof\n"
+    )
+    context.elaborate_entry(surface.entries[0])
+    assert context.context.lookup_declaration("X") is None

@@ -1,0 +1,98 @@
+--- a/source/ProofParser.py	2026-08-26 18:10:18.494150326 +0000
++++ b/source/ProofParser.py	2026-08-26 18:07:42.264820182 +0000
+@@ -1950,6 +1950,36 @@
+             return None
+         return parsed.phi if isinstance(parsed.phi, fl.Formula) else None
+ 
++    def elaborate_subproof_body(self, entries: List[Any]) -> List[Any]:
++        """Elaborate one subproof's body -- the entries between a `begin
++        subproof`/`end subproof` pair, wherever it is attached (a
++        standalone labeled block, a `rule_below` justification's
++        immediate subproof, or one of a `rule_hybrid` justification's
++        several attached subproofs) -- using a fresh child `ProofContext`
++        for the duration, then restores the enclosing context.
++
++        This is the elaboration-time counterpart of `ProofValidator.
++        _validate_block`'s own `declarations.child()`/`labels.child()`
++        calls for the same construct (see `ProofLogic.py`): a declaration
++        or label registered while elaborating `entries` becomes invisible
++        to anything outside them once this method returns, while the
++        enclosing scope's own declarations/labels remain visible from
++        inside (`ProofContext.child()` inherits, per its own docstring).
++
++        Only `self.context` is scoped this way for now -- `self.declarations`,
++        `self.origin_by_label`, and `self.formula_by_label` remain
++        flat/global elaboration-time bookkeeping, untouched by this
++        method, pending their own migration (see todos.txt's "ProofContext
++        integration" project; this method is phase 2's "pass child
++        contexts through recursive nested-subproof elaboration" step).
++        """
++        parent_context = self.context
++        self.context = parent_context.child()
++        try:
++            return [self.elaborate_entry(item) for item in entries]
++        finally:
++            self.context = parent_context
++
+     def elaborate_entry(self, entry: Any) -> Any:
+         """Thin wrapper around `_elaborate_entry_impl` that also records
+         each labeled line's resulting formula into `self.formula_by_label`
+@@ -1959,17 +1989,39 @@
+         validation later looks facts up by label, just one pass earlier.
+         Recurses the same way the old single method did, so nested
+         subproof entries get recorded too, in source order.
++
++        Also dual-writes the same label into `self.context` (see
++        `elaborate_subproof_body` for how that context is now scoped per
++        subproof). Unlike the `register_declaration` dual-write, a
++        collision here is a genuinely *new*, stricter check rather than a
++        defensive impossibility: `ProofContext.bind_label` refuses to let
++        a label shadow one already visible in an enclosing scope (see
++        `test_each_namespace_rejects_duplicates_across_visible_scopes` in
++        `test_proof_context.py`), whereas the kernel's own `LabelScope`
++        currently permits exactly that shadowing silently. No proof in
++        the current fixture corpus does this, but a proof that did would
++        now be rejected here, earlier and more clearly than before --
++        see this module's docstring/todos.txt for this policy gap, which
++        matters once (not yet) `ProofContext` drives citation resolution.
+         """
+         result = self._elaborate_entry_impl(entry)
+         if (isinstance(result, tuple) and len(result) >= 3
+                 and isinstance(result[0], str)
+                 and not (isinstance(result[1], str) and result[1] == 'subproof')):
+             self.formula_by_label[result[0]] = result[1]
++            try:
++                self.context.bind_label(result[0], result[1])
++            except pc.DuplicateBindingError as exc:
++                raise ElaborationError(
++                    f"label '{result[0]}' is already used earlier in this "
++                    "proof or an enclosing scope",
++                    entry.span,
++                ) from exc
+         return result
+ 
+     def _elaborate_entry_impl(self, entry: Any) -> Any:
+         if isinstance(entry, SurfaceSubproof):
+-            body = [self.elaborate_entry(item) for item in entry.entries]
++            body = self.elaborate_subproof_body(entry.entries)
+             if entry.label:
+                 self.register_origin(entry.label, entry.span, "subproof")
+                 return (entry.label, 'subproof', body)
+@@ -2011,7 +2063,7 @@
+                         "this justification requires an immediate subproof below",
+                         entry.span,
+                     )
+-                nested = [self.elaborate_entry(item) for item in entry.subproofs[0].entries]
++                nested = self.elaborate_subproof_body(entry.subproofs[0].entries)
+                 return (entry.label, formula, justification, nested)
+ 
+             if tag == 'rule_hybrid':
+@@ -2024,7 +2076,7 @@
+                         entry.span,
+                     )
+                 nested = [
+-                    [self.elaborate_entry(item) for item in subproof.entries]
++                    self.elaborate_subproof_body(subproof.entries)
+                     for subproof in entry.subproofs
+                 ]
+                 return (entry.label, formula, justification, nested)
