@@ -141,3 +141,40 @@ def test_core_renderer_exposes_desugared_steps_without_reparsing_text():
 
 
 
+
+
+# --------------------------------------------------------------------
+# ProofContext integration (todos.txt "ProofContext integration", phase 2).
+#
+# `_ElaborationContext` is migrating its lexical bookkeeping onto
+# `ProofContext`. The first step is a pure dual-write: every declaration
+# registered through `register_declaration` is now also declared into a
+# `ProofContext` instance, alongside the pre-existing `DeclarationScope`.
+# Nothing yet *reads* from the new context, so these tests only pin down
+# that the write itself happens and stays consistent -- not any change in
+# validator-visible behavior (the full suite above already guards that).
+# --------------------------------------------------------------------
+
+def test_compound_declaration_registers_into_proof_context_alongside_declaration_scope():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof("1. Let X be any set. (Declaration)\n")
+    context.elaborate_entry(surface.entries[0])
+
+    declaration = context.context.lookup_declaration("X")
+    assert declaration is not None
+    assert declaration.kind == pl.DeclarationKind.OBJECT
+    assert declaration == context.declarations.lookup("X")
+
+
+def test_proof_context_seeding_tolerates_vocabulary_reachable_through_two_extension_paths():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    assert context.context.lookup_declaration("EmptySet") is not None
+    assert context.context.lookup_declaration("In") is not None
+
+
+def test_duplicate_compound_declaration_still_raises_elaboration_error():
+    with pytest.raises(pe.ElaborationError, match="already declared"):
+        pp.parse_proof_text(
+            "1. Let X be any set. (Declaration)\n"
+            "2. Let X be any set. (Declaration)\n"
+        )

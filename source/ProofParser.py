@@ -87,6 +87,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
+import SyLoPy.source.ProofContext as pc
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaboratedEntries,
@@ -1851,6 +1852,24 @@ class _ElaborationContext:
         # merges these into the final `ElaboratedEntries.required_rules`.
         self.extra_rules: List[Any] = []
         self.declarations = pl.DeclarationScope(initial=list(environment.declarations))
+        # `ProofContext` integration (see todos.txt, "ProofContext
+        # integration" project, phase 2): the authoritative lexical scope
+        # this elaborator is migrating *towards*. For now it is populated
+        # alongside `self.declarations` above -- via `register_declaration`
+        # below -- but nothing yet *reads* from it, so this cannot change
+        # elaboration behavior. Seeded from `self.declarations.declarations_here()`
+        # rather than `environment.declarations` directly because the latter
+        # can contain literal duplicate `Declaration`s (e.g. SetTheory's
+        # vocabulary reachable both directly and through NumberTheory's own
+        # `.extended(SET_THEORY_ENVIRONMENT)`); `DeclarationScope.__init__`
+        # already resolves that via its "skip a compatible duplicate" rule,
+        # so reusing its result avoids re-implementing that same leniency
+        # here and keeps the two structures declared-in-lockstep from the
+        # start. `ProofContext.declare()` has no such leniency and would
+        # raise `DuplicateBindingError` on a literal repeat.
+        self.context = pc.ProofContext()
+        for declaration in self.declarations.declarations_here():
+            self.context.declare(declaration)
         # Populated by `elaborate_entry` as it goes, label -> that label's
         # resulting core formula (or bundle). See `elaborate_entry`'s
         # docstring for why this exists.
@@ -1874,6 +1893,22 @@ class _ElaborationContext:
             ) from exc
         except (TypeError, ValueError) as exc:
             raise ElaborationError(str(exc), span) from exc
+        try:
+            self.context.declare(declaration)
+        except pc.DuplicateBindingError as exc:
+            # Should be unreachable: `self.context` is seeded from, and
+            # updated in lockstep with, `self.declarations` above, so
+            # anything accepted by the check just above is already known
+            # fresh here too. Translated (not silently swallowed) so a
+            # real divergence between the two structures fails loudly
+            # during this migration rather than leaving `self.context`
+            # quietly out of sync with what elaboration actually declared.
+            existing = self.context.lookup_declaration(declaration.name)
+            raise ElaborationError(
+                f"symbol '{declaration.name}' is already declared"
+                + (f" as {existing.kind}" if existing else ""),
+                span,
+            ) from exc
 
     def register_origin(
         self,
