@@ -1,101 +1,39 @@
---- a/todos.txt	2026-08-26 18:10:42.107072839 +0000
-+++ b/todos.txt	2026-08-26 18:09:47.132115454 +0000
-@@ -72,16 +72,94 @@
- 
- ## Phase 2 — integrate ProofContext into elaboration
- 
--- [ ] Add `ProofContext` to the elaboration state while keeping
-+- [x] Add `ProofContext` to the elaboration state while keeping
-       `TheoryEnvironment` separate.
--- [ ] Register declarations through `ProofContext.declare()`.
--- [ ] Register proof-line labels through `ProofContext.bind_label()`.
-+- [x] Register declarations through `ProofContext.declare()`.
-+- [x] Register proof-line labels through `ProofContext.bind_label()`.
- - [ ] Register assumptions and arbitrary bindings through the context.
- - [ ] Resolve declaration and label references through the context.
--- [ ] Pass child contexts through recursive nested-subproof elaboration.
-+- [x] Pass child contexts through recursive nested-subproof elaboration.
+--- a/todos.txt	2026-08-28 14:18:29.261048771 +0000
++++ b/todos.txt	2026-08-28 14:17:55.008244912 +0000
+@@ -77,7 +77,8 @@
+ - [x] Register declarations through `ProofContext.declare()`.
+ - [x] Register proof-line labels through `ProofContext.bind_label()`.
+ - [x] Register assumptions and arbitrary bindings through the context.
+-- [ ] Resolve declaration and label references through the context.
++- [ ] Resolve declaration and label references through the context
++      (declaration half done; label half blocked -- see below).
+ - [x] Pass child contexts through recursive nested-subproof elaboration.
  - [ ] Preserve source origins and existing elaborated core representations.
  - [ ] Add end-to-end tests proving parent visibility and child non-leakage.
+@@ -136,6 +137,26 @@
+ never risked a collision the way bare symbol/declaration/label names
+ (freely reused across sibling scopes) did.
  
-+### Phase 2 implementation notes
++`lookup_declaration` (the method `elaborate_compound_declaration`'s carrier
++checks call, e.g. "has X been declared yet" for `R be a relation on X`) now
++resolves through `self.context.lookup_declaration()` instead of the legacy
++`self.declarations.lookup()` -- the declaration half of "resolve
++declaration and label references through the context". This was safe
++unconditionally, not just empirically: the two structures are seeded,
++written, and now scoped identically, so for any name either can currently
++answer, they agree by construction, not by coincidence of what the corpus
++happens to exercise. Confirmed with a hand-constructed divergence (declare
++something directly into `self.context` only, bypassing `register_declaration`
++entirely) rather than a corpus fixture, since no real proof can distinguish
++the two structures anymore -- see
++`test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope`.
++`self.declarations` itself is untouched and still written to (still needed
++by `elaborate_proof`'s separate feed into `DiscreteMath.relation_rule_set`,
++`context.declarations.declarations_here()` -- a different concern from
++resolving a reference, not migrated here).
 +
-+`_ElaborationContext` (`source/ProofParser.py`) now holds a `ProofContext`
-+instance (`self.context`), seeded from `self.declarations.declarations_here()`
-+rather than `environment.declarations` directly, so vocabulary reachable
-+through more than one theory-extension path (e.g. `SetTheory`'s declarations,
-+visible both directly and through `NumberTheory`'s own extension of
-+`SetTheory`) doesn't raise a spurious `DuplicateBindingError` at seed time.
++The *label* half is still blocked on the same open question as before:
 +
-+`register_declaration` dual-writes into `self.context.declare()` alongside
-+the pre-existing `self.declarations` (`DeclarationScope`). Coverage is
-+currently limited to declarations that already flow through
-+`register_declaration` -- i.e. `elaborate_compound_declaration`'s coordinated
-+`Let X be any set, R be a relation on X, ...` path.
-+`elaborate_typed_declaration` (the more common single-clause /
-+`DeclarationRecipe`-dispatch path, e.g. `Let x be a natural number`) builds
-+its own local declarations list and returns it in the justification tuple
-+without calling `register_declaration` at all, so declarations made that way
-+aren't yet reflected in `self.context`. This is a gap to close, not a
-+regression: `elaborate_typed_declaration` never populated `self.declarations`
-+either.
-+
-+`elaborate_entry` dual-writes each label into `self.context.bind_label()`
-+alongside the pre-existing `self.formula_by_label`, with the same scope
-+boundary that structure already had: a standalone labeled subproof block
-+(`(label, 'subproof', body)`) is excluded, since its "value" isn't a formula.
-+
-+New method `elaborate_subproof_body(entries)` gives every subproof -- however
-+it's attached (a standalone labeled block, a `rule_below` justification's
-+immediate subproof, or one of a `rule_hybrid` justification's several
-+attached subproofs) -- its own child `ProofContext` for the duration,
-+mirroring `ProofValidator._validate_block`'s own `declarations.child()`/
-+`labels.child()` scoping for the same construct. Only `self.context` is
-+scoped this way; `self.declarations`, `self.origin_by_label`, and
-+`self.formula_by_label` remain flat/global elaboration-time bookkeeping.
-+
-+Two things discovered while implementing this, both open:
-+
-+- `self.declarations` being flat (not yet subproof-scoped) means a compound
-+  declaration name reused across *sibling* subproofs still collides today --
-+  independent of anything `ProofContext`-related, and predating this
-+  migration. Labels don't have this problem anymore (`self.context` fixes
-+  it), but declarations still do. See
-+  `test_sibling_subproofs_cannot_yet_reuse_a_compound_declaration_name` (an
-+  intentional `xfail` in `pytest_tests/test_elaboration.py`, `strict=False`
-+  per `pytest.ini`, so it will surface as an unexpected pass rather than
-+  silently staying stale once fixed). Either give `self.declarations` the
-+  same child-context treatment as a small follow-up, or fold it into
-+  "resolve declaration and label references through the context" below,
-+  which will need to touch `self.declarations`'s scoping anyway.
-+- `ProofContext.bind_label` refuses to let a label shadow one already
-+  visible in an enclosing scope (see
-+  `test_each_namespace_rejects_duplicates_across_visible_scopes` in
-+  `test_proof_context.py`), while the kernel's own `LabelScope` currently
-+  *permits* that shadowing silently -- a child scope's local dict entry just
-+  overrides the parent's for lookups made from inside it, no error raised.
-+  No fixture in the current corpus shadows a label this way, so the
-+  dual-write is safe today, but this is a real policy divergence to settle
-+  deliberately, not by default, before `ProofContext` can drive citation
-+  resolution: either `LabelScope` should also forbid shadowing (plausibly
-+  the right call -- a proof shadowing a line label is far more likely a
-+  mistake than an intentional pattern), or `ProofContext` needs an explicit
-+  shadowing-permitted mode. Undecided; needs a call before "resolve ...
-+  references through the context" lands.
-+
-+"Add end-to-end tests proving parent visibility and child non-leakage" is
-+partially covered. `test_sibling_subproofs_can_reuse_the_same_label` and
-+`test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`
-+(`pytest_tests/test_elaboration.py`) cover sibling isolation and
-+non-leakage, and were confirmed to actually fail without the child-context
-+fix (i.e. they're not vacuous). A dedicated "parent visibility" test at this
-+integration level isn't meaningfully possible yet: nothing in elaboration
-+currently *reads* from `self.context`, so there's nothing for such a test to
-+exercise beyond `ProofContext.child()`'s own inheritance, which
-+`test_proof_context.py` already covers directly. Revisit once "resolve ...
-+references through the context" gives elaboration an actual reason to look
-+something up through an inherited scope.
-+
- ## Phase 3 — theorem and lemma semantics
- 
- - [ ] Define exactly when theorem/lemma bindings enter a context.
+ Still open: `ProofContext.bind_label` refuses to let a label shadow one
+ already visible in an enclosing scope (see
+ `test_each_namespace_rejects_duplicates_across_visible_scopes` in

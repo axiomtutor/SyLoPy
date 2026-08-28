@@ -1879,7 +1879,30 @@ class _ElaborationContext:
         self.extra_rules.append(rule)
 
     def lookup_declaration(self, name: str) -> Optional[pl.Declaration]:
-        return self.declarations.lookup(name)
+        """Resolve a declaration reference through `self.context`
+        (`ProofContext`) rather than the legacy `self.declarations`
+        (`DeclarationScope`) -- this is the declaration half of todos.txt's
+        "resolve declaration and label references through the context"
+        step. Safe unconditionally: `self.declarations` and `self.context`
+        are seeded identically (see `__init__`), written identically
+        (`register_declaration` dual-writes both), and scoped identically
+        (`elaborate_subproof_body` gives both a child per subproof), so
+        for every name either structure can currently answer, they agree.
+        `self.declarations` itself is untouched and still written to --
+        `elaborate_proof`'s own feed into `DiscreteMath.relation_rule_set`
+        (`context.declarations.declarations_here()`) still reads it
+        directly, a separate concern from resolving a reference during
+        elaboration -- so this is a narrower migration than retiring
+        `self.declarations` outright.
+
+        The *label* half of "resolve ... references through the context"
+        remains undone: unlike declarations, `ProofContext.bind_label` and
+        the kernel's `LabelScope` disagree about whether shadowing is
+        legal (see `elaborate_entry`'s docstring), so switching label
+        resolution over here first needs that policy settled, not just an
+        equivalence check like this one.
+        """
+        return self.context.lookup_declaration(name)
 
     def register_declaration(self, declaration: pl.Declaration, span: SourceSpan) -> None:
         try:
@@ -1959,7 +1982,8 @@ class _ElaborationContext:
         standalone labeled block, a `rule_below` justification's
         immediate subproof, or one of a `rule_hybrid` justification's
         several attached subproofs) -- using a fresh child `ProofContext`
-        for the duration, then restores the enclosing context.
+        and a fresh child `DeclarationScope` for the duration, then
+        restores both.
 
         This is the elaboration-time counterpart of `ProofValidator.
         _validate_block`'s own `declarations.child()`/`labels.child()`
@@ -1967,21 +1991,37 @@ class _ElaborationContext:
         or label registered while elaborating `entries` becomes invisible
         to anything outside them once this method returns, while the
         enclosing scope's own declarations/labels remain visible from
-        inside (`ProofContext.child()` inherits, per its own docstring).
+        inside (both `ProofContext.child()` and `DeclarationScope.child()`
+        inherit, per their own implementations).
 
-        Only `self.context` is scoped this way for now -- `self.declarations`,
-        `self.origin_by_label`, and `self.formula_by_label` remain
+        `self.declarations` joined `self.context` here after both were
+        confirmed to already agree on the underlying policy:
+        `DeclarationScope.declare()` already walks its full parent chain
+        via `lookup()` before raising, exactly like `ProofContext.declare()`
+        -- unlike labels, where the kernel's `LabelScope` permits
+        cross-scope shadowing that `ProofContext.bind_label` forbids (see
+        `elaborate_entry`'s docstring), there was no policy question to
+        settle here, only this implementation gap to close. Closing it is
+        what flips `test_sibling_subproofs_can_reuse_a_compound_declaration_name`
+        (formerly an `xfail`) to a genuine pass.
+
+        `self.origin_by_label` and `self.formula_by_label` remain
         flat/global elaboration-time bookkeeping, untouched by this
-        method, pending their own migration (see todos.txt's "ProofContext
-        integration" project; this method is phase 2's "pass child
-        contexts through recursive nested-subproof elaboration" step).
+        method -- both are keyed by full dotted label strings, which are
+        unique across the whole proof by construction, so flatness never
+        risked a collision the way `self.context`/`self.declarations`
+        (keyed by bare symbol/label names, reused freely across sibling
+        scopes) did.
         """
         parent_context = self.context
+        parent_declarations = self.declarations
         self.context = parent_context.child()
+        self.declarations = parent_declarations.child()
         try:
             return [self.elaborate_entry(item) for item in entries]
         finally:
             self.context = parent_context
+            self.declarations = parent_declarations
 
     def elaborate_entry(self, entry: Any) -> Any:
         """Thin wrapper around `_elaborate_entry_impl` that also records
@@ -1993,33 +2033,77 @@ class _ElaborationContext:
         Recurses the same way the old single method did, so nested
         subproof entries get recorded too, in source order.
 
-        Also dual-writes the same label into `self.context` (see
-        `elaborate_subproof_body` for how that context is now scoped per
-        subproof). Unlike the `register_declaration` dual-write, a
-        collision here is a genuinely *new*, stricter check rather than a
-        defensive impossibility: `ProofContext.bind_label` refuses to let
-        a label shadow one already visible in an enclosing scope (see
-        `test_each_namespace_rejects_duplicates_across_visible_scopes` in
-        `test_proof_context.py`), whereas the kernel's own `LabelScope`
-        currently permits exactly that shadowing silently. No proof in
-        the current fixture corpus does this, but a proof that did would
-        now be rejected here, earlier and more clearly than before --
-        see this module's docstring/todos.txt for this policy gap, which
-        matters once (not yet) `ProofContext` drives citation resolution.
+        Also dual-writes into `self.context` (see `elaborate_subproof_body`
+        for how that context is now scoped per subproof), choosing the
+        binding that matches the line's own justification tag rather than
+        always calling `bind_label`:
+
+          * `'assume'` -- `self.context.assume(formula, label=label)`, not
+            `bind_label`, since labels and labeled assumptions share one
+            namespace (`ProofContext`'s "proof-reference" namespace) --
+            calling both for the same label would immediately collide
+            with itself.
+          * `'arbitrary'` -- both `self.context.bind_arbitrary(name)` (the
+            fresh constant's own name, recovered from the nullary
+            atomic-formula flag encoding -- see `SubproofRecord`'s
+            docstring in ProofLogic.py) and `self.context.bind_label(label,
+            formula)`, since "this name is fresh" and "this label cites
+            this line" are genuinely different, independent namespaces.
+          * anything else -- `self.context.bind_label(label, formula)`,
+            unchanged from before.
+
+        A collision here is a genuinely *new*, stricter check rather than
+        a defensive impossibility: `ProofContext`'s binding methods refuse
+        to let a name shadow one already visible in an enclosing scope
+        (see `test_each_namespace_rejects_duplicates_across_visible_scopes`
+        in `test_proof_context.py`), whereas the kernel's own `LabelScope`
+        currently permits label shadowing silently. No proof in the
+        current fixture corpus does this, but one that did would now be
+        rejected here, earlier and more clearly than before -- see this
+        module's docstring/todos.txt for this policy gap, which matters
+        once (not yet) `ProofContext` drives citation resolution.
         """
         result = self._elaborate_entry_impl(entry)
         if (isinstance(result, tuple) and len(result) >= 3
                 and isinstance(result[0], str)
                 and not (isinstance(result[1], str) and result[1] == 'subproof')):
-            self.formula_by_label[result[0]] = result[1]
-            try:
-                self.context.bind_label(result[0], result[1])
-            except pc.DuplicateBindingError as exc:
-                raise ElaborationError(
-                    f"label '{result[0]}' is already used earlier in this "
-                    "proof or an enclosing scope",
-                    entry.span,
-                ) from exc
+            label, formula, justification = result[0], result[1], result[2]
+            self.formula_by_label[label] = formula
+            tag = justification[0] if isinstance(justification, tuple) and justification else None
+
+            def bind_label_here(value: Any) -> None:
+                try:
+                    self.context.bind_label(label, value)
+                except pc.DuplicateBindingError as exc:
+                    raise ElaborationError(
+                        f"label '{label}' is already used earlier in this "
+                        "proof or an enclosing scope",
+                        entry.span,
+                    ) from exc
+
+            if tag == 'assume':
+                try:
+                    self.context.assume(formula, label=label)
+                except pc.DuplicateBindingError as exc:
+                    raise ElaborationError(
+                        f"label '{label}' is already used earlier in this "
+                        "proof or an enclosing scope",
+                        entry.span,
+                    ) from exc
+            elif (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
+                  and not formula.args and isinstance(formula.predicate, str)):
+                try:
+                    self.context.bind_arbitrary(formula.predicate)
+                except pc.DuplicateBindingError as exc:
+                    raise ElaborationError(
+                        f"'{formula.predicate}' is not fresh -- that name "
+                        "is already visible in this proof or an enclosing "
+                        "scope",
+                        entry.span,
+                    ) from exc
+                bind_label_here(formula)
+            else:
+                bind_label_here(formula)
         return result
 
     def _elaborate_entry_impl(self, entry: Any) -> Any:

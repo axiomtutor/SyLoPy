@@ -206,17 +206,12 @@ def test_sibling_subproofs_can_reuse_the_same_label():
     assert context.context.lookup_label("2.2") is None
 
 
-@pytest.mark.xfail(
-    reason="self.declarations (DeclarationScope) is not yet subproof-scoped "
-           "the way self.context (ProofContext) now is -- see todos.txt's "
-           "'ProofContext integration' project, phase 2. A compound "
-           "declaration name reused across sibling subproofs still "
-           "collides via that pre-existing flat structure, independent "
-           "of anything ProofContext-related. Tracked here so this test "
-           "flips to an unexpected pass (visible, not silent) the day "
-           "self.declarations gets the same scoping treatment.",
-)
-def test_sibling_subproofs_cannot_yet_reuse_a_compound_declaration_name():
+def test_sibling_subproofs_can_reuse_the_same_compound_declaration_name():
+    # Was an xfail: `self.declarations` wasn't subproof-scoped, so this
+    # collided even though `self.context` was already fine. Fixed by
+    # extending `elaborate_subproof_body` to also give `self.declarations`
+    # a child scope per subproof -- see that method's docstring for why
+    # this needed no policy call, unlike labels.
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof(
         "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
@@ -233,7 +228,9 @@ def test_sibling_subproofs_cannot_yet_reuse_a_compound_declaration_name():
         "end subproof\n"
     )
     for entry in surface.entries:
-        context.elaborate_entry(entry)
+        context.elaborate_entry(entry)  # must not raise DuplicateBindingError / KeyError
+    assert context.context.lookup_declaration("X") is None
+    assert context.declarations.lookup("X") is None
 
 
 def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context():
@@ -248,3 +245,65 @@ def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context(
     )
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_declaration("X") is None
+    assert context.declarations.lookup("X") is None
+# --------------------------------------------------------------------
+# ProofContext integration, phase 2 continued: `elaborate_entry` now also
+# dual-writes assumptions (`self.context.assume`) and arbitrary/fresh
+# bindings (`self.context.bind_arbitrary`), choosing whichever matches a
+# line's justification tag instead of always calling `bind_label` (see
+# that method's docstring for exactly why "assume" and "arbitrary" each
+# need different treatment). "c" is by far the most common arbitrary-name
+# placeholder in this corpus (testProofs/propLogTests.txt alone uses it
+# repeatedly across unrelated proofs), so sibling reuse is the realistic
+# risk to guard here, the same way it was for labels.
+# --------------------------------------------------------------------
+
+def test_sibling_subproofs_can_reuse_the_same_arbitrary_name():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
+        "2. R. (Proof by Cases from 1, subproofs below)\n"
+        "begin subproof\n"
+        " 2.1. P. (Case)\n"
+        " 2.2. let c be arbitrary. (Fresh Variable)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+        "begin subproof\n"
+        " 2.1. Q. (Case)\n"
+        " 2.2. let c be arbitrary. (Fresh Variable)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+    )
+    for entry in surface.entries:
+        context.elaborate_entry(entry)  # must not raise DuplicateBindingError
+    assert context.context.lookup_arbitrary("c") is None  # neither leaked out
+
+
+def test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_context():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. forall x, x = x. (Universal Generalization from subproof below)\n"
+        "begin subproof\n"
+        " 1.0. let c be arbitrary. (Fresh Variable)\n"
+        " 1.1. c = c. (Reflexivity)\n"
+        "end subproof\n"
+    )
+    context.elaborate_entry(surface.entries[0])
+    assert context.context.lookup_arbitrary("c") is None
+    assert context.context.is_arbitrary("c") is False
+# --------------------------------------------------------------------
+# ProofContext integration, phase 2, "resolve declaration and label
+# references through the context" (declaration half only -- see
+# `_ElaborationContext.lookup_declaration`'s docstring for why the label
+# half is still blocked). Since self.declarations and self.context are
+# kept in lockstep by every other mechanism in this file, no fixture in
+# the real corpus can distinguish "reads self.context" from "reads
+# self.declarations" -- the divergence has to be constructed by hand.
+# --------------------------------------------------------------------
+
+def test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope():
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    only_in_context = pl.Declaration("OnlyInContext", pl.DeclarationKind.OBJECT)
+    context.context.declare(only_in_context)  # bypasses register_declaration entirely
+    assert context.lookup_declaration("OnlyInContext") is only_in_context
+    assert context.declarations.lookup("OnlyInContext") is None  # confirms the divergence is real
