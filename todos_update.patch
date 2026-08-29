@@ -1,39 +1,59 @@
---- a/todos.txt	2026-08-28 14:18:29.261048771 +0000
-+++ b/todos.txt	2026-08-28 14:17:55.008244912 +0000
-@@ -77,7 +77,8 @@
- - [x] Register declarations through `ProofContext.declare()`.
- - [x] Register proof-line labels through `ProofContext.bind_label()`.
- - [x] Register assumptions and arbitrary bindings through the context.
--- [ ] Resolve declaration and label references through the context.
-+- [ ] Resolve declaration and label references through the context
-+      (declaration half done; label half blocked -- see below).
+--- a/todos.txt	2026-08-28 20:21:26.258081757 +0000
++++ b/todos.txt	2026-08-28 20:21:09.158250974 +0000
+@@ -81,7 +81,11 @@
+       (declaration half done; label half blocked -- see below).
  - [x] Pass child contexts through recursive nested-subproof elaboration.
  - [ ] Preserve source origins and existing elaborated core representations.
- - [ ] Add end-to-end tests proving parent visibility and child non-leakage.
-@@ -136,6 +137,26 @@
- never risked a collision the way bare symbol/declaration/label names
- (freely reused across sibling scopes) did.
+-- [ ] Add end-to-end tests proving parent visibility and child non-leakage.
++- [ ] Add end-to-end tests proving parent visibility and child non-leakage
++      (non-leakage fully covered, every binding kind; declaration
++      parent-visibility now covered too; label parent-visibility still
++      blocked on the same shadowing question as the rest of the label
++      half -- see below).
  
-+`lookup_declaration` (the method `elaborate_compound_declaration`'s carrier
-+checks call, e.g. "has X been declared yet" for `R be a relation on X`) now
-+resolves through `self.context.lookup_declaration()` instead of the legacy
-+`self.declarations.lookup()` -- the declaration half of "resolve
-+declaration and label references through the context". This was safe
-+unconditionally, not just empirically: the two structures are seeded,
-+written, and now scoped identically, so for any name either can currently
-+answer, they agree by construction, not by coincidence of what the corpus
-+happens to exercise. Confirmed with a hand-constructed divergence (declare
-+something directly into `self.context` only, bypassing `register_declaration`
-+entirely) rather than a corpus fixture, since no real proof can distinguish
-+the two structures anymore -- see
-+`test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope`.
-+`self.declarations` itself is untouched and still written to (still needed
-+by `elaborate_proof`'s separate feed into `DiscreteMath.relation_rule_set`,
-+`context.declarations.declarations_here()` -- a different concern from
-+resolving a reference, not migrated here).
+ ### Phase 2 implementation notes
+ 
+@@ -173,7 +177,7 @@
+ references through the context" starts.
+ 
+ "Add end-to-end tests proving parent visibility and child non-leakage" is
+-partially covered. `test_sibling_subproofs_can_reuse_the_same_label`,
++now mostly covered. `test_sibling_subproofs_can_reuse_the_same_label`,
+ `test_sibling_subproofs_can_reuse_the_same_arbitrary_name`,
+ `test_sibling_subproofs_can_reuse_the_same_compound_declaration_name`,
+ `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`,
+@@ -181,15 +185,25 @@
+ (all in `pytest_tests/test_elaboration.py`) cover sibling isolation and
+ non-leakage across every binding kind now dual-written, and every one of
+ them was confirmed to actually fail when the corresponding scoping was
+-reverted (none are vacuous). A dedicated "parent visibility" test at this
+-integration level still isn't meaningfully possible: nothing in
+-elaboration *reads* from `self.context`, and `self.declarations`'s reads
+-aren't scoped any differently than before -- only its writes changed --
+-so there's nothing for such a test to exercise beyond `ProofContext.
+-child()`'s/`DeclarationScope.child()`'s own inheritance, which their
+-respective test files already cover directly. Revisit once "resolve ...
+-references through the context" gives elaboration an actual reason to
+-look something up through an inherited scope.
++reverted (none are vacuous).
 +
-+The *label* half is still blocked on the same open question as before:
++Parent visibility for declarations is now covered too, once
++`lookup_declaration` gave elaboration an actual reason to consult an
++inherited scope:
++`test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof`
++declares a carrier at the top level and uses it from inside a nested
++subproof's compound declaration, and was confirmed to fail specifically
++when the parent link itself was severed (a context created fresh instead
++of via `.child()`), isolating exactly the property this test is meant to
++catch from the scoping-exists-at-all property the non-leakage tests
++already cover.
 +
- Still open: `ProofContext.bind_label` refuses to let a label shadow one
- already visible in an enclosing scope (see
- `test_each_namespace_rejects_duplicates_across_visible_scopes` in
++Parent visibility for *labels* remains untestable for the same reason it
++remains unresolved: nothing yet reads a label through `self.context` for
++real (only writes happen), and that's exactly what's blocked on the
++shadowing question below -- once it's settled and label resolution moves
++over, this note should be revisited the same way the declaration one just
++was.
+ 
+ ## Phase 3 — theorem and lemma semantics
+ 

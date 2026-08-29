@@ -307,3 +307,30 @@ def test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope(
     context.context.declare(only_in_context)  # bypasses register_declaration entirely
     assert context.lookup_declaration("OnlyInContext") is only_in_context
     assert context.declarations.lookup("OnlyInContext") is None  # confirms the divergence is real
+def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof():
+    # The "parent visibility" half of end-to-end context coverage, noted
+    # in todos.txt as not meaningfully testable before this file existed:
+    # nothing read from self.context, so there was nothing for such a test
+    # to exercise beyond ProofContext.child()'s own mechanics (already
+    # covered directly in test_proof_context.py). Now that
+    # lookup_declaration does read through self.context, this is a real
+    # integration check: elaborate_compound_declaration's carrier check
+    # ("has X been declared yet" for a relation on X) must succeed for a
+    # carrier declared in an *enclosing* scope, not just the current one.
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof(
+        "1. Let X be any set. (Declaration)\n"
+        "2. A -> A. (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 2.1. A. (Assumption)\n"
+        " 2.2. Let R be a relation on X. (Declaration)\n"
+        " 2.3. A. (Reiteration from 2.1)\n"
+        "end subproof\n"
+    )
+    for entry in surface.entries:
+        context.elaborate_entry(entry)  # must not raise -- "X" must be visible from inside
+    # "R" was local to the (now closed) subproof and did not leak back out.
+    assert context.context.lookup_declaration("R") is None
+    # "X" is still visible at the root, exactly as before -- it was never
+    # local to the subproof to begin with.
+    assert context.context.lookup_declaration("X") is not None

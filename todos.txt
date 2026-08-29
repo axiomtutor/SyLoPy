@@ -81,7 +81,11 @@ migration is completed and covered by end-to-end regression tests.
       (declaration half done; label half blocked -- see below).
 - [x] Pass child contexts through recursive nested-subproof elaboration.
 - [ ] Preserve source origins and existing elaborated core representations.
-- [ ] Add end-to-end tests proving parent visibility and child non-leakage.
+- [ ] Add end-to-end tests proving parent visibility and child non-leakage
+      (non-leakage fully covered, every binding kind; declaration
+      parent-visibility now covered too; label parent-visibility still
+      blocked on the same shadowing question as the rest of the label
+      half -- see below).
 
 ### Phase 2 implementation notes
 
@@ -173,7 +177,7 @@ shadowing-permitted mode. Undecided; needs a call before "resolve ...
 references through the context" starts.
 
 "Add end-to-end tests proving parent visibility and child non-leakage" is
-partially covered. `test_sibling_subproofs_can_reuse_the_same_label`,
+now mostly covered. `test_sibling_subproofs_can_reuse_the_same_label`,
 `test_sibling_subproofs_can_reuse_the_same_arbitrary_name`,
 `test_sibling_subproofs_can_reuse_the_same_compound_declaration_name`,
 `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`,
@@ -181,15 +185,25 @@ and `test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_c
 (all in `pytest_tests/test_elaboration.py`) cover sibling isolation and
 non-leakage across every binding kind now dual-written, and every one of
 them was confirmed to actually fail when the corresponding scoping was
-reverted (none are vacuous). A dedicated "parent visibility" test at this
-integration level still isn't meaningfully possible: nothing in
-elaboration *reads* from `self.context`, and `self.declarations`'s reads
-aren't scoped any differently than before -- only its writes changed --
-so there's nothing for such a test to exercise beyond `ProofContext.
-child()`'s/`DeclarationScope.child()`'s own inheritance, which their
-respective test files already cover directly. Revisit once "resolve ...
-references through the context" gives elaboration an actual reason to
-look something up through an inherited scope.
+reverted (none are vacuous).
+
+Parent visibility for declarations is now covered too, once
+`lookup_declaration` gave elaboration an actual reason to consult an
+inherited scope:
+`test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof`
+declares a carrier at the top level and uses it from inside a nested
+subproof's compound declaration, and was confirmed to fail specifically
+when the parent link itself was severed (a context created fresh instead
+of via `.child()`), isolating exactly the property this test is meant to
+catch from the scoping-exists-at-all property the non-leakage tests
+already cover.
+
+Parent visibility for *labels* remains untestable for the same reason it
+remains unresolved: nothing yet reads a label through `self.context` for
+real (only writes happen), and that's exactly what's blocked on the
+shadowing question below -- once it's settled and label resolution moves
+over, this note should be revisited the same way the declaration one just
+was.
 
 ## Phase 3 — theorem and lemma semantics
 
