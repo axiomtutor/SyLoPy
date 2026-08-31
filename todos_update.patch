@@ -1,59 +1,73 @@
---- a/todos.txt	2026-08-28 20:21:26.258081757 +0000
-+++ b/todos.txt	2026-08-28 20:21:09.158250974 +0000
-@@ -81,7 +81,11 @@
-       (declaration half done; label half blocked -- see below).
- - [x] Pass child contexts through recursive nested-subproof elaboration.
- - [ ] Preserve source origins and existing elaborated core representations.
--- [ ] Add end-to-end tests proving parent visibility and child non-leakage.
-+- [ ] Add end-to-end tests proving parent visibility and child non-leakage
-+      (non-leakage fully covered, every binding kind; declaration
-+      parent-visibility now covered too; label parent-visibility still
-+      blocked on the same shadowing question as the rest of the label
-+      half -- see below).
+--- a/todos.txt	2026-08-30 18:16:11.305670861 +0000
++++ b/todos.txt	2026-08-30 18:15:20.137086258 +0000
+@@ -209,7 +209,7 @@
  
- ### Phase 2 implementation notes
+ - [x] Define exactly when theorem/lemma bindings enter a context.
+ - [x] Define theorem/lemma dependency and visibility rules.
+-- [ ] Define promotion semantics, including when a proof produces a
++- [x] Define promotion semantics, including when a proof produces a
+       promotable top-level conclusion.
+ - [x] Add positive and negative regression tests for theorem visibility and
+       dependencies.
+@@ -257,19 +257,39 @@
+ precise, checked specification of "never before, never retroactively"
+ rather than as a discriminating regression guard.
  
-@@ -173,7 +177,7 @@
- references through the context" starts.
- 
- "Add end-to-end tests proving parent visibility and child non-leakage" is
--partially covered. `test_sibling_subproofs_can_reuse_the_same_label`,
-+now mostly covered. `test_sibling_subproofs_can_reuse_the_same_label`,
- `test_sibling_subproofs_can_reuse_the_same_arbitrary_name`,
- `test_sibling_subproofs_can_reuse_the_same_compound_declaration_name`,
- `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`,
-@@ -181,15 +185,25 @@
- (all in `pytest_tests/test_elaboration.py`) cover sibling isolation and
- non-leakage across every binding kind now dual-written, and every one of
- them was confirmed to actually fail when the corresponding scoping was
--reverted (none are vacuous). A dedicated "parent visibility" test at this
--integration level still isn't meaningfully possible: nothing in
--elaboration *reads* from `self.context`, and `self.declarations`'s reads
--aren't scoped any differently than before -- only its writes changed --
--so there's nothing for such a test to exercise beyond `ProofContext.
--child()`'s/`DeclarationScope.child()`'s own inheritance, which their
--respective test files already cover directly. Revisit once "resolve ...
--references through the context" gives elaboration an actual reason to
--look something up through an inherited scope.
-+reverted (none are vacuous).
+-"Define promotion semantics, including when a proof produces a promotable
+-top-level conclusion" is left unchecked deliberately: `promote_theorem`
+-and `_top_level_derived_formulas` (`ProofLogic.py`) already implement and
+-partially document this (a promotable conclusion is the last top-level
+-formula justified by a `'rule'`/`'rule_below'`/`'rule_hybrid'` tag,
+-explicitly excluding premises and declarations), predating this phase's
+-work -- nothing here changed or added to that logic, so checking this box
+-would overclaim. Revisit as its own task: read that logic critically for
+-edge cases (a proof that derives nothing at the top level but only inside
+-a subproof; a proof whose intended theorem isn't its literal final line,
+-which `promote_theorem`'s explicit `conclusion=` parameter already has an
+-escape hatch for) and decide whether it needs anything beyond what's
+-already there.
++The two edge cases flagged above were both checked empirically, not just
++reasoned about, with different outcomes:
 +
-+Parent visibility for declarations is now covered too, once
-+`lookup_declaration` gave elaboration an actual reason to consult an
-+inherited scope:
-+`test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof`
-+declares a carrier at the top level and uses it from inside a nested
-+subproof's compound declaration, and was confirmed to fail specifically
-+when the parent link itself was severed (a context created fresh instead
-+of via `.child()`), isolating exactly the property this test is meant to
-+catch from the scoping-exists-at-all property the non-leakage tests
-+already cover.
++- A proof deriving *more than one* top-level formula, whose `### then
++  ...` line names which one is the real theorem, is a genuine bug that
++  was fixed: `promote_theorem`'s default (the literal last top-level
++  derived formula) silently promoted the *wrong* conclusion whenever the
++  stated one wasn't the last line, even though `run_multi_proof_file`
++  already had `case.stated_conclusion` in hand and used it for the
++  `conclusion_is_derived` check immediately above -- it just never
++  passed that value through to `promote_theorem` itself. Fixed by doing
++  exactly that (`conclusion=case.stated_conclusion`); safe unconditionally
++  because reaching that call already means `conclusion_is_derived`
++  passed, so a non-`None` stated conclusion is always something the
++  proof actually derived. `test_promotion_honors_a_stated_conclusion_
++  that_is_not_the_final_line` (`pytest_tests/test_theorem_promotion_and_
++  set_theory.py`) reproduces the exact scenario that surfaced this and
++  was confirmed to fail without the fix.
++- A proof that validates while deriving *nothing* at its own top level
++  (all its real content sitting inside a standalone subproof block
++  nothing afterward ever cites) is *not* a gap: `promote_theorem` already
++  refuses with a clear, honest message, which is the correct behavior --
++  such a proof genuinely proves nothing at its own top level, unlike the
++  case above, where something true was silently attributed to the wrong
++  formula. Locked in as a regression guard, not left as an assumption,
++  via `test_promote_theorem_refuses_a_proof_whose_only_content_is_an_
++  uncited_standalone_subproof` (same file), so a future change to
++  `_top_level_derived_formulas` that started recursing into subproofs --
++  which would reopen exactly the silent-wrong-conclusion risk the first
++  bug above was -- would have to consciously break this test rather than
++  drift into it unnoticed.
 +
-+Parent visibility for *labels* remains untestable for the same reason it
-+remains unresolved: nothing yet reads a label through `self.context` for
-+real (only writes happen), and that's exactly what's blocked on the
-+shadowing question below -- once it's settled and label resolution moves
-+over, this note should be revisited the same way the declaration one just
-+was.
++Phase 3 is now complete.
  
- ## Phase 3 — theorem and lemma semantics
+ ## Phase 4 — remove duplicated lexical bookkeeping
  
+@@ -332,7 +352,7 @@
+ 
+ 1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
+ 2. [ ] Integrate `ProofContext` into elaboration.
+-3. [ ] Formalize theorem/lemma visibility, dependencies, and promotion.
++3. [x] Formalize theorem/lemma visibility, dependencies, and promotion.
+ 4. [ ] Remove duplicated lexical scope bookkeeping.
+ 5. [ ] Finish parser/elaborator legacy cleanup.
+ 6. [ ] Strengthen semantic and diagnostic regression coverage.

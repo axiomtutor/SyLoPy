@@ -1,0 +1,23 @@
+--- a/source/validate_all_proofs.py	2026-08-30 18:15:33.670774581 +0000
++++ b/source/validate_all_proofs.py	2026-08-30 12:52:06.580282054 +0000
+@@ -220,7 +220,19 @@
+                 )
+             if ok and case.title:
+                 try:
+-                    theorem_rule = pl.promote_theorem(case.title, proof)
++                    # `case.stated_conclusion`, when present, has already
++                    # been confirmed derived (the `conclusion_is_derived`
++                    # check above already failed `ok` otherwise) -- so
++                    # it's safe to hand to `promote_theorem` directly
++                    # rather than letting it default to the literal last
++                    # top-level derived formula, which silently promotes
++                    # the wrong conclusion the moment a proof derives more
++                    # than one thing and states which one is the real
++                    # theorem via a `### then ...` line that isn't its
++                    # final line.
++                    theorem_rule = pl.promote_theorem(
++                        case.title, proof, conclusion=case.stated_conclusion,
++                    )
+                 except ValueError as exc:
+                     print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
+                 else:
