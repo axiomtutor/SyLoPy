@@ -1,0 +1,62 @@
+--- a/pytest_tests/test_validator.py
++++ b/pytest_tests/test_validator.py
+@@ -2,7 +2,7 @@
+ 
+ import pytest
+ 
+-from .support import pl, fl, tl, atom, prop, c, v, fn, A, B, C, assert_valid, assert_invalid
++from .support import pl, fl, tl, pp, atom, prop, c, v, fn, A, B, C, assert_valid, assert_invalid
+ 
+ 
+ def test_label_scope_parent_visibility_and_child_isolation():
+@@ -18,6 +18,60 @@ def test_label_scope_parent_visibility_and_child_isolation():
+         _ = root["missing"]
+ 
+ 
++def test_label_scope_forbids_rebinding_within_the_same_scope():
++    root = pl.LabelScope()
++    root["1"] = A
++    with pytest.raises(KeyError):
++        root["1"] = B
++
++
++def test_label_scope_forbids_a_subproof_shadowing_an_enclosing_label():
++    root = pl.LabelScope()
++    root["1"] = A
++    child = root.child()
++    with pytest.raises(KeyError):
++        child["1"] = B
++
++
++def test_subproof_line_reusing_an_outer_label_is_rejected_with_its_own_category():
++    entries = [
++        ("1", A, ("premise",)),
++        (
++            "2",
++            fl.Implies(B, A),
++            ("rule_below", pl.ConditionalIntroductionRule()),
++            [
++                ("1", B, ("assume",)),  # collides with the outer premise labeled "1"
++                ("1.2", A, ("rule", pl.ReiterationRule(), ["1"])),
++            ],
++        ),
++    ]
++    assert_invalid(entries, pl.CATEGORY_LABEL_SHADOWING, label="1")
++
++
++def test_parsed_proof_text_rejects_a_subproof_reusing_an_outer_label():
++    text = (
++        "1. A. (Premise)\n"
++        "2. B -> A. (Conditional Introduction from subproof below)\n"
++        "begin subproof\n"
++        " 1. B. (Assumption)\n"
++        " 1.2. A. (Reiteration from 1)\n"
++        "end subproof\n"
++    )
++    entries, _ = pp.parse_proof_text(text)
++    ok, err = pl.Proof(entries, declarations=pl.infer_declarations([A, B])).check_detailed()
++    assert not ok
++    assert err.category == pl.CATEGORY_LABEL_SHADOWING
++
++
+ def test_subproof_outer_context_is_boundary_limited():

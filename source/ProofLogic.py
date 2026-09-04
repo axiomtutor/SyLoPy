@@ -729,6 +729,22 @@ class LabelScope:
     the copy-everything approach paid on *every* subproof, but here paid
     only when a label is actually looked up.
 
+    Shadowing is forbidden, not just scoped. Proof labels are unique
+    identifiers, not ordinary lexical variables: the dot-notation numbering
+    scheme (`2`, `2.1`, `1.2.1`, ...) already gives every line, at every
+    nesting depth, its own distinct string, so a legitimately-numbered
+    proof never needs one label to hide another. Assigning a label that is
+    already visible here or in any enclosing scope -- whether that is a
+    genuine re-declaration at this same level or a subproof reusing an
+    outer line's label -- therefore always indicates a proof-authoring
+    mistake (a typo'd or copy-pasted label), and raises `KeyError` rather
+    than silently shadowing the earlier binding for the remainder of this
+    scope. This mirrors `ProofContext.bind_label`/`DeclarationScope.declare`,
+    which already enforce the identical rule for theorem/assumption
+    bindings and declared symbols respectively; `LabelScope` used to be the
+    one exception that allowed silent shadowing, which was an open
+    question -- now resolved in favor of forbidding it everywhere.
+
     Example::
 
         >>> root = LabelScope()
@@ -739,6 +755,10 @@ class LabelScope:
         premise_A
         >>> '1.1' in root                  # never leaks back to the parent
         False
+        >>> sub['1'] = something_else      # '1' is already visible here
+        Traceback (most recent call last):
+            ...
+        KeyError: '1'
     """
     __slots__ = ("_local", "_parent")
 
@@ -747,6 +767,8 @@ class LabelScope:
         self._parent = parent
 
     def __setitem__(self, label: str, value: Any) -> None:
+        if label in self:
+            raise KeyError(label)
         self._local[label] = value
 
     def __getitem__(self, label: str) -> Any:
@@ -767,8 +789,9 @@ class LabelScope:
     def child(self) -> "LabelScope":
         """Open a new, nested scope for a subproof. Labels set on the
         child are invisible to `self` and any of `self`'s ancestors;
-        labels already visible from `self` remain visible (read-only)
-        from the child.
+        labels already visible from `self` remain visible (read-only) from
+        the child, and cannot be reassigned there -- see the class
+        docstring's note on forbidding shadowing.
         """
         return LabelScope(parent=self)
 
@@ -2596,6 +2619,7 @@ CATEGORY_MISSING_SUBPROOF = "missing_subproof"              # 'rule_below' with 
 CATEGORY_UNRECOGNIZED_RULE = "unrecognized_rule"            # rule instance isn't part of this Proof's rule set
 CATEGORY_ARITY_MISMATCH = "arity_mismatch"                  # wrong number of cited lines for this rule
 CATEGORY_BAD_REFERENCE = "bad_reference"                    # cited label(s) don't resolve to anything in scope
+CATEGORY_LABEL_SHADOWING = "label_shadowing"                # a label reuses one already visible in this or an enclosing scope
 CATEGORY_RULE_MISMATCH = "rule_mismatch"                    # cited lines resolve fine, but the rule rejects them
 CATEGORY_RULE_RAISED = "rule_raised"                        # rule.applies() itself threw
 CATEGORY_UNDECLARED_SYMBOL = "undeclared_symbol"      # symbol used without a visible declaration
@@ -2857,8 +2881,9 @@ class ProofValidator:
                 if not ok:
                     return False, err, None
                 seen.append(sp_rec)
-                if entry.label:
-                    labels[entry.label] = sp_rec
+                err = self._bind_label(labels, entry.label, sp_rec, block_label, sidx)
+                if err:
+                    return False, err, None
                 continue
 
             err = self._validate_line(entry, sidx, block_label, is_subproof, seen, labels, declarations, outer_context)
@@ -2937,8 +2962,9 @@ class ProofValidator:
                                  "formula is not closed (has a free variable)")
 
             seen.append(phi)
-            if label:
-                labels[label] = phi
+            err = self._bind_label(labels, label, phi, block_label, sidx)
+            if err:
+                return err
             return None
 
         if phi is None:
@@ -2972,8 +2998,9 @@ class ProofValidator:
                     return err
 
             seen.extend(phi)
-            if label:
-                labels[label] = list(phi)
+            err = self._bind_label(labels, label, list(phi), block_label, sidx)
+            if err:
+                return err
             return None
 
         if not isinstance(phi, fl.Formula):
@@ -3031,8 +3058,34 @@ class ProofValidator:
             return err
 
         seen.append(phi)
-        if label:
-            labels[label] = phi
+        err = self._bind_label(labels, label, phi, block_label, sidx)
+        if err:
+            return err
+        return None
+
+    def _bind_label(self, labels: LabelScope, label: Optional[str], value: Any,
+                    block_label: Optional[str], sidx: int) -> Optional[ValidationError]:
+        """Register `value` under `label` in `labels`; a no-op when `label`
+        is falsy (an unlabeled entry has nothing to bind). Converts the
+        `KeyError` `LabelScope.__setitem__` raises for an already-visible
+        label into a structured `ValidationError` instead of letting it
+        propagate as an uncaught exception -- the same pattern
+        `_register_declarations` uses for `DeclarationScope.declare`'s
+        analogous `KeyError`. See `LabelScope`'s docstring for why a
+        collision here always means a proof-authoring mistake (a
+        duplicated or copy-pasted label) rather than intentional
+        shadowing.
+        """
+        if not label:
+            return None
+        try:
+            labels[label] = value
+        except KeyError:
+            return _mk_error(
+                label, block_label, sidx, CATEGORY_LABEL_SHADOWING,
+                f"label '{label}' is already bound in this scope or an enclosing one; "
+                "proof labels must be unique at every nesting level",
+            )
         return None
 
     def _register_declarations(self, declarations_to_add: List[Declaration], scope: DeclarationScope,
