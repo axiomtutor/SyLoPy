@@ -3,7 +3,7 @@
 
 import pytest
 
-from .support import pl, fl, tl, atom, prop, c, v, fn, A, B, C, assert_valid, assert_invalid
+from .support import pl, fl, tl, pp, atom, prop, c, v, fn, A, B, C, assert_valid, assert_invalid
 
 
 def test_label_scope_parent_visibility_and_child_isolation():
@@ -17,6 +17,24 @@ def test_label_scope_parent_visibility_and_child_isolation():
     assert "1.1" not in root
     with pytest.raises(KeyError):
         _ = root["missing"]
+
+
+def test_label_scope_rejects_shadowing_at_any_visible_level():
+    root = pl.LabelScope()
+    root["1"] = A
+    with pytest.raises(KeyError):
+        root["1"] = B  # re-setting the same label in the same scope
+
+    child = root.child()
+    with pytest.raises(KeyError):
+        child["1"] = B  # shadowing a label only visible via the parent
+
+    # A label a scope has never seen, including one belonging to a
+    # sibling scope rather than an ancestor, is still fine to set.
+    sibling = root.child()
+    sibling["1.1"] = C
+    child["1.1"] = C
+    assert child["1.1"] is C and sibling["1.1"] is C
 
 
 def test_subproof_outer_context_is_boundary_limited():
@@ -259,6 +277,68 @@ def test_closed_subproof_labels_do_not_escape():
         ("2", A, ("rule", pl.ReiterationRule(), ["1.2"])),
     ]
     assert_invalid(entries, pl.CATEGORY_BAD_REFERENCE, label="2")
+
+
+def test_duplicate_top_level_label_is_rejected_as_shadowing():
+    entries = [
+        ("1", A, ("premise",)),
+        ("1", B, ("premise",)),
+    ]
+    assert_invalid(entries, pl.CATEGORY_LABEL_SHADOWING, label="1")
+
+
+def test_inline_subproof_line_shadowing_an_outer_label_is_rejected():
+    # The subproof's own first line reuses the outer premise's label -- the
+    # validator must catch this on the subproof's own opening line, before
+    # ever reaching its second line's citation.
+    entries = [
+        ("1", A, ("premise",)),
+        (
+            "2",
+            fl.Implies(B, B),
+            ("rule_below", pl.ConditionalIntroductionRule()),
+            [
+                ("1", B, ("assume",)),
+                ("1.2", B, ("rule", pl.ReiterationRule(), ["1"])),
+            ],
+        ),
+    ]
+    assert_invalid(entries, pl.CATEGORY_LABEL_SHADOWING, label="1")
+
+
+def test_standalone_subproof_own_label_shadowing_outer_label_is_rejected():
+    # A standalone ("label", "subproof", [...]) block's *own* label is
+    # committed in _validate_block, a different call site than the other
+    # shadowing tests above exercise.
+    entries = [
+        ("1", fl.Or(A, B), ("premise",)),
+        ("1", "subproof", [
+            ("1.1", A, ("assume",)),
+            ("1.2", C, ("premise",)),
+        ]),
+    ]
+    assert_invalid(entries, pl.CATEGORY_LABEL_SHADOWING, label="1")
+
+
+def test_parsed_proof_text_rejects_a_subproof_reusing_an_outer_label():
+    # End-to-end through the real surface parser, not just hand-built
+    # entries. ProofContext is already dual-written during elaboration
+    # (see _ElaborationContext.elaborate_entry in ProofParser.py) and
+    # forbids this exact shadowing itself, so it surfaces here as an
+    # ElaborationError *before* the entries ever reach ProofLogic.Proof --
+    # LabelScope's own CATEGORY_LABEL_SHADOWING rejection is the kernel's
+    # independent backstop for entries built by hand or by any other
+    # front end, which the other tests above exercise directly.
+    text = (
+        "1. A. (Premise)\n"
+        "2. B -> A. (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 1. B. (Assumption)\n"
+        " 1.2. A. (Reiteration from 1)\n"
+        "end subproof\n"
+    )
+    with pytest.raises(pp.ElaborationError, match="already used earlier"):
+        pp.parse_proof_text(text)
 
 
 def test_standalone_subproof_can_be_cited_by_disjunction_elimination():
