@@ -79,7 +79,7 @@ migration is completed and covered by end-to-end regression tests.
 - [x] Register assumptions and arbitrary bindings through the context.
 - [x] Resolve declaration and label references through the context.
 - [x] Pass child contexts through recursive nested-subproof elaboration.
-- [ ] Preserve source origins and existing elaborated core representations.
+- [x] Preserve source origins and existing elaborated core representations.
 - [x] Add end-to-end tests proving parent visibility and child non-leakage.
 
 ### Phase 2 implementation notes
@@ -191,6 +191,29 @@ actually needed non-leakage *for*, unlike the other binding kinds, where
 non-leakage was only ever a defensive check with nothing yet depending
 on it.
 
+"Preserve source origins and existing elaborated core representations"
+was never a missing feature so much as an invariant the whole dual-write
+approach depends on: every `self.context.*` call added throughout this
+migration sits *alongside* `_elaborate_entry_impl`'s existing
+`register_origin`/`self.formula_by_label`/return-value construction,
+never inside it, so none of it can change what `elaborate_proof` actually
+returns. The pre-existing SetTheory-sugar tests
+(`test_subset_proof_elaborates_to_ug_then_conditional_introduction`,
+`test_synthetic_freshness_failure_maps_back_to_subset_line`) already
+exercised this incidentally throughout every commit of this phase, since
+"Subset proof below" elaborates through the identical
+`self.context`-touching path. `test_proof_context_dual_write_does_not_
+disturb_origins_or_core_entry_shape` now pins the property down directly
+and explicitly, against a proof exercising every binding kind the
+migration touches (declare, arbitrary, a nested `rule_below` subproof) in
+one pass, rather than relying only on incidental coverage.
+
+**Phase 2 is now complete.** All seven checklist items above are done;
+`ProofContext` is the authoritative source for every declaration and
+label reference elaboration resolves, both structures agree on shadowing
+policy, and the migration provably didn't disturb origin tracking or the
+core entry representation along the way.
+
 ## Phase 3 — theorem and lemma semantics
 
 - [ ] Define exactly when theorem/lemma bindings enter a context.
@@ -260,7 +283,7 @@ on it.
 ## Recommended implementation order
 
 1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
-2. [ ] Integrate `ProofContext` into elaboration.
+2. [x] Integrate `ProofContext` into elaboration.
 3. [ ] Formalize theorem/lemma visibility, dependencies, and promotion.
 4. [ ] Remove duplicated lexical scope bookkeeping.
 5. [ ] Finish parser/elaborator legacy cleanup.

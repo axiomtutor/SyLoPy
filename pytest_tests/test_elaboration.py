@@ -395,3 +395,50 @@ def test_existence_no_longer_leaks_a_sibling_subproofs_reused_label():
     )
     with pytest.raises(pe.ElaborationError, match="unknown label '2.2'"):
         pp.parse_proof_text(text)
+
+
+# --------------------------------------------------------------------
+# ProofContext integration, phase 2, "preserve source origins and
+# existing elaborated core representations": not a missing feature so
+# much as an invariant the whole dual-write approach depends on. Every
+# self.context.* call added throughout this migration sits alongside
+# _elaborate_entry_impl's existing register_origin/self.formula_by_label/
+# return-value construction, never inside it, so none of it can change
+# what elaborate_proof actually returns -- the pre-existing SetTheory-sugar
+# tests above (test_subset_proof_elaborates_to_ug_then_conditional_
+# introduction, test_synthetic_freshness_failure_maps_back_to_subset_line)
+# already exercise this incidentally, since "Subset proof below" elaborates
+# through the identical self.context-touching path. This pins the property
+# down directly and explicitly, against a proof exercising every binding
+# kind the migration touches (declare, arbitrary, a nested rule_below
+# subproof) in one pass.
+# --------------------------------------------------------------------
+
+def test_proof_context_dual_write_does_not_disturb_origins_or_core_entry_shape():
+    text = (
+        "1. Let A be a closed formula. (Declare)\n"
+        "2. forall x, x = x. (Universal Generalization from subproof below)\n"
+        "begin subproof\n"
+        " 2.1. let c be arbitrary. (Fresh Variable)\n"
+        " 2.2. c = c. (Reflexivity)\n"
+        "end subproof\n"
+    )
+    entries, _ = pp.parse_proof_text(text)
+
+    assert [e[0] for e in entries] == ["1", "2"]
+    assert entries[0][1] is None
+    assert entries[0][2][0] == "declare"
+    assert [d.name for d in entries[0][2][1]] == ["A"]
+    assert entries[1][0] == "2"
+    assert isinstance(entries[1][2][1], pl.UniversalGeneralizationRule)
+    inner = entries[1][3]
+    assert [line[0] for line in inner] == ["2.1", "2.2"]
+    assert inner[0][2] == ("arbitrary",)
+    assert isinstance(inner[1][2][1], pl.ReflexivityRule)
+
+    assert set(entries.origin_by_label) == {"1", "2", "2.1", "2.2"}
+    assert all(not origin.synthetic for origin in entries.origin_by_label.values())
+    assert entries.origin_by_label["2.1"].span.original_text.strip() == "2.1. let c be arbitrary. (Fresh Variable)"
+
+    ok, err = pl.Proof(entries).check_detailed()
+    assert ok, err
