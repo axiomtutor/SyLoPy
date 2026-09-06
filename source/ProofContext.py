@@ -318,6 +318,28 @@ class ProofContext:
             binding.formula == formula for binding in self.visible_assumptions()
         )
 
+    def lookup_reference(self, name: str) -> Any:
+        """Resolve `name` in the shared proof-reference namespace -- a
+        proof-line label (`bind_label`) or a labeled assumption
+        (`assume(..., label=...)`) -- returning whatever it denotes: the
+        bound value, or the assumed formula. Returns `None` if `name` is
+        visible as neither.
+
+        Labels and labeled assumptions already share one collision domain
+        (`_label_name_available` checks both before either `bind_label` or
+        `assume` accepts a name), so a given name can only ever be bound as
+        one of the two across the whole visible chain -- checking both here
+        and returning whichever answers is a lookup over that same shared
+        namespace, not an arbitrary tie-break between two independent ones.
+        """
+        label_binding = self.lookup_label(name)
+        if label_binding is not None:
+            return label_binding.value
+        assumption_binding = self.lookup_assumption(name)
+        if assumption_binding is not None:
+            return assumption_binding.formula
+        return None
+
     # ------------------------------------------------------------------
     # Arbitrary/fresh objects
     # ------------------------------------------------------------------

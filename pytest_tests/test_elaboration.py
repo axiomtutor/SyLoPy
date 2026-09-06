@@ -334,3 +334,64 @@ def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof
     # "X" is still visible at the root, exactly as before -- it was never
     # local to the subproof to begin with.
     assert context.context.lookup_declaration("X") is not None
+
+
+# --------------------------------------------------------------------
+# ProofContext integration, phase 2, "resolve declaration and label
+# references through the context" (label half): LabelScope now forbids
+# label shadowing exactly like ProofContext.bind_label always has (see
+# ProofLogic.LabelScope's docstring), which is what the declaration-half
+# docstring above was waiting on. try_elaborate_existence's "Existence
+# from L" citation is the one place elaboration reads a label's content
+# rather than only writing one, so it's the one place this migration has
+# anything to exercise.
+# --------------------------------------------------------------------
+
+def test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_subproof():
+    # The label half of the same "parent visibility" property the
+    # declaration test above covers: an existential established outside a
+    # subproof must still be citable by "Existence from L" *inside* it.
+    text = (
+        "1. exists x, P(x). (Premise)\n"
+        "2. A -> A. (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 2.1. A. (Assumption)\n"
+        " 2.2. Define z = a. (Existence from 1)\n"
+        " 2.3. A. (Reiteration from 2.1)\n"
+        "end subproof\n"
+    )
+    entries, _ = pp.parse_proof_text(text)  # must not raise
+    assert entries[1][0] == "2"
+
+
+def test_existence_no_longer_leaks_a_sibling_subproofs_reused_label():
+    # Regression test for a real bug the migration fixes, not just an
+    # equivalence check: try_elaborate_existence used to resolve its
+    # citation through the flat, never-subproof-scoped
+    # context.formula_by_label dict. Two sibling branches are free to
+    # reuse the same label (see LabelScope's docstring -- sibling scopes
+    # aren't in an ancestor/descendant relationship, so this is legitimate,
+    # not itself an error), but the flat dict had no notion of "which
+    # branch is currently open": whichever branch happened to be
+    # elaborated *first* left its value sitting under that label, where a
+    # same-named citation from an unrelated *second* branch would silently
+    # pick it up. Confirmed empirically by reverting just this lookup back
+    # to context.formula_by_label and observing the second branch's
+    # "Existence from 2.2" resolve to the first branch's "exists x, S(x)."
+    # instead of correctly failing to find "2.2" in scope at all.
+    text = (
+        "1. P or Q. (Premise)\n"
+        "2. R. (Proof by Cases from 1, subproofs below)\n"
+        "begin subproof\n"
+        " 2.1. P. (Case)\n"
+        " 2.2. exists x, S(x). (Premise)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+        "begin subproof\n"
+        " 2.1. Q. (Case)\n"
+        " 2.2. Define z = a. (Existence from 2.2)\n"
+        " 2.3. R. (Modus Ponens from 1, 2.1)\n"
+        "end subproof\n"
+    )
+    with pytest.raises(pe.ElaborationError, match="unknown label '2.2'"):
+        pp.parse_proof_text(text)

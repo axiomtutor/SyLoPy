@@ -77,15 +77,10 @@ migration is completed and covered by end-to-end regression tests.
 - [x] Register declarations through `ProofContext.declare()`.
 - [x] Register proof-line labels through `ProofContext.bind_label()`.
 - [x] Register assumptions and arbitrary bindings through the context.
-- [ ] Resolve declaration and label references through the context
-      (declaration half done; label half blocked -- see below).
+- [x] Resolve declaration and label references through the context.
 - [x] Pass child contexts through recursive nested-subproof elaboration.
 - [ ] Preserve source origins and existing elaborated core representations.
-- [ ] Add end-to-end tests proving parent visibility and child non-leakage
-      (non-leakage fully covered, every binding kind; declaration
-      parent-visibility now covered too; label parent-visibility still
-      blocked on the same shadowing question as the rest of the label
-      half -- see below).
+- [x] Add end-to-end tests proving parent visibility and child non-leakage.
 
 ### Phase 2 implementation notes
 
@@ -159,51 +154,42 @@ by `elaborate_proof`'s separate feed into `DiscreteMath.relation_rule_set`,
 `context.declarations.declarations_here()` -- a different concern from
 resolving a reference, not migrated here).
 
-The *label* half is still blocked on the same open question as before:
+The *label* half was blocked on one open policy question, now settled:
 
-Still open: `ProofContext.bind_label` refuses to let a label shadow one
+Resolved: `ProofContext.bind_label` refused to let a label shadow one
 already visible in an enclosing scope (see
 `test_each_namespace_rejects_duplicates_across_visible_scopes` in
-`test_proof_context.py`), while the kernel's own `LabelScope` currently
-*permits* that shadowing silently -- a child scope's local dict entry just
-overrides the parent's for lookups made from inside it, no error raised.
-No fixture in the current corpus shadows a label this way, so the
-dual-write is safe today, but this is a real policy divergence to settle
-deliberately, not by default, before `ProofContext` can drive citation
-resolution: either `LabelScope` should also forbid shadowing (plausibly
-the right call -- a proof shadowing a line label is far more likely a
-mistake than an intentional pattern), or `ProofContext` needs an explicit
-shadowing-permitted mode. Undecided; needs a call before "resolve ...
-references through the context" starts.
+`test_proof_context.py`), while the kernel's own `LabelScope` used to
+*permit* that shadowing silently -- a child scope's local dict entry just
+overrode the parent's for lookups made from inside it, no error raised.
+Settled in `LabelScope`'s favor adopting `ProofContext`'s stricter rule
+(the call the note here previously left open, reasoned through directly
+in `LabelScope`'s own docstring): subproof line numbers use dot notation,
+structurally distinct from every label visible outside that subproof, so
+no legitimate proof can ever produce a genuine collision -- a proof
+shadowing a line label is a proof error, not a pattern to accommodate.
+`LabelScope.__setitem__` now raises `KeyError` on a shadowed label,
+surfaced by `ProofValidator` as `CATEGORY_LABEL_SHADOWING`. With both
+structures agreeing, `_ElaborationContext.lookup_reference` now resolves
+`try_elaborate_existence`'s "Existence from L" citation through
+`ProofContext` instead of the flat, never-subproof-scoped
+`formula_by_label` dict it used to read directly -- which turned out to
+be a real bug fix, not just a migration: the flat dict let a citation
+from one subproof branch silently resolve a same-named label left behind
+by an unrelated *sibling* branch, whichever happened to elaborate first.
+See `test_existence_no_longer_leaks_a_sibling_subproofs_reused_label` in
+`test_elaboration.py`, confirmed against the reverted flat-dict lookup.
 
 "Add end-to-end tests proving parent visibility and child non-leakage" is
-now mostly covered. `test_sibling_subproofs_can_reuse_the_same_label`,
-`test_sibling_subproofs_can_reuse_the_same_arbitrary_name`,
-`test_sibling_subproofs_can_reuse_the_same_compound_declaration_name`,
-`test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`,
-and `test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_context`
-(all in `pytest_tests/test_elaboration.py`) cover sibling isolation and
-non-leakage across every binding kind now dual-written, and every one of
-them was confirmed to actually fail when the corresponding scoping was
-reverted (none are vacuous).
-
-Parent visibility for declarations is now covered too, once
-`lookup_declaration` gave elaboration an actual reason to consult an
-inherited scope:
-`test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof`
-declares a carrier at the top level and uses it from inside a nested
-subproof's compound declaration, and was confirmed to fail specifically
-when the parent link itself was severed (a context created fresh instead
-of via `.child()`), isolating exactly the property this test is meant to
-catch from the scoping-exists-at-all property the non-leakage tests
-already cover.
-
-Parent visibility for *labels* remains untestable for the same reason it
-remains unresolved: nothing yet reads a label through `self.context` for
-real (only writes happen), and that's exactly what's blocked on the
-shadowing question below -- once it's settled and label resolution moves
-over, this note should be revisited the same way the declaration one just
-was.
+now fully covered, including the label half:
+`test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_subproof`
+covers parent visibility (an existential from an enclosing scope is
+still citable via "Existence from L" inside a nested subproof), and
+`test_existence_no_longer_leaks_a_sibling_subproofs_reused_label`
+(described above) covers non-leakage -- the property this migration
+actually needed non-leakage *for*, unlike the other binding kinds, where
+non-leakage was only ever a defensive check with nothing yet depending
+on it.
 
 ## Phase 3 — theorem and lemma semantics
 

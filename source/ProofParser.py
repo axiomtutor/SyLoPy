@@ -1755,9 +1755,18 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     if not clauses:
         raise ElaborationError("'Define' with nothing to define", entry.span)
 
-    if citation_label not in context.formula_by_label:
+    # Resolved through ProofContext (see `_ElaborationContext.lookup_reference`)
+    # rather than the flat `context.formula_by_label` dict this used to read
+    # directly: that dict is never subproof-scoped, so two sibling branches
+    # reusing the same label (see LabelScope's docstring on why that's
+    # legitimate) could previously leak one branch's binding into a
+    # citation made from the *other* branch, simply because it happened to
+    # be elaborated first. `lookup_reference` walks the same ancestor chain
+    # `ProofValidator`/`LabelScope` would at validation time, so a label
+    # local to a closed sibling scope is correctly invisible here too.
+    cited_formula = context.lookup_reference(citation_label)
+    if cited_formula is None:
         raise ElaborationError(f"'Existence' cites unknown label {citation_label!r}", entry.span)
-    cited_formula = context.formula_by_label[citation_label]
     if not isinstance(cited_formula, fl.Exists):
         raise ElaborationError(
             f"'Existence from {citation_label}' needs an existential formula at that "
@@ -1883,7 +1892,8 @@ class _ElaborationContext:
         (`ProofContext`) rather than the legacy `self.declarations`
         (`DeclarationScope`) -- this is the declaration half of todos.txt's
         "resolve declaration and label references through the context"
-        step. Safe unconditionally: `self.declarations` and `self.context`
+        step (see `lookup_reference` below for the label half, now also
+        done). Safe unconditionally: `self.declarations` and `self.context`
         are seeded identically (see `__init__`), written identically
         (`register_declaration` dual-writes both), and scoped identically
         (`elaborate_subproof_body` gives both a child per subproof), so
@@ -1894,15 +1904,24 @@ class _ElaborationContext:
         directly, a separate concern from resolving a reference during
         elaboration -- so this is a narrower migration than retiring
         `self.declarations` outright.
-
-        The *label* half of "resolve ... references through the context"
-        remains undone: unlike declarations, `ProofContext.bind_label` and
-        the kernel's `LabelScope` disagree about whether shadowing is
-        legal (see `elaborate_entry`'s docstring), so switching label
-        resolution over here first needs that policy settled, not just an
-        equivalence check like this one.
         """
         return self.context.lookup_declaration(name)
+
+    def lookup_reference(self, name: str) -> Any:
+        """Resolve a proof-line-label or labeled-assumption reference
+        through `self.context` -- the label half of todos.txt's "resolve
+        declaration and label references through the context" step,
+        unblocked now that the kernel's `LabelScope` forbids label
+        shadowing exactly like `ProofContext.bind_label` always has (see
+        `ProofLogic.LabelScope`'s docstring): the two structures finally
+        agree on what's legal, the same equivalence `lookup_declaration`
+        above already established for declarations. Currently the only
+        caller is `try_elaborate_existence`'s "Existence from L" citation;
+        nothing else in this module resolves a label during elaboration
+        itself (as opposed to during kernel validation, where `LabelScope`
+        remains the sole authority regardless of this method's existence).
+        """
+        return self.context.lookup_reference(name)
 
     def register_declaration(self, declaration: pl.Declaration, span: SourceSpan) -> None:
         try:
@@ -1998,11 +2017,11 @@ class _ElaborationContext:
         confirmed to already agree on the underlying policy:
         `DeclarationScope.declare()` already walks its full parent chain
         via `lookup()` before raising, exactly like `ProofContext.declare()`
-        -- unlike labels, where the kernel's `LabelScope` permits
-        cross-scope shadowing that `ProofContext.bind_label` forbids (see
-        `elaborate_entry`'s docstring), there was no policy question to
-        settle here, only this implementation gap to close. Closing it is
-        what flips `test_sibling_subproofs_can_reuse_a_compound_declaration_name`
+        -- there was no policy question to settle for declarations, only
+        this implementation gap to close (labels went through the same
+        question and answer separately -- see `elaborate_entry`'s
+        docstring and `ProofLogic.LabelScope`'s). Closing it is what flips
+        `test_sibling_subproofs_can_reuse_a_compound_declaration_name`
         (formerly an `xfail`) to a genuine pass.
 
         `self.origin_by_label` and `self.formula_by_label` remain
@@ -2052,16 +2071,17 @@ class _ElaborationContext:
           * anything else -- `self.context.bind_label(label, formula)`,
             unchanged from before.
 
-        A collision here is a genuinely *new*, stricter check rather than
-        a defensive impossibility: `ProofContext`'s binding methods refuse
-        to let a name shadow one already visible in an enclosing scope
-        (see `test_each_namespace_rejects_duplicates_across_visible_scopes`
-        in `test_proof_context.py`), whereas the kernel's own `LabelScope`
-        currently permits label shadowing silently. No proof in the
-        current fixture corpus does this, but one that did would now be
-        rejected here, earlier and more clearly than before -- see this
-        module's docstring/todos.txt for this policy gap, which matters
-        once (not yet) `ProofContext` drives citation resolution.
+        A collision here used to be a genuinely *new*, stricter check than
+        the kernel's own `LabelScope` enforced, back when `LabelScope`
+        still permitted label shadowing silently -- see `ProofLogic.
+        LabelScope`'s docstring for why that was changed. The two now
+        agree: `ProofContext.bind_label`/`assume` reject a shadowed label
+        here, during elaboration, exactly as `LabelScope` would reject it
+        later, during kernel validation, if this dual-write didn't exist
+        at all. Rejecting it here just reports the problem earlier and
+        against the surface line directly, as an `ElaborationError`,
+        rather than waiting for `Proof.check_detailed()`'s
+        `CATEGORY_LABEL_SHADOWING`.
         """
         result = self._elaborate_entry_impl(entry)
         if (isinstance(result, tuple) and len(result) >= 3

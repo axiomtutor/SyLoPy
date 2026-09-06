@@ -128,6 +128,26 @@ def test_labels_and_assumption_labels_share_the_proof_reference_namespace():
         context2.bind_label("1", "P")
 
 
+def test_lookup_reference_reads_across_the_shared_proof_reference_namespace():
+    root = ProofContext()
+    root.bind_label("1", "P")
+    root.assume("Q", label="2.1")
+
+    assert root.lookup_reference("1") == "P"       # a plain label
+    assert root.lookup_reference("2.1") == "Q"      # a labeled assumption
+    assert root.lookup_reference("missing") is None
+
+    # Visible from a nested scope, the same as lookup_label/lookup_assumption.
+    child = root.child()
+    assert child.lookup_reference("1") == "P"
+    assert child.lookup_reference("2.1") == "Q"
+
+    # A label bound only in the child is not visible back in the parent.
+    child.bind_label("1.1", "R")
+    assert child.lookup_reference("1.1") == "R"
+    assert root.lookup_reference("1.1") is None
+
+
 def test_label_binding_and_theorem_binding_have_distinct_semantics():
     context = ProofContext()
     label = context.bind_label("1", "formula", kind="line")
