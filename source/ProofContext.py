@@ -4,13 +4,12 @@ The context is deliberately independent of parsing and inference-rule
 implementation. It owns the names and bindings that are visible at a point
 in a proof and provides child contexts for nested proof scopes.
 
-A child context inherits the parent's declarations, labels, theorems,
-and assumptions. Bindings created in the child never become visible in the
+A child context inherits the parent's declarations, labels, and
+assumptions. Bindings created in the child never become visible in the
 parent. The context uses explicit namespaces rather than treating every
 identifier as one global namespace:
 
 * declarations form the vocabulary namespace;
-* theorem/lemma names form the theorem namespace;
 * arbitrary bindings form the term-variable namespace;
 * proof-line labels and labeled assumptions share the proof-reference
   namespace.
@@ -50,16 +49,6 @@ class LabelBinding:
 
 
 @dataclass(frozen=True)
-class TheoremBinding:
-    """A named theorem or lemma made available to later proof work."""
-
-    name: str
-    value: Any
-    kind: str = "theorem"
-    source: Any = None
-
-
-@dataclass(frozen=True)
 class AssumptionBinding:
     """An assumption introduced by a particular proof scope."""
 
@@ -92,7 +81,6 @@ class ProofContext:
         "_parent",
         "_declarations",
         "_labels",
-        "_theorems",
         "_assumptions",
         "_assumption_labels",
         "_arbitrary",
@@ -102,7 +90,6 @@ class ProofContext:
         self._parent = parent
         self._declarations: Dict[str, Any] = {}
         self._labels: Dict[str, LabelBinding] = {}
-        self._theorems: Dict[str, TheoremBinding] = {}
         self._assumptions: List[AssumptionBinding] = []
         self._assumption_labels: Dict[str, AssumptionBinding] = {}
         self._arbitrary: Dict[str, ArbitraryBinding] = {}
@@ -152,9 +139,6 @@ class ProofContext:
 
     def _label_name_available(self, name: str) -> bool:
         return self.lookup_label(name) is None and self.lookup_assumption(name) is None
-
-    def _theorem_name_available(self, name: str) -> bool:
-        return self.lookup_theorem(name) is None
 
     def _arbitrary_name_available(self, name: str) -> bool:
         return self.lookup_arbitrary(name) is None
@@ -231,43 +215,6 @@ class ProofContext:
         context: Optional[ProofContext] = self
         while context is not None:
             for name, binding in context._labels.items():
-                if name not in seen:
-                    seen.add(name)
-                    yield binding
-            context = context._parent
-
-    # ------------------------------------------------------------------
-    # Theorems / lemmas
-    # ------------------------------------------------------------------
-
-    def bind_theorem(
-        self,
-        name: str,
-        value: Any,
-        *,
-        kind: str = "theorem",
-        source: Any = None,
-    ) -> TheoremBinding:
-        name = self._require_name(name)
-        if not self._theorem_name_available(name):
-            raise DuplicateBindingError(
-                f"theorem name {name!r} is already visible"
-            )
-        binding = TheoremBinding(name, value, kind, source)
-        self._theorems[name] = binding
-        return binding
-
-    def lookup_theorem(self, name: str) -> Optional[TheoremBinding]:
-        return self._visible("_theorems", self._require_name(name))
-
-    def theorems_here(self) -> List[TheoremBinding]:
-        return list(self._theorems.values())
-
-    def visible_theorems(self) -> Iterator[TheoremBinding]:
-        seen = set()
-        context: Optional[ProofContext] = self
-        while context is not None:
-            for name, binding in context._theorems.items():
                 if name not in seen:
                     seen.add(name)
                     yield binding
@@ -377,7 +324,6 @@ class ProofContext:
         return (
             self.lookup_declaration(name) is not None
             or self.lookup_label(name) is not None
-            or self.lookup_theorem(name) is not None
             or self.lookup_assumption(name) is not None
             or self.lookup_arbitrary(name) is not None
         )
@@ -394,18 +340,11 @@ class ProofContext:
             raise UnknownBindingError(f"undeclared name {name!r}")
         return declaration
 
-    def require_theorem(self, name: str) -> TheoremBinding:
-        binding = self.lookup_theorem(name)
-        if binding is None:
-            raise UnknownBindingError(f"unknown theorem {name!r}")
-        return binding
-
     def local_bindings(self) -> Dict[str, List[Any]]:
         """Return a diagnostic snapshot of bindings owned by this scope."""
         return {
             "declarations": list(self._declarations.values()),
             "labels": list(self._labels.values()),
-            "theorems": list(self._theorems.values()),
             "assumptions": list(self._assumptions),
             "arbitrary": list(self._arbitrary.values()),
         }

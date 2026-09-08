@@ -55,6 +55,36 @@ def test_universal_instantiation():
     assert not rule.applies([A], A)
 
 
+def test_universal_modus_ponens_accepts_both_citation_orders():
+    universal = fl.ForAll("x", fl.Implies(atom("P", v("x")), atom("Q", v("x"))))
+    minor = atom("P", c("a"))
+    conclusion = atom("Q", c("a"))
+    rule = pl.UniversalModusPonensRule()
+    assert rule.applies([universal, minor], conclusion)
+    assert rule.applies([minor, universal], conclusion)
+
+
+def test_universal_modus_ponens_reuses_the_same_universal_for_different_objects():
+    universal = fl.ForAll("x", fl.Implies(atom("P", v("x")), atom("Q", v("x"))))
+    rule = pl.UniversalModusPonensRule()
+    assert rule.applies([universal, atom("P", c("a"))], atom("Q", c("a")))
+    assert rule.applies([universal, atom("P", c("b"))], atom("Q", c("b")))
+
+
+def test_universal_modus_ponens_rejects_mismatched_or_malformed_inputs():
+    universal = fl.ForAll("x", fl.Implies(atom("P", v("x")), atom("Q", v("x"))))
+    rule = pl.UniversalModusPonensRule()
+    # Wrong object: the minor premise's witness must match the conclusion's.
+    assert not rule.applies([universal, atom("P", c("a"))], atom("Q", c("b")))
+    # Minor premise doesn't match the antecedent's shape at all.
+    assert not rule.applies([universal, atom("R", c("a"))], atom("Q", c("a")))
+    # The universal's body isn't a conditional -- nothing to modus-ponens with.
+    bare_universal = fl.ForAll("x", atom("P", v("x")))
+    assert not rule.applies([bare_universal, atom("P", c("a"))], atom("Q", c("a")))
+    # Wrong arity.
+    assert not rule.applies([universal], atom("Q", c("a")))
+
+
 def test_existential_introduction():
     conclusion = fl.Exists("x", fl.And(atom("P", v("x")), fl.Equals(v("x"), c("a"))))
     source = fl.And(atom("P", c("a")), fl.Equals(c("a"), c("a")))

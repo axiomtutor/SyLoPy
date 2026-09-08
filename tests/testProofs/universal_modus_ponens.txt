@@ -1,0 +1,25 @@
+
+# 1
+## Proof that
+### Given forall x, (P(x) -> Q(x)), P(a), and P(b),
+### Q(a) and Q(b) both follow -- spelled out the long way, one
+### Universal Instantiation and one Modus Ponens per object.
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. P(a) -> Q(a). (Universal Instantiation from 1)
+5. Q(a). (Modus Ponens from 2, 4)
+6. P(b) -> Q(b). (Universal Instantiation from 1)
+7. Q(b). (Modus Ponens from 3, 6)
+
+# 2
+## Proof that
+### The same result, using Universal Modus Ponens to skip the
+### intermediate instantiated-conditional line for each object.
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(b). (Universal Modus Ponens from 1, 3)

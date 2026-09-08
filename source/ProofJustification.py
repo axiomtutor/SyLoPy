@@ -29,6 +29,7 @@ def _alias_map() -> Dict[str, RuleFactory]:
             mapping[_normalize(alias)] = factory
     add(pl.UniversalInstantiationRule, "Universal Instantiation", "Universal Instantiation Rule")
     add(pl.UniversalGeneralizationRule, "Universal Generalization", "Universal Generalization Rule")
+    add(pl.UniversalModusPonensRule, "Universal Modus Ponens", "Universal Modus Ponens Rule")
     add(pl.ExistentialIntroductionRule, "Existential Introduction", "Existential Introduction Rule", "Existential Generalization")
     add(pl.ExistentialEliminationRule, "Existential Elimination", "Existential Elimination Rule", "Existential Instantiation")
     add(pl.ConjunctionEliminationRule, "Conjunction Elimination", "Conjunction Elimination Rule", "And Elimination", "And Elim")

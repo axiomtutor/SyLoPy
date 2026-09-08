@@ -62,9 +62,57 @@ relations actually declared in the proof.
 
 ### Theorem-to-rule promotion
 
-`ProofLogic.promote_theorem(name, proof)` turns an already-checked proof into
-an inference rule later proofs can cite by name. `MultiproofParser` can promote
-validated titled proofs automatically for later cases in the same file.
+`ProofLogic.promote_theorem(name, proof)` turns an already-checked proof
+into an inference rule later proofs can cite by name.
+`validate_all_proofs.run_multi_proof_file` promotes validated titled proofs
+(`# N: Title`) automatically for later cases in the same file.
+
+This is deliberately the *only* way one proof's result reaches another:
+proofs in a file do not share a lexical scope with each other, the same
+way proofs in a paper don't — a later proof cites an earlier one's result
+by name, not by inheriting its internal declarations, labels, or subproof
+structure. `promote_theorem` reflects that directly: it packages a proof's
+premises, conclusion, and generalized objects into a self-contained
+`TheoremRule`, decoupled from the derivation that produced it, so a later
+proof can cite it (`(The empty set subset theorem)`) for a *different*
+concrete object without anything else from the original proof still
+being around.
+
+### Reusing a fact within one proof
+
+*Within* a single proof, by contrast, nothing like `promote_theorem` is
+needed. Prove a general fact about a locally-arbitrary object the
+ordinary way — open a subproof with "let X be arbitrary", derive the
+fact, close it with Universal Generalization to get `forall X, (...)` —
+and Universal Instantiation already lets you specialize it to as many
+concrete objects as you want, as many times as you want, later in the
+same proof. The derivation's own subproof structure is still right there
+to instantiate against directly; there's nothing that needs packaging.
+
+`ProofLogic.UniversalModusPonensRule` exists purely to make that
+convenient, not to add capability: it bundles "Universal Instantiation,
+then Modus Ponens" into one citable step —
+
+```text
+1. forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. Q(a). (Universal Modus Ponens from 1, 2)
+```
+
+instead of the two-line version (`Universal Instantiation` to get
+`P(a) -> Q(a)`, then `Modus Ponens`) — the same way `AlgebraRule` bundles
+a congruence-closure search that Reflexivity/Symmetry/Transitivity could
+also express, just more verbosely. See
+`tests/testProofs/universal_modus_ponens.txt` for the same result proved
+both ways side by side.
+
+`ProofContext` (see `ProofContext.py`, `todos.txt`'s Phase 3) was briefly
+considered as a home for this instead — a context-bound theorem/lemma
+binding, visible for the rest of a proof the way declarations and labels
+already are. It turned out to have no job to do: once cross-proof reuse
+was settled as never sharing a context, the only case left was this
+within-proof one, and that case needs no new binding kind, only less
+typing per use.
 
 ## Parser architecture
 
@@ -141,8 +189,8 @@ ok, error = pp.check_proof_text(text)
 - `source/ProofParser.py` — public parsing and elaboration facade.
 - `source/ProofLogic.py` — core proof representation, rules, axioms, and
   validation.
-- `source/MultiproofParser.py` — sequential multi-proof parsing and theorem
-  promotion.
-- `source/validate_all_proofs.py` — enforced and informational fixture runner.
+- `source/validate_all_proofs.py` — the `# N` multi-proof container format,
+  cross-proof theorem promotion, and the enforced/informational fixture
+  runner.
 - `completion/run_tests.bash` — Bash completion for test-runner options and
   dynamically discovered suite names.

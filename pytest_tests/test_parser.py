@@ -101,6 +101,7 @@ def test_nested_quantifier_and_equality_parse():
         ("Hypothetical Syllogism from 1, 2", "rule", pl.HypotheticalSyllogismRule, ["1", "2"]),
         ("Disjunctive Syllogism from 1, 2", "rule", pl.DisjunctiveSyllogismRule, ["1", "2"]),
         ("Universal Instantiation from 2.1", "rule", pl.UniversalInstantiationRule, ["2.1"]),
+        ("Universal Modus Ponens from 1, 2", "rule", pl.UniversalModusPonensRule, ["1", "2"]),
         ("Universal Generalization from 2", "rule", pl.UniversalGeneralizationRule, ["2"]),
         ("Existential Introduction from 1", "rule", pl.ExistentialIntroductionRule, ["1"]),
         ("Existential Elimination from 1, 2", "rule", pl.ExistentialEliminationRule, ["1", "2"]),

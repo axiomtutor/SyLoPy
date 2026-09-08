@@ -4,9 +4,7 @@ from SyLoPy.source.ProofContext import (
     ArbitraryBinding,
     AssumptionBinding,
     DuplicateBindingError,
-    LabelBinding,
     ProofContext,
-    TheoremBinding,
     UnknownBindingError,
 )
 from SyLoPy.source.ProofLogic import Declaration, DeclarationKind
@@ -17,7 +15,6 @@ def test_child_inherits_parent_bindings_without_mutating_parent():
     declaration = Declaration("A", DeclarationKind.CLOSED_FORMULA)
     root.declare(declaration)
     root.bind_label("1", "A")
-    root.bind_theorem("T", "A")
     root.assume("A", label="a")
 
     child = root.child()
@@ -26,15 +23,12 @@ def test_child_inherits_parent_bindings_without_mutating_parent():
     assert child.depth == 1
     assert child.lookup_declaration("A") is declaration
     assert child.lookup_label("1").value == "A"
-    assert child.lookup_theorem("T").value == "A"
     assert child.lookup_assumption("a").formula == "A"
 
     child.bind_label("2", "B")
-    child.bind_theorem("U", "B")
     child.assume("B", label="b")
 
     assert root.lookup_label("2") is None
-    assert root.lookup_theorem("U") is None
     assert root.lookup_assumption("b") is None
 
 
@@ -75,28 +69,23 @@ def test_labels_are_explicitly_scoped():
 def test_visible_bindings_are_reported_nearest_scope_first():
     root = ProofContext()
     root.bind_label("1", "P")
-    root.bind_theorem("T", "P")
     root.declare(Declaration("P", DeclarationKind.CLOSED_FORMULA))
 
     child = root.child()
     child.bind_label("2", "Q")
-    child.bind_theorem("U", "Q")
     child.declare(Declaration("Q", DeclarationKind.CLOSED_FORMULA))
 
     assert [b.label for b in child.visible_labels()] == ["2", "1"]
-    assert [b.name for b in child.visible_theorems()] == ["U", "T"]
     assert [d.name for d in child.visible_declarations()] == ["Q", "P"]
 
 
 def test_namespaces_are_explicit_rather_than_globally_colliding():
     context = ProofContext()
     context.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
-    context.bind_theorem("A", "theorem-A")
     context.bind_arbitrary("A", "arbitrary-A")
     context.bind_label("A", "label-A")
 
     assert context.lookup_declaration("A").name == "A"
-    assert context.lookup_theorem("A").value == "theorem-A"
     assert context.lookup_arbitrary("A").value == "arbitrary-A"
     assert context.lookup_label("A").value == "label-A"
     assert context.contains("A")
@@ -148,19 +137,6 @@ def test_lookup_reference_reads_across_the_shared_proof_reference_namespace():
     assert root.lookup_reference("1.1") is None
 
 
-def test_label_binding_and_theorem_binding_have_distinct_semantics():
-    context = ProofContext()
-    label = context.bind_label("1", "formula", kind="line")
-    theorem = context.bind_theorem("T", "formula", kind="lemma")
-
-    assert isinstance(label, LabelBinding)
-    assert label.kind == "line"
-    assert isinstance(theorem, TheoremBinding)
-    assert theorem.kind == "lemma"
-    assert context.lookup_label("1") is label
-    assert context.lookup_theorem("T") is theorem
-
-
 def test_assumptions_preserve_order_and_label_and_formula():
     context = ProofContext()
     first = context.assume("P", label="2.1", kind="case")
@@ -203,7 +179,6 @@ def test_each_namespace_rejects_duplicates_across_visible_scopes():
     root = ProofContext()
     root.declare(Declaration("A", DeclarationKind.CLOSED_FORMULA))
     root.bind_label("1", "P")
-    root.bind_theorem("T", "P")
     root.bind_arbitrary("x")
     root.assume("Q", label="2")
     child = root.child()
@@ -215,8 +190,6 @@ def test_each_namespace_rejects_duplicates_across_visible_scopes():
     with pytest.raises(DuplicateBindingError):
         child.bind_label("2", "Q")
     with pytest.raises(DuplicateBindingError):
-        child.bind_theorem("T", "P")
-    with pytest.raises(DuplicateBindingError):
         child.bind_arbitrary("x")
 
 
@@ -226,8 +199,6 @@ def test_require_methods_distinguish_missing_bindings():
     with pytest.raises(UnknownBindingError):
         context.require_label("1")
     with pytest.raises(UnknownBindingError):
-        context.require_theorem("T")
-    with pytest.raises(UnknownBindingError):
         context.require_declaration("A")
 
 
@@ -235,8 +206,6 @@ def test_names_are_validated():
     context = ProofContext()
 
     with pytest.raises(ValueError):
-        context.bind_label(" ", "P")
-    with pytest.raises(ValueError):
-        context.bind_theorem("", "P")
+        context.bind_label(" ", "P")
     with pytest.raises(ValueError):
         context.lookup_label("")

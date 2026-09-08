@@ -406,7 +406,7 @@ def test_named_rule_placeholder_fails_without_type_rule():
 def test_default_rules_returns_fresh_instances_and_all_expected_names():
     r1 = pl.default_rules()
     r2 = pl.default_rules()
-    assert len(r1) == 23
+    assert len(r1) == 24
     assert all(a is not b for a, b in zip(r1, r2))
     assert {r.name for r in r1} >= {
         "ModusPonens", "ProofByContradiction", "UniversalInstantiation",

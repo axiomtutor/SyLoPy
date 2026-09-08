@@ -31,7 +31,9 @@ lexical scope from separate declaration/label bookkeeping.
       global namespace.
 - [x] Keep declarations in a vocabulary namespace and forbid declaration
       shadowing across visible scopes.
-- [x] Keep theorem/lemma names in their own namespace.
+- [x] Keep theorem/lemma names in their own namespace (later removed
+      entirely in Phase 3 once it turned out nothing needed it -- see
+      below).
 - [x] Keep arbitrary/fresh bindings in their own namespace.
 - [x] Make proof-line labels and labeled assumptions share a proof-reference
       namespace.
@@ -46,11 +48,12 @@ lexical scope from separate declaration/label bookkeeping.
 
 Implemented on `master` in commits `d2ded74` and `fdd74af`.
 
-`ProofContext` now has five explicitly separated categories of state:
+`ProofContext` now has four explicitly separated categories of state
+(originally five -- theorem/lemma bindings were removed in Phase 3, see
+below):
 
 - declarations;
 - proof-line labels;
-- theorem/lemma bindings;
 - assumptions plus a label index;
 - arbitrary/fresh bindings.
 
@@ -214,14 +217,80 @@ label reference elaboration resolves, both structures agree on shadowing
 policy, and the migration provably didn't disturb origin tracking or the
 core entry representation along the way.
 
-## Phase 3 — theorem and lemma semantics
+## Phase 3 — theorem and lemma semantics (resolved)
 
-- [ ] Define exactly when theorem/lemma bindings enter a context.
-- [ ] Define theorem/lemma dependency and visibility rules.
+- [x] Define exactly when theorem/lemma bindings enter a context.
+- [x] Define theorem/lemma dependency and visibility rules.
 - [ ] Define promotion semantics, including when a proof produces a
       promotable top-level conclusion.
-- [ ] Add positive and negative regression tests for theorem visibility and
+- [x] Add positive and negative regression tests for theorem visibility and
       dependencies.
+
+### Phase 3 implementation notes
+
+The premise behind this phase didn't survive contact with how real
+mathematical proofs actually work: proofs in a file don't share a
+lexical context with each other. A later proof cites an earlier one's
+*result* by name -- the way a paper cites Theorem 3 -- not by inheriting
+its internal scope. So `ProofContext` was never going to span more than
+one proof, which leaves only the within-*one*-proof case for a
+context-bound theorem/lemma binding to be for: reusing a fact proven
+about a locally-arbitrary object for several different concrete
+instances later in the same proof.
+
+That case turns out to need no new binding kind at all. It's already
+fully expressible with Universal Generalization (wrap the derivation in
+a subproof opening with "let X be arbitrary", generalize to
+`forall X, ...`) plus Universal Instantiation (instantiate at as many
+concrete objects as wanted, as many times as wanted). Confirmed
+empirically before concluding this, not just reasoned through: a
+locally-arbitrary derivation generalized once and instantiated for two
+different objects validates with the existing rule set alone.
+
+`ProofContext.bind_theorem`/`lookup_theorem`/`theorems_here`/
+`visible_theorems`/`require_theorem`/`TheoremBinding` have accordingly
+been removed entirely rather than wired into anything -- there was
+nothing left for them to do once (a) cross-proof reuse was settled as
+deliberately *not* sharing a context, which the already-working,
+completely separate `promote_theorem`/`TheoremRule` mechanism already
+handles (see the "Theorem-to-rule promotion" section of README.md), and
+(b) within-proof reuse needed no new binding kind at all. "Dependency and
+visibility rules" is consequently moot too -- there is no theorem/lemma
+context binding left to have rules for.
+
+The one real gap this phase surfaced: reusing a locally-general fact for
+several objects, while never *needing* new machinery, was tedious to
+write by hand (Universal Instantiation then Modus Ponens, one pair of
+lines per object). `ProofLogic.UniversalModusPonensRule` bundles that
+pair into one citable step -- `Universal Modus Ponens from L1, L2` -- the
+same convenience `AlgebraRule`/`SymmetryRule`/`TransitivityRule` already
+provide over more primitive derivations elsewhere in the kernel.
+`tests/testProofs/universal_modus_ponens.txt` proves the same result the
+long way and the short way side by side; `UniversalModusPonensRule`'s own
+docstring explains why this belongs to the kernel's ordinary
+label-citation machinery -- already correctly scoped and timed by
+`LabelScope` -- rather than to `ProofContext` at all. This is what
+satisfies the checklist's regression-test bullet above: coverage for the
+theorem/lemma-reuse *need* this phase was chasing, even though the
+mechanism that ended up satisfying it isn't a theorem/lemma binding.
+
+What's left of this phase is only the third checklist bullet, and it's
+unrelated to `ProofContext`: `promote_theorem`'s own defaults are worth
+deciding deliberately rather than leaving as incidental behavior --
+
+  - it silently promotes only the *last* top-level derived formula as
+    "the" theorem, discarding any other top-level fact a proof happens to
+    derive along the way, unless the caller passes `conclusion=`
+    explicitly;
+  - it only generalizes over top-level `OBJECT` declarations, never
+    predicates or functions -- deliberately, since
+    `ConstantGeneralizingMatcher` substitutes constant terms
+    structurally, and generalizing a predicate/function *symbol* would
+    need a different, harder mechanism, not a relaxed check here.
+
+This is a small, self-contained decision about one existing function's
+defaults, not an architectural question, and doesn't block anything else
+in this file -- pick it up whenever it matters for a real proof corpus.
 
 ## Phase 4 — remove duplicated lexical bookkeeping
 
@@ -277,6 +346,23 @@ core entry representation along the way.
 - [ ] Remove obsolete helpers, wrappers, dead imports, stale duplicate
       documentation, and one-time migration machinery when demonstrably
       superseded and covered by tests.
+      - Concrete instance found while adding UniversalModusPonensRule:
+        `ProofParser.py`'s own inline `parse_justification` (and
+        `parse_formula`, see `ProofParserPolicy.py`) are dead code at
+        runtime -- `SyLoPy/source/__init__.py` imports
+        `ProofParserPolicy`, which overwrites both on `ProofParser` the
+        moment the package loads, so the alias table actually consulted
+        for every real run is `ProofJustification._alias_map()`, not the
+        substring-matching version still sitting in `ProofParser.py`.
+        Confirmed via `pp.parse_justification.__module__ ==
+        "SyLoPy.source.ProofJustification"`. `source/test_parser.py`
+        (outside `pytest_tests/`, not collected by `pytest.ini`) tests the
+        old inline version's nonstandard precedence directly and is
+        itself stale for the same reason. Left alone for now (out of
+        scope for the change that found it) but worth a dedicated pass:
+        the inline `ProofParser.py` versions and `source/test_parser.py`
+        can likely be deleted outright once confirmed nothing still
+        imports them for their own sake.
 - [ ] Do not add large numbers of isolated mathematical rules while the proof
       context, elaboration, and validation interfaces are changing.
 
@@ -284,7 +370,9 @@ core entry representation along the way.
 
 1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
 2. [x] Integrate `ProofContext` into elaboration.
-3. [ ] Formalize theorem/lemma visibility, dependencies, and promotion.
+3. [x] Resolve theorem/lemma semantics -- no ProofContext binding needed
+       (see Phase 3); `promote_theorem`'s own default behavior remains a
+       small, separate, unblocking-nothing decision for whenever it matters.
 4. [ ] Remove duplicated lexical scope bookkeeping.
 5. [ ] Finish parser/elaborator legacy cleanup.
 6. [ ] Strengthen semantic and diagnostic regression coverage.

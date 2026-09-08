@@ -292,7 +292,7 @@ def collect_formulas_from_entries(entries: list, *, skip_self_declaring: bool = 
     """Every `Formula` referenced anywhere in `entries`, including inside
     nested and standalone subproofs, for feeding to `infer_declarations`.
 
-    Unlike `MultiproofParser._top_level_formulas`, this collects *every*
+    Unlike `validate_all_proofs._top_level_formulas`, this collects *every*
     formula regardless of how it was justified (premise, axiom, rule
     conclusion, ...), not just ones a proof actually derived -- inference
     needs to see every symbol the proof *uses*, not just what it proves.
@@ -1253,6 +1253,72 @@ class UniversalInstantiationRule(InferenceRule):
         earlier = candidates[0]
         matcher = FormulaMatcher(earlier.var)
         return matcher.match_formula(earlier.body, phi)
+
+
+class UniversalModusPonensRule(InferenceRule):
+    """Universal Modus Ponens: from `for all x, (P(x) -> Q(x))` and `P(t)`
+    (cited in either order), infer `Q(t)` directly, in one step --
+    Universal Instantiation followed by Modus Ponens, bundled the same
+    way SymmetryRule/TransitivityRule bundle a short Substitution
+    derivation: each already derivable from more primitive rules, made
+    directly citable so a proof doesn't have to spell out the
+    intermediate step every time.
+
+    Example (see tests/testProofs/universal_modus_ponens.txt for the full
+    worked comparison)::
+
+        1. forall x, (P(x) -> Q(x)). (Premise)
+        2. P(a). (Premise)
+        3. Q(a). (Universal Modus Ponens from 1, 2)
+
+    instead of::
+
+        3. P(a) -> Q(a). (Universal Instantiation from 1)
+        4. Q(a). (Modus Ponens from 2, 3)
+
+    This is what makes reusing a single locally-proven general fact for
+    several different concrete objects, within one proof, genuinely
+    convenient: prove `forall x, (Nat(x) -> P(x))` once -- Universal
+    Generalization over a subproof opening with a fresh arbitrary
+    constant, the ordinary way -- then cite it here directly for as many
+    concrete objects as needed, one line each, rather than a two-line
+    Instantiation-then-Ponens pair every time.
+
+    This is also why `ProofContext.bind_theorem`/`lookup_theorem` were
+    removed rather than wired in for this purpose (see todos.txt's
+    "theorem and lemma semantics" notes): the within-proof case this rule
+    targets -- reuse a fact proven about a locally-arbitrary object for
+    several different concrete instances, later in the same proof -- was
+    already fully expressible with Universal Generalization plus
+    Universal Instantiation; nothing about it needed a context-bound
+    name, only less typing per use. Reusing a fact *across separate
+    proofs* is a genuinely different problem (there is no shared subproof
+    structure left to instantiate against once one proof is finished and
+    a new one begins), which is exactly what `promote_theorem`/
+    `TheoremRule` remain for, untouched by any of this.
+
+    Matches via the same `FormulaMatcher` `UniversalInstantiationRule`
+    uses just above, matching the universal's whole body against a
+    *constructed* target `Implies(minor, phi)` instead of matching the
+    body against `phi` alone -- one call recovers the instantiating term
+    from the antecedent side and checks the consequent side is consistent
+    with that same term, in either citation order (matching every other
+    two-premise rule in this module).
+    """
+    name = "UniversalModusPonens"
+    premise_arity = 2
+
+    def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        if len(candidates) != 2:
+            return False
+        first, second = candidates
+        for universal, minor in ((first, second), (second, first)):
+            if not isinstance(universal, fl.ForAll) or not isinstance(universal.body, fl.Implies):
+                continue
+            matcher = FormulaMatcher(universal.var)
+            if matcher.match_formula(universal.body, fl.Implies(minor, phi)):
+                return True
+        return False
 
 
 def _term_occurs_in_term(needle: tl.Term, haystack: tl.Term) -> bool:
@@ -2318,7 +2384,7 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     for declarations; the same discipline applies here.
 
     `conclusion` defaults to the last top-level formula the proof actually
-    *derived* (see `MultiproofParser._top_level_formulas`'s docstring for
+    *derived* (see `validate_all_proofs._top_level_formulas`'s docstring for
     why "derived", not "premised", is the right notion); pass it
     explicitly for a proof whose intended theorem isn't simply its final
     line (e.g. one proving several things and stating the one that matters
@@ -2351,8 +2417,8 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
 
 def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
     """Every formula a top-level (non-subproof) entry actually derived by
-    inference, in order -- the same notion `MultiproofParser._top_level_formulas`
-    uses, reimplemented here so `ProofLogic` doesn't depend on `MultiproofParser`
+    inference, in order -- the same notion `validate_all_proofs._top_level_formulas`
+    uses, reimplemented here so `ProofLogic` doesn't depend on `validate_all_proofs`
     (the dependency runs the other way already).
     """
     derived_tags = {'rule', 'rule_below', 'rule_hybrid'}
@@ -2572,6 +2638,7 @@ def default_rules() -> List[InferenceRule]:
         HypotheticalSyllogismRule(),
         DisjunctiveSyllogismRule(),
         UniversalInstantiationRule(),
+        UniversalModusPonensRule(),
         UniversalGeneralizationRule(),
         ExistentialIntroductionRule(),
         ExistentialEliminationRule(),
