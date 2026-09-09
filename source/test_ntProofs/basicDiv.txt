@@ -3,25 +3,29 @@
 
 # 1 
 ## Proof that 
-### if a, b, c, are integers such that: a|b. a|c. 
-### then a|(b+c).
+### if a, b, c, are integers such that: a|b and a|c
+### then a|Plus(b, c)
 
-1. Let a, b, c be integers such that: a|b. a|c. (Premise)
-2. There exist m, n such that am = b and an = c. (Definition of Divisibility from 1)
-3. b+c = am+an = a(m+n). (Substitution from 2; algebra)
-4. m+n is an integer. (Closure of Integers from 2)
-5. a|(b+c). (Definition of Divisibility from 3, 4)
+1. Let a, b, c be integers such that: a|b and a|c. (Premise)
+2. (a|b and a|c) if and only if (exists m, n such that: b = Times(a, m) and c = Times(a, n)). (Definition)
+3. Let m, n be objects. (Declare)
+4. Exists m, n such that: b = Times(a, m) and c = Times(a, n). (Existential Elimination from 1)
+5. Plus(b, c) = Plus(Times(a, m), Times(a, n)). (Substitution from 4)
+6. Plus(b, c) = Times(a, Plus(m, n)). (Algebra from 5)
+7. a|Plus(b, c). (Existential Introduction from 6)
 
 # 2
 ## Proof that
-### if a, b, c, are integers such that: a|b and b|c.
-### then a|c.
+### if a|b and b|c
+### then a|c
 
-1. Let a, b, c be integers such that: a|b and b|c. (Premise)
-2. There exist m, n such that am = b and bn = c.  (Definition of Divisibility from 1)
-3. amn = c. (Substitution from 1)
-4. mn is an integer. (Closure of Integers from 2)
-5. a|c. (Definition of Divisibility from 3,4)
+1. Let a, b, c be any integers such that: a|b and b|c. (Premise)
+2. Let m, n be objects. (Declare)
+3. b = Times(a, m). (Existential Elimination from 1)
+4. c = Times(b, n). (Existential Elimination from 1)
+5. c = Times(Times(a, m), n). (Substitution from 4)
+6. c = Times(a, Times(m, n)). (Algebra from 5)
+7. a|c. (Existential Introduction from 6)
 
 
 

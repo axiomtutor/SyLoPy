@@ -985,6 +985,8 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
                 break
         if matched is not None:
             consumed, extra_decls, extra_formulas, extra_rules = matched
+            for decl in extra_decls:
+                context.register_declaration(decl, entry.span)
             declarations.extend(extra_decls)
             bundle.extend(extra_formulas)
             for rule in extra_rules:
@@ -999,14 +1001,19 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
             # that don't need any extra derived facts aren't forced to
             # find/write a recipe just to name a typed function), just
             # without any bundled range/behavior facts.
-            declarations.append(pl.Declaration(name=dc.names[0], kind=pl.DeclarationKind.FUNCTION,
-                                                arity=1, type_name=dc.descriptor.strip()))
+            decl = pl.Declaration(name=dc.names[0], kind=pl.DeclarationKind.FUNCTION,
+                                                arity=1, type_name=dc.descriptor.strip())
+            context.register_declaration(decl, entry.span)
+            declarations.append(decl)
         else:
             for name in dc.names:
                 if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
                     raise ElaborationError(f"Invalid declared symbol name: {name!r}", entry.span)
             kind, type_name = _declaration_kind_from_descriptor(dc.descriptor)
-            declarations.extend(pl.Declaration(name=name, kind=kind, type_name=type_name) for name in dc.names)
+            for name in dc.names:
+                decl = pl.Declaration(name=name, kind=kind, type_name=type_name)
+                context.register_declaration(decl, entry.span)
+                declarations.append(decl)
         i += 1
 
     context.register_origin(entry.label, entry.span)

@@ -20,6 +20,8 @@ import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.NatThry as nt
+import SyLoPy.source.NumberTheory as num_theory
+import SyLoPy.source.SetTheory as set_theory
 
 ROOT = _REPOSITORY_ROOT
 
@@ -43,9 +45,17 @@ INFORMATIONAL_DIRS = [
 
 _NAT_AXIOMS, _NAT_SCHEMA_RULES = pl.combine_types(nt.NAT_TYPE)
 _NAT_DECLARATIONS = pl.combine_type_declarations(nt.NAT_TYPE)
-BARE_PROOF_RULES = pl.default_rules() + _NAT_SCHEMA_RULES
-BARE_PROOF_AXIOMS = list(_NAT_AXIOMS)
-BARE_PROOF_DECLARATIONS = list(_NAT_DECLARATIONS)
+
+_INT_AXIOMS, _INT_SCHEMA_RULES = pl.combine_types(num_theory.INT_TYPE)
+_INT_DECLARATIONS = pl.combine_type_declarations(num_theory.INT_TYPE)
+
+_SET_RULES = set_theory.SET_THEORY_ENVIRONMENT.rules
+
+BARE_PROOF_RULES = (
+    pl.default_rules() + _NAT_SCHEMA_RULES + _INT_SCHEMA_RULES + _SET_RULES
+)
+BARE_PROOF_AXIOMS = list(_NAT_AXIOMS) + list(_INT_AXIOMS)
+BARE_PROOF_DECLARATIONS = list(_NAT_DECLARATIONS) + list(_INT_DECLARATIONS) + set_theory.SET_DECLARATIONS
 
 _COMMENT_RE = re.compile(r"\(\*.*?\*\)", re.DOTALL)
 _PROOF_HEADER_RE = re.compile(r"^#\s*(\d+)(?:\s*:\s*(.*?))?\s*$")

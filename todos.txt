@@ -294,14 +294,31 @@ in this file -- pick it up whenever it matters for a real proof corpus.
 
 ## Phase 4 — remove duplicated lexical bookkeeping
 
-- [ ] Identify every remaining declaration, label, assumption, and scope
-      registry in the elaborator and kernel.
-- [ ] Remove redundant elaborator bookkeeping once the context-backed paths
-      are proven equivalent.
-- [ ] Determine which parts of `ProofLogic.DeclarationScope` are genuinely
-      kernel semantics and which duplicate lexical elaboration state.
-- [ ] Remove only the redundant lexical portion of `DeclarationScope` after
-      end-to-end regression coverage is in place.
+### Phase 4 Audit — COMPLETE
+
+**Audit findings** (see PHASE4_AUDIT.md for detailed analysis):
+
+*Redundancy identified:*
+- [x] `_ElaborationContext.declarations` (`pl.DeclarationScope`) is redundant with `_ElaborationContext.context` for all declaration *lookups*. All references already resolve through `ProofContext`.
+  - Only write: dual-write in `register_declaration()`
+  - Only read: `declarations_here()` at end of elaborate_proof for DiscreteMath.relation_rule_set hook
+  - Safe to remove once `ProofContext.declarations_here()` method is exposed
+
+- [x] `_ElaborationContext.formula_by_label` mostly redundant with `_ElaborationContext.context._labels`. Both track label→formula; refactoring would require moving origin info to `LabelBinding`.
+  - Lower priority (small dict, not blocking); defer refactoring
+
+*Not redundant (kernel owns these):*
+- [x] `ProofValidator.DeclarationScope` is the kernel's own independent copy, not connected to elaboration. Validates declarations during proof checking. Essential to keep.
+- [x] `ProofValidator.LabelScope` is the kernel's own independent label tracking during validation. Not redundant with elaboration.
+- [x] `_ElaborationContext.origin_by_label` carries source locations through elaboration for error reporting. Not stored elsewhere; essential.
+- [x] `ProofContext._assumptions` and `_arbitrary` only tracked by ProofContext; necessary for elaboration.
+
+### Phase 4 Implementation — STAGED
+
+- [ ] Stage 1: Expose `declarations_here()` method on `ProofContext` (low-effort; mirrors `DeclarationScope` API)
+- [ ] Stage 2: Stop dual-writing `self.declarations` and remove `DeclarationScope` from `_ElaborationContext` (low-risk; all lookups already go through `ProofContext`)
+- [ ] Stage 3: (Optional) Refactor origin tracking into `LabelBinding` (higher effort; defer if no benefit)
+- [ ] Stage 4: Full regression test suite after changes
 
 ## Phase 5 — parser/elaboration cleanup
 

@@ -442,3 +442,25 @@ def test_proof_context_dual_write_does_not_disturb_origins_or_core_entry_shape()
 
     ok, err = pl.Proof(entries).check_detailed()
     assert ok, err
+
+
+def test_typed_declarations_register_into_proof_context():
+    """Verify that typed declarations (e.g., 'Let x be a natural number')
+    are immediately registered in ProofContext, not just in the legacy
+    DeclarationScope. This ensures all declarations made through
+    elaborate_typed_declaration flow through the same context as those
+    made through elaborate_compound_declaration.
+    """
+    context = pp._ElaborationContext(pp.default_theory_environment())
+    surface = pp.parse_surface_proof("1. Let x be a natural number. (Declaration)\n")
+    context.elaborate_entry(surface.entries[0])
+
+    # Verify declaration is in ProofContext
+    declaration = context.context.lookup_declaration("x")
+    assert declaration is not None
+    assert declaration.kind == pl.DeclarationKind.OBJECT
+    assert declaration.type_name == "a natural number"
+
+    # Verify it's also in the legacy scope (for backward compatibility)
+    assert context.declarations.lookup("x") == declaration
+
