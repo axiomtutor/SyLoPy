@@ -144,18 +144,19 @@ def test_core_renderer_exposes_desugared_steps_without_reparsing_text():
 
 
 # --------------------------------------------------------------------
-# ProofContext integration (todos.txt "ProofContext integration", phase 2).
+# ProofContext holds all declaration bookkeeping during elaboration.
 #
-# `_ElaborationContext` is migrating its lexical bookkeeping onto
-# `ProofContext`. The first step is a pure dual-write: every declaration
-# registered through `register_declaration` is now also declared into a
-# `ProofContext` instance, alongside the pre-existing `DeclarationScope`.
-# Nothing yet *reads* from the new context, so these tests only pin down
-# that the write itself happens and stays consistent -- not any change in
-# validator-visible behavior (the full suite above already guards that).
+# A parallel `pl.DeclarationScope` used to be kept here too (see
+# todos.txt's "ProofContext integration" / "remove duplicated lexical
+# scope bookkeeping" phases), dual-written on every `register_declaration`
+# call. Once every *read* -- including the seeding for
+# `DiscreteMath.relation_rule_set` -- had moved onto `context.context`,
+# the parallel structure had no reader of its own left and was removed;
+# these tests now just confirm `context.context` behaves correctly on
+# its own.
 # --------------------------------------------------------------------
 
-def test_compound_declaration_registers_into_proof_context_alongside_declaration_scope():
+def test_compound_declaration_registers_into_proof_context():
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof("1. Let X be any set. (Declaration)\n")
     context.elaborate_entry(surface.entries[0])
@@ -163,7 +164,6 @@ def test_compound_declaration_registers_into_proof_context_alongside_declaration
     declaration = context.context.lookup_declaration("X")
     assert declaration is not None
     assert declaration.kind == pl.DeclarationKind.OBJECT
-    assert declaration == context.declarations.lookup("X")
 
 
 def test_proof_context_seeding_tolerates_vocabulary_reachable_through_two_extension_paths():
@@ -207,11 +207,10 @@ def test_sibling_subproofs_can_reuse_the_same_label():
 
 
 def test_sibling_subproofs_can_reuse_the_same_compound_declaration_name():
-    # Was an xfail: `self.declarations` wasn't subproof-scoped, so this
-    # collided even though `self.context` was already fine. Fixed by
-    # extending `elaborate_subproof_body` to also give `self.declarations`
-    # a child scope per subproof -- see that method's docstring for why
-    # this needed no policy call, unlike labels.
+    # Was an xfail: declaration scoping wasn't yet subproof-isolated, so
+    # this collided even though label scoping was already fine. Fixed by
+    # having `elaborate_subproof_body` give `self.context` a child scope
+    # per subproof for declarations too, not just labels.
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof(
         "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
@@ -230,7 +229,6 @@ def test_sibling_subproofs_can_reuse_the_same_compound_declaration_name():
     for entry in surface.entries:
         context.elaborate_entry(entry)  # must not raise DuplicateBindingError / KeyError
     assert context.context.lookup_declaration("X") is None
-    assert context.declarations.lookup("X") is None
 
 
 def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context():
@@ -245,7 +243,6 @@ def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context(
     )
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_declaration("X") is None
-    assert context.declarations.lookup("X") is None
 # --------------------------------------------------------------------
 # ProofContext integration, phase 2 continued: `elaborate_entry` now also
 # dual-writes assumptions (`self.context.assume`) and arbitrary/fresh
@@ -291,22 +288,6 @@ def test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_co
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_arbitrary("c") is None
     assert context.context.is_arbitrary("c") is False
-# --------------------------------------------------------------------
-# ProofContext integration, phase 2, "resolve declaration and label
-# references through the context" (declaration half only -- see
-# `_ElaborationContext.lookup_declaration`'s docstring for why the label
-# half is still blocked). Since self.declarations and self.context are
-# kept in lockstep by every other mechanism in this file, no fixture in
-# the real corpus can distinguish "reads self.context" from "reads
-# self.declarations" -- the divergence has to be constructed by hand.
-# --------------------------------------------------------------------
-
-def test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope():
-    context = pp._ElaborationContext(pp.default_theory_environment())
-    only_in_context = pl.Declaration("OnlyInContext", pl.DeclarationKind.OBJECT)
-    context.context.declare(only_in_context)  # bypasses register_declaration entirely
-    assert context.lookup_declaration("OnlyInContext") is only_in_context
-    assert context.declarations.lookup("OnlyInContext") is None  # confirms the divergence is real
 def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof():
     # The "parent visibility" half of end-to-end context coverage, noted
     # in todos.txt as not meaningfully testable before this file existed:
@@ -446,21 +427,16 @@ def test_proof_context_dual_write_does_not_disturb_origins_or_core_entry_shape()
 
 def test_typed_declarations_register_into_proof_context():
     """Verify that typed declarations (e.g., 'Let x be a natural number')
-    are immediately registered in ProofContext, not just in the legacy
-    DeclarationScope. This ensures all declarations made through
-    elaborate_typed_declaration flow through the same context as those
-    made through elaborate_compound_declaration.
+    are registered in `ProofContext`, the same as ones made through
+    `elaborate_compound_declaration` -- both paths agree on where a
+    declaration ends up.
     """
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof("1. Let x be a natural number. (Declaration)\n")
     context.elaborate_entry(surface.entries[0])
 
-    # Verify declaration is in ProofContext
     declaration = context.context.lookup_declaration("x")
     assert declaration is not None
     assert declaration.kind == pl.DeclarationKind.OBJECT
     assert declaration.type_name == "a natural number"
-
-    # Verify it's also in the legacy scope (for backward compatibility)
-    assert context.declarations.lookup("x") == declaration
 

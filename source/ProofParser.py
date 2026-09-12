@@ -1505,24 +1505,25 @@ class _ElaborationContext:
         # the declaration that names them. See `elaborate_proof`, which
         # merges these into the final `ElaboratedEntries.required_rules`.
         self.extra_rules: List[Any] = []
-        self.declarations = pl.DeclarationScope(initial=list(environment.declarations))
-        # `ProofContext` integration (see todos.txt, "ProofContext
-        # integration" project, phase 2): the authoritative lexical scope
-        # this elaborator is migrating *towards*. For now it is populated
-        # alongside `self.declarations` above -- via `register_declaration`
-        # below -- but nothing yet *reads* from it, so this cannot change
-        # elaboration behavior. Seeded from `self.declarations.declarations_here()`
-        # rather than `environment.declarations` directly because the latter
-        # can contain literal duplicate `Declaration`s (e.g. SetTheory's
-        # vocabulary reachable both directly and through NumberTheory's own
-        # `.extended(SET_THEORY_ENVIRONMENT)`); `DeclarationScope.__init__`
-        # already resolves that via its "skip a compatible duplicate" rule,
-        # so reusing its result avoids re-implementing that same leniency
-        # here and keeps the two structures declared-in-lockstep from the
-        # start. `ProofContext.declare()` has no such leniency and would
-        # raise `DuplicateBindingError` on a literal repeat.
+        # `ProofContext` is the sole lexical scope for declarations during
+        # elaboration (see todos.txt's "ProofContext integration" /
+        # "remove duplicated lexical scope bookkeeping" phases). A
+        # parallel `pl.DeclarationScope` used to be kept here too, dual-
+        # written on every `register_declaration` call purely so this
+        # constructor could lean on its "skip a compatible duplicate"
+        # seeding rule -- once every *read* (including the seeding for
+        # `DiscreteMath.relation_rule_set` in `elaborate_proof`) had moved
+        # onto `self.context`, that parallel structure had no reader of
+        # its own left and was removed. Seeded from
+        # `pl._dedupe_declarations(environment.declarations)`, not
+        # `environment.declarations` directly, since the latter can
+        # contain literal duplicate `Declaration`s (e.g. SetTheory's
+        # vocabulary reachable both directly and through NumberTheory's
+        # own `.extended(SET_THEORY_ENVIRONMENT)`) -- `ProofContext.declare()`
+        # has no leniency for that and would raise `DuplicateBindingError`
+        # on the second, identical occurrence.
         self.context = pc.ProofContext()
-        for declaration in self.declarations.declarations_here():
+        for declaration in pl._dedupe_declarations(list(environment.declarations)):
             self.context.declare(declaration)
         # Populated by `elaborate_entry` as it goes, label -> that label's
         # resulting core formula (or bundle). See `elaborate_entry`'s
@@ -1534,21 +1535,9 @@ class _ElaborationContext:
 
     def lookup_declaration(self, name: str) -> Optional[pl.Declaration]:
         """Resolve a declaration reference through `self.context`
-        (`ProofContext`) rather than the legacy `self.declarations`
-        (`DeclarationScope`) -- this is the declaration half of todos.txt's
-        "resolve declaration and label references through the context"
-        step (see `lookup_reference` below for the label half, now also
-        done). Safe unconditionally: `self.declarations` and `self.context`
-        are seeded identically (see `__init__`), written identically
-        (`register_declaration` dual-writes both), and scoped identically
-        (`elaborate_subproof_body` gives both a child per subproof), so
-        for every name either structure can currently answer, they agree.
-        `self.declarations` itself is untouched and still written to --
-        `elaborate_proof`'s own feed into `DiscreteMath.relation_rule_set`
-        (`context.declarations.declarations_here()`) still reads it
-        directly, a separate concern from resolving a reference during
-        elaboration -- so this is a narrower migration than retiring
-        `self.declarations` outright.
+        (`ProofContext`) -- the sole lexical scope for declarations during
+        elaboration; see `__init__` for why there is nothing else to
+        resolve it through anymore.
         """
         return self.context.lookup_declaration(name)
 
@@ -1570,32 +1559,16 @@ class _ElaborationContext:
 
     def register_declaration(self, declaration: pl.Declaration, span: SourceSpan) -> None:
         try:
-            self.declarations.declare(declaration)
-        except KeyError as exc:
-            existing = self.declarations.lookup(declaration.name)
-            raise ElaborationError(
-                f"symbol '{declaration.name}' is already declared"
-                + (f" as {existing.kind}" if existing else ""),
-                span,
-            ) from exc
-        except (TypeError, ValueError) as exc:
-            raise ElaborationError(str(exc), span) from exc
-        try:
             self.context.declare(declaration)
-        except pc.DuplicateBindingError as exc:
-            # Should be unreachable: `self.context` is seeded from, and
-            # updated in lockstep with, `self.declarations` above, so
-            # anything accepted by the check just above is already known
-            # fresh here too. Translated (not silently swallowed) so a
-            # real divergence between the two structures fails loudly
-            # during this migration rather than leaving `self.context`
-            # quietly out of sync with what elaboration actually declared.
+        except pc.DuplicateBindingError:
             existing = self.context.lookup_declaration(declaration.name)
             raise ElaborationError(
                 f"symbol '{declaration.name}' is already declared"
                 + (f" as {existing.kind}" if existing else ""),
                 span,
-            ) from exc
+            ) from None
+        except (TypeError, ValueError) as exc:
+            raise ElaborationError(str(exc), span) from exc
 
     def register_origin(
         self,
@@ -1646,8 +1619,7 @@ class _ElaborationContext:
         standalone labeled block, a `rule_below` justification's
         immediate subproof, or one of a `rule_hybrid` justification's
         several attached subproofs) -- using a fresh child `ProofContext`
-        and a fresh child `DeclarationScope` for the duration, then
-        restores both.
+        for the duration, then restores it.
 
         This is the elaboration-time counterpart of `ProofValidator.
         _validate_block`'s own `declarations.child()`/`labels.child()`
@@ -1655,37 +1627,22 @@ class _ElaborationContext:
         or label registered while elaborating `entries` becomes invisible
         to anything outside them once this method returns, while the
         enclosing scope's own declarations/labels remain visible from
-        inside (both `ProofContext.child()` and `DeclarationScope.child()`
-        inherit, per their own implementations).
-
-        `self.declarations` joined `self.context` here after both were
-        confirmed to already agree on the underlying policy:
-        `DeclarationScope.declare()` already walks its full parent chain
-        via `lookup()` before raising, exactly like `ProofContext.declare()`
-        -- there was no policy question to settle for declarations, only
-        this implementation gap to close (labels went through the same
-        question and answer separately -- see `elaborate_entry`'s
-        docstring and `ProofLogic.LabelScope`'s). Closing it is what flips
-        `test_sibling_subproofs_can_reuse_a_compound_declaration_name`
-        (formerly an `xfail`) to a genuine pass.
+        inside (`ProofContext.child()` inherits, per its own
+        implementation).
 
         `self.origin_by_label` and `self.formula_by_label` remain
         flat/global elaboration-time bookkeeping, untouched by this
         method -- both are keyed by full dotted label strings, which are
         unique across the whole proof by construction, so flatness never
-        risked a collision the way `self.context`/`self.declarations`
-        (keyed by bare symbol/label names, reused freely across sibling
-        scopes) did.
+        risked a collision the way `self.context` (keyed by bare
+        symbol/label names, reused freely across sibling scopes) did.
         """
         parent_context = self.context
-        parent_declarations = self.declarations
         self.context = parent_context.child()
-        self.declarations = parent_declarations.child()
         try:
             return [self.elaborate_entry(item) for item in entries]
         finally:
             self.context = parent_context
-            self.declarations = parent_declarations
 
     def elaborate_entry(self, entry: Any) -> Any:
         """Thin wrapper around `_elaborate_entry_impl` that also records
@@ -1855,7 +1812,7 @@ def elaborate_proof(
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
     try:
         import SyLoPy.source.DiscreteMath as dm
-        context.extra_rules.extend(dm.relation_rule_set(context.declarations.declarations_here()))
+        context.extra_rules.extend(dm.relation_rule_set(context.context.declarations_here()))
     except ImportError:
         pass
     return ElaboratedEntries(
