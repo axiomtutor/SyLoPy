@@ -360,26 +360,80 @@ in this file -- pick it up whenever it matters for a real proof corpus.
 
 - [ ] Keep architecture and parser documentation synchronized with the actual
       implementation.
-- [ ] Remove obsolete helpers, wrappers, dead imports, stale duplicate
+- [x] Remove obsolete helpers, wrappers, dead imports, stale duplicate
       documentation, and one-time migration machinery when demonstrably
       superseded and covered by tests.
-      - Concrete instance found while adding UniversalModusPonensRule:
-        `ProofParser.py`'s own inline `parse_justification` (and
-        `parse_formula`, see `ProofParserPolicy.py`) are dead code at
-        runtime -- `SyLoPy/source/__init__.py` imports
-        `ProofParserPolicy`, which overwrites both on `ProofParser` the
-        moment the package loads, so the alias table actually consulted
-        for every real run is `ProofJustification._alias_map()`, not the
-        substring-matching version still sitting in `ProofParser.py`.
-        Confirmed via `pp.parse_justification.__module__ ==
-        "SyLoPy.source.ProofJustification"`. `source/test_parser.py`
-        (outside `pytest_tests/`, not collected by `pytest.ini`) tests the
-        old inline version's nonstandard precedence directly and is
-        itself stale for the same reason. Left alone for now (out of
-        scope for the change that found it) but worth a dedicated pass:
-        the inline `ProofParser.py` versions and `source/test_parser.py`
-        can likely be deleted outright once confirmed nothing still
-        imports them for their own sake.
+      - Done: the dead inline `ProofParser.parse_justification` and
+        `parse_formula` bodies (see the previous entry here) are deleted,
+        not just overwritten. `ProofParser.py` now imports
+        `parse_justification` straight from `ProofJustification.py`
+        (self-contained, no dependency on `ProofParser` internals, so no
+        reason to keep installing it via patch); `parse_formula` stays a
+        `ProofParserPolicy`-installed override, since
+        `_parse_formula_conventional` genuinely does reach back into
+        `ProofParser`'s own `split_top_level`/`parse_term`/etc. and isn't
+        self-contained the same way. `ProofParserPolicy.py`'s now-no-op
+        `_parser.parse_justification = parse_justification` patch line is
+        removed too. `ProofParser.py`'s module docstring ("Two things
+        worth knowing...") no longer describes the old, no-longer-active
+        nonstandard precedence; the corrected recognition-order
+        documentation (with the precedence table right this time) now
+        lives on `_parse_formula_conventional`'s own docstring in
+        `ProofParserPolicy.py`, next to the code it actually describes.
+        `source/test_parser.py` and `source/test_validator.py` (also
+        stale duplicates of their `pytest_tests/` counterparts, and
+        already non-functional standalone -- `source/support.py` doesn't
+        exist) are deleted; their four still-valid, not-yet-migrated
+        cases (`test_declaration_clause_parsing_recognizes_all_three_
+        target_shapes`, `test_declaration_recipe_registry_dispatches_a_
+        registered_structure_type_generically`,
+        `test_implication_binds_looser_than_equality`,
+        `test_empty_proof_is_rejected_not_vacuously_valid`) are migrated
+        into `pytest_tests/test_parser.py`/`test_validator.py`.
+      - Bug found while migrating the recipe-dispatch test above (so
+        fixed in the same pass rather than deferred): a tuple-shaped
+        clause like `(W, <) be a well-ordered poset` -- or a typed-function
+        one like `f: W -> W be ...` -- silently lost its shape
+        (`is_tuple`/`domain`/`codomain`) whenever it was written as part
+        of a *coordinated* `Let X be any set, (W, <) be ..., ...`
+        statement rather than a standalone `Let (W, <) be ....` line.
+        `elaborate_compound_declaration` (the coordinated-statement path)
+        reconstructs a `DeclarationClause` for recipe dispatch via
+        `_surface_clause_to_recipe_clause`, which hardcoded
+        `is_tuple=False` and dropped `domain`/`codomain` entirely --
+        distinct from `elaborate_typed_declaration` (the standalone-line
+        path), which builds `DeclarationClause`s directly from
+        `parse_declaration_clause` and always had this right. Any
+        `DeclarationRecipe` keyed on clause shape (an order-theory
+        well-ordered-poset recipe, most concretely) would have matched
+        fine written standalone but matched *nothing* -- falling back to
+        plain-object declarations with no formula, no error -- the moment
+        the same clause appeared inside a coordinated statement. No
+        currently shipped recipe (`DiscreteMath.RelationDeclarationRecipe`,
+        `Type.as_declaration_recipe`) happened to depend on `is_tuple`, so
+        this was latent, not a live incorrect result today; still worth
+        having fixed before `OrderTheory.py` exists to hit it. Fixed by
+        adding `is_tuple`/`domain`/`codomain` fields to
+        `SurfaceDeclarationClause` (threaded through from the
+        `DeclarationClause` `_surface_declaration_from_clause` already
+        parses) and reading them in `_surface_clause_to_recipe_clause`
+        instead of hardcoding. Regression-covered by the migrated
+        `test_declaration_recipe_registry_dispatches_a_registered_
+        structure_type_generically`, which genuinely failed against the
+        pre-fix code (confirmed empirically, not just reasoned about)
+        before the fix and passes after.
+      - Related, still-open gap noticed but *not* fixed here (separate,
+        larger change): `elaborate_compound_declaration` only ever calls
+        `recipe.try_match([recipe_clause], 0)` with a one-element list,
+        so it can't support a *multi-clause* recipe (the kind
+        `DeclarationRecipe`'s own docstring describes for something like
+        "increasing" needing a separately-named order relation) the way
+        `elaborate_typed_declaration` already does by passing the full
+        clause list with an index. Not reachable by anything shipped
+        today (no multi-clause recipe exists yet), but will need
+        addressing before a coordinated `Let X be a set, (W, <) be a
+        well-ordered poset, f: W -> W be an increasing function, ...`
+        statement can work end to end.
 - [ ] Do not add large numbers of isolated mathematical rules while the proof
       context, elaboration, and validation interfaces are changing.
 

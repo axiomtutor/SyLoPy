@@ -10,12 +10,13 @@ from __future__ import annotations
 import re
 
 from SyLoPy.source import ProofParser as _parser
-from SyLoPy.source.ProofJustification import parse_justification
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
 
-# The justification parser is the authoritative implementation now.
-_parser.parse_justification = parse_justification
+# `parse_justification` no longer needs to be installed here: it has no
+# dependency on anything in `ProofParser`, so `ProofParser.py` now imports
+# `ProofJustification.parse_justification` directly at its own top level
+# instead of relying on this module to patch it in after the fact.
 _install_line_break_syntax(_parser)
 
 
@@ -37,11 +38,82 @@ _parser.parse_surface_declaration_statement = _parse_surface_declaration_stateme
 
 
 def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
-    """Parse formulas using conventional connective precedence.
+    """Parse formulas using conventional connective precedence: ``not``
+    binds tightest, then ``and``, then ``or``, then ``->``/``implies``,
+    loosest of all the biconditional family -- the textbook convention,
+    not the order this function's own checks run in (see below for why
+    those two things differ). This is the `parse_formula` every caller
+    actually gets: it's installed onto `ProofParser.parse_formula` at
+    import time (see the bottom of this module) and is deliberately an
+    *extension* of the core parser rather than a second parser
+    implementation -- it reaches back into `ProofParser`'s own
+    `split_top_level`, `parse_term`, `_match_applied_symbol`, and
+    `_BARE_IDENTIFIER_RE` for everything except connective ordering.
+    Theory-specific nested parsers and the core term parser remain
+    authoritative.
 
-    This is deliberately an extension of the core parser rather than a
-    second parser implementation.  Theory-specific nested parsers and the
-    core term parser remain authoritative.
+    Recognizes, in this order:
+
+      1. ``let X be in the domain.`` / ``let X be arbitrary`` -- the
+         special "fresh constant" flag formula (see
+         `ProofLogic.SubproofRecord`'s docstring for how this
+         nullary-predicate encoding is used by `UniversalGeneralizationRule`)
+      2. ``for all x, ...`` / ``forall x, ...`` -- the comma is optional
+      3. ``exists x, ...`` / ``there exists x, ...`` -- comma optional
+      4. the biconditional family: ``if and only if``, ``<->``, ``<=>``,
+         ``↔``, ``iff`` -- tried together, in this priority order
+      5. ``if X then Y``
+      6. ``->`` / ``implies`` -- right-associative for a chain like
+         ``"A -> B -> C"``
+      7. top-level ``or`` (N-ary: ``A or B or C`` all becomes one `Or`)
+      8. top-level ``and`` (N-ary, same idea)
+      9. a fully parenthesized remainder, e.g. ``(A and B)`` -> unwrap and
+         re-parse the inside
+      10. ``not ...`` / ``¬...``
+      11. ``=/=`` (negated equality between two Terms)
+      12. ``=`` (equality between two Terms -- see `FormulaLogic.Equals`)
+      13. theory syntax from `environment.nested_formula_parsers` (e.g.
+          SetTheory's "a is in X", NumberTheory's "a|n") -- tried after
+          every connective above has had a chance to split the string,
+          but before the final atomic-predicate/bare-atomic fallback,
+          *not* before: a theory phrase containing a connective keyword as
+          a substring would otherwise risk swallowing more than intended
+          (checking "a|n" against the whole of "if a|n then b" before
+          "if...then" has split it apart would wrongly capture "if a" as
+          part of a term)
+      14. ``pred(arg, arg, ...)`` -- an atomic predicate with arguments
+      15. (fallback) a bare atomic proposition, `AtomicFormula(s, [])`
+
+    Because whichever check fires *first* on an unparenthesized string
+    becomes that string's outermost connective, this recognition order is
+    also, read top to bottom through steps 4-10, exactly the precedence
+    table from loosest-binding to tightest: ``iff`` > ``->``/``implies`` >
+    ``or`` > ``and`` > ``not``. So ``parse_formula("A -> B and C")``
+    parses as ``A -> (B and C)`` (`and` groups before `->` claims either
+    side), and ``"A or B and C"`` parses as ``A or (B and C)`` (`and`
+    groups before `or` does) -- both the ordinary textbook reading.
+
+    `environment` is threaded through every recursive call (not just
+    consulted once at the top), so theory syntax is recognized in nested
+    positions too -- e.g. the "a|n" inside "if a|n then b" -- not only
+    when a formula happens to consist of nothing else. Defaults to the
+    core parser's cached `default_theory_environment()` when omitted.
+    (`environment.formula_parsers`, by contrast, is only consulted by
+    `_ElaborationContext.parse_surface_expression` at the top of a single
+    proof line, since some of its results carry extra structure -- like
+    SetTheory's raw subset operands -- that only the elaborator that asked
+    for them knows how to use.)
+
+    Examples::
+
+        >>> repr(_parse_formula_conventional('A -> B and C'))
+        '(A() → (B() ∧ C()))'
+        >>> repr(_parse_formula_conventional('A or B and C'))
+        '(A() ∨ (B() ∧ C()))'
+        >>> repr(_parse_formula_conventional('for all x, P(x) -> Q(x)'))
+        '(∀x. (P(x) → Q(x)))'
+        >>> repr(_parse_formula_conventional('let c be in the domain'))
+        'c()'
     """
     if bound_vars is None:
         bound_vars = set()

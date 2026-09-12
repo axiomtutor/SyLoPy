@@ -61,18 +61,17 @@ subproof's own (recursively parsed) entry list::
 --------------------------------------------------------------------------
 Two things worth knowing before writing new proof text
 --------------------------------------------------------------------------
-1. **Connective precedence in `parse_formula` is not the textbook one.**
-   Checks run in this order: quantifiers, ``and``, ``or``, parenthesized
-   unwrap, ``not``, the ``<->``/``iff`` family, ``->``/``implies``/``if...then``.
-   Whichever pattern is tried *first* ends up as the outermost (loosest-
-   binding) connective for an unparenthesized string, so -- unlike most
-   textbooks, where ``and`` binds *tighter* than ``->`` -- here ``and``/``or``
-   are split before ``->`` is even considered, making them the *looser*
-   connective when both appear unparenthesized in the same string:
-   ``parse_formula("A -> B and C")`` parses as ``(A -> B) and C``, not
-   ``A -> (B and C)``. Every formula in testProofs/ that mixes connectives
-   uses explicit parentheses specifically to sidestep this; new proof text
-   should do the same rather than rely on implicit precedence.
+1. **Connective precedence follows the textbook convention, not the order
+   `parse_formula`'s checks run in.** `ProofParserPolicy` installs the
+   active formula parser (`_parse_formula_conventional`) over this
+   module's `parse_formula` name at import time, using ordinary
+   precedence: ``not`` binds tightest, then ``and``, then ``or``, then
+   ``->``/``implies``, loosest of all the biconditional family. So
+   ``parse_formula("A -> B and C")`` parses as ``A -> (B and C)``, and
+   ``"A or B and C"`` parses as ``A or (B and C)`` -- `and` groups before
+   either `or` or `->` claim it. Parentheses still always win and remain
+   the clearest way to write a formula whose intended grouping doesn't
+   match precedence at a glance.
 
 2. **Natural-language biconditional wording is supported.** The phrase
    ``A if and only if B`` is recognized before the top-level ``and`` split,
@@ -88,6 +87,7 @@ import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
 import SyLoPy.source.ProofContext as pc
+from SyLoPy.source.ProofJustification import parse_justification
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaboratedEntries,
@@ -703,7 +703,10 @@ def _surface_declaration_from_clause(
             )
             for name in dc.names
         ]
-        return SurfaceDeclarationClause(declarations, span, membership)
+        return SurfaceDeclarationClause(
+            declarations, span, membership,
+            is_tuple=dc.is_tuple, domain=dc.domain, codomain=dc.codomain,
+        )
 
     attributes: Dict[str, Any] = {}
     kind, type_name = _declaration_kind_from_descriptor(descriptor)
@@ -768,7 +771,10 @@ def _surface_declaration_from_clause(
         )
         for name in dc.names
     ]
-    return SurfaceDeclarationClause(declarations, span)
+    return SurfaceDeclarationClause(
+        declarations, span,
+        is_tuple=dc.is_tuple, domain=dc.domain, codomain=dc.codomain,
+    )
 
 
 def parse_surface_declaration_statement(
@@ -813,9 +819,23 @@ def parse_surface_declaration_statement(
 
 
 def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause) -> DeclarationClause:
+    """Reconstruct the `DeclarationClause` shape a `DeclarationRecipe`
+    expects from a already-parsed `SurfaceDeclarationClause`.
+
+    Reads `is_tuple`/`domain`/`codomain` straight off `clause` rather than
+    assuming a plain single-name shape -- a recipe dispatched through the
+    coordinated `Let X be any set, (W, <) be a well-ordered poset, ...`
+    path must see the same clause shape a standalone `Let (W, <) be a
+    well-ordered poset.` line gets via `elaborate_typed_declaration`, or
+    every tuple-/typed-function-shaped recipe would silently fail to
+    match here specifically (see `SurfaceDeclarationClause`'s docstring).
+    """
     names = [d.name for d in clause.declarations]
     descriptor = clause.declarations[0].descriptor if clause.declarations else ""
-    return DeclarationClause(names, is_tuple=False, descriptor=descriptor)
+    return DeclarationClause(
+        names, is_tuple=clause.is_tuple, descriptor=descriptor,
+        domain=clause.domain, codomain=clause.codomain,
+    )
 
 
 def _declaration_metadata(attributes: Dict[str, Any]) -> tuple:
@@ -1023,422 +1043,40 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
     return (entry.label, formula, ('premise', declarations))
 
 
-def parse_formula(s: str, bound_vars=None, environment: Optional[TheoryEnvironment] = None):
-    """Parse a formula from its plain-text notation.
-
-    Recognizes, in this order (see the module docstring's precedence note
-    for why order matters):
-
-      1. ``let X be in the domain.`` / ``let X be arbitrary`` -- the special
-         "fresh constant" flag formula (see `ProofLogic.SubproofRecord`'s
-         docstring for how this nullary-predicate encoding is used by
-         UniversalGeneralizationRule)
-      2. ``for all x, ...`` / ``forall x, ...`` -- the comma is optional
-      3. ``exists x, ...`` / ``there exists x, ...`` -- comma optional
-      4. top-level ``if and only if`` / biconditional wording
-      5. top-level ``and`` (N-ary: ``A and B and C`` all becomes one `And`)
-      6. top-level ``or`` (N-ary, same idea)
-      7. a fully parenthesized remainder, e.g. ``(A and B)`` -> unwrap and
-         re-parse the inside
-      7. ``not ...`` / ``¬...``
-      8. ``<->`` / ``<=>`` / ``↔`` / ``iff`` / ``if and only if`` (see the
-         module docstring for the "if and only if" caveat)
-      10. ``->`` / ``implies`` / ``if X then Y``
-      11. ``pred(arg, arg, ...)`` -- an atomic predicate with arguments
-      12. (fallback) a bare atomic proposition, `AtomicFormula(s, [])`
-
-    `environment` supplies theory-specific formula syntax (e.g. SetTheory's
-    "a is in X", NumberTheory's "a|n") via its `nested_formula_parsers`,
-    tried after every connective in the list above has had a chance to
-    split the string, but before the final atomic-predicate/bare-atomic
-    fallback -- *not* before, or a theory phrase containing a connective
-    keyword as a substring risks swallowing more than intended (e.g.
-    checking "a|n" against the whole of "if a|n then b" before "if...then"
-    has split it apart would wrongly capture "if a" as part of a term).
-    Defaults to the cached `default_theory_environment()` when omitted,
-    and is threaded through every recursive call in this function, so
-    theory syntax is recognized in nested positions too -- e.g. the "a|n"
-    inside "if a|n then b" -- not only when a formula happens to consist
-    of nothing else. (`environment.formula_parsers`, by contrast, is only
-    consulted by `_ElaborationContext.parse_surface_expression` at the top
-    of a single proof line, since some of its results carry extra
-    structure -- like SetTheory's raw subset operands -- that only the
-    elaborator that asked for them knows how to use.)
-
-    Examples::
-
-        >>> repr(parse_formula('A and B'))
-        '(A() ∧ B())'
-        >>> repr(parse_formula('for all x, P(x) -> Q(x)'))
-        '(∀x. (P(x) → Q(x)))'
-        >>> repr(parse_formula('A <-> B'))
-        '(A() ↔ B())'
-        >>> repr(parse_formula('let c be in the domain'))
-        'c()'
-    """
-    if bound_vars is None:
-        bound_vars = set()
-    if environment is None:
-        environment = _cached_default_environment()
-    s = s.strip()
-
-    m = re.match(r'^let\s+([A-Za-z_][A-Za-z0-9_]*)\s+be\s+(?:in\s+the\s+domain|arbitrary)\.?$', s, flags=re.I)
-    if m:
-        return fl.AtomicFormula(m.group(1), [])
-
-    m = re.match(r'^(?:for all|forall)\s+([A-Za-z_][A-Za-z0-9_]*)\s*,?\s*(.*)$', s, flags=re.I)
-    if m:
-        var = m.group(1)
-        body = m.group(2)
-        return fl.ForAll(var, parse_formula(body, bound_vars | {var}, environment))
-
-    m = re.match(r'^(?:exists|there exists)\s+([A-Za-z_][A-Za-z0-9_]*)\s*,?\s*(.*)$', s, flags=re.I)
-    if m:
-        var = m.group(1)
-        body = m.group(2)
-        return fl.Exists(var, parse_formula(body, bound_vars | {var}, environment))
-
-    parts = split_top_level(s, ' if and only if ')
-    if len(parts) > 1:
-        return fl.Iff(parse_formula(parts[0], bound_vars, environment), parse_formula(parts[1], bound_vars, environment))
-
-    parts = split_top_level(s, ' and ')
-    if len(parts) > 1:
-        return fl.And(*[parse_formula(p, bound_vars, environment) for p in parts])
-
-    parts = split_top_level(s, ' or ')
-    if len(parts) > 1:
-        return fl.Or(*[parse_formula(p, bound_vars, environment) for p in parts])
-
-    if s.startswith('(') and s.endswith(')'):
-        depth = 0
-        balanced = True
-        for i, ch in enumerate(s):
-            if ch == '(':
-                depth += 1
-            elif ch == ')':
-                depth -= 1
-                if depth == 0 and i != len(s) - 1:
-                    balanced = False
-                    break
-        if balanced and depth == 0:
-            return parse_formula(s[1:-1], bound_vars, environment)
-
-    m = re.match(r'^(?:not|¬)\s+(.*)$', s, flags=re.I)
-    if m:
-        return fl.Not(parse_formula(m.group(1), bound_vars, environment))
-
-    for sep in [' <-> ', ' <=> ', ' ↔ ']:
-        if sep in s:
-            a, b = split_top_level(s, sep)
-            return fl.Iff(parse_formula(a, bound_vars, environment), parse_formula(b, bound_vars, environment))
-
-    parts = split_top_level(s, ' iff ')
-    if len(parts) > 1:
-        return fl.Iff(parse_formula(parts[0], bound_vars, environment), parse_formula(parts[1], bound_vars, environment))
-
-    # NOTE: "if and only if" contains the literal substring " and ", so for
-    # an unparenthesized formula the top-level `and`-split above (step 4)
-    # will normally have already fired on that embedded "and" before
-    # control ever reaches this point -- see the module docstring. This
-    # check is not dead code (a formula like "(A) if and only if (B)",
-    # where "and" ends up inside parens relative to nothing at this
-    # recursion level, can still reach here), but it is not the safety net
-    # for the general case it might look like.
-    m = re.search(r'\bif and only if\b', s, flags=re.I)
-    if m:
-        a, b = re.split(r'\bif and only if\b', s, maxsplit=1, flags=re.I)
-        return fl.Iff(parse_formula(a, bound_vars, environment), parse_formula(b, bound_vars, environment))
-
-    # Implication, checked before '=' (see below) for the same reason
-    # 'and'/'or' are checked even earlier, above: '->' is a connective
-    # between Formulas and should bind looser than '=', a relation
-    # between Terms -- "f(a) = b -> c" has to mean "(f(a) = b) -> c",
-    # since '='s operands must be Terms and only the left side, on its
-    # own, is one. Checking '=' first used to split that on its '=' and
-    # try to parse "f(a)" and "b -> c" as Terms, silently producing
-    # nonsense before the loud-failure fallback existed, and a clear but
-    # misleading "Unrecognized term syntax: 'f(a) = b'"-style error
-    # after it -- correct in that it refused to guess, but pointing at
-    # the wrong problem (a term that was never supposed to be parsed as
-    # one at all, rather than the real fix: check '->' first).
-    m = re.search(r'\s->\s', s)
-    if m:
-        a, b = s.split('->', 1)
-        return fl.Implies(parse_formula(a, bound_vars, environment), parse_formula(b, bound_vars, environment))
-
-    m = re.search(r'\bimplies\b', s, flags=re.I)
-    if m:
-        a, b = re.split(r'\bimplies\b', s, maxsplit=1, flags=re.I)
-        return fl.Implies(parse_formula(a, bound_vars, environment), parse_formula(b, bound_vars, environment))
-
-    m = re.match(r'^if\s+(.*?)\s+then\s+(.*)$', s, flags=re.I)
-    if m:
-        a, b = m.group(1), m.group(2)
-        return fl.Implies(parse_formula(a, bound_vars, environment), parse_formula(b, bound_vars, environment))
-
-    # Equality between two Terms (not Formulas -- see FormulaLogic.Equals).
-    # Checked here, after the iff-family and after '->'/'implies'/'if
-    # ... then' above, because '<=>' contains a literal '=' -- if this
-    # ran before the iff-family it would wrongly split "A <=> B" on the
-    # '=' buried inside "<=>" the same way an unguarded 'and'-split would
-    # mis-handle "if and only if" (see the module docstring). Requires
-    # spaces around '=', matching every other binary connective in this
-    # grammar (' -> ', ' <-> ', etc.); only a single '=' is recognized --
-    # "a = b = c" isn't supported (write "a = b and b = c" instead).
-    parts = split_top_level(s, ' = ')
-    if len(parts) == 2:
-        return fl.Equals(parse_term(parts[0], bound_vars, environment), parse_term(parts[1], bound_vars, environment))
-
-    for nested_parser in environment.nested_formula_parsers:
-        formula = nested_parser(s, bound_vars)
-        if formula is not None:
-            return formula
-
-    matched = _match_applied_symbol(s)
-    if matched:
-        pred, args_str = matched
-        return fl.AtomicFormula(pred, _parse_arg_list(args_str, bound_vars, environment))
-
-    if _BARE_IDENTIFIER_RE.match(s):
-        return fl.AtomicFormula(s, [])
-
-    raise ValueError(
-        f"Unrecognized formula syntax: {s!r}. Expected a logical "
-        f"connective, an atomic predicate like 'P(x)', a simple atomic "
-        f"proposition name, or syntax registered by an imported theory "
-        f"module -- not a raw, unrecognized expression silently treated "
-        f"as an opaque atom."
-    )
+# `parse_formula` is installed by `ProofParserPolicy` at import time
+# (`_parse_formula_conventional`, using textbook connective precedence --
+# see that function's docstring for the exact recognition order) and is
+# deliberately *not* defined here. An earlier version of this function
+# lived at this exact spot, splitting `and`/`or` *before* `->` so that
+# (unlike the active parser, and unlike ordinary textbook precedence)
+# implication bound *tighter* than conjunction/disjunction; it was fully
+# superseded the same way `parse_justification` above was, and for the
+# same reason it was safe to delete outright: `ProofParserPolicy`
+# overwrites `ProofParser.parse_formula` unconditionally the moment the
+# package loads, so nothing has called this module's own definition since
+# that override was introduced. Unlike `parse_justification`'s
+# replacement, `_parse_formula_conventional` isn't a self-contained
+# module of its own -- it reaches back into this module's `split_top_level`,
+# `parse_term`, `_match_applied_symbol`, and `_BARE_IDENTIFIER_RE` -- so it
+# stays a policy overlay in `ProofParserPolicy.py` rather than moving here
+# or being imported wholesale the way `parse_justification` was.
 
 
-def parse_justification(s: str):
-    """Parse a proof line's parenthesized justification text into the
-    small tuple `ProofLogic.ProofValidator` expects (see ProofLogic.py's
-    module docstring for the five possible shapes).
-
-    Two-phase strategy, and why the order is soundness-relevant:
-
-      **Phase 1 -- explicit rule citations.** First tries to match
-      ``"<rule name> from subproof below"`` or ``"<rule name> from
-      <label>, <label>, ..."``. If either matches, the rule name is
-      resolved via keyword checks (below) and this function returns
-      immediately -- it never falls through to phase 2 for text that
-      matched a citation pattern, even if that text also happens to
-      contain a keyword like "assume" somewhere in the rule name.
-
-      **Phase 2 -- bare keyword fallback.** Only reached when the text
-      *isn't* shaped like a rule citation at all (no trailing "from ...").
-      Checks for "arbitrary"/"fresh variable", "premise", "assume"/"assum",
-      "axiom", in that order.
-
-      Running phase 1 first is what stops a rule-citation phrase that
-      happens to contain "assum" as a substring (or any of the other
-      phase-2 keywords) from being misread as a bare assumption. Bare
-      assumptions are also independently restricted to only the first
-      line of a subproof by `ProofValidator._validate_assume_or_arbitrary`
-      -- the two checks are complementary, not redundant: phase ordering
-      here stops a rule citation from being *misclassified* as 'assume' in
-      the first place; the validator's position check stops a genuine
-      'assume' tag from being legal anywhere but line 0 of a subproof.
-
-    Rule-name resolution is by substring keyword, not exact phrase
-    matching, so proofs can use fairly natural phrasing ("Conjunction
-    Introduction", "And Intro", "Addition" all work for the same rule via
-    different keyword checks) as long as the checks below are read in
-    order -- earlier checks can shadow later ones. In particular:
-    any rule name containing "equiv" (checked while looking for De
-    Morgan's/Distribution/Double-Negation/generic-equivalence phrasing)
-    is routed to `PropositionalEquivalenceRule` *before* the later,
-    more specific-looking ``'conditional' in rule_name and 'equiv' in
-    rule_name`` check further down is ever reached -- so that later check,
-    which returns `BiconditionalEliminationRule`, is unreachable for any
-    input: every string that would satisfy it already satisfied the
-    earlier, more general "contains 'equiv'" check first. It's left as-is
-    (removing it changes nothing about what actually runs) but is worth
-    knowing about if you're trying to trace how a given justification
-    phrase resolves. "Conditional Elimination" (no "equiv") is unaffected
-    and does still resolve to `BiconditionalEliminationRule` via the
-    'conditional'+'elimin' check below it.
-
-    Examples::
-
-        >>> parse_justification('Premise')
-        ('premise',)
-        >>> parse_justification('Modus Ponens from 1,2')
-        ('rule', ModusPonensRule(), ['1', '2'])
-        >>> parse_justification('Proof by Contradiction from subproof below')
-        ('rule_below', ProofByContradictionRule())
-    """
-    s = s.strip()
-    if not s:
-        raise ValueError("Justification text is required for every proof line")
-    s_low = s.lower()
-
-    m = re.match(r'^(.*)from\s+subpro+f\s+below$', s_low)
-    if m:
-        rule_name = m.group(1).strip()
-        if 'conditional' in rule_name and 'elimin' not in rule_name:
-            return ('rule_below', pl.ConditionalIntroductionRule())
-        if 'contradict' in rule_name or 'proof by contradiction' in rule_name or 'reductio' in rule_name:
-            return ('rule_below', pl.ProofByContradictionRule())
-        if 'general' in rule_name:
-            return ('rule_below', pl.UniversalGeneralizationRule())
-        raise ValueError(f"Unknown inference rule '{rule_name}' in justification")
-
-    m_hybrid = re.match(r'^(.*)from\s+([0-9]+(?:\.[A-Za-z0-9_]+)*(?:\s*(?:,|and)\s*[0-9]+(?:\.[A-Za-z0-9_]+)*)*)\s*,?\s+subproofs?\s+below$', s_low)
-    if m_hybrid:
-        base_refs = re.sub(r'\s+and\s+', ', ', m_hybrid.group(2).strip())
-        base = f"{m_hybrid.group(1).strip()} from {base_refs}"
-        parsed = parse_justification(base)
-        if not isinstance(parsed, tuple) or len(parsed) != 3 or parsed[0] != 'rule':
-            raise ValueError(f"Invalid hybrid subproof justification: '{s}'")
-        return ('rule_hybrid', parsed[1], parsed[2])
-
-    if re.search(r'\bfrom\s*$', s_low):
-        raise ValueError(f"Malformed rule justification: {s}")
-
-    m = re.match(r'^(.*)from\s+([0-9]+(?:\.[A-Za-z0-9_]+)*(?:\s*(?:,|and)\s*[0-9]+(?:\.[A-Za-z0-9_]+)*)*)$', s_low)
-    if m:
-        rule_name = m.group(1).strip()
-        indices = [token.strip() for token in re.split(r'\s*(?:,|and)\s*', m.group(2)) if token.strip()]
-
-        if 'univ' in rule_name and 'instant' in rule_name:
-            return ('rule', pl.UniversalInstantiationRule(), indices)
-        if 'general' in rule_name:
-            return ('rule', pl.UniversalGeneralizationRule(), indices)
-        if 'exist' in rule_name and ('intro' in rule_name or 'general' in rule_name):
-            return ('rule', pl.ExistentialIntroductionRule(), indices)
-        if 'exist' in rule_name and ('elim' in rule_name or 'instant' in rule_name):
-            return ('rule', pl.ExistentialEliminationRule(), indices)
-        if ('disjunction' in rule_name and 'intro' in rule_name) or 'addition' in rule_name:
-            return ('rule', pl.DisjunctionIntroductionRule(), indices)
-        if ('disjunction' in rule_name and 'elim' in rule_name) or 'cases' in rule_name:
-            return ('rule', pl.DisjunctionEliminationRule(), indices)
-        if 'conjunction' in rule_name and 'elimin' in rule_name:
-            return ('rule', pl.ConjunctionEliminationRule(), indices)
-        if 'conjunction' in rule_name and 'intro' in rule_name:
-            return ('rule', pl.ConjunctionIntroductionRule(), indices)
-        if 'biconditional' in rule_name and 'intro' in rule_name:
-            return ('rule', pl.BiconditionalIntroductionRule(), indices)
-        if 'biconditional' in rule_name and 'elim' in rule_name:
-            return ('rule', pl.BiconditionalEliminationRule(), indices)
-        if 'modus' in rule_name and 'ponens' in rule_name:
-            return ('rule', pl.ModusPonensRule(), indices)
-        if 'modus' in rule_name and 'tollens' in rule_name:
-            return ('rule', pl.ModusTollensRule(), indices)
-        if 'disjunctive' in rule_name and 'syllogism' in rule_name:
-            return ('rule', pl.DisjunctiveSyllogismRule(), indices)
-        if 'hypothetical' in rule_name and 'syllogism' in rule_name:
-            return ('rule', pl.HypotheticalSyllogismRule(), indices)
-        if 'explosion' in rule_name or 'ex falso' in rule_name:
-            return ('rule', pl.ExplosionRule(), indices)
-        if 'reiteration' in rule_name or 'reiterate' in rule_name:
-            return ('rule', pl.ReiterationRule(), indices)
-        if 'substitution' in rule_name or 'leibniz' in rule_name:
-            return ('rule', pl.LeibnizSubstitutionRule(), indices)
-        if 'relation' in rule_name and 'irreflexiv' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationIrreflexivity'), indices)
-        if 'relation' in rule_name and 'reflexiv' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationReflexivity'), indices)
-        if 'relation' in rule_name and 'antisymmetr' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationAntisymmetry'), indices)
-        if 'relation' not in rule_name and 'antisymmetr' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationAntisymmetry'), indices)
-        if 'relation' in rule_name and 'asymmetr' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationAsymmetry'), indices)
-        if 'relation' in rule_name and 'symmetr' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('RelationSymmetry'), indices)
-        if 'relation' in rule_name and ('transitiv' in rule_name):
-            return ('rule', pl.NamedRulePlaceholder('RelationTransitivity'), indices)
-        if 'relation' in rule_name and ('total' in rule_name or 'connected' in rule_name):
-            return ('rule', pl.NamedRulePlaceholder('RelationTotality'), indices)
-        if 'symmetry' in rule_name:
-            return ('rule', pl.SymmetryRule(), indices)
-        if 'transitivity' in rule_name:
-            return ('rule', pl.TransitivityRule(), indices)
-        if 'quotient' in rule_name and ('defin' in rule_name or 'property' in rule_name):
-            # Like Induction below, resolved by name against whatever
-            # Proof.rules this justification is actually checked against --
-            # see NumberTheory.QuotientDefiningPropertyRule.
-            return ('rule', pl.NamedRulePlaceholder('QuotientDefiningProperty'), indices)
-        if 'quotient' in rule_name and 'uniq' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('QuotientUniqueness'), indices)
-        if 'set' in rule_name and 'equal' in rule_name:
-            return ('rule', pl.NamedRulePlaceholder('SetEquality'), indices)
-        if 'induction' in rule_name:
-            # Unlike every other rule here, Induction needs per-proof
-            # configuration (which type's Zero/Succ/predicate) that the
-            # justification text can't supply -- see NamedRulePlaceholder
-            # in ProofLogic.py for how this gets resolved against whatever
-            # Type was actually combined into this Proof's `rules=` list.
-            return ('rule', pl.NamedRulePlaceholder('Induction'), indices)
-        # Parenthesized here to make the actual grouping explicit -- this
-        # is one 4-way OR (morgan | distribut | (double AND negation) |
-        # equiv), exactly matching Python's implicit `and`-before-`or`
-        # precedence from the original unparenthesized form, just spelled
-        # out. Because the last arm matches on the bare substring "equiv",
-        # ANY rule name containing "equiv" -- including "conditional
-        # equivalence" -- resolves here; see this function's docstring.
-        if ('morgan' in rule_name or 'distribut' in rule_name or
-                ('double' in rule_name and 'negation' in rule_name) or 'equiv' in rule_name):
-            return ('rule', pl.PropositionalEquivalenceRule(), indices)
-        if 'conditional' in rule_name and 'equiv' in rule_name:
-            # Unreachable: every rule_name that would satisfy this line already
-            # satisfied the broader "'equiv' in rule_name" arm above and
-            # returned before reaching here. Left in place rather than
-            # deleted so the historical intent (an explicit alias for
-            # "Conditional Equivalence") stays visible; see the docstring.
-            return ('rule', pl.BiconditionalEliminationRule(), indices)
-        if 'conditional' in rule_name and 'elimin' in rule_name:
-            return ('rule', pl.BiconditionalEliminationRule(), indices)
-        if 'conditional' in rule_name or 'conditional introduction' in rule_name or 'conditional-intro' in rule_name:
-            return ('rule', pl.ConditionalIntroductionRule(), indices)
-        if 'contradict' in rule_name or 'proof by contradiction' in rule_name or 'reductio' in rule_name:
-            return ('rule', pl.ProofByContradictionRule(), indices)
-
-        raise ValueError(f"Unknown inference rule '{rule_name}' in justification")
-
-    if 'arbitrary' in s_low or 'fresh variable' in s_low:
-        return ('arbitrary',)
-    if 'set property' in s_low:
-        return ('rule', pl.NamedRulePlaceholder('EmptySetProperty'), [])
-    if 'reflexivity' in s_low:
-        # The one rule with premise_arity 0: no 'from ...' clause to match
-        # in Phase 1 at all, so it's recognized here as a bare keyword
-        # instead, the same way 'premise'/'assume'/'axiom' are -- but
-        # still resolves to a genuine ('rule', ReflexivityRule(), [])
-        # citation, not a new tag of its own.
-        return ('rule', pl.ReflexivityRule(), [])
-    if 'declare' in s_low or 'declaration' in s_low:
-        return ('declare',)
-    if 'premise' in s_low:
-        return ('premise',)
-    if 'assume' in s_low or 'assum' in s_low or s_low == 'case':
-        return ('assume',)
-    if 'axiom' in s_low:
-        return ('axiom',)
-
-    # Last resort: a bare phrase naming a promoted theorem with no
-    # premises of its own, e.g. "(The empty set subset theorem)" citing
-    # a `TheoremRule` built by `ProofLogic.promote_theorem`. Preserves the
-    # original casing/spacing of `s` (not `s_low`) since that is exactly
-    # what the theorem was promoted under. Deferred to validation the same
-    # way "Induction"/"EmptySetProperty" already are: if no rule with this
-    # name is registered for the proof, that is where the failure surfaces,
-    # with a clear message naming the missing rule.
-    #
-    # Guarded against text containing "from" or "subproof": every genuine
-    # rule-citation shape above already tried to match those and failed,
-    # so text that still contains either word here is far more likely a
-    # malformed citation (e.g. "from subproof above" instead of "below")
-    # than an actual theorem title -- and should fail loudly and
-    # immediately, not be swallowed into a placeholder that only fails
-    # later, with a confusing "no rule named ... is registered" message.
-    if 'from' not in s_low and 'subproof' not in s_low:
-        return ('rule', pl.NamedRulePlaceholder(s), [])
-
-    raise ValueError(f"Invalid justification format: '{s}'")
+# `parse_justification` itself lives in `ProofJustification.py` (imported
+# above) and is deliberately *not* redefined here. An earlier,
+# substring-keyword-matching implementation used to live at this exact
+# spot; it was fully superseded when `ProofJustification`'s deterministic
+# alias-table resolver became the authoritative rule-name parser, but the
+# old body was left in place, silently dead: `SyLoPy/source/__init__.py`
+# imports `ProofParserPolicy` right after this module, and
+# `ProofParserPolicy` overwrote `ProofParser.parse_justification` at
+# import time regardless of what was defined here, so nothing ever
+# actually called the old inline version again. Removed once confirmed
+# nothing referenced it directly (see `test_import_contract.py` and the
+# module-identity check in `pytest_tests/test_parser.py`); `source/
+# test_parser.py`, the one file that *did* still exercise the dead
+# version's behavior directly, was correspondingly retired -- its still-
+# relevant cases live on in `pytest_tests/test_parser.py`.
 
 
 def _split_trailing_parenthetical(text: str) -> Tuple[Optional[str], Optional[str]]:

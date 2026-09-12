@@ -53,11 +53,31 @@ class SurfaceDeclaration:
 
 @dataclass(frozen=True)
 class SurfaceDeclarationClause:
-    """A coordinated declaration clause, possibly introducing several names."""
+    """A coordinated declaration clause, possibly introducing several names.
+
+    `is_tuple`/`domain`/`codomain` mirror the fields of the same name on
+    `ProofParser.DeclarationClause`, the single-clause parse this class is
+    built from (see `ProofParser._surface_declaration_from_clause`). They
+    are carried along rather than dropped so that
+    `ProofParser._surface_clause_to_recipe_clause` -- which reconstructs a
+    `DeclarationClause` from a `SurfaceDeclarationClause` to dispatch
+    through `TheoryEnvironment.declaration_recipes` -- can report the
+    clause's real shape. Without these, every clause reaching a
+    `DeclarationRecipe` via the coordinated "Let X be any set, R be a
+    relation on X, ..." statement path looked like a plain single-name
+    clause regardless of whether it was actually written as a tuple
+    target (`(W, <) be ...`) or a typed function (`f: W -> W be ...`),
+    silently defeating any recipe that (like a well-ordered-poset recipe)
+    needs to recognize that shape -- see
+    `test_declaration_recipe_registry_dispatches_a_registered_structure_type_generically`.
+    """
 
     declarations: List[SurfaceDeclaration]
     span: Optional[SourceSpan] = None
     membership_expression: Optional[str] = None
+    is_tuple: bool = False
+    domain: Optional[str] = None
+    codomain: Optional[str] = None
 
 
 @dataclass(frozen=True)

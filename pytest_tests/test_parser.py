@@ -84,6 +84,24 @@ def test_conventional_precedence():
     assert repr(pp.parse_formula("A and B iff C")) == "((A() ∧ B()) ↔ C())"
 
 
+def test_implication_binds_looser_than_equality():
+    # "A -> B = C" has to mean "A -> (B = C)": '='s operands must be
+    # Terms, and only the left side of '->' stands alone as one. Checking
+    # '=' before '->' used to split this on the '=' and try (and, after
+    # the loud-failure fallback, correctly fail) to parse "Nat(x) -> x" as
+    # a Term -- the wrong problem entirely, since it was never supposed to
+    # be parsed as a term in the first place. Found via validate_all_
+    # proofs.py surfacing tests/testProofsDeclared/declare_basic.txt,
+    # previously reachable by nothing.
+    formula = pp.parse_formula("Nat(x) -> x = x")
+    assert isinstance(formula, fl.Implies)
+    assert repr(formula.antecedent) == "Nat(x)"
+    assert isinstance(formula.consequent, fl.Equals)
+
+    quantified = pp.parse_formula("forall x, (Nat(x) -> x = x)")
+    assert isinstance(quantified, fl.ForAll) and isinstance(quantified.body, fl.Implies)
+
+
 def test_bare_if_and_only_if_parses_as_iff():
     assert isinstance(pp.parse_formula("A if and only if B"), fl.Iff)
 
@@ -281,3 +299,55 @@ def test_object_predicate_and_function_declaration_prefixes():
 def test_parse_justification_rejects_trailing_from():
     with pytest.raises(ValueError, match="Malformed rule justification"):
         pp.parse_justification("Relation Transitivity from")
+
+
+def test_declaration_clause_parsing_recognizes_all_three_target_shapes():
+    plain = pp.parse_declaration_clause("n be a natural number")
+    assert plain.names == ["n"] and not plain.is_tuple and plain.domain is None
+
+    tup = pp.parse_declaration_clause("(W, <) be a well-ordered poset")
+    assert tup.names == ["W", "<"] and tup.is_tuple
+
+    typed = pp.parse_declaration_clause("f: W -> W be an increasing function")
+    assert typed.names == ["f"] and typed.domain == "W" and typed.codomain == "W"
+
+
+def test_declaration_recipe_registry_dispatches_a_registered_structure_type_generically():
+    # A minimal, throwaway structure type -- not order theory, not number
+    # theory -- to confirm the dispatch mechanism itself is generic and
+    # not secretly special-cased to the two real recipes that happen to
+    # use it. This is the "would a *third*, unrelated theory module work
+    # the same way" check. Also regression coverage for a real bug: a
+    # tuple-shaped clause like this one used to lose its `is_tuple` flag
+    # (and a typed-function clause its `domain`/`codomain`) the moment it
+    # was reached through a *coordinated* "Let X be any set, ..." surface
+    # statement rather than a standalone "Let (W, <) be ..." line, because
+    # `_surface_clause_to_recipe_clause` rebuilt the `DeclarationClause` a
+    # recipe sees with `is_tuple` hardcoded to `False` -- silently
+    # defeating any recipe (like this one, or a future well-ordered-poset
+    # recipe) that needs to recognize that shape. `SurfaceDeclarationClause`
+    # now carries `is_tuple`/`domain`/`codomain` through from the original
+    # `DeclarationClause` so both surface paths agree on a clause's shape.
+    def expand_widget(clauses, start):
+        dc = clauses[start]
+        if not dc.is_tuple or dc.normalized_descriptor != "widget":
+            return None
+        carrier, marker = dc.names
+        decls = [
+            pl.Declaration(carrier, pl.DeclarationKind.OBJECT),
+            pl.Declaration(marker, pl.DeclarationKind.PREDICATE, arity=1),
+        ]
+        formula = fl.AtomicFormula(marker, [tl.ConstantTerm(carrier, carrier)])
+        return (1, decls, [formula], [])
+
+    recipe = pl.DeclarationRecipe("Widget", expand_widget)
+    fake_environment = pp.TheoryEnvironment(name="widget theory", declaration_recipes=[recipe])
+    environment = pp.default_theory_environment().extended(fake_environment)
+
+    entries, _ = pp.parse_proof_text("1. Let (X, Tagged) be a widget. (Declaration)\n", environment=environment)
+    label, formula, justification = entries[0]
+    assert repr(formula) == "Tagged(X)"
+    tag, declarations = justification
+    assert tag == "premise"
+    assert [(d.name, d.kind) for d in declarations] == [("X", pl.DeclarationKind.OBJECT), ("Tagged", pl.DeclarationKind.PREDICATE)]
+
