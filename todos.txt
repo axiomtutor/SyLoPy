@@ -357,10 +357,43 @@ in this file -- pick it up whenever it matters for a real proof corpus.
 
 ## Phase 5 — parser/elaboration cleanup
 
-- [ ] Audit compatibility-oriented and duplicated parser/elaborator paths.
+- [~] Audit compatibility-oriented and duplicated parser/elaborator paths.
+      - Found and fixed one concrete instance: `parse_declaration_prefix`
+        (the "such that:" premise path) and `elaborate_typed_declaration`'s
+        own per-clause fallback (reached once every `DeclarationRecipe`
+        has declined a clause) each independently re-implemented the same
+        "validate the symbol name, run `_declaration_kind_from_descriptor`,
+        build a `Declaration`" logic. Extracted the shared part into
+        `_fallback_declarations_for_clause`; each caller keeps its own
+        surrounding orchestration (`parse_declaration_prefix` collects a
+        batch to return once every clause is parsed;
+        `elaborate_typed_declaration` registers each one immediately, since
+        a later clause in the same statement -- a relation needing an
+        already-declared carrier -- may need to see it). Pure refactor:
+        362/362 pytest, 46/46 fixtures, both unchanged from before: spot-
+        checked that error text/type and successful-case output are
+        identical on both call sites, not just that the same tests pass.
+      - Rest of the audit (beyond this one instance) didn't turn up
+        further duplication worth acting on: `DiscreteMath.py` calling
+        itself a "facade" and `source/__init__.py`'s "parser facade"
+        comment are both intentional design, not leftover compatibility
+        shims; `LineBreakSyntax.py`'s `legacy` parameter name refers to
+        "the module being patched" (i.e. `ProofParser` itself), not to
+        dead code -- confusing name, not a bug, not touched here.
+        Leaving `[~]` rather than `[x]`: this kind of audit doesn't have
+        a crisp "done" condition the way a specific bug fix does; revisit
+        if a future change surfaces another instance.
 - [ ] Remove superseded declaration-prefix, formula-bundle, and legacy
       justification paths only after their callers have migrated.
-- [ ] Keep `ProofJustification` as the sole rule-name resolution mechanism.
+      Still genuinely blocked on that precondition -- `parse_declaration_prefix`
+      is still the only path "such that:" premises go through, and
+      `_parse_formula_or_bundle` is still the only path a premise bundle
+      goes through; neither has an actual replacement caller could move
+      to yet. Not actioned.
+- [x] Keep `ProofJustification` as the sole rule-name resolution mechanism.
+      True today: confirmed no other rule-name-from-text resolver exists
+      anywhere in the codebase (the dead inline `ProofParser.parse_justification`
+      that could have been read as a second one is deleted, see above).
 - [ ] Keep syntax, elaboration, name-resolution, and source-location
       diagnostics distinct.
 - [ ] Keep the public parser and elaboration interfaces small and stable.

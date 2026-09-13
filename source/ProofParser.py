@@ -335,6 +335,35 @@ def _declaration_kind_from_descriptor(descriptor: str) -> Tuple[str, Optional[st
     return pl.DeclarationKind.OBJECT, d or None
 
 
+def _fallback_declarations_for_clause(dc: 'DeclarationClause') -> List[pl.Declaration]:
+    """Turn one plain (non-typed-function, no-recipe-applicable)
+    `DeclarationClause` into the `Declaration`(s) it names.
+
+    This is the shared "the descriptor text alone decides the kind"
+    logic used both by `parse_declaration_prefix` (the "such that:"
+    premise path, which never attempts recipe dispatch at all) and by
+    `elaborate_typed_declaration`'s own per-clause fallback (reached only
+    once every registered `DeclarationRecipe` has already declined the
+    clause). It used to be written out, nearly identically, in both
+    places. Callers differ in what they do with the *result* -- collect a
+    batch to return only once every clause has been parsed, or register
+    each one immediately so a later clause in the same statement can see
+    it (needed for something like "Let X be any set, R be a relation on
+    X", where `R`'s clause is recipe-matched and needs `X` already
+    visible) -- and that orchestration difference is exactly why it stays
+    with each caller rather than moving in here too.
+
+    Raises `ValueError` (not `ElaborationError`) on an invalid symbol
+    name; each caller wraps that in whatever error type fits its own
+    context.
+    """
+    for name in dc.names:
+        if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
+            raise ValueError(f"Invalid declared symbol name: {name!r}")
+    kind, type_name = _declaration_kind_from_descriptor(dc.descriptor)
+    return [pl.Declaration(name=name, kind=kind, type_name=type_name) for name in dc.names]
+
+
 def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[str]]:
     """Parse a leading `Let ...` declaration clause.
 
@@ -377,14 +406,7 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
                 f"DECLARATION_RECIPE_REGISTRY -- to say what that typed "
                 f"function's descriptor, {dc.descriptor!r}, means)"
             )
-        for name in dc.names:
-            if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
-                raise ValueError(f"Invalid declared symbol name: {name!r}")
-        kind, type_name = _declaration_kind_from_descriptor(dc.descriptor)
-        declarations.extend(
-            pl.Declaration(name=name, kind=kind, type_name=type_name)
-            for name in dc.names
-        )
+        declarations.extend(_fallback_declarations_for_clause(dc))
 
     return declarations, formula_text
 
@@ -1026,12 +1048,11 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
             context.register_declaration(decl, entry.span)
             declarations.append(decl)
         else:
-            for name in dc.names:
-                if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
-                    raise ElaborationError(f"Invalid declared symbol name: {name!r}", entry.span)
-            kind, type_name = _declaration_kind_from_descriptor(dc.descriptor)
-            for name in dc.names:
-                decl = pl.Declaration(name=name, kind=kind, type_name=type_name)
+            try:
+                new_decls = _fallback_declarations_for_clause(dc)
+            except ValueError as exc:
+                raise ElaborationError(str(exc), entry.span) from exc
+            for decl in new_decls:
                 context.register_declaration(decl, entry.span)
                 declarations.append(decl)
         i += 1
