@@ -99,7 +99,7 @@ def test_multiproof_file_promotes_a_titled_theorem_for_later_cases_to_cite():
     project = Path(__file__).resolve().parents[1]
     text = (project / "tests" / "testSetTheory" / "empty_set_subset_and_uniqueness.txt").read_text()
     results = mp.run_multi_proof_file(text)
-    assert [(number, ok) for number, _expected, ok, _msg in results] == [
+    assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [
         ("1", True),
         ("2", True),
     ]
@@ -115,7 +115,7 @@ def test_multiproof_promotion_is_best_effort_not_fatal(capsys):
 1. Let A be a closed formula. (Declare)
 """
     results = mp.run_multi_proof_file(text)
-    assert results == [("1", True, True, None)]
+    assert results == [("1", True, True, None, False)]
     assert "was not promoted" in capsys.readouterr().out
 
 

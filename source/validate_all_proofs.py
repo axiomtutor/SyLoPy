@@ -168,7 +168,16 @@ def parse_multi_proof_file(text):
 
 
 def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
-    """Parse and validate all proof blocks, promoting titled proofs in order."""
+    """Parse and validate all proof blocks, promoting titled proofs in order.
+
+    Each result is `(number, expected_valid, ok, message, rule_crashed)`.
+    `rule_crashed` is True exactly when `ok=False` came from some rule's
+    own `applies()` raising (`CATEGORY_RULE_RAISED`; see `_is_rule_crash`)
+    rather than a genuine semantic rejection -- so a caller can tell "the
+    proof really is invalid" apart from "something in this checker
+    crashed while looking at it" even on the cases where both happen to
+    produce the same `ok` value.
+    """
     cases = parse_multi_proof_file(text)
     results = []
     promoted = []
@@ -178,8 +187,9 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
             print(f"Warning: proof number '{case.number}' appears more than once in this file")
         seen.add(case.number)
         if case.parse_error:
-            results.append((case.number, case.expected_valid, False, case.parse_error))
+            results.append((case.number, case.expected_valid, False, case.parse_error, False))
             continue
+        rule_crashed = False
         try:
             proof = pl.Proof(
                 case.entries,
@@ -187,7 +197,9 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
                 rules=(rules or pl.default_rules()) + promoted,
                 declarations=declarations or [],
             )
-            ok, message = proof.check()
+            ok, err = proof.check_detailed()
+            message = str(err) if err is not None else None
+            rule_crashed = _is_rule_crash(err)
             if ok and case.stated_conclusion is not None and not conclusion_is_derived(case.entries, case.stated_conclusion):
                 ok = False
                 message = (
@@ -200,9 +212,29 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
                 except ValueError as exc:
                     print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
         except Exception as exc:
-            ok, message = False, f"parse/check error: {exc}"
-        results.append((case.number, case.expected_valid, ok, message))
+            ok, message, rule_crashed = False, f"parse/check error: {exc}", False
+        results.append((case.number, case.expected_valid, ok, message, rule_crashed))
     return results
+
+
+def _is_rule_crash(err) -> bool:
+    """True when a validation failure happened because some rule's own
+    `applies()` raised (`ProofLogic.CATEGORY_RULE_RAISED`), not because
+    the proof is genuinely semantically invalid.
+
+    `ProofValidator` deliberately converts a raised exception into an
+    ordinary `(False, ValidationError)` return -- see `_validate_rule`'s
+    `except Exception as raised` -- specifically so one bad rule can't
+    crash the whole check. The cost is that it never reaches an `except
+    Exception:` clause anywhere upstream, so nothing flags it as an
+    implementation bug unless something checks `.category` explicitly.
+    An "invalid" fixture that only fails this way isn't actually
+    exercising the rejection its filename/description claims; it just
+    happens to also produce `ok=False`, for the wrong reason. Every
+    caller that turns a `check_detailed()` result into a `ProofResult`
+    ORs this into `implementation_error`, regardless of `expected_valid`.
+    """
+    return err is not None and getattr(err, "category", None) == pl.CATEGORY_RULE_RAISED
 
 
 class ProofResult(NamedTuple):
@@ -229,7 +261,8 @@ def _validate_entries(entries):
         rules=BARE_PROOF_RULES,
         declarations=BARE_PROOF_DECLARATIONS,
     )
-    return proof.check()
+    ok, err = proof.check_detailed()
+    return ok, (str(err) if err is not None else None), _is_rule_crash(err)
 
 
 def _check_bare_proof_file(path: Path) -> List[ProofResult]:
@@ -238,8 +271,8 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
         entries, _ = pp.parse_proof_text(path.read_text())
         if not entries:
             return [ProofResult(path.name, "1", expected_valid, False, "file has no proof lines", True)]
-        ok, message = _validate_entries(entries)
-        return [ProofResult(path.name, "1", expected_valid, ok, message, False)]
+        ok, message, rule_crashed = _validate_entries(entries)
+        return [ProofResult(path.name, "1", expected_valid, ok, message, rule_crashed)]
     except pp.ElaborationError as exc:
         return [
             ProofResult(
@@ -276,8 +309,8 @@ def _check_multi_proof_file(path: Path) -> List[ProofResult]:
         return [ProofResult(path.name, "?", True, False, f"{type(exc).__name__}: {exc}", True)]
 
     converted = []
-    for proof_id, expected_valid, ok, message in results:
-        implementation_error = bool(
+    for proof_id, expected_valid, ok, message, rule_crashed in results:
+        implementation_error = rule_crashed or bool(
             message and (message.startswith("parse/check error:") or message.startswith("parse error:"))
         )
         converted.append(ProofResult(path.name, str(proof_id), expected_valid, ok, message, implementation_error))

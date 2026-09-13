@@ -403,8 +403,45 @@ in this file -- pick it up whenever it matters for a real proof corpus.
 - [ ] Consolidate validation around `Proof.check()` and `Proof.check_detailed()`.
 - [ ] Remove obsolete validation interfaces when regression coverage makes
       removal safe.
-- [ ] Ensure implementation exceptions cannot masquerade as expected negative
+- [x] Ensure implementation exceptions cannot masquerade as expected negative
       fixture failures.
+      - Found a real gap, not currently exploited by anything in the
+        enforced corpus (checked directly: every currently-enforced
+        "invalid" fixture's rejection category is a genuine one --
+        arity_mismatch, rule_mismatch, undeclared_symbol,
+        unrecognized_rule, unregistered_formula -- never
+        CATEGORY_RULE_RAISED), but real nonetheless: `ProofValidator`
+        deliberately converts a raised exception from a rule's own
+        `applies()` into an ordinary `(False, ValidationError)` return
+        (`CATEGORY_RULE_RAISED`) so one bad rule can't crash the whole
+        check. That's the right call for the checker itself, but it means
+        such a crash never reaches any `except Exception:` clause in
+        `validate_all_proofs.py` -- so nothing flagged it as an
+        implementation bug; an "invalid" fixture that only failed this
+        way would have looked like a correct rejection.
+      - Fixed by adding `_is_rule_crash(err)` and threading it through:
+        `_validate_entries` and `run_multi_proof_file` now both call
+        `check_detailed()` (not the string-only `check()`) so they can
+        see `err.category`, and `run_multi_proof_file`'s per-case tuple
+        grew a 5th element, `rule_crashed`, alongside `message` -- a
+        deliberate, narrow exception to "keep interfaces stable" a few
+        lines below, since the alternative (detecting this by matching
+        text in the message string, the way "parse/check error:" already
+        is) is exactly the kind of fragility this item exists to remove,
+        not extend. Every caller that destructured the old 4-tuple is
+        updated (`pytest_tests/test_proof_files.py`,
+        `test_theorem_promotion_and_set_theory.py`,
+        `test_fixture_validation.py`) -- checked there's no other caller
+        by grepping for `run_multi_proof_file` across the whole repo, not
+        just guessing from memory.
+      - Regression-covered by `test_is_rule_crash_recognizes_only_
+        category_rule_raised` and `test_run_multi_proof_file_flags_a_
+        rule_crash_distinctly_from_a_genuine_rejection`, the second built
+        around a deliberately-crashing test rule (`_ExplodingRule`) so
+        the gap is exercised directly rather than waiting for a real rule
+        to have a real bug. Confirmed the new test actually discriminates
+        -- fails if `_is_rule_crash` is stubbed back to always-`False` --
+        not just that it happens to pass.
 - [ ] Add targeted regression coverage for every new scope or semantic rule.
 - [ ] Keep local and CI test commands consistent.
 - [ ] Classify informational fixture failures as missing features, obsolete

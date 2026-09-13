@@ -97,7 +97,7 @@ def test_conclusion_is_derived_is_structural():
 
 def test_run_multi_proof_file():
     results = mp.run_multi_proof_file(sample_multi_text())
-    assert [(n, expected, ok) for n, expected, ok, _ in results] == [
+    assert [(n, expected, ok) for n, expected, ok, _, _ in results] == [
         ("1", True, True),
         ("2", False, False),
     ]
@@ -149,7 +149,7 @@ def test_titled_set_theory_proof_runs_through_fixture_pipeline():
     cases = mp.parse_multi_proof_file(text)
     assert [case.number for case in cases] == ["1"]
     assert cases[0].description[-1] == "then the empty set is a subset of X"
-    assert mp.run_multi_proof_file(text) == [("1", True, True, None)]
+    assert mp.run_multi_proof_file(text) == [("1", True, True, None, False)]
 
 
 def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cases():
@@ -164,7 +164,7 @@ def test_malformed_proof_is_reported_as_a_failed_case_without_aborting_later_cas
 1. Let A be a closed formula. (Declaration)
 '''
     results = mp.run_multi_proof_file(text)
-    assert [(n, expected, ok) for n, expected, ok, _ in results] == [
+    assert [(n, expected, ok) for n, expected, ok, _, _ in results] == [
         ('1', True, False),
         ('2', True, True),
     ]
