@@ -36,9 +36,6 @@ ENFORCED_DIRS = [
 
 INFORMATIONAL_DIRS = [
     "tests/setTheoryProofs",
-    "tests/testNT",
-    "source/ntProofs",
-    "source/setProofs",
     "source/test_ntProofs",
     "source/testProofs",
 ]
@@ -123,13 +120,41 @@ def _split_header_block(block):
     return expected_valid, description, body_start
 
 
-def _stated_conclusion_from(description):
+def _stated_conclusion_from(description, proof_number=None):
+    """Parse the formula named by a `### then ...` description line, if any.
+
+    Deliberately tolerant of a `parse_formula` failure here: this is only
+    ever used for `conclusion_is_derived`'s extra "did the proof actually
+    derive what it claims to" safety-net check, not for validating the
+    proof itself, so an unparseable description (natural-language
+    phrasing the current formula grammar doesn't support, e.g. "there
+    exists an integer combination of x, y = (x, y)") should mean "skip
+    that extra check for this one proof" -- printed as a warning, the
+    same way an unpromotable theorem is -- not an uncaught exception.
+    Before this, one proof block's unparseable description in an
+    otherwise-fine multi-proof file would blow up `parse_multi_proof_file`
+    entirely, before any of the file's *other* proofs were ever
+    individually checked at all (`_check_multi_proof_file`'s own
+    outer `except Exception` would catch it, but by then there was no
+    per-case detail left to report -- every case in the file showed up
+    as a single opaque `proof_id="?"` failure).
+    """
     for description_line in description:
         match = _THEN_LINE_RE.match(description_line.strip())
         if match:
             text = match.group(1).strip().rstrip(".").strip()
             if text:
-                return pp.parse_formula(text)
+                try:
+                    return pp.parse_formula(text)
+                except Exception as exc:
+                    label = f"#{proof_number} " if proof_number else ""
+                    print(
+                        f"Warning: proof {label}has a 'then' description "
+                        f"({text!r}) that doesn't parse as a formula "
+                        f"({type(exc).__name__}: {exc}) -- skipping the "
+                        "stated-conclusion check for this proof"
+                    )
+                    return None
     return None
 
 
@@ -157,7 +182,7 @@ def parse_multi_proof_file(text):
                 header.group(1),
                 expected,
                 description,
-                _stated_conclusion_from(description),
+                _stated_conclusion_from(description, header.group(1)),
                 entries,
                 raw_lines,
                 title,

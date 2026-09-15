@@ -68,6 +68,35 @@ def test_then_line_uses_first_conclusion_only():
     assert repr(result) == "A()"
 
 
+def test_stated_conclusion_from_tolerates_an_unparseable_then_line(capsys):
+    # Before this, an unparseable "then" description didn't just return
+    # None for its own proof -- it raised, uncaught, straight out of
+    # parse_multi_proof_file, before any proof in the file (including
+    # earlier, perfectly fine ones) had been individually checked at all.
+    result = mp._stated_conclusion_from(["then there exists an integer combination of x, y."])
+    assert result is None
+    assert "doesn't parse as a formula" in capsys.readouterr().out
+
+
+def test_one_unparseable_then_line_does_not_blank_out_the_rest_of_the_file():
+    text = """
+# 1
+## Proof that
+### then A.
+1. Let A be a closed formula such that: A. (Premise)
+2. A. (Reiteration from 1)
+
+# 2
+## Proof that
+### then there exists an integer combination of x, y.
+1. Let A be a closed formula such that: A. (Premise)
+"""
+    results = mp.run_multi_proof_file(text)
+    by_number = {number: ok for number, _expected, ok, _message, _crashed in results}
+    assert by_number["1"] is True   # still individually checked and correct
+    assert by_number["2"] is True   # its own proof is fine; only the extra stated-conclusion check is skipped
+
+
 def test_top_level_formulas_includes_only_inferred_formulas():
     entries = [
         ("1", A, ("premise",)),

@@ -368,26 +368,33 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     """Parse a leading `Let ...` declaration clause.
 
     Returns `(declarations, formula_text)`.  A declaration-only line has
-    `formula_text is None`; a premise line using `such that:` returns the
-    formula after the declaration prefix.
+    `formula_text is None`; a premise line using `such that` returns the
+    formula after the declaration prefix. The colon after "such that" is
+    optional -- "such that:" and "such that" both work -- so that
+    forgetting it doesn't silently swallow the premise formula into the
+    declaration's own descriptor text instead of raising anything (that
+    used to be exactly the case for `source/testProofs/propLogTests.txt`'s
+    old proof #17: a missing colon meant `P(a)` was never registered as
+    a citable formula at all, and the resulting error pointed at the
+    *citing* line three steps later, not at the real problem here).
 
     This is the *fallback* case of the more general mechanism just below
     (`elaborate_typed_declaration` / `DECLARATION_RECIPE_REGISTRY`): a
     plain object with no registered structure recipe for its descriptor.
     It stays a free-standing function (rather than folding into that
-    mechanism entirely) because "such that:" premises need it directly,
+    mechanism entirely) because "such that" premises need it directly,
     without going through a full line's worth of recipe-dispatch.
     """
     s = text.strip().rstrip('.').strip()
     if not re.match(r'^let\b', s, flags=re.I):
         return [], None
 
-    m = re.search(r'\bsuch\s+that\s*:\s*', s, flags=re.I)
+    m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
     if m:
         declaration_text = s[:m.start()].strip()
         formula_text = s[m.end():].strip().rstrip('.').strip()
         if not formula_text:
-            raise ValueError("'such that:' must be followed by a formula")
+            raise ValueError("'such that' must be followed by a formula")
     else:
         declaration_text = s
         formula_text = None
@@ -1007,8 +1014,8 @@ def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationCont
     text = entry.formula_text.strip().rstrip('.').strip()
     if not re.match(r'^let\b', text, flags=re.I):
         return None
-    if re.search(r'\bsuch\s+that\s*:\s*', text, flags=re.I):
-        return None  # "such that:" premises stay on parse_declaration_prefix's original path
+    if re.search(r'\bsuch\s+that\s*:?\s*', text, flags=re.I):
+        return None  # "such that" premises (colon optional) stay on parse_declaration_prefix's original path
 
     body = re.sub(r'^let\s+', '', text, flags=re.I, count=1)
     clauses = [parse_declaration_clause(c) for c in split_declaration_clauses(body)]

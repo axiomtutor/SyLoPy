@@ -16,7 +16,10 @@ by elaboration, while keeping theory configuration in `TheoryEnvironment` and
 keeping proof validation in the kernel. All four phases below are complete
 (Phase 4's Stage 3 deliberately deferred, not blocking); the project's own
 target architecture is now what `_ElaborationContext` actually implements.
-Next up per the recommended order below: Phase 5, parser/elaboration cleanup.
+Phases 5-7 (parser cleanup, regression architecture, fixture backlog) have
+also had a pass each since; see "Suggested development sequence" at the
+end of this file for where things stand now and what looks like a
+reasonable next step.
 
 Target architecture (now the actual state, not just the target):
 
@@ -396,7 +399,20 @@ in this file -- pick it up whenever it matters for a real proof corpus.
       that could have been read as a second one is deleted, see above).
 - [ ] Keep syntax, elaboration, name-resolution, and source-location
       diagnostics distinct.
-- [ ] Keep the public parser and elaboration interfaces small and stable.
+- [~] Interfaces should change as the project needs, not stay stable for
+      its own sake -- rewritten per direct guidance, replacing "keep the
+      public parser and elaboration interfaces small and stable" above.
+      Adding rules is expected; bigger structural changes (new proof-file
+      conventions, changed entry shapes, changed function signatures) are
+      in scope too whenever the mathematics or the architecture actually
+      calls for them. `run_multi_proof_file`'s tuple growing a 5th
+      element (Phase 6, `rule_crashed`) is the concrete example that
+      prompted writing this down explicitly rather than leaving the old
+      "keep stable" wording to be reconciled against it case by case.
+      What still matters: a change should earn its place (solve a real
+      problem, not add speculative flexibility nothing needs yet) and
+      every caller of whatever changed gets updated in the same pass, not
+      left broken for later.
 
 ## Phase 6 — validation and regression architecture
 
@@ -423,12 +439,13 @@ in this file -- pick it up whenever it matters for a real proof corpus.
         `_validate_entries` and `run_multi_proof_file` now both call
         `check_detailed()` (not the string-only `check()`) so they can
         see `err.category`, and `run_multi_proof_file`'s per-case tuple
-        grew a 5th element, `rule_crashed`, alongside `message` -- a
-        deliberate, narrow exception to "keep interfaces stable" a few
-        lines below, since the alternative (detecting this by matching
-        text in the message string, the way "parse/check error:" already
-        is) is exactly the kind of fragility this item exists to remove,
-        not extend. Every caller that destructured the old 4-tuple is
+        grew a 5th element, `rule_crashed`, alongside `message`. Changed
+        the shape outright rather than reaching for the string-matching
+        trick "parse/check error:" already uses -- that trick is exactly
+        the kind of fragility this item exists to remove, not extend, and
+        interface shape is not something this project holds fixed for its
+        own sake (see the note on that near "Recommended implementation
+        order" below). Every caller that destructured the old 4-tuple is
         updated (`pytest_tests/test_proof_files.py`,
         `test_theorem_promotion_and_set_theory.py`,
         `test_fixture_validation.py`) -- checked there's no other caller
@@ -444,9 +461,145 @@ in this file -- pick it up whenever it matters for a real proof corpus.
         not just that it happens to pass.
 - [ ] Add targeted regression coverage for every new scope or semantic rule.
 - [ ] Keep local and CI test commands consistent.
-- [ ] Classify informational fixture failures as missing features, obsolete
+- [x] Classify informational fixture failures as missing features, obsolete
       fixtures, or intentionally unsupported behavior.
-- [ ] Promote mature informational fixtures into the enforced corpus.
+- [x] Promote mature informational fixtures into the enforced corpus.
+      - Full audit of all 6 informational directories (all 12 then-failing
+        cases individually inspected against the *live* repo, not assumed
+        from anything remembered or pasted -- one candidate file
+        (`source/test_ntProofs/basicDiv.txt`) turned out to have been
+        rewritten since an earlier impression of its contents, which is
+        exactly the trap "verify empirically" exists to catch).
+      - Two real, fixable bugs found and fixed along the way (not just
+        classification busywork):
+        1. `parse_declaration_prefix`'s "such that" required a literal
+           colon (`such\s+that\s*:\s*`); omitting it didn't error, it
+           silently dropped the premise formula, declaring only the bare
+           symbol -- the formula-shaped remainder just became part of the
+           declaration's own (unused-for-anything) descriptor text. A
+           citation of that dropped formula's label then failed several
+           lines later with a confusing "not in scope" error pointing at
+           the wrong line. Colon is now optional (`such\s+that\s*:?\s*`,
+           fixed everywhere this pattern is checked: `parse_declaration_
+           prefix` itself and `elaborate_typed_declaration`'s "should I
+           defer to that function" guard both needed updating together,
+           or they'd disagree about which lines have a such-that clause
+           at all). Note this leniency already existed one level up, for
+           *compound* declarations only -- `ProofParserPolicy.py` already
+           regex-preprocesses colon-less "such that" before calling
+           `parse_surface_declaration_statement` -- so this was closing a
+           gap between two paths that should already have agreed, not
+           inventing new tolerance from nothing. This directly fixed
+           `source/testProofs/propLogTests.txt`'s old #17.
+        2. `validate_all_proofs._stated_conclusion_from` called
+           `pp.parse_formula` on a proof's `### then ...` description
+           line with no exception handling at all. An unparseable
+           description (natural-language phrasing outside the current
+           formula grammar, e.g. "there exists an integer combination of
+           x, y") crashed `parse_multi_proof_file` outright -- before any
+           proof in that file, including unrelated earlier ones, had been
+           individually checked. The whole file surfaced as one opaque
+           `proof_id="?"` failure. Now caught, printed as a warning (the
+           same visibility level as an unpromotable theorem gets), and
+           treated as "skip the extra stated-conclusion safety-net check
+           for this one proof" -- the proof's own correctness is still
+           fully checked by `Proof.check_detailed()` regardless. This is
+           what made it possible to even *see* the individual, genuine
+           failure reasons inside `tests/testNT/basicNT.txt` and its
+           siblings, rather than one opaque failure per file.
+        Both are regression-tested (`test_declaration_clause_parsing_...`
+        already covered `parse_declaration_clause` itself but not this
+        specific colon-optional path -- see the colon-specific case now
+        exercised through `propLogTests.txt` #17 passing;
+        `test_stated_conclusion_from_tolerates_an_unparseable_then_line`
+        and `test_one_unparseable_then_line_does_not_blank_out_the_rest_
+        of_the_file` for the second, both confirmed to fail against the
+        old unguarded code).
+      - Per-file classification and action taken:
+        - `source/setProofs/uniqueEmpty.txt` -- OBSOLETE. Syntax never
+          matches anything the current grammar supports ("Let X be a set
+          such that, for all objects y, y is not in X. (Fresh Variable)"
+          tries to bundle arbitrary-introduction with an assumed property
+          in one line; "Trivial Implication"/"Subset Definition"/
+          "Definition of Unique" were never implemented rule names). Its
+          mathematical content (empty-set uniqueness) is already fully,
+          correctly covered by the enforced
+          `tests/testSetTheory/empty_set_subset_and_uniqueness.txt`.
+          Deleted; not referenced anywhere.
+        - `tests/setTheoryProofs/basicSTProofs.txt` -- OBSOLETE, in three
+          different ways at once: its #1 duplicates (and is redundant
+          with) the still-kept `tests/setTheoryProofs/empty_set_subset.txt`
+          (which stays -- it's loaded directly by three tests in
+          `test_theorem_promotion_and_set_theory.py`, checked before
+          touching anything in this directory); its #2 uses old phrasing
+          ("X is a set such that X has no elements" isn't valid
+          declaration/formula syntax) that
+          `empty_set_subset_and_uniqueness.txt` already supersedes with a
+          real, working proof of the identical theorem; its #3 is a bare
+          "# 3" header with no body at all, an abandoned placeholder.
+          Deleted; only referenced from an explanatory comment (not
+          loaded as data) in `test_theorem_promotion_and_set_theory.py`,
+          which is updated to point at the surviving file instead.
+        - `tests/testNT/basicNT.txt`, `tests/testNT/basicNT_edit.txt`,
+          `source/ntProofs/basicNT.txt` -- OBSOLETE, all three. Each is
+          an independent early draft bundling two theorems: "a|n iff n/a
+          is an integer" (already fully covered, correctly, by the
+          enforced `tests/testNumberTheory/divisibility_iff_quotient_
+          integer.txt` -- these three drafts add nothing beyond it, and
+          each is *also* individually broken in its own way reaching that
+          theorem: one cites "Existential Instantiation from subproof
+          below", a rule/subproof-attachment combination that was never
+          supported by either the old substring-matching parser or the
+          current `ProofJustification` one; another has a bare missing-
+          justification typo on top of being blocked by the same
+          "Algebra"/"Definition of Divisibility" retirement documented in
+          `NumberTheory.py`'s own module docstring; the third uses
+          unsupported postfix "if" wording) and a GCD/Bezout argument via
+          well-ordering that needs order theory, a well-ordering
+          principle, and quotient-remainder decomposition -- none of
+          which exist yet, exactly as `NumberTheory.py`'s own docstring
+          already says ("left for a follow-up"). All three are near-
+          identical, redundant drafts of the same not-yet-achievable
+          content; keeping three broken copies of it added nothing.
+          Deleted; none referenced anywhere.
+        - `source/test_ntProofs/basicDiv.txt` -- KEPT, genuinely a
+          missing-feature case, not obsolete or redundant with anything.
+          Its content turned out to be different from what an earlier
+          impression of this file suggested (see the "verify empirically"
+          note above) -- it's "a|b and a|c implies a|(b+c)" and "a|b and
+          b|c implies a|c" (divisibility transitivity), neither of which
+          is covered by any enforced fixture. Both are blocked on real,
+          distinct gaps: the first needs a multi-variable existential
+          ("exists m, n such that: ..." -- `Exists`/`ForAll` currently
+          only bind one variable per quantifier); the second needs
+          `Times` associativity, an actual ring axiom `NumberTheory.py`
+          explicitly doesn't have yet ("no associativity, distributivity,
+          ..." -- same "not here yet" list as the GCD argument above).
+          Worth keeping as concrete, correctly-scoped target content for
+          whenever either gap gets addressed.
+        - `source/testProofs/propLogTests.txt` -- FIXED, not obsolete.
+          Four bare "Let ... be a closed formula/predicate." lines were
+          missing their trailing justification entirely (a plain typo,
+          not a design gap) -- three of these were the file's only
+          reported failures (#3, #33, #37); the fourth (#13) happened to
+          already read as "passing" only because it's marked "Invalid
+          proof" and the same typo produced a `False` that coincidentally
+          matched `expected_valid=False`, silently never exercising what
+          #13 actually claims to test (an invalid escape from a closed
+          subproof). Fixed all four with `(Declare)` (these lines assert
+          no formula, only vocabulary) rather than `(Premise)`. #17's
+          separate failure was the "such that" colon bug above. Now
+          39/39, and #13 fails for its own, real, intended reason instead
+          of an unrelated line-1 typo (confirmed by re-running: still
+          correctly `expected=False, got=False`, now via `CATEGORY_
+          BAD_REFERENCE` on the actual out-of-scope citation, not a typo).
+      - `INFORMATIONAL_DIRS` in `validate_all_proofs.py` shrinks from six
+        directories to three (`tests/setTheoryProofs`,
+        `source/test_ntProofs`, `source/testProofs`) -- the other three
+        no longer exist at all once their one obsolete file each is gone.
+        Informational corpus: 40/42 now (was 37/49) -- the 2 remaining
+        failures are exactly `basicDiv.txt`'s two genuinely-missing-
+        feature proofs, both clearly documented above, nothing else.
 
 ## Phase 7 — mathematical development
 
@@ -542,7 +695,13 @@ in this file -- pick it up whenever it matters for a real proof corpus.
 - [ ] Do not add large numbers of isolated mathematical rules while the proof
       context, elaboration, and validation interfaces are changing.
 
-## Recommended implementation order
+## Suggested development sequence
+
+Not a strict order to follow top to bottom -- work on whatever the natural
+next development is, and update this list (both completed items and any
+change of plan) when that happens rather than treating the numbering as a
+commitment. It exists to record *where things currently stand* and *what
+looks like a reasonable next step from here*, not to fix a plan in advance.
 
 1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
 2. [x] Integrate `ProofContext` into elaboration.
@@ -550,12 +709,41 @@ in this file -- pick it up whenever it matters for a real proof corpus.
        (see Phase 3); `promote_theorem`'s own default behavior remains a
        small, separate, unblocking-nothing decision for whenever it matters.
 4. [x] Remove duplicated lexical scope bookkeeping (Phase 4, see above).
-5. [ ] Finish parser/elaborator legacy cleanup.
-6. [ ] Strengthen semantic and diagnostic regression coverage.
-7. [ ] Classify and reduce the informational fixture backlog.
+5. [~] Finish parser/elaborator legacy cleanup (Phase 5). One concrete
+       duplicated-logic instance found and fixed (see above); the
+       remaining sub-items are either blocked on a precondition that
+       genuinely hasn't happened yet (removing `parse_declaration_prefix`/
+       `_parse_formula_or_bundle`) or standing principles rather than
+       one-time tasks (distinct syntax/elaboration/diagnostics concerns).
+       Not treating this as fully closed, but nothing further is
+       currently actionable without a bigger, separate architectural
+       decision.
+6. [~] Strengthen semantic and diagnostic regression coverage (Phase 6).
+       The rule-crash-masking gap is fixed and regression-tested;
+       consolidating validation entry points and removing obsolete
+       validation interfaces remain open, not yet investigated.
+7. [x] Classify and reduce the informational fixture backlog. Full audit
+       done (see Phase 6 above): 5 obsolete/redundant files deleted, one
+       genuinely-blocked file kept and clearly documented, one file fixed
+       outright (3 typos + a real parser gap), 2 real infrastructure bugs
+       fixed and regression-tested along the way. Informational corpus:
+       40/42, down from 6 failing directories to 1 (with both remaining
+       failures explained, not mysterious).
 8. [ ] Expand discrete mathematics, set theory, and number theory.
 9. [ ] Add broader theory extensions such as order theory and algebra.
 10. [ ] Verify CI continuously throughout the process.
+
+With 5-7 now in the state above, 8/9 (real mathematical development) are
+the natural next area rather than further infrastructure passes -- the
+interfaces have settled enough to build on, per the note on interface
+change near Phase 5 above. `source/test_ntProofs/basicDiv.txt`'s two
+proofs (divisibility distributes over sums; divisibility transitivity)
+are concrete, scoped, currently-failing targets to build toward: the
+first needs multi-variable existentials (`exists m, n such that: ...` --
+`Exists`/`ForAll` currently bind one variable each), the second needs a
+`Times`-associativity axiom in `NumberTheory.py` (explicitly on that
+module's own "not here yet" list already). Either is a reasonable,
+self-contained next piece of work; neither is required before the other.
 
 Prefer mathematical developments that exercise and validate the architecture,
 then promote the resulting abstractions into reusable theory infrastructure.

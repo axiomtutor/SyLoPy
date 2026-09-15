@@ -52,7 +52,9 @@ def test_promote_theorem_generalizes_over_top_level_declared_object():
     assert isinstance(theorem.conclusion, fl.ForAll)
 
     # Cited for a *different* declared set, with no premises, exactly the
-    # way basicSTProofs.txt's second proof cites it.
+    # way tests/testSetTheory/empty_set_subset_and_uniqueness.txt's second
+    # proof cites it (basicSTProofs.txt, the original file this pattern
+    # came from, is deleted -- superseded by that file, see todos.txt).
     cite_text = """
 1. Let Y be any set. (Declaration)
 2. The empty set is a subset of Y. (The empty set subset theorem)

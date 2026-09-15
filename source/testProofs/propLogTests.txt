@@ -50,7 +50,7 @@ end subproof
 ### then A -> (B -> A).
 (* Doubly nested subproofs. *)
 
-1. Let A, B be closed formulas.
+1. Let A, B be closed formulas. (Declare)
 2. A -> (B -> A). (Conditional Introduction from subproof below)
 begin subproof
  1.1. A. (Assumption for conditional introduction)
@@ -163,7 +163,7 @@ end subproof
 ## Invalid proof.
 ### Invalid escape from a subproof.
 
-1. Let A be a closed formula.
+1. Let A be a closed formula. (Declare)
 2. A or not A. (Proof by Contradiction from subproof below)
 begin subproof
  2.1. not (A or not A). (Assumption for Contradiction)
@@ -406,7 +406,7 @@ end subproof
 ### if A is a closed formula.
 ### then A or not A.
 
-1. Let A be a closed formula.
+1. Let A be a closed formula. (Declare)
 2. A or not A. (Proof by Contradiction from subproof below)
 begin subproof
  2.1. not (A or not A). (Assumption for Contradiction)
@@ -456,7 +456,7 @@ end subproof
 ## Proof that
 ### forall x, (P(x) or not P(x)).
 
-1. Let P be a predicate.
+1. Let P be a predicate. (Declare)
 2. forall x, (P(x) or not P(x)). (Universal Generalization from subproof below)
 begin subproof
  2.0. let c be arbitrary. (Arbitrary)
