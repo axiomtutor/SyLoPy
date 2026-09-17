@@ -729,21 +729,32 @@ looks like a reasonable next step from here*, not to fix a plan in advance.
        fixed and regression-tested along the way. Informational corpus:
        40/42, down from 6 failing directories to 1 (with both remaining
        failures explained, not mysterious).
-8. [ ] Expand discrete mathematics, set theory, and number theory.
+8. [~] Expand discrete mathematics, set theory, and number theory. One
+       concrete piece done: `Times` associativity added to `NumberTheory.py`
+       (a real ring axiom, added because divisibility transitivity needed
+       it, not speculatively -- see that module's own docstring) and
+       divisibility transitivity proved and promoted to the enforced
+       corpus (`tests/testNumberTheory/divisibility_is_transitive.txt`).
+       `source/test_ntProofs/basicDiv.txt` trimmed to just its other
+       proof now that this one has a real home. Not marking this item
+       fully done -- "expand" doesn't have a natural end point the way a
+       specific bug fix does -- but the concrete target this file's own
+       closing note pointed at is closed.
 9. [ ] Add broader theory extensions such as order theory and algebra.
 10. [ ] Verify CI continuously throughout the process.
 
-With 5-7 now in the state above, 8/9 (real mathematical development) are
-the natural next area rather than further infrastructure passes -- the
-interfaces have settled enough to build on, per the note on interface
-change near Phase 5 above. `source/test_ntProofs/basicDiv.txt`'s two
-proofs (divisibility distributes over sums; divisibility transitivity)
-are concrete, scoped, currently-failing targets to build toward: the
-first needs multi-variable existentials (`exists m, n such that: ...` --
-`Exists`/`ForAll` currently bind one variable each), the second needs a
-`Times`-associativity axiom in `NumberTheory.py` (explicitly on that
-module's own "not here yet" list already). Either is a reasonable,
-self-contained next piece of work; neither is required before the other.
+With 5-7 settled and one piece of 8 done, the natural next concrete
+target is `source/test_ntProofs/basicDiv.txt`'s one remaining proof
+(divisibility distributes over sums: `a|b and a|c` implies `a|(b+c)`),
+blocked on multi-variable existentials -- `exists m, n such that: ...`
+doesn't parse today, since `Exists`/`ForAll` each currently bind exactly
+one variable. That's a core-parser change (not a theory-module addition
+the way the associativity axiom was), touching `ForAll`/`Exists` parsing
+and everything downstream that pattern-matches a single bound variable
+(`FormulaMatcher`, `UniversalGeneralizationRule`,
+`ExistentialEliminationRule`, `ExistentialIntroductionRule`,
+`UniversalInstantiationRule`) -- worth planning as its own piece of work
+rather than assuming it's as contained as the associativity axiom was.
 
 Prefer mathematical developments that exercise and validate the architecture,
 then promote the resulting abstractions into reusable theory infrastructure.

@@ -36,10 +36,7 @@ What's characterized here
      domain of terms, one a subset of the other, not two disjoint types.
   2-4. Closure of `Int` under `Plus`, `Times`, and `Neg` (additive
      inverse) -- the minimal structure needed to call this "the integers"
-     rather than just "the naturals with different notation". No axioms
-     relate `Plus`/`Times`/`Neg` to each other yet (no associativity,
-     distributivity, ...) -- that's ordinary ring reasoning this module
-     doesn't attempt yet, tracked below under "not here yet".
+     rather than just "the naturals with different notation".
   5-6. Two axioms characterizing `Quotient` (infix `n/a`) as *partial*
      division: `Quotient(n, a)` is only ever asserted to equal anything
      when it's already known to be an integer (i.e., when `a` evenly
@@ -50,6 +47,13 @@ What's characterized here
      Both are exposed as one-step citable rules (`QuotientDefiningPropertyRule`,
      `QuotientUniquenessRule`) rather than left as a generic "Algebra"
      black box -- see the note on that below.
+  7. `Times` associativity -- the first ring fact relating `Plus`/`Times`/
+     `Neg` to each other (added because divisibility transitivity needed
+     it; see the axiom's own comment), not a deliberate first step toward
+     characterizing a full ring. `Plus` associativity, commutativity, and
+     distributivity remain absent -- tracked below under "not here yet",
+     to be added the same way this one was: when an actual proof needs
+     one, not speculatively ahead of that.
 
 Divisibility (`a|n`, "a divides n") is *not* a new primitive or a new
 rule. It is definitional sugar, expanded at parse time to
@@ -63,36 +67,43 @@ same way there was never a `SubsetRule` in `SetTheory`.
 --------------------------------------------------------------------------
 On "Algebra" and "Definition of Divisibility"
 --------------------------------------------------------------------------
-Earlier drafts of number-theory proof text (see `source/ntProofs/basicNT.txt`,
-`tests/testNT/basicNT.txt`) cite steps as "(Algebra from ...)" and
-"(Definition of Divisibility from ...)" without either ever being a real,
-checked rule anywhere in this project's history -- both were acknowledged
-placeholders. "Definition of Divisibility" turns out not to be needed at
-all, for the reason above. "Algebra" is retired rather than implemented
-as written: the word doesn't name one operation, so a rule called
-"Algebra" that accepted *any* citation under that name could only be sound
-by accident, or by silently being a rubber stamp. What "Algebra" was
-standing in for, in every case this module currently handles, is exactly
-the two `Quotient` axioms above -- so those got real names
-(`Quotient Defining Property`, `Quotient Uniqueness`) instead, each
-checking one precise, closed-form derivation rather than trusting
-arbitrary algebraic text. A citation of "(Algebra ...)" in older proof
-text will now raise a clear "unknown inference rule" error rather than
-silently validating; `tests/test_ntProofs/basicDiv.txt` and
-`source/ntProofs/basicNT.txt`'s divisibility proof have been re-derived
-using the real rules (see `tests/testNumberTheory/`).
+Earlier drafts of number-theory proof text cited steps as "(Algebra
+from ...)" and "(Definition of Divisibility from ...)" without either
+ever being a real, checked rule anywhere in this project's history --
+both were acknowledged placeholders. Those drafts (and the redundant
+copies of them that had accumulated in `source/ntProofs/`,
+`tests/testNT/`, and `source/setProofs/`) are gone now, superseded by
+real fixtures under `tests/testNumberTheory/`; see `todos.txt`'s Phase 6
+entry for the specifics of what was deleted and why. "Definition of
+Divisibility" turns out not to be needed at all, for the reason above.
+"Algebra" is retired rather than implemented as written: the word
+doesn't name one operation, so a rule called "Algebra" that accepted
+*any* citation under that name could only be sound by accident, or by
+silently being a rubber stamp. What "Algebra" was standing in for, in
+every case this module currently handles, is exactly the two `Quotient`
+axioms above plus the real, lowercase `(algebra from ...)` congruence-
+closure rule (`AlgebraRule`, in `ProofLogic.py`) -- so those got real
+names instead, each checking one precise derivation rather than trusting
+arbitrary algebraic text. A citation of "(Algebra ...)" -- capitalized,
+the old placeholder -- still raises a clear "unknown inference rule"
+error rather than silently validating.
 
 --------------------------------------------------------------------------
 What's deliberately not here yet
 --------------------------------------------------------------------------
 No order relation (`<`, `<=`), no trichotomy, no well-ordering principle,
 no set-builder-driven arguments, no GCD, no quotient-remainder
-decomposition. That is everything the *second* proof in `basicNT.txt`
-(the Bezout/GCD argument) needs, and it is a substantially larger
+decomposition, no `Plus` associativity/commutativity, no distributivity.
+The order-theory list is what the GCD/Bezout argument needs (see
+`tests/testNumberTheory/`'s docstrings and `todos.txt`'s Phase 6/7
+entries for the fixture history here) and is a substantially larger
 undertaking -- an order theory plus a well-ordering axiom/schema, at
-minimum -- left for a follow-up rather than attempted here. The first
-proof (`a|n` iff `n/a` is an integer) does not need any of that and is
-fully supported.
+minimum -- left for a follow-up rather than attempted here. The ring
+facts are each individually small; each gets added when a real proof
+needs it (this is how `Times` associativity, above, got added), not
+ahead of that. `a|n` iff `n/a` is an integer, divisibility distributing
+over closure under `Plus`/`Times`, and divisibility transitivity do not
+need any of this and are fully supported.
 """
 
 import SyLoPy.source.FormulaLogic as fl
@@ -113,6 +124,7 @@ _a = tl.VariableTerm('a')
 _m = tl.VariableTerm('m')
 _x = tl.VariableTerm('x')
 _y = tl.VariableTerm('y')
+_z = tl.VariableTerm('z')
 
 
 def _Int(term: tl.Term) -> fl.Formula:
@@ -161,6 +173,23 @@ INT_AXIOMS = [
     fl.ForAll('n', fl.ForAll('a', fl.ForAll('m', fl.Implies(
         fl.And(_Int(_m), fl.Equals(_n, _Times(_a, _m))),
         fl.Equals(_Quotient(_n, _a), _m),
+    )))),
+
+    # 7. Times associativity. The first (of eventually several -- see the
+    #    module docstring's "not here yet" list) ordinary ring fact this
+    #    module characterizes, added because a real proof needed it
+    #    (divisibility transitivity: a|b and b|c gives b = a*m and c = b*n
+    #    for some integers m, n, so c = (a*m)*n by substitution -- but
+    #    concluding a|c needs a witness of the shape a*(something), i.e.
+    #    c = a*(m*n), which requires knowing (a*m)*n = a*(m*n)).
+    #    AlgebraRule's congruence closure can chain this once it's cited
+    #    as a premise, the same as any other equation -- it just can't
+    #    produce the fact on its own, since it never assumes anything
+    #    about what a cited function symbol *means* (see that rule's own
+    #    docstring on exactly this boundary).
+    fl.ForAll('x', fl.ForAll('y', fl.ForAll('z', fl.Implies(
+        fl.And(fl.And(_Int(_x), _Int(_y)), _Int(_z)),
+        fl.Equals(_Times(_Times(_x, _y), _z), _Times(_x, _Times(_y, _z))),
     )))),
 ]
 

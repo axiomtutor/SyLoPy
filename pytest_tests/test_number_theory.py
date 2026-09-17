@@ -7,7 +7,7 @@ from .support import numt, nt, pl, fl, tl, pp, atom, c, v
 
 
 def test_int_axiom_shapes():
-    nat_subset, plus_closure, times_closure, neg_closure, quotient_defining, quotient_unique = numt.INT_AXIOMS
+    nat_subset, plus_closure, times_closure, neg_closure, quotient_defining, quotient_unique, times_assoc = numt.INT_AXIOMS
     assert repr(nat_subset) == "(∀x. (Nat(x) → Int(x)))"
     assert "Int(Plus(x, y))" in repr(plus_closure)
     assert "Int(Times(x, y))" in repr(times_closure)
@@ -15,6 +15,7 @@ def test_int_axiom_shapes():
     assert "Int(Quotient(n, a))" in repr(quotient_defining)
     assert "n = Times(a, Quotient(n, a))" in repr(quotient_defining)
     assert "Quotient(n, a) = m" in repr(quotient_unique)
+    assert "Times(Times(x, y), z) = Times(x, Times(y, z))" in repr(times_assoc)
 
 
 def test_divides_formula_is_the_defining_existential():
@@ -86,6 +87,7 @@ def test_current_number_theory_fixture_corpus():
         outcomes[path.name] = pl.Proof(entries).check()
 
     assert outcomes["divisibility_iff_quotient_integer.txt"][0] is True
+    assert outcomes["divisibility_is_transitive.txt"][0] is True
     assert outcomes["nat_closure_gives_int.txt"][0] is True
     assert all(
         ok is False

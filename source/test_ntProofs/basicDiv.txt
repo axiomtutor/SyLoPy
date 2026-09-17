@@ -14,18 +14,13 @@
 6. Plus(b, c) = Times(a, Plus(m, n)). (Algebra from 5)
 7. a|Plus(b, c). (Existential Introduction from 6)
 
-# 2
-## Proof that
-### if a|b and b|c
-### then a|c
-
-1. Let a, b, c be any integers such that: a|b and b|c. (Premise)
-2. Let m, n be objects. (Declare)
-3. b = Times(a, m). (Existential Elimination from 1)
-4. c = Times(b, n). (Existential Elimination from 1)
-5. c = Times(Times(a, m), n). (Substitution from 4)
-6. c = Times(a, Times(m, n)). (Algebra from 5)
-7. a|c. (Existential Introduction from 6)
+(* Blocked on a real missing feature, not obsolete: `Exists`/`ForAll`
+   currently bind one variable each, so line 2's "exists m, n such
+   that: ..." (two witnesses at once) doesn't parse. Divisibility
+   transitivity used to live here too (# 2) -- now proved for real, in
+   current syntax, at
+   tests/testNumberTheory/divisibility_is_transitive.txt. See todos.txt's
+   Phase 6/7 entries for that history. *)
 
 
 
