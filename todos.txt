@@ -729,32 +729,74 @@ looks like a reasonable next step from here*, not to fix a plan in advance.
        fixed and regression-tested along the way. Informational corpus:
        40/42, down from 6 failing directories to 1 (with both remaining
        failures explained, not mysterious).
-8. [~] Expand discrete mathematics, set theory, and number theory. One
-       concrete piece done: `Times` associativity added to `NumberTheory.py`
-       (a real ring axiom, added because divisibility transitivity needed
-       it, not speculatively -- see that module's own docstring) and
-       divisibility transitivity proved and promoted to the enforced
-       corpus (`tests/testNumberTheory/divisibility_is_transitive.txt`).
-       `source/test_ntProofs/basicDiv.txt` trimmed to just its other
-       proof now that this one has a real home. Not marking this item
-       fully done -- "expand" doesn't have a natural end point the way a
-       specific bug fix does -- but the concrete target this file's own
-       closing note pointed at is closed.
+8. [~] Expand discrete mathematics, set theory, and number theory.
+       `NumberTheory.py` gains two ring axioms, each added because a
+       specific proof needed it, not speculatively: `Times` associativity
+       (divisibility transitivity) and left distributivity of `Times`
+       over `Plus` (divisibility distributing over sums). Both proved and
+       promoted to the enforced corpus
+       (`tests/testNumberTheory/divisibility_is_transitive.txt`,
+       `divisibility_distributes_over_sums.txt`).
+       `source/test_ntProofs/basicDiv.txt` is deleted outright -- both of
+       its historical proofs now have real, current-syntax, enforced
+       homes, so nothing was left to keep it for.
+       Getting the second proof working surfaced a real, separate gap:
+       `pl.AlgebraRule` (the congruence-closure decision procedure) had
+       *no citable name at all* in `ProofJustification`'s alias table --
+       not "algebra", not "Algebra", nothing -- despite being fully
+       implemented, registered, and documented. It had never been used by
+       any proof in the corpus and had zero test coverage of its own
+       (confirmed by grepping the whole test suite for it). Added
+       `"Algebra"`/`"Algebraic Manipulation"` as aliases (case-
+       insensitive, matching every other rule name in that table). This
+       reverses a specific prior decision, on purpose, not by oversight:
+       a test named `test_old_algebra_placeholder_citation_is_rejected_
+       rather_than_silently_accepted` existed specifically to keep
+       "Algebra" unrecognized, reasoning that "'Algebra' was never a real
+       rule". That reasoning is stale now that `AlgebraRule` *is* a real,
+       sound rule (not a rubber stamp -- see its own docstring) -- and
+       `ProofJustification`'s resolution is case-insensitive by
+       convention everywhere else, so there was never a clean way to
+       accept "algebra" while still rejecting "Algebra" specifically.
+       Renamed and rewrote the test to check the new, current behavior
+       rather than deleting it. Flagging this prominently rather than
+       treating it as routine cleanup, since reversing a named protective
+       test is a bigger call than most of the other changes in this file.
+       Not marking this item fully done -- "expand" doesn't have a
+       natural end point the way a specific bug fix does.
 9. [ ] Add broader theory extensions such as order theory and algebra.
 10. [ ] Verify CI continuously throughout the process.
 
-With 5-7 settled and one piece of 8 done, the natural next concrete
-target is `source/test_ntProofs/basicDiv.txt`'s one remaining proof
-(divisibility distributes over sums: `a|b and a|c` implies `a|(b+c)`),
-blocked on multi-variable existentials -- `exists m, n such that: ...`
-doesn't parse today, since `Exists`/`ForAll` each currently bind exactly
-one variable. That's a core-parser change (not a theory-module addition
-the way the associativity axiom was), touching `ForAll`/`Exists` parsing
-and everything downstream that pattern-matches a single bound variable
-(`FormulaMatcher`, `UniversalGeneralizationRule`,
-`ExistentialEliminationRule`, `ExistentialIntroductionRule`,
-`UniversalInstantiationRule`) -- worth planning as its own piece of work
-rather than assuming it's as contained as the associativity axiom was.
+The multi-variable-existentials gap this file previously flagged as a
+"core-parser change... worth planning as its own piece of work" turned
+out to be much smaller than that estimate: `exists m, n such that: BODY`
+/ `forall x, y such that: BODY` (colon optional, matching the
+declaration-prefix leniency from Phase 6) now desugars, purely at the
+surface-parser level in `_parse_formula_conventional`, to nested single-
+variable `Exists`/`ForAll` nodes -- `Exists('m', Exists('n', BODY))`.
+Nothing in `ProofLogic.py` needed to change at all: `FormulaMatcher` and
+every rule that inspects a quantifier already handle nested quantifiers
+correctly (a proof unfolds each layer with its own `Existential
+Elimination` step, exactly the same shape already used for two *separate*
+existentials in the transitivity proof above). The "such that" keyword is
+required for the multi-variable form specifically to avoid a real
+ambiguity (`exists x, P(x)` -- is "P" a second bound variable, or the
+start of the body?), not for the ordinary single-variable case, which is
+completely unaffected. Worth remembering for next time: the original
+estimate of this as a bigger, riskier change was wrong, and assuming a
+gap is exactly as hard as it sounds is itself a mistake worth naming, not
+just quietly correcting.
+
+With 8 essentially exhausted for what the current corpus asks for, the
+informational fixture corpus is fully clean for the first time (40/40,
+48/48 enforced) -- there is no longer a "next concrete target" sitting
+in a failing fixture the way `basicDiv.txt` was. The natural next step is
+either genuinely new mathematical content (order theory, per item 9 --
+the actual prerequisite for the GCD/Bezout argument order theory was
+tracked for), or picking a different area of Phase 7's "expand ... set
+theory" (nothing currently forces a specific choice the way basicDiv.txt
+did). Worth a direct decision on which, rather than defaulting to
+whichever surfaces first.
 
 Prefer mathematical developments that exercise and validate the architecture,
 then promote the resulting abstractions into reusable theory infrastructure.

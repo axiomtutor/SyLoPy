@@ -36,7 +36,6 @@ ENFORCED_DIRS = [
 
 INFORMATIONAL_DIRS = [
     "tests/setTheoryProofs",
-    "source/test_ntProofs",
     "source/testProofs",
 ]
 

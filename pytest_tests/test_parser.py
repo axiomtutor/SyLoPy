@@ -111,6 +111,27 @@ def test_nested_quantifier_and_equality_parse():
     assert repr(formula) == "(∀x. (∃y. (P(x, y) ∧ x = y)))"
 
 
+def test_multi_variable_quantifiers_desugar_to_nested_single_variable_ones():
+    exists_two = pp.parse_formula("exists m, n such that: b = Times(a, m) and c = Times(a, n)")
+    assert isinstance(exists_two, fl.Exists) and exists_two.var == "m"
+    assert isinstance(exists_two.body, fl.Exists) and exists_two.body.var == "n"
+    assert not isinstance(exists_two.body.body, fl.Exists)
+
+    forall_two = pp.parse_formula("forall x, y such that: P(x, y)")
+    assert repr(forall_two) == "(∀x. (∀y. P(x, y)))"
+
+    forall_three = pp.parse_formula("forall x, y, z such that P(x, y, z)")  # colon optional here too
+    assert repr(forall_three) == "(∀x. (∀y. (∀z. P(x, y, z))))"
+
+
+def test_single_variable_quantifiers_are_unaffected_by_the_such_that_extension():
+    # A body that happens to start with an identifier-shaped token must
+    # not be mistaken for a second bound variable -- this is exactly the
+    # ambiguity the multi-variable form's mandatory "such that" avoids.
+    assert repr(pp.parse_formula("exists x, P(x)")) == "(∃x. P(x))"
+    assert repr(pp.parse_formula("forall x, P(x)")) == "(∀x. P(x))"
+
+
 @pytest.mark.parametrize(
     "text,tag,rule_type,indices",
     [

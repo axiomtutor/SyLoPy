@@ -58,8 +58,23 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
          special "fresh constant" flag formula (see
          `ProofLogic.SubproofRecord`'s docstring for how this
          nullary-predicate encoding is used by `UniversalGeneralizationRule`)
-      2. ``for all x, ...`` / ``forall x, ...`` -- the comma is optional
-      3. ``exists x, ...`` / ``there exists x, ...`` -- comma optional
+      2. ``for all x, ...`` / ``forall x, ...`` -- the comma is optional.
+         Also accepts several variables at once, ``forall x, y, ... such
+         that: BODY`` (colon after "such that" optional too), desugaring
+         to nested single-variable `ForAll`s in the order given
+         (``forall x, y such that: P(x,y)`` is exactly `ForAll('x',
+         ForAll('y', P(x,y)))`) -- this is why the "such that" form is
+         checked first, and only for two or more names: a lone ``forall
+         x, BODY`` must stay on the plain path below it, both because
+         that is the overwhelmingly common case and because a would-be
+         multi-variable regex with only one name captured can't tell "x"
+         (the whole variable list) apart from "x" followed by a body that
+         happens to start with something identifier-shaped (``forall x,
+         P(x)`` -- is "P" a second bound variable, or the start of the
+         body?). Requiring "such that" for the multi-variable form sidesteps
+         that ambiguity entirely rather than guessing.
+      3. ``exists x, ...`` / ``there exists x, ...`` -- comma optional,
+         same multi-variable "such that" extension as `forall` above.
       4. the biconditional family: ``if and only if``, ``<->``, ``<=>``,
          ``↔``, ``iff`` -- tried together, in this priority order
       5. ``if X then Y``
@@ -134,6 +149,18 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     import SyLoPy.source.FormulaLogic as fl
 
     m = re.match(
+        r"^(?:for all|forall)\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)+)\s+such\s+that\s*:?\s*(.*)$",
+        s,
+        flags=re.I,
+    )
+    if m:
+        names = [name.strip() for name in m.group(1).split(",")]
+        body = _parse_formula_conventional(m.group(2), bound_vars | set(names), environment)
+        for name in reversed(names):
+            body = fl.ForAll(name, body)
+        return body
+
+    m = re.match(
         r"^(?:for all|forall)\s+([A-Za-z_][A-Za-z0-9_]*)\s*,?\s*(.*)$",
         s,
         flags=re.I,
@@ -144,6 +171,18 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
             var,
             _parse_formula_conventional(m.group(2), bound_vars | {var}, environment),
         )
+
+    m = re.match(
+        r"^(?:exists|there exists)\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)+)\s+such\s+that\s*:?\s*(.*)$",
+        s,
+        flags=re.I,
+    )
+    if m:
+        names = [name.strip() for name in m.group(1).split(",")]
+        body = _parse_formula_conventional(m.group(2), bound_vars | set(names), environment)
+        for name in reversed(names):
+            body = fl.Exists(name, body)
+        return body
 
     m = re.match(
         r"^(?:exists|there exists)\s+([A-Za-z_][A-Za-z0-9_]*)\s*,?\s*(.*)$",

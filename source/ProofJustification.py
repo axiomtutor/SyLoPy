@@ -50,6 +50,7 @@ def _alias_map() -> Dict[str, RuleFactory]:
     add(pl.SymmetryRule, "Symmetry", "Symmetry Rule")
     add(pl.TransitivityRule, "Transitivity", "Transitivity Rule")
     add(pl.ReflexivityRule, "Reflexivity", "Reflexivity Rule")
+    add(pl.AlgebraRule, "Algebra", "Algebraic Manipulation")
     add(pl.PropositionalEquivalenceRule, "De Morgan", "De Morgan's", "De Morgans", "De Morgan's Laws", "Distribution", "Distributivity", "Double Negation", "Propositional Equivalence", "Logical Equivalence", "Equivalence", "Conditional Equivalence")
     return mapping
 

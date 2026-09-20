@@ -50,10 +50,14 @@ What's characterized here
   7. `Times` associativity -- the first ring fact relating `Plus`/`Times`/
      `Neg` to each other (added because divisibility transitivity needed
      it; see the axiom's own comment), not a deliberate first step toward
-     characterizing a full ring. `Plus` associativity, commutativity, and
-     distributivity remain absent -- tracked below under "not here yet",
-     to be added the same way this one was: when an actual proof needs
-     one, not speculatively ahead of that.
+     characterizing a full ring.
+  8. Left distributivity of `Times` over `Plus` -- added the same way,
+     because divisibility distributing over sums needed it (see that
+     axiom's own comment). `Times` commutativity is not characterized, so
+     right distributivity isn't implied by this and is separately absent.
+     `Plus` associativity/commutativity remain absent too -- tracked below
+     under "not here yet", to be added the same way these two were: when
+     an actual proof needs one, not speculatively ahead of that.
 
 Divisibility (`a|n`, "a divides n") is *not* a new primitive or a new
 rule. It is definitional sugar, expanded at parse time to
@@ -68,42 +72,50 @@ same way there was never a `SubsetRule` in `SetTheory`.
 On "Algebra" and "Definition of Divisibility"
 --------------------------------------------------------------------------
 Earlier drafts of number-theory proof text cited steps as "(Algebra
-from ...)" and "(Definition of Divisibility from ...)" without either
-ever being a real, checked rule anywhere in this project's history --
-both were acknowledged placeholders. Those drafts (and the redundant
-copies of them that had accumulated in `source/ntProofs/`,
-`tests/testNT/`, and `source/setProofs/`) are gone now, superseded by
-real fixtures under `tests/testNumberTheory/`; see `todos.txt`'s Phase 6
-entry for the specifics of what was deleted and why. "Definition of
-Divisibility" turns out not to be needed at all, for the reason above.
-"Algebra" is retired rather than implemented as written: the word
-doesn't name one operation, so a rule called "Algebra" that accepted
-*any* citation under that name could only be sound by accident, or by
-silently being a rubber stamp. What "Algebra" was standing in for, in
-every case this module currently handles, is exactly the two `Quotient`
-axioms above plus the real, lowercase `(algebra from ...)` congruence-
-closure rule (`AlgebraRule`, in `ProofLogic.py`) -- so those got real
-names instead, each checking one precise derivation rather than trusting
-arbitrary algebraic text. A citation of "(Algebra ...)" -- capitalized,
-the old placeholder -- still raises a clear "unknown inference rule"
-error rather than silently validating.
+from ...)" and "(Definition of Divisibility from ...)" as bare
+placeholders, back when neither was a real, checked rule anywhere in
+this project's history. Those drafts (and the redundant copies of them
+that had accumulated in `source/ntProofs/`, `tests/testNT/`, and
+`source/setProofs/`) are gone now, superseded by real fixtures under
+`tests/testNumberTheory/`; see `todos.txt`'s Phase 6 entry for the
+specifics of what was deleted and why. "Definition of Divisibility"
+turns out not to be needed at all, for the reason above: divisibility
+is definitional sugar, not a primitive a proof ever needs to invoke by
+name. "Algebra" *is* needed, and is now real: `AlgebraRule`, in
+`ProofLogic.py`, is a genuine congruence-closure decision procedure (see
+that class's own docstring for exactly why it's sound, not a rubber
+stamp), citable from proof text as "(Algebra from L1, L2, ...)" or
+"(algebra from ...)" -- `ProofJustification`'s alias resolution is
+case-insensitive for every rule name it recognizes, the same as "Modus
+Ponens"/"modus ponens", so there was never a clean way to keep one
+capitalization citable while rejecting the other once the rule itself
+was sound. (An earlier version of this module's docstring, and a test
+named for it, asserted that a capitalized "(Algebra ...)" citation
+specifically should keep raising "unknown inference rule" -- that was
+right while "Algebra" name a rubber stamp, and stopped being right the
+moment `AlgebraRule` became a real procedure; both are updated now.)
+The two `Quotient` axioms above remain their own named rules
+(`QuotientDefiningPropertyRule`, `QuotientUniquenessRule`) rather than
+folded into `AlgebraRule`, since they characterize what `Quotient`
+*means* -- something no amount of congruence closure over already-cited
+equations can produce on its own.
 
 --------------------------------------------------------------------------
 What's deliberately not here yet
 --------------------------------------------------------------------------
 No order relation (`<`, `<=`), no trichotomy, no well-ordering principle,
 no set-builder-driven arguments, no GCD, no quotient-remainder
-decomposition, no `Plus` associativity/commutativity, no distributivity.
-The order-theory list is what the GCD/Bezout argument needs (see
-`tests/testNumberTheory/`'s docstrings and `todos.txt`'s Phase 6/7
-entries for the fixture history here) and is a substantially larger
-undertaking -- an order theory plus a well-ordering axiom/schema, at
-minimum -- left for a follow-up rather than attempted here. The ring
-facts are each individually small; each gets added when a real proof
-needs it (this is how `Times` associativity, above, got added), not
-ahead of that. `a|n` iff `n/a` is an integer, divisibility distributing
-over closure under `Plus`/`Times`, and divisibility transitivity do not
-need any of this and are fully supported.
+decomposition, no `Plus` associativity/commutativity, no `Times`
+commutativity or right distributivity. The order-theory list is what the
+GCD/Bezout argument needs (see `tests/testNumberTheory/`'s docstrings and
+`todos.txt`'s Phase 6/7 entries for the fixture history here) and is a
+substantially larger undertaking -- an order theory plus a well-ordering
+axiom/schema, at minimum -- left for a follow-up rather than attempted
+here. The ring facts are each individually small; each gets added when a
+real proof needs it (this is how `Times` associativity and left
+distributivity, above, got added), not ahead of that. `a|n` iff `n/a` is
+an integer, and divisibility's closure under `Plus`/`Times` (sums and
+transitivity both), do not need any of this and are fully supported.
 """
 
 import SyLoPy.source.FormulaLogic as fl
@@ -190,6 +202,23 @@ INT_AXIOMS = [
     fl.ForAll('x', fl.ForAll('y', fl.ForAll('z', fl.Implies(
         fl.And(fl.And(_Int(_x), _Int(_y)), _Int(_z)),
         fl.Equals(_Times(_Times(_x, _y), _z), _Times(_x, _Times(_y, _z))),
+    )))),
+
+    # 8. Left distributivity of Times over Plus -- added the same way
+    #    associativity was, because a real proof needed it: divisibility
+    #    distributing over sums (a|b and a|c implies a|(b+c)) gives
+    #    b = a*m and c = a*n, so b+c = a*m + a*n by congruence -- but
+    #    exhibiting b+c as a*(something) needs a*m + a*n = a*(m+n), the
+    #    other direction of this same axiom. Deliberately not named
+    #    "Distribution"/"Distributivity" in ProofJustification's alias
+    #    table -- those names are already the propositional-logic law
+    #    (`PropositionalEquivalenceRule`) -- so a proof cites this one the
+    #    same way as associativity: write out the quantified axiom itself
+    #    as "(Axiom)", then Universal Instantiation down to the needed
+    #    ground instance.
+    fl.ForAll('x', fl.ForAll('y', fl.ForAll('z', fl.Implies(
+        fl.And(fl.And(_Int(_x), _Int(_y)), _Int(_z)),
+        fl.Equals(_Times(_x, _Plus(_y, _z)), _Plus(_Times(_x, _y), _Times(_x, _z))),
     )))),
 ]
 

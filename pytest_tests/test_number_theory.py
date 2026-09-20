@@ -7,7 +7,7 @@ from .support import numt, nt, pl, fl, tl, pp, atom, c, v
 
 
 def test_int_axiom_shapes():
-    nat_subset, plus_closure, times_closure, neg_closure, quotient_defining, quotient_unique, times_assoc = numt.INT_AXIOMS
+    nat_subset, plus_closure, times_closure, neg_closure, quotient_defining, quotient_unique, times_assoc, left_distrib = numt.INT_AXIOMS
     assert repr(nat_subset) == "(∀x. (Nat(x) → Int(x)))"
     assert "Int(Plus(x, y))" in repr(plus_closure)
     assert "Int(Times(x, y))" in repr(times_closure)
@@ -16,6 +16,7 @@ def test_int_axiom_shapes():
     assert "n = Times(a, Quotient(n, a))" in repr(quotient_defining)
     assert "Quotient(n, a) = m" in repr(quotient_unique)
     assert "Times(Times(x, y), z) = Times(x, Times(y, z))" in repr(times_assoc)
+    assert "Times(x, Plus(y, z)) = Plus(Times(x, y), Times(x, z))" in repr(left_distrib)
 
 
 def test_divides_formula_is_the_defining_existential():
@@ -88,6 +89,7 @@ def test_current_number_theory_fixture_corpus():
 
     assert outcomes["divisibility_iff_quotient_integer.txt"][0] is True
     assert outcomes["divisibility_is_transitive.txt"][0] is True
+    assert outcomes["divisibility_distributes_over_sums.txt"][0] is True
     assert outcomes["nat_closure_gives_int.txt"][0] is True
     assert all(
         ok is False
@@ -96,12 +98,26 @@ def test_current_number_theory_fixture_corpus():
     )
 
 
-def test_old_algebra_placeholder_citation_is_rejected_rather_than_silently_accepted():
-    # "Algebra" was never a real rule (see NumberTheory.py's module
-    # docstring); confirm it fails loudly instead of quietly validating.
-    import pytest as _pytest
-    with _pytest.raises(ValueError, match="Unknown inference rule"):
-        pp.parse_justification("Algebra from 1")
+def test_algebra_citation_now_resolves_to_the_real_congruence_closure_rule():
+    # This used to assert the opposite: that "Algebra from 1" raised
+    # "Unknown inference rule", because "Algebra" was never a real rule
+    # (see NumberTheory.py's module docstring's history of this). That
+    # reasoning is stale now that pl.AlgebraRule exists and is a genuine,
+    # sound congruence-closure decision procedure (see that class's own
+    # docstring on exactly why it's sound), not a rubber stamp -- the
+    # concern the old test protected against. ProofJustification's alias
+    # resolution is case-insensitive for every rule name it recognizes
+    # (the same "Modus Ponens"/"modus ponens" pattern applies everywhere
+    # else), so there was no clean way to keep "algebra" citable while
+    # still rejecting "Algebra" specifically; once the rule itself is
+    # sound, rejecting either capitalization protects nothing further.
+    tag, rule, indices = pp.parse_justification("Algebra from 1, 2")
+    assert tag == "rule"
+    assert isinstance(rule, pl.AlgebraRule)
+    assert indices == ["1", "2"]
+
+    tag2, rule2, indices2 = pp.parse_justification("algebra from 1, 2")
+    assert isinstance(rule2, pl.AlgebraRule)
 
 
 
