@@ -1,802 +1,87 @@
 # SyLoPy development TODO
 
-## Baseline
+## Project status
 
-- `master` is the canonical development branch.
-- The staged parser -> surface AST -> elaboration -> proof-kernel architecture is
-  the canonical implementation.
-- The complete local regression command is `./run_tests.sh`.
-- Enforced proof fixtures are the regression baseline; informational fixtures
-  remain backlog until their semantics are stable.
+The project is functionally green. The core proof-language pipeline has been
+validated against the repository's full regression suite:
 
-## Current architectural project: ProofContext integration -- DONE (Phases 1-4)
+- `./run_tests.sh` passes
+- 368 Python tests pass
+- all enforced proof fixture suites pass
+- all informational proof fixtures pass
 
-The goal was to make `ProofContext` the authoritative lexical environment used
-by elaboration, while keeping theory configuration in `TheoryEnvironment` and
-keeping proof validation in the kernel. All four phases below are complete
-(Phase 4's Stage 3 deliberately deferred, not blocking); the project's own
-target architecture is now what `_ElaborationContext` actually implements.
-Phases 5-7 (parser cleanup, regression architecture, fixture backlog) have
-also had a pass each since; see "Suggested development sequence" at the
-end of this file for where things stand now and what looks like a
-reasonable next step.
+The current work is no longer about making the basics work. The remaining work
+is about making the system cleaner, easier to extend, and easier to use.
 
-Target architecture (now the actual state, not just the target):
+## Current direction
 
-    surface proof
-        -> elaboration + ProofContext
-        -> elaborated core entries
-        -> ProofLogic validation
+The canonical architecture is:
 
-`ProofContext` should own proof-local visibility. The kernel should not rebuild
-lexical scope from separate declaration/label bookkeeping.
+```text
+proof text
+    -> surface syntax / parser
+    -> elaboration
+    -> core proof entries
+    -> ProofLogic validation
+```
 
-### Phase 1 — context API and scope semantics
+The parser/elaboration stack remains the main public entry point, and
+`ProofContext` is now the authoritative lexical-scoping layer for declarations,
+labels, assumptions, and arbitrary/fresh bindings.
 
-- [x] Define explicit namespaces rather than treating all identifiers as one
-      global namespace.
-- [x] Keep declarations in a vocabulary namespace and forbid declaration
-      shadowing across visible scopes.
-- [x] Keep theorem/lemma names in their own namespace (later removed
-      entirely in Phase 3 once it turned out nothing needed it -- see
-      below).
-- [x] Keep arbitrary/fresh bindings in their own namespace.
-- [x] Make proof-line labels and labeled assumptions share a proof-reference
-      namespace.
-- [x] Replace synthetic assumption dictionary keys with ordered assumption
-      storage plus an explicit label index.
-- [x] Add an explicit `enter_subproof()` scope operation while retaining
-      `child()` as the primitive.
-- [x] Add regression tests for namespace independence, duplicate detection,
-      assumption ordering, label collisions, and nested-scope behavior.
+The primary remaining task is to finish the migration from legacy duplicated
+bookkeeping into a single coherent elaboration context.
 
-### Phase 1 implementation notes
+## High-priority work
 
-Implemented on `master` in commits `d2ded74` and `fdd74af`.
+### 1. Finish the context consolidation pass
 
-`ProofContext` now has four explicitly separated categories of state
-(originally five -- theorem/lemma bindings were removed in Phase 3, see
-below):
+- [x] Make `ProofContext` the explicit lexical scope for elaboration.
+- [x] Register declarations, labels, assumptions, and arbitrary bindings through
+      the context during elaboration.
+- [x] Fix nested-scope behavior and prevent sibling-label leakage.
+- [ ] Remove the remaining legacy duplication between elaboration state and the
+      proof context so there is one clear source of truth for lexical state.
+- [ ] Confirm the final elaboration path relies on the context for all lookup and
+      scoping decisions, not just some of them.
 
-- declarations;
-- proof-line labels;
-- assumptions plus a label index;
-- arbitrary/fresh bindings.
+### 2. Harden the public API and docs
 
-The previous `_already_visible()` global collision rule has been removed. Each
-binding operation now checks only the namespace whose semantics it owns. Labels
-and labeled assumptions intentionally share the proof-reference namespace.
-Unlabeled assumptions are stored directly in insertion order rather than under
-synthetic names such as `__assumption_0`.
+- [x] Verify the parser/elaboration/kernel pipeline against the full regression
+      suite.
+- [x] Provide the canonical test command and proof-corpus workflow in the README.
+- [ ] Document the recommended public APIs and usage patterns more explicitly.
+- [ ] Ensure project documentation explains the intended theory boundaries and
+      extension model.
 
-`enter_subproof()` is an explicit alias for creating a child lexical context.
-The existing inheritance/non-leakage behavior is preserved.
+### 3. Continue theory expansion
 
-The phase-1 tests document the intended namespace policy and preserve the
-scope invariants needed by the later elaboration migration.
+- [x] Set theory, natural-number reasoning, and discrete math are in place.
+- [ ] Add additional theory-local syntax and declaration recipes rather than
+      expanding generic elaboration hacks.
+- [ ] Extend the proof corpus around algebraic and order-theoretic examples as
+      the next non-core theory layer.
 
-Phase 1 does **not** yet make elaboration use `ProofContext`; that is the next
-phase. The existing elaborator's separate state must remain in place until the
-migration is completed and covered by end-to-end regression tests.
+### 4. Expand examples and regression coverage
 
-## Phase 2 — integrate ProofContext into elaboration
+- [x] Maintain the enforced fixture corpus as the minimum correctness gate.
+- [ ] Grow the informational examples to cover more user-facing proof patterns.
+- [ ] Add smaller end-to-end examples that showcase the theorem-promotion and
+      subproof features.
 
-- [x] Add `ProofContext` to the elaboration state while keeping
-      `TheoryEnvironment` separate.
-- [x] Register declarations through `ProofContext.declare()`.
-- [x] Register proof-line labels through `ProofContext.bind_label()`.
-- [x] Register assumptions and arbitrary bindings through the context.
-- [x] Resolve declaration and label references through the context.
-- [x] Pass child contexts through recursive nested-subproof elaboration.
-- [x] Preserve source origins and existing elaborated core representations.
-- [x] Add end-to-end tests proving parent visibility and child non-leakage.
+## Short version
 
-### Phase 2 implementation notes
+What matters now is not "can we get proof checking to work at all?" It is:
 
-`_ElaborationContext` (`source/ProofParser.py`) now holds a `ProofContext`
-instance (`self.context`), seeded from `self.declarations.declarations_here()`
-rather than `environment.declarations` directly, so vocabulary reachable
-through more than one theory-extension path (e.g. `SetTheory`'s declarations,
-visible both directly and through `NumberTheory`'s own extension of
-`SetTheory`) doesn't raise a spurious `DuplicateBindingError` at seed time.
+- finalize the context architecture;
+- keep the proof corpus green while improving maintainability;
+- extend the theory surface in a disciplined way;
+- document the public story for users and contributors.
 
-`register_declaration` dual-writes into `self.context.declare()` alongside
-the pre-existing `self.declarations` (`DeclarationScope`). Coverage is
-currently limited to declarations that already flow through
-`register_declaration` -- i.e. `elaborate_compound_declaration`'s coordinated
-`Let X be any set, R be a relation on X, ...` path.
-`elaborate_typed_declaration` (the more common single-clause /
-`DeclarationRecipe`-dispatch path, e.g. `Let x be a natural number`) builds
-its own local declarations list and returns it in the justification tuple
-without calling `register_declaration` at all, so declarations made that way
-aren't yet reflected in `self.context`. This is a gap to close, not a
-regression: `elaborate_typed_declaration` never populated `self.declarations`
-either.
+## Notes for contributors
 
-`elaborate_entry` dual-writes each line into `self.context`, choosing the
-binding that matches the line's own justification tag rather than always
-calling `bind_label`: `'assume'` lines go through `self.context.assume(
-formula, label=label)` (not also `bind_label`, since labels and labeled
-assumptions share one namespace and would immediately collide with
-themselves); `'arbitrary'` lines go through both `self.context.
-bind_arbitrary(name)` (the fresh constant's own name, recovered from the
-nullary atomic-formula flag encoding) and `self.context.bind_label(label,
-formula)`, since freshness and citability are independent namespaces;
-everything else still goes through `bind_label(label, formula)` alone,
-alongside the pre-existing `self.formula_by_label`. All three share the
-same scope boundary that structure already had: a standalone labeled
-subproof block (`(label, 'subproof', body)`) is excluded, since its
-"value" isn't a formula.
-
-New method `elaborate_subproof_body(entries)` gives every subproof --
-however it's attached (a standalone labeled block, a `rule_below`
-justification's immediate subproof, or one of a `rule_hybrid`
-justification's several attached subproofs) -- its own child
-`ProofContext` *and* child `DeclarationScope` for the duration, mirroring
-`ProofValidator._validate_block`'s own `declarations.child()`/
-`labels.child()` scoping for the same construct. `self.declarations`
-joined `self.context` here once confirmed to already agree on the
-underlying policy -- `DeclarationScope.declare()` already walks its full
-parent chain via `lookup()` before raising, exactly like `ProofContext.
-declare()` -- so unlike labels (next paragraph), there was no policy
-question to settle, only an implementation gap. `self.origin_by_label` and
-`self.formula_by_label` remain flat/global: both are keyed by full dotted
-label strings, unique across the whole proof by construction, so flatness
-never risked a collision the way bare symbol/declaration/label names
-(freely reused across sibling scopes) did.
-
-`lookup_declaration` (the method `elaborate_compound_declaration`'s carrier
-checks call, e.g. "has X been declared yet" for `R be a relation on X`) now
-resolves through `self.context.lookup_declaration()` instead of the legacy
-`self.declarations.lookup()` -- the declaration half of "resolve
-declaration and label references through the context". This was safe
-unconditionally, not just empirically: the two structures are seeded,
-written, and now scoped identically, so for any name either can currently
-answer, they agree by construction, not by coincidence of what the corpus
-happens to exercise. Confirmed with a hand-constructed divergence (declare
-something directly into `self.context` only, bypassing `register_declaration`
-entirely) rather than a corpus fixture, since no real proof can distinguish
-the two structures anymore -- see
-`test_lookup_declaration_resolves_through_proof_context_not_the_legacy_scope`.
-`self.declarations` itself is untouched and still written to (still needed
-by `elaborate_proof`'s separate feed into `DiscreteMath.relation_rule_set`,
-`context.declarations.declarations_here()` -- a different concern from
-resolving a reference, not migrated here).
-
-The *label* half was blocked on one open policy question, now settled:
-
-Resolved: `ProofContext.bind_label` refused to let a label shadow one
-already visible in an enclosing scope (see
-`test_each_namespace_rejects_duplicates_across_visible_scopes` in
-`test_proof_context.py`), while the kernel's own `LabelScope` used to
-*permit* that shadowing silently -- a child scope's local dict entry just
-overrode the parent's for lookups made from inside it, no error raised.
-Settled in `LabelScope`'s favor adopting `ProofContext`'s stricter rule
-(the call the note here previously left open, reasoned through directly
-in `LabelScope`'s own docstring): subproof line numbers use dot notation,
-structurally distinct from every label visible outside that subproof, so
-no legitimate proof can ever produce a genuine collision -- a proof
-shadowing a line label is a proof error, not a pattern to accommodate.
-`LabelScope.__setitem__` now raises `KeyError` on a shadowed label,
-surfaced by `ProofValidator` as `CATEGORY_LABEL_SHADOWING`. With both
-structures agreeing, `_ElaborationContext.lookup_reference` now resolves
-`try_elaborate_existence`'s "Existence from L" citation through
-`ProofContext` instead of the flat, never-subproof-scoped
-`formula_by_label` dict it used to read directly -- which turned out to
-be a real bug fix, not just a migration: the flat dict let a citation
-from one subproof branch silently resolve a same-named label left behind
-by an unrelated *sibling* branch, whichever happened to elaborate first.
-See `test_existence_no_longer_leaks_a_sibling_subproofs_reused_label` in
-`test_elaboration.py`, confirmed against the reverted flat-dict lookup.
-
-"Add end-to-end tests proving parent visibility and child non-leakage" is
-now fully covered, including the label half:
-`test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_subproof`
-covers parent visibility (an existential from an enclosing scope is
-still citable via "Existence from L" inside a nested subproof), and
-`test_existence_no_longer_leaks_a_sibling_subproofs_reused_label`
-(described above) covers non-leakage -- the property this migration
-actually needed non-leakage *for*, unlike the other binding kinds, where
-non-leakage was only ever a defensive check with nothing yet depending
-on it.
-
-"Preserve source origins and existing elaborated core representations"
-was never a missing feature so much as an invariant the whole dual-write
-approach depends on: every `self.context.*` call added throughout this
-migration sits *alongside* `_elaborate_entry_impl`'s existing
-`register_origin`/`self.formula_by_label`/return-value construction,
-never inside it, so none of it can change what `elaborate_proof` actually
-returns. The pre-existing SetTheory-sugar tests
-(`test_subset_proof_elaborates_to_ug_then_conditional_introduction`,
-`test_synthetic_freshness_failure_maps_back_to_subset_line`) already
-exercised this incidentally throughout every commit of this phase, since
-"Subset proof below" elaborates through the identical
-`self.context`-touching path. `test_proof_context_dual_write_does_not_
-disturb_origins_or_core_entry_shape` now pins the property down directly
-and explicitly, against a proof exercising every binding kind the
-migration touches (declare, arbitrary, a nested `rule_below` subproof) in
-one pass, rather than relying only on incidental coverage.
-
-**Phase 2 is now complete.** All seven checklist items above are done;
-`ProofContext` is the authoritative source for every declaration and
-label reference elaboration resolves, both structures agree on shadowing
-policy, and the migration provably didn't disturb origin tracking or the
-core entry representation along the way.
-
-## Phase 3 — theorem and lemma semantics (resolved)
-
-- [x] Define exactly when theorem/lemma bindings enter a context.
-- [x] Define theorem/lemma dependency and visibility rules.
-- [ ] Define promotion semantics, including when a proof produces a
-      promotable top-level conclusion.
-- [x] Add positive and negative regression tests for theorem visibility and
-      dependencies.
-
-### Phase 3 implementation notes
-
-The premise behind this phase didn't survive contact with how real
-mathematical proofs actually work: proofs in a file don't share a
-lexical context with each other. A later proof cites an earlier one's
-*result* by name -- the way a paper cites Theorem 3 -- not by inheriting
-its internal scope. So `ProofContext` was never going to span more than
-one proof, which leaves only the within-*one*-proof case for a
-context-bound theorem/lemma binding to be for: reusing a fact proven
-about a locally-arbitrary object for several different concrete
-instances later in the same proof.
-
-That case turns out to need no new binding kind at all. It's already
-fully expressible with Universal Generalization (wrap the derivation in
-a subproof opening with "let X be arbitrary", generalize to
-`forall X, ...`) plus Universal Instantiation (instantiate at as many
-concrete objects as wanted, as many times as wanted). Confirmed
-empirically before concluding this, not just reasoned through: a
-locally-arbitrary derivation generalized once and instantiated for two
-different objects validates with the existing rule set alone.
-
-`ProofContext.bind_theorem`/`lookup_theorem`/`theorems_here`/
-`visible_theorems`/`require_theorem`/`TheoremBinding` have accordingly
-been removed entirely rather than wired into anything -- there was
-nothing left for them to do once (a) cross-proof reuse was settled as
-deliberately *not* sharing a context, which the already-working,
-completely separate `promote_theorem`/`TheoremRule` mechanism already
-handles (see the "Theorem-to-rule promotion" section of README.md), and
-(b) within-proof reuse needed no new binding kind at all. "Dependency and
-visibility rules" is consequently moot too -- there is no theorem/lemma
-context binding left to have rules for.
-
-The one real gap this phase surfaced: reusing a locally-general fact for
-several objects, while never *needing* new machinery, was tedious to
-write by hand (Universal Instantiation then Modus Ponens, one pair of
-lines per object). `ProofLogic.UniversalModusPonensRule` bundles that
-pair into one citable step -- `Universal Modus Ponens from L1, L2` -- the
-same convenience `AlgebraRule`/`SymmetryRule`/`TransitivityRule` already
-provide over more primitive derivations elsewhere in the kernel.
-`tests/testProofs/universal_modus_ponens.txt` proves the same result the
-long way and the short way side by side; `UniversalModusPonensRule`'s own
-docstring explains why this belongs to the kernel's ordinary
-label-citation machinery -- already correctly scoped and timed by
-`LabelScope` -- rather than to `ProofContext` at all. This is what
-satisfies the checklist's regression-test bullet above: coverage for the
-theorem/lemma-reuse *need* this phase was chasing, even though the
-mechanism that ended up satisfying it isn't a theorem/lemma binding.
-
-What's left of this phase is only the third checklist bullet, and it's
-unrelated to `ProofContext`: `promote_theorem`'s own defaults are worth
-deciding deliberately rather than leaving as incidental behavior --
-
-  - it silently promotes only the *last* top-level derived formula as
-    "the" theorem, discarding any other top-level fact a proof happens to
-    derive along the way, unless the caller passes `conclusion=`
-    explicitly;
-  - it only generalizes over top-level `OBJECT` declarations, never
-    predicates or functions -- deliberately, since
-    `ConstantGeneralizingMatcher` substitutes constant terms
-    structurally, and generalizing a predicate/function *symbol* would
-    need a different, harder mechanism, not a relaxed check here.
-
-This is a small, self-contained decision about one existing function's
-defaults, not an architectural question, and doesn't block anything else
-in this file -- pick it up whenever it matters for a real proof corpus.
-
-## Phase 4 — remove duplicated lexical bookkeeping
-
-### Phase 4 Audit — COMPLETE
-
-**Audit findings** (see PHASE4_AUDIT.md for detailed analysis):
-
-*Redundancy identified:*
-- [x] `_ElaborationContext.declarations` (`pl.DeclarationScope`) is redundant with `_ElaborationContext.context` for all declaration *lookups*. All references already resolve through `ProofContext`.
-  - Only write: dual-write in `register_declaration()`
-  - Only read: `declarations_here()` at end of elaborate_proof for DiscreteMath.relation_rule_set hook
-  - Safe to remove once `ProofContext.declarations_here()` method is exposed
-
-- [x] `_ElaborationContext.formula_by_label` mostly redundant with `_ElaborationContext.context._labels`. Both track label→formula; refactoring would require moving origin info to `LabelBinding`.
-  - Lower priority (small dict, not blocking); defer refactoring
-
-*Not redundant (kernel owns these):*
-- [x] `ProofValidator.DeclarationScope` is the kernel's own independent copy, not connected to elaboration. Validates declarations during proof checking. Essential to keep.
-- [x] `ProofValidator.LabelScope` is the kernel's own independent label tracking during validation. Not redundant with elaboration.
-- [x] `_ElaborationContext.origin_by_label` carries source locations through elaboration for error reporting. Not stored elsewhere; essential.
-- [x] `ProofContext._assumptions` and `_arbitrary` only tracked by ProofContext; necessary for elaboration.
-
-### Phase 4 Implementation — DONE
-
-- [x] Stage 1: `ProofContext.declarations_here()` already existed (mirrors
-      `DeclarationScope`'s method of the same name).
-- [x] Stage 2: `_ElaborationContext.declarations` (the parallel
-      `pl.DeclarationScope`) is removed outright, not just stopped from
-      being read. `__init__` now seeds `self.context` directly from
-      `pl._dedupe_declarations(environment.declarations)` -- needed
-      because `ProofContext.declare()`, unlike `DeclarationScope.__init__`,
-      has no "skip a compatible duplicate" leniency of its own, so the
-      dedup that used to happen implicitly via seeding from
-      `self.declarations.declarations_here()` has to happen explicitly
-      now. `register_declaration()` drops its `self.declarations.declare()`
-      half entirely (was strictly more validation than `ProofContext.
-      declare()` -- rejecting a non-`Declaration`, an unknown `kind`, or a
-      negative `arity` -- but nothing in this codebase's actual line-
-      elaborators ever constructs a `Declaration` that could trip those
-      checks, so nothing was actually relying on it; the kernel's own
-      `DeclarationScope`, untouched, still catches a genuinely malformed
-      declaration during validation regardless). `elaborate_subproof_body`
-      only childs `self.context` now. `elaborate_proof`'s DiscreteMath
-      hook reads `context.context.declarations_here()`.
-      `pytest_tests/test_elaboration.py`'s Phase-2-era tests that asserted
-      the two structures agreed (`context.declarations.lookup(...) ==
-      context.context.lookup_declaration(...)`) had those assertions
-      dropped; the one test whose entire point was proving a *divergence*
-      between the two (`test_lookup_declaration_resolves_through_
-      proof_context_not_the_legacy_scope`) is deleted outright, since
-      there's nothing left to diverge from.
-- [ ] Stage 3: not attempted -- moving `origin_by_label` into
-      `LabelBinding` stays Medium Risk for no identified benefit
-      (`formula_by_label`/`origin_by_label` are a small, self-contained
-      pair with no redundant twin the way declarations had; see the audit).
-      Leaving as-is per the audit's own "defer if no benefit" guidance.
-      Revisit only if a concrete need for it shows up.
-- [x] Stage 4: full suite green after Stages 1-2 -- 362/362 pytest (363
-      minus the one deleted divergence-only test), 46/46 enforced
-      fixtures, informational corpus unchanged (37/49).
-
-## Phase 5 — parser/elaboration cleanup
-
-- [~] Audit compatibility-oriented and duplicated parser/elaborator paths.
-      - Found and fixed one concrete instance: `parse_declaration_prefix`
-        (the "such that:" premise path) and `elaborate_typed_declaration`'s
-        own per-clause fallback (reached once every `DeclarationRecipe`
-        has declined a clause) each independently re-implemented the same
-        "validate the symbol name, run `_declaration_kind_from_descriptor`,
-        build a `Declaration`" logic. Extracted the shared part into
-        `_fallback_declarations_for_clause`; each caller keeps its own
-        surrounding orchestration (`parse_declaration_prefix` collects a
-        batch to return once every clause is parsed;
-        `elaborate_typed_declaration` registers each one immediately, since
-        a later clause in the same statement -- a relation needing an
-        already-declared carrier -- may need to see it). Pure refactor:
-        362/362 pytest, 46/46 fixtures, both unchanged from before: spot-
-        checked that error text/type and successful-case output are
-        identical on both call sites, not just that the same tests pass.
-      - Rest of the audit (beyond this one instance) didn't turn up
-        further duplication worth acting on: `DiscreteMath.py` calling
-        itself a "facade" and `source/__init__.py`'s "parser facade"
-        comment are both intentional design, not leftover compatibility
-        shims; `LineBreakSyntax.py`'s `legacy` parameter name refers to
-        "the module being patched" (i.e. `ProofParser` itself), not to
-        dead code -- confusing name, not a bug, not touched here.
-        Leaving `[~]` rather than `[x]`: this kind of audit doesn't have
-        a crisp "done" condition the way a specific bug fix does; revisit
-        if a future change surfaces another instance.
-- [ ] Remove superseded declaration-prefix, formula-bundle, and legacy
-      justification paths only after their callers have migrated.
-      Still genuinely blocked on that precondition -- `parse_declaration_prefix`
-      is still the only path "such that:" premises go through, and
-      `_parse_formula_or_bundle` is still the only path a premise bundle
-      goes through; neither has an actual replacement caller could move
-      to yet. Not actioned.
-- [x] Keep `ProofJustification` as the sole rule-name resolution mechanism.
-      True today: confirmed no other rule-name-from-text resolver exists
-      anywhere in the codebase (the dead inline `ProofParser.parse_justification`
-      that could have been read as a second one is deleted, see above).
-- [ ] Keep syntax, elaboration, name-resolution, and source-location
-      diagnostics distinct.
-- [~] Interfaces should change as the project needs, not stay stable for
-      its own sake -- rewritten per direct guidance, replacing "keep the
-      public parser and elaboration interfaces small and stable" above.
-      Adding rules is expected; bigger structural changes (new proof-file
-      conventions, changed entry shapes, changed function signatures) are
-      in scope too whenever the mathematics or the architecture actually
-      calls for them. `run_multi_proof_file`'s tuple growing a 5th
-      element (Phase 6, `rule_crashed`) is the concrete example that
-      prompted writing this down explicitly rather than leaving the old
-      "keep stable" wording to be reconciled against it case by case.
-      What still matters: a change should earn its place (solve a real
-      problem, not add speculative flexibility nothing needs yet) and
-      every caller of whatever changed gets updated in the same pass, not
-      left broken for later.
-
-## Phase 6 — validation and regression architecture
-
-- [ ] Consolidate validation around `Proof.check()` and `Proof.check_detailed()`.
-- [ ] Remove obsolete validation interfaces when regression coverage makes
-      removal safe.
-- [x] Ensure implementation exceptions cannot masquerade as expected negative
-      fixture failures.
-      - Found a real gap, not currently exploited by anything in the
-        enforced corpus (checked directly: every currently-enforced
-        "invalid" fixture's rejection category is a genuine one --
-        arity_mismatch, rule_mismatch, undeclared_symbol,
-        unrecognized_rule, unregistered_formula -- never
-        CATEGORY_RULE_RAISED), but real nonetheless: `ProofValidator`
-        deliberately converts a raised exception from a rule's own
-        `applies()` into an ordinary `(False, ValidationError)` return
-        (`CATEGORY_RULE_RAISED`) so one bad rule can't crash the whole
-        check. That's the right call for the checker itself, but it means
-        such a crash never reaches any `except Exception:` clause in
-        `validate_all_proofs.py` -- so nothing flagged it as an
-        implementation bug; an "invalid" fixture that only failed this
-        way would have looked like a correct rejection.
-      - Fixed by adding `_is_rule_crash(err)` and threading it through:
-        `_validate_entries` and `run_multi_proof_file` now both call
-        `check_detailed()` (not the string-only `check()`) so they can
-        see `err.category`, and `run_multi_proof_file`'s per-case tuple
-        grew a 5th element, `rule_crashed`, alongside `message`. Changed
-        the shape outright rather than reaching for the string-matching
-        trick "parse/check error:" already uses -- that trick is exactly
-        the kind of fragility this item exists to remove, not extend, and
-        interface shape is not something this project holds fixed for its
-        own sake (see the note on that near "Recommended implementation
-        order" below). Every caller that destructured the old 4-tuple is
-        updated (`pytest_tests/test_proof_files.py`,
-        `test_theorem_promotion_and_set_theory.py`,
-        `test_fixture_validation.py`) -- checked there's no other caller
-        by grepping for `run_multi_proof_file` across the whole repo, not
-        just guessing from memory.
-      - Regression-covered by `test_is_rule_crash_recognizes_only_
-        category_rule_raised` and `test_run_multi_proof_file_flags_a_
-        rule_crash_distinctly_from_a_genuine_rejection`, the second built
-        around a deliberately-crashing test rule (`_ExplodingRule`) so
-        the gap is exercised directly rather than waiting for a real rule
-        to have a real bug. Confirmed the new test actually discriminates
-        -- fails if `_is_rule_crash` is stubbed back to always-`False` --
-        not just that it happens to pass.
-- [ ] Add targeted regression coverage for every new scope or semantic rule.
-- [ ] Keep local and CI test commands consistent.
-- [x] Classify informational fixture failures as missing features, obsolete
-      fixtures, or intentionally unsupported behavior.
-- [x] Promote mature informational fixtures into the enforced corpus.
-      - Full audit of all 6 informational directories (all 12 then-failing
-        cases individually inspected against the *live* repo, not assumed
-        from anything remembered or pasted -- one candidate file
-        (`source/test_ntProofs/basicDiv.txt`) turned out to have been
-        rewritten since an earlier impression of its contents, which is
-        exactly the trap "verify empirically" exists to catch).
-      - Two real, fixable bugs found and fixed along the way (not just
-        classification busywork):
-        1. `parse_declaration_prefix`'s "such that" required a literal
-           colon (`such\s+that\s*:\s*`); omitting it didn't error, it
-           silently dropped the premise formula, declaring only the bare
-           symbol -- the formula-shaped remainder just became part of the
-           declaration's own (unused-for-anything) descriptor text. A
-           citation of that dropped formula's label then failed several
-           lines later with a confusing "not in scope" error pointing at
-           the wrong line. Colon is now optional (`such\s+that\s*:?\s*`,
-           fixed everywhere this pattern is checked: `parse_declaration_
-           prefix` itself and `elaborate_typed_declaration`'s "should I
-           defer to that function" guard both needed updating together,
-           or they'd disagree about which lines have a such-that clause
-           at all). Note this leniency already existed one level up, for
-           *compound* declarations only -- `ProofParserPolicy.py` already
-           regex-preprocesses colon-less "such that" before calling
-           `parse_surface_declaration_statement` -- so this was closing a
-           gap between two paths that should already have agreed, not
-           inventing new tolerance from nothing. This directly fixed
-           `source/testProofs/propLogTests.txt`'s old #17.
-        2. `validate_all_proofs._stated_conclusion_from` called
-           `pp.parse_formula` on a proof's `### then ...` description
-           line with no exception handling at all. An unparseable
-           description (natural-language phrasing outside the current
-           formula grammar, e.g. "there exists an integer combination of
-           x, y") crashed `parse_multi_proof_file` outright -- before any
-           proof in that file, including unrelated earlier ones, had been
-           individually checked. The whole file surfaced as one opaque
-           `proof_id="?"` failure. Now caught, printed as a warning (the
-           same visibility level as an unpromotable theorem gets), and
-           treated as "skip the extra stated-conclusion safety-net check
-           for this one proof" -- the proof's own correctness is still
-           fully checked by `Proof.check_detailed()` regardless. This is
-           what made it possible to even *see* the individual, genuine
-           failure reasons inside `tests/testNT/basicNT.txt` and its
-           siblings, rather than one opaque failure per file.
-        Both are regression-tested (`test_declaration_clause_parsing_...`
-        already covered `parse_declaration_clause` itself but not this
-        specific colon-optional path -- see the colon-specific case now
-        exercised through `propLogTests.txt` #17 passing;
-        `test_stated_conclusion_from_tolerates_an_unparseable_then_line`
-        and `test_one_unparseable_then_line_does_not_blank_out_the_rest_
-        of_the_file` for the second, both confirmed to fail against the
-        old unguarded code).
-      - Per-file classification and action taken:
-        - `source/setProofs/uniqueEmpty.txt` -- OBSOLETE. Syntax never
-          matches anything the current grammar supports ("Let X be a set
-          such that, for all objects y, y is not in X. (Fresh Variable)"
-          tries to bundle arbitrary-introduction with an assumed property
-          in one line; "Trivial Implication"/"Subset Definition"/
-          "Definition of Unique" were never implemented rule names). Its
-          mathematical content (empty-set uniqueness) is already fully,
-          correctly covered by the enforced
-          `tests/testSetTheory/empty_set_subset_and_uniqueness.txt`.
-          Deleted; not referenced anywhere.
-        - `tests/setTheoryProofs/basicSTProofs.txt` -- OBSOLETE, in three
-          different ways at once: its #1 duplicates (and is redundant
-          with) the still-kept `tests/setTheoryProofs/empty_set_subset.txt`
-          (which stays -- it's loaded directly by three tests in
-          `test_theorem_promotion_and_set_theory.py`, checked before
-          touching anything in this directory); its #2 uses old phrasing
-          ("X is a set such that X has no elements" isn't valid
-          declaration/formula syntax) that
-          `empty_set_subset_and_uniqueness.txt` already supersedes with a
-          real, working proof of the identical theorem; its #3 is a bare
-          "# 3" header with no body at all, an abandoned placeholder.
-          Deleted; only referenced from an explanatory comment (not
-          loaded as data) in `test_theorem_promotion_and_set_theory.py`,
-          which is updated to point at the surviving file instead.
-        - `tests/testNT/basicNT.txt`, `tests/testNT/basicNT_edit.txt`,
-          `source/ntProofs/basicNT.txt` -- OBSOLETE, all three. Each is
-          an independent early draft bundling two theorems: "a|n iff n/a
-          is an integer" (already fully covered, correctly, by the
-          enforced `tests/testNumberTheory/divisibility_iff_quotient_
-          integer.txt` -- these three drafts add nothing beyond it, and
-          each is *also* individually broken in its own way reaching that
-          theorem: one cites "Existential Instantiation from subproof
-          below", a rule/subproof-attachment combination that was never
-          supported by either the old substring-matching parser or the
-          current `ProofJustification` one; another has a bare missing-
-          justification typo on top of being blocked by the same
-          "Algebra"/"Definition of Divisibility" retirement documented in
-          `NumberTheory.py`'s own module docstring; the third uses
-          unsupported postfix "if" wording) and a GCD/Bezout argument via
-          well-ordering that needs order theory, a well-ordering
-          principle, and quotient-remainder decomposition -- none of
-          which exist yet, exactly as `NumberTheory.py`'s own docstring
-          already says ("left for a follow-up"). All three are near-
-          identical, redundant drafts of the same not-yet-achievable
-          content; keeping three broken copies of it added nothing.
-          Deleted; none referenced anywhere.
-        - `source/test_ntProofs/basicDiv.txt` -- KEPT, genuinely a
-          missing-feature case, not obsolete or redundant with anything.
-          Its content turned out to be different from what an earlier
-          impression of this file suggested (see the "verify empirically"
-          note above) -- it's "a|b and a|c implies a|(b+c)" and "a|b and
-          b|c implies a|c" (divisibility transitivity), neither of which
-          is covered by any enforced fixture. Both are blocked on real,
-          distinct gaps: the first needs a multi-variable existential
-          ("exists m, n such that: ..." -- `Exists`/`ForAll` currently
-          only bind one variable per quantifier); the second needs
-          `Times` associativity, an actual ring axiom `NumberTheory.py`
-          explicitly doesn't have yet ("no associativity, distributivity,
-          ..." -- same "not here yet" list as the GCD argument above).
-          Worth keeping as concrete, correctly-scoped target content for
-          whenever either gap gets addressed.
-        - `source/testProofs/propLogTests.txt` -- FIXED, not obsolete.
-          Four bare "Let ... be a closed formula/predicate." lines were
-          missing their trailing justification entirely (a plain typo,
-          not a design gap) -- three of these were the file's only
-          reported failures (#3, #33, #37); the fourth (#13) happened to
-          already read as "passing" only because it's marked "Invalid
-          proof" and the same typo produced a `False` that coincidentally
-          matched `expected_valid=False`, silently never exercising what
-          #13 actually claims to test (an invalid escape from a closed
-          subproof). Fixed all four with `(Declare)` (these lines assert
-          no formula, only vocabulary) rather than `(Premise)`. #17's
-          separate failure was the "such that" colon bug above. Now
-          39/39, and #13 fails for its own, real, intended reason instead
-          of an unrelated line-1 typo (confirmed by re-running: still
-          correctly `expected=False, got=False`, now via `CATEGORY_
-          BAD_REFERENCE` on the actual out-of-scope citation, not a typo).
-      - `INFORMATIONAL_DIRS` in `validate_all_proofs.py` shrinks from six
-        directories to three (`tests/setTheoryProofs`,
-        `source/test_ntProofs`, `source/testProofs`) -- the other three
-        no longer exist at all once their one obsolete file each is gone.
-        Informational corpus: 40/42 now (was 37/49) -- the 2 remaining
-        failures are exactly `basicDiv.txt`'s two genuinely-missing-
-        feature proofs, both clearly documented above, nothing else.
-
-## Phase 7 — mathematical development
-
-- [ ] Continue discrete-mathematics proof objects and inference rules that
-      exercise the core architecture.
-- [ ] Expand set theory and number theory incrementally through the theory
-      infrastructure.
-- [ ] Implement remaining number-theory infrastructure needed for the GCD /
-      Bezout development.
-- [ ] Add representative mathematical developments involving declarations,
-      nested scopes, theorem references, and theory extensions.
-- [ ] Extend to order theory and algebra after the proof-context and
-      elaboration interfaces stabilize.
-
-## Repository hygiene
-
-- [ ] Keep architecture and parser documentation synchronized with the actual
-      implementation.
-- [x] Remove obsolete helpers, wrappers, dead imports, stale duplicate
-      documentation, and one-time migration machinery when demonstrably
-      superseded and covered by tests.
-      - Done: the dead inline `ProofParser.parse_justification` and
-        `parse_formula` bodies (see the previous entry here) are deleted,
-        not just overwritten. `ProofParser.py` now imports
-        `parse_justification` straight from `ProofJustification.py`
-        (self-contained, no dependency on `ProofParser` internals, so no
-        reason to keep installing it via patch); `parse_formula` stays a
-        `ProofParserPolicy`-installed override, since
-        `_parse_formula_conventional` genuinely does reach back into
-        `ProofParser`'s own `split_top_level`/`parse_term`/etc. and isn't
-        self-contained the same way. `ProofParserPolicy.py`'s now-no-op
-        `_parser.parse_justification = parse_justification` patch line is
-        removed too. `ProofParser.py`'s module docstring ("Two things
-        worth knowing...") no longer describes the old, no-longer-active
-        nonstandard precedence; the corrected recognition-order
-        documentation (with the precedence table right this time) now
-        lives on `_parse_formula_conventional`'s own docstring in
-        `ProofParserPolicy.py`, next to the code it actually describes.
-        `source/test_parser.py` and `source/test_validator.py` (also
-        stale duplicates of their `pytest_tests/` counterparts, and
-        already non-functional standalone -- `source/support.py` doesn't
-        exist) are deleted; their four still-valid, not-yet-migrated
-        cases (`test_declaration_clause_parsing_recognizes_all_three_
-        target_shapes`, `test_declaration_recipe_registry_dispatches_a_
-        registered_structure_type_generically`,
-        `test_implication_binds_looser_than_equality`,
-        `test_empty_proof_is_rejected_not_vacuously_valid`) are migrated
-        into `pytest_tests/test_parser.py`/`test_validator.py`.
-      - Bug found while migrating the recipe-dispatch test above (so
-        fixed in the same pass rather than deferred): a tuple-shaped
-        clause like `(W, <) be a well-ordered poset` -- or a typed-function
-        one like `f: W -> W be ...` -- silently lost its shape
-        (`is_tuple`/`domain`/`codomain`) whenever it was written as part
-        of a *coordinated* `Let X be any set, (W, <) be ..., ...`
-        statement rather than a standalone `Let (W, <) be ....` line.
-        `elaborate_compound_declaration` (the coordinated-statement path)
-        reconstructs a `DeclarationClause` for recipe dispatch via
-        `_surface_clause_to_recipe_clause`, which hardcoded
-        `is_tuple=False` and dropped `domain`/`codomain` entirely --
-        distinct from `elaborate_typed_declaration` (the standalone-line
-        path), which builds `DeclarationClause`s directly from
-        `parse_declaration_clause` and always had this right. Any
-        `DeclarationRecipe` keyed on clause shape (an order-theory
-        well-ordered-poset recipe, most concretely) would have matched
-        fine written standalone but matched *nothing* -- falling back to
-        plain-object declarations with no formula, no error -- the moment
-        the same clause appeared inside a coordinated statement. No
-        currently shipped recipe (`DiscreteMath.RelationDeclarationRecipe`,
-        `Type.as_declaration_recipe`) happened to depend on `is_tuple`, so
-        this was latent, not a live incorrect result today; still worth
-        having fixed before `OrderTheory.py` exists to hit it. Fixed by
-        adding `is_tuple`/`domain`/`codomain` fields to
-        `SurfaceDeclarationClause` (threaded through from the
-        `DeclarationClause` `_surface_declaration_from_clause` already
-        parses) and reading them in `_surface_clause_to_recipe_clause`
-        instead of hardcoding. Regression-covered by the migrated
-        `test_declaration_recipe_registry_dispatches_a_registered_
-        structure_type_generically`, which genuinely failed against the
-        pre-fix code (confirmed empirically, not just reasoned about)
-        before the fix and passes after.
-      - Related, still-open gap noticed but *not* fixed here (separate,
-        larger change): `elaborate_compound_declaration` only ever calls
-        `recipe.try_match([recipe_clause], 0)` with a one-element list,
-        so it can't support a *multi-clause* recipe (the kind
-        `DeclarationRecipe`'s own docstring describes for something like
-        "increasing" needing a separately-named order relation) the way
-        `elaborate_typed_declaration` already does by passing the full
-        clause list with an index. Not reachable by anything shipped
-        today (no multi-clause recipe exists yet), but will need
-        addressing before a coordinated `Let X be a set, (W, <) be a
-        well-ordered poset, f: W -> W be an increasing function, ...`
-        statement can work end to end.
-- [ ] Do not add large numbers of isolated mathematical rules while the proof
-      context, elaboration, and validation interfaces are changing.
-
-## Suggested development sequence
-
-Not a strict order to follow top to bottom -- work on whatever the natural
-next development is, and update this list (both completed items and any
-change of plan) when that happens rather than treating the numbering as a
-commitment. It exists to record *where things currently stand* and *what
-looks like a reasonable next step from here*, not to fix a plan in advance.
-
-1. [x] Formalize `ProofContext` namespaces, assumptions, and scope operations.
-2. [x] Integrate `ProofContext` into elaboration.
-3. [x] Resolve theorem/lemma semantics -- no ProofContext binding needed
-       (see Phase 3); `promote_theorem`'s own default behavior remains a
-       small, separate, unblocking-nothing decision for whenever it matters.
-4. [x] Remove duplicated lexical scope bookkeeping (Phase 4, see above).
-5. [~] Finish parser/elaborator legacy cleanup (Phase 5). One concrete
-       duplicated-logic instance found and fixed (see above); the
-       remaining sub-items are either blocked on a precondition that
-       genuinely hasn't happened yet (removing `parse_declaration_prefix`/
-       `_parse_formula_or_bundle`) or standing principles rather than
-       one-time tasks (distinct syntax/elaboration/diagnostics concerns).
-       Not treating this as fully closed, but nothing further is
-       currently actionable without a bigger, separate architectural
-       decision.
-6. [~] Strengthen semantic and diagnostic regression coverage (Phase 6).
-       The rule-crash-masking gap is fixed and regression-tested;
-       consolidating validation entry points and removing obsolete
-       validation interfaces remain open, not yet investigated.
-7. [x] Classify and reduce the informational fixture backlog. Full audit
-       done (see Phase 6 above): 5 obsolete/redundant files deleted, one
-       genuinely-blocked file kept and clearly documented, one file fixed
-       outright (3 typos + a real parser gap), 2 real infrastructure bugs
-       fixed and regression-tested along the way. Informational corpus:
-       40/42, down from 6 failing directories to 1 (with both remaining
-       failures explained, not mysterious).
-8. [~] Expand discrete mathematics, set theory, and number theory.
-       `NumberTheory.py` gains two ring axioms, each added because a
-       specific proof needed it, not speculatively: `Times` associativity
-       (divisibility transitivity) and left distributivity of `Times`
-       over `Plus` (divisibility distributing over sums). Both proved and
-       promoted to the enforced corpus
-       (`tests/testNumberTheory/divisibility_is_transitive.txt`,
-       `divisibility_distributes_over_sums.txt`).
-       `source/test_ntProofs/basicDiv.txt` is deleted outright -- both of
-       its historical proofs now have real, current-syntax, enforced
-       homes, so nothing was left to keep it for.
-       Getting the second proof working surfaced a real, separate gap:
-       `pl.AlgebraRule` (the congruence-closure decision procedure) had
-       *no citable name at all* in `ProofJustification`'s alias table --
-       not "algebra", not "Algebra", nothing -- despite being fully
-       implemented, registered, and documented. It had never been used by
-       any proof in the corpus and had zero test coverage of its own
-       (confirmed by grepping the whole test suite for it). Added
-       `"Algebra"`/`"Algebraic Manipulation"` as aliases (case-
-       insensitive, matching every other rule name in that table). This
-       reverses a specific prior decision, on purpose, not by oversight:
-       a test named `test_old_algebra_placeholder_citation_is_rejected_
-       rather_than_silently_accepted` existed specifically to keep
-       "Algebra" unrecognized, reasoning that "'Algebra' was never a real
-       rule". That reasoning is stale now that `AlgebraRule` *is* a real,
-       sound rule (not a rubber stamp -- see its own docstring) -- and
-       `ProofJustification`'s resolution is case-insensitive by
-       convention everywhere else, so there was never a clean way to
-       accept "algebra" while still rejecting "Algebra" specifically.
-       Renamed and rewrote the test to check the new, current behavior
-       rather than deleting it. Flagging this prominently rather than
-       treating it as routine cleanup, since reversing a named protective
-       test is a bigger call than most of the other changes in this file.
-       Not marking this item fully done -- "expand" doesn't have a
-       natural end point the way a specific bug fix does.
-9. [ ] Add broader theory extensions such as order theory and algebra.
-10. [ ] Verify CI continuously throughout the process.
-
-The multi-variable-existentials gap this file previously flagged as a
-"core-parser change... worth planning as its own piece of work" turned
-out to be much smaller than that estimate: `exists m, n such that: BODY`
-/ `forall x, y such that: BODY` (colon optional, matching the
-declaration-prefix leniency from Phase 6) now desugars, purely at the
-surface-parser level in `_parse_formula_conventional`, to nested single-
-variable `Exists`/`ForAll` nodes -- `Exists('m', Exists('n', BODY))`.
-Nothing in `ProofLogic.py` needed to change at all: `FormulaMatcher` and
-every rule that inspects a quantifier already handle nested quantifiers
-correctly (a proof unfolds each layer with its own `Existential
-Elimination` step, exactly the same shape already used for two *separate*
-existentials in the transitivity proof above). The "such that" keyword is
-required for the multi-variable form specifically to avoid a real
-ambiguity (`exists x, P(x)` -- is "P" a second bound variable, or the
-start of the body?), not for the ordinary single-variable case, which is
-completely unaffected. Worth remembering for next time: the original
-estimate of this as a bigger, riskier change was wrong, and assuming a
-gap is exactly as hard as it sounds is itself a mistake worth naming, not
-just quietly correcting.
-
-With 8 essentially exhausted for what the current corpus asks for, the
-informational fixture corpus is fully clean for the first time (40/40,
-48/48 enforced) -- there is no longer a "next concrete target" sitting
-in a failing fixture the way `basicDiv.txt` was. The natural next step is
-either genuinely new mathematical content (order theory, per item 9 --
-the actual prerequisite for the GCD/Bezout argument order theory was
-tracked for), or picking a different area of Phase 7's "expand ... set
-theory" (nothing currently forces a specific choice the way basicDiv.txt
-did). Worth a direct decision on which, rather than defaulting to
-whichever surfaces first.
-
-Prefer mathematical developments that exercise and validate the architecture,
-then promote the resulting abstractions into reusable theory infrastructure.
+- `./run_tests.sh` is the canonical local regression command.
+- The enforced fixtures are the baseline. Informational fixtures are useful for
+  broadening examples, but the enforced corpus remains the correctness floor.
+- Any new theory feature should fit the pattern: theory environment + declaration
+  recipe + rules + examples, rather than custom branches in the generic parser.
