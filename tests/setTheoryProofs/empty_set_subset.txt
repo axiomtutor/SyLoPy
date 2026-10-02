@@ -16,7 +16,13 @@
 ### = {u in U: U in X}
 
 # Axiom 5: Axiom of power set.  
-### There exists an infinite set.
+### If X is a set 
+### then there is a set Y = P(X) 
+### = {y: y subset X}
+
+# Axiom 6: Axiom of infinity.  
+### There is an infinite set.
+
 
 # 1: The empty set subset theorem
 ## Proof that
