@@ -1,10 +1,28 @@
+# Axiom 1: Axiom of extensionality.
+### If X and Y are sets, 
+### then X = Y iff (for all a in X we have a in Y, and 
+### for all a in Y we have a in X)
 
+# Axiom 2: Axiom of pairing.
+### If a and b are sets, 
+### then there is a set {a, b} that contains exactly a and b.
 
+# Axiom 3: Axiom schema of separation.
+### If P is a property with parameter p, 
+### then for any X and p there exists a set Y = {u in X: P(u,p)}.
+
+# Axiom 4: Axiom of union.
+### If X is a set then there is a set Y = (union X) 
+### = {u in U: U in X}
+
+# Axiom 5: Axiom of power set.  
+### There exists an infinite set.
 
 # 1: The empty set subset theorem
 ## Proof that
 ### If X is any set
-### then the empty set is a subset of X
+### then the empty set is a subset of X.
+
 1. Let X be any set. (Declaration)
 2. The empty set is a subset of X. (Subset proof below)
  2.1. Let a in the empty set. (Assumption for subset proof)

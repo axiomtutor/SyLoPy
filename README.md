@@ -5,10 +5,8 @@ proofs written in a human-readable surface syntax, elaborates them into a core
 proof representation, and validates the result with the kernel in
 `source/ProofLogic.py`.
 
-The project is not a general-purpose theorem prover in the style of a large
-interactive proof assistant. Its scope is more focused: a compact proof language
-for set theory, natural-number reasoning, relation properties, and logic with a
-strong emphasis on source-aware elaboration and proof validation.
+The project currently has some implementations for first-order logic, set theory, order theory, arithmetic, and number theory.
+It should soon develop features for more mathematical subjects.
 
 ## Current status
 
@@ -159,6 +157,4 @@ source completion/run_tests.bash
 ## Summary
 
 SyLoPy is a working proof-language checker with a mature core, a validated proof
-corpus, and a clear next phase: architecture cleanup and extension. The project
-is no longer in a "make the basics work" stage; it is in the "stabilize and
-extend the proof-language platform" stage.
+corpus, and a clear next phase: architecture cleanup and extension. After that, develop the set theory features until it can prove core set theory theorems.
