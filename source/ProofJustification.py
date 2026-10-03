@@ -81,6 +81,12 @@ def _rule(name: str):
         "induction": "Induction",
         "empty set property": "EmptySetProperty",
         "set property": "EmptySetProperty",
+        "axiom of separation": "Separation",
+        "separation schema": "Separation",
+        "axiom schema of separation": "Separation",
+        "axiom of replacement": "Replacement",
+        "replacement schema": "Replacement",
+        "axiom schema of replacement": "Replacement",
     }
     target = placeholders.get(_normalize(name))
     if target is not None:

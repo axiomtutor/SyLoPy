@@ -334,6 +334,283 @@ def elaborate_subset_proof(line: SurfaceLine, context):
     )
 
 
+# ---------------------------------------------------------------------------
+# ZFC axioms (Jech's presentation, "Set Theory").  Extensionality through
+# Infinity are plain formulas, cited verbatim as "(Axiom)" the same way
+# NumberTheory's Times-associativity/distributivity axioms already are: a
+# proof writes out the exact quantified statement and matches it structurally
+# (`_ast_eq`) against one entry of `SET_AXIOMS`, then works with it by
+# ordinary inference (Universal Instantiation, Existential Elimination, ...).
+# Separation and Replacement are *schemas* -- "for every property" ranges
+# over formulas, which this theory has no way to quantify over -- so each is
+# a zero-premise rule instead, matching `EmptySetPropertyRule`'s own
+# zero-premise precedent just above: a proof asserts one concrete instance
+# outright and cites "(Separation)"/"(Replacement)" directly, the same way
+# "(Set property)" cites `EmptySetPropertyRule` with nothing else cited.
+#
+# Extensionality itself adds no formula here. Jech's axiom has two
+# directions: "X=Y -> mutual subset" is a theorem of equality alone in any
+# first-order theory (substitute X for Y inside "u in X"), not a set-theoretic
+# commitment -- no textbook treatment actually needs to assert it. "mutual
+# subset -> X=Y" *is* the real content, and it is already exactly
+# `SetEqualityRule`, above (see that class's own docstring). Nothing to add.
+# ---------------------------------------------------------------------------
+
+_a = tl.VariableTerm('a')
+_b = tl.VariableTerm('b')
+_u = tl.VariableTerm('u')
+_v = tl.VariableTerm('v')
+_X = tl.VariableTerm('X')
+_Y = tl.VariableTerm('Y')
+_y = tl.VariableTerm('y')
+_S = tl.VariableTerm('S')
+
+PAIRING_AXIOM = fl.ForAll('a', fl.ForAll('b', fl.Exists('Y', fl.ForAll(
+    'u', fl.Iff(membership_formula(_u, _Y), fl.Or(fl.Equals(_u, _a), fl.Equals(_u, _b)))
+))))
+"""For any a, b, there is a set Y = {a, b} containing exactly a and b.
+Jech's Axiom 2. No function symbol for "the pair of a and b" is introduced
+here -- that waits until a proof has actually derived the pair's existence
+*and* uniqueness (the latter follows from `SetEqualityRule`) and promotes it,
+the project's own standing mechanism for turning a proven fact into reusable
+notation, rather than building the shortcut speculatively ahead of it.
+"""
+
+UNION_AXIOM = fl.ForAll('X', fl.Exists('Y', fl.ForAll(
+    'u', fl.Iff(
+        membership_formula(_u, _Y),
+        fl.Exists('v', fl.And(membership_formula(_v, _X), membership_formula(_u, _v))),
+    )
+)))
+"""For any X, there is a set Y = union(X) = {u : exists v in X, u in v}.
+Jech's Axiom 4 (the empty_set_subset.txt comment's "{u in U: U in X}" is
+Jech's informal shorthand for exactly this -- U ranges over members of X,
+it is not a separately-declared set). Same "existential only, no function
+symbol yet" stance as Pairing.
+"""
+
+POWER_SET_AXIOM = fl.ForAll('X', fl.Exists('Y', fl.ForAll(
+    'u', fl.Iff(membership_formula(_u, _Y), subset_formula(_u, _X, var_name='v'))
+)))
+"""For any X, there is a set Y = P(X) = {u : u subset X}. Jech's Axiom 5.
+Reuses `subset_formula` directly rather than re-deriving subset notation,
+overriding its default (synthetic, `__subset_element`) bound-variable name
+to the natural `v` -- citing this axiom means writing it out verbatim, and
+nobody should have to type the synthetic name to do that.
+"""
+
+INFINITY_AXIOM = fl.Exists('X', fl.And(
+    membership_formula(EMPTY_SET, _X),
+    fl.ForAll('y', fl.Implies(
+        membership_formula(_y, _X),
+        fl.Exists('S', fl.And(
+            fl.ForAll('u', fl.Iff(
+                membership_formula(_u, _S),
+                fl.Or(membership_formula(_u, _y), fl.Equals(_u, _y)),
+            )),
+            membership_formula(_S, _X),
+        )),
+    )),
+))
+"""There is a set X containing the empty set and closed under
+y |-> y union {y}. Jech's Axiom 6. "S = y union {y}" is stated directly by
+its membership condition -- (forall u, (u in S <-> (u in y or u = y))) and
+S in X -- rather than built from separate Pairing/Union function symbols,
+for the same "no function symbols yet" reason as above: it needs nothing
+beyond what is already primitive (`In`, `Equals`).
+"""
+
+SET_AXIOMS = [PAIRING_AXIOM, UNION_AXIOM, POWER_SET_AXIOM, INFINITY_AXIOM]
+
+
+class SeparationSchemaRule(pl.InferenceRule):
+    """Jech's Axiom 3 (axiom *schema* of separation): for any set X and any
+    formula B(u) -- Jech's "property P with parameter p", parameters already
+    closed over by whatever B mentions freely -- there exists
+    Y = {u in X : B(u)}.
+
+    This is a schema, not a single formula: "for every property" ranges over
+    formulas, and this theory cannot bind a formula with a quantifier (that
+    would be second-order). So there is no single `fl.Formula` to add to
+    `SET_AXIOMS` the way Pairing/Union/Power-Set are above. Instead, *each
+    instance* -- each concrete choice of B -- is itself a zero-premise fact a
+    proof can assert outright, exactly the way `EmptySetPropertyRule` already
+    does for a different zero-premise fact: `premise_arity = 0`, nothing is
+    cited, a proof writes the specific instance it needs and cites
+    "(Separation)" directly.
+
+    `phi` must have the exact shape::
+
+        exists Y, forall u, (u in Y <-> (u in X and B(u)))
+
+    for some term X and some formula B. B is not checked for any particular
+    shape beyond being a formula at all -- *any* B gives a sound instance,
+    which is the schema's entire content. X is likewise unconstrained here
+    (that it is actually a set already in scope is `ProofValidator`'s job,
+    not this rule's).
+
+    Example::
+
+        1. Let X be any set. (Declaration)
+        2. exists Y, forall u, (u in Y <-> (u in X and u is not in X)).
+           (Separation)
+
+    (a deliberately trivial B, to show any formula qualifies -- this
+    instance asserts the existence of a subset of X cut out by a condition
+    no element can satisfy, i.e. the empty set; true, but not the point.
+    The point is that `applies` places no constraint on B at all.)
+    """
+    name = "Separation"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates or not isinstance(phi, fl.Exists):
+            return False
+        Y = tl.VariableTerm(phi.var)
+        inner = phi.body
+        if not isinstance(inner, fl.ForAll):
+            return False
+        u = tl.VariableTerm(inner.var)
+        biconditional = inner.body
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_in_Y, right = biconditional.left, biconditional.right
+        if not (isinstance(membership_in_Y, fl.AtomicFormula) and membership_in_Y.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_Y.args) == 2
+                and pl._ast_eq(membership_in_Y.args[0], u) and pl._ast_eq(membership_in_Y.args[1], Y)):
+            return False
+        if not (isinstance(right, fl.And) and len(right.conjuncts) == 2):
+            return False
+        membership_in_X, _B = right.conjuncts
+        return (isinstance(membership_in_X, fl.AtomicFormula) and membership_in_X.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u))
+
+
+class ReplacementSchemaRule(pl.InferenceRule):
+    """Jech's Axiom schema of replacement: if a formula B(x,y) -- free
+    variables x, y, plus whatever parameters are already in scope -- is
+    *functional* on a set A (every x in A has exactly one y with B(x,y)),
+    then the image {y : exists x in A, B(x,y)} is itself a set.
+
+    Like `SeparationSchemaRule`, this ranges over an arbitrary B and so, like
+    it, is a zero-premise rule: the whole instance -- functionality
+    hypothesis and image conclusion together -- is asserted directly and
+    cited "(Replacement)", the same way a Separation instance is cited
+    "(Separation)".
+
+    `phi` must have the exact shape::
+
+        forall x, (x in A -> exists y, (B(x,y) and forall z, (B(x,z) -> z = y)))
+        ->
+        exists C, forall y, (y in C <-> exists x, (x in A and B(x,y)))
+
+    B is read off the antecedent (the conjunct of the witnessed existential
+    that is not itself the uniqueness clause) and is otherwise unconstrained
+    -- any formula qualifies, exactly as for Separation.
+
+    Two structural requirements tie the pieces together, and both follow
+    this codebase's standing no-alpha-equivalence discipline (see
+    `_ast_eq`'s docstring, and `InductionRule`'s) rather than inventing a
+    capture-avoiding renaming scheme for this one rule:
+
+      * The uniqueness clause's B(x,z) must be exactly B(x,y) with y
+        replaced by z -- checked with `FormulaLogic.substitute_in_formula`,
+        the same primitive `InductionRule` already relies on to build an
+        expected comparison target. It is used here only to reconstruct
+        what this rule expects to find (never applied to reshape the
+        proof's own formula), then compared with `_ast_eq` -- no more
+        capture risk than `InductionRule` already carries.
+      * x and y must be spelled with the *same* names in the consequent as
+        in the antecedent, and A likewise. This rule does not hunt for a
+        consistent renaming between the two halves; the proof-writer simply
+        reuses the names, which is both the natural way to write "the same
+        x and y throughout" and already how every other schema rule in this
+        project (Induction included) expects a citation to be written.
+
+    Example (image of A under the trivial functional relation B(x,y) :=
+    "y = x", i.e. a long-winded way of asserting A is a set -- chosen only
+    to keep the example short; nothing about `applies` is specific to it)::
+
+        1. Let A be any set. (Declaration)
+        2. forall x, (x in A -> exists y, (y = x and forall z, (z = x -> z = y)))
+           -> exists C, forall y, (y in C <-> exists x, (x in A and y = x)).
+           (Replacement)
+    """
+    name = "Replacement"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates or not isinstance(phi, fl.Implies):
+            return False
+        antecedent, consequent = phi.antecedent, phi.consequent
+
+        if not isinstance(antecedent, fl.ForAll):
+            return False
+        x_name = antecedent.var
+        functionality = antecedent.body
+        if not isinstance(functionality, fl.Implies):
+            return False
+        membership_x = functionality.antecedent
+        if not (isinstance(membership_x, fl.AtomicFormula) and membership_x.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_x.args) == 2
+                and pl._ast_eq(membership_x.args[0], tl.VariableTerm(x_name))):
+            return False
+        A_term = membership_x.args[1]
+
+        unique_exists = functionality.consequent
+        if not isinstance(unique_exists, fl.Exists):
+            return False
+        y_name = unique_exists.var
+        if y_name == x_name:
+            return False
+        body = unique_exists.body
+        if not (isinstance(body, fl.And) and len(body.conjuncts) == 2):
+            return False
+        B_xy, uniqueness = body.conjuncts
+        if not isinstance(uniqueness, fl.ForAll):
+            return False
+        z_name = uniqueness.var
+        if z_name in (x_name, y_name):
+            return False
+        step = uniqueness.body
+        if not isinstance(step, fl.Implies):
+            return False
+        expected_B_xz = fl.substitute_in_formula(B_xy, y_name, tl.VariableTerm(z_name))
+        if not pl._ast_eq(step.antecedent, expected_B_xz):
+            return False
+        if not pl._ast_eq(step.consequent, fl.Equals(tl.VariableTerm(z_name), tl.VariableTerm(y_name))):
+            return False
+
+        if not isinstance(consequent, fl.Exists):
+            return False
+        C_name = consequent.var
+        outer = consequent.body
+        if not isinstance(outer, fl.ForAll) or outer.var != y_name:
+            return False
+        biconditional = outer.body
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_y = biconditional.left
+        if not (isinstance(membership_y, fl.AtomicFormula) and membership_y.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_y.args) == 2
+                and pl._ast_eq(membership_y.args[0], tl.VariableTerm(y_name))
+                and pl._ast_eq(membership_y.args[1], tl.VariableTerm(C_name))):
+            return False
+        image = biconditional.right
+        if not isinstance(image, fl.Exists) or image.var != x_name:
+            return False
+        image_body = image.body
+        if not (isinstance(image_body, fl.And) and len(image_body.conjuncts) == 2):
+            return False
+        membership_x2, B_xy_again = image_body.conjuncts
+        if not (isinstance(membership_x2, fl.AtomicFormula) and membership_x2.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_x2.args) == 2
+                and pl._ast_eq(membership_x2.args[0], tl.VariableTerm(x_name))
+                and pl._ast_eq(membership_x2.args[1], A_term)):
+            return False
+        return pl._ast_eq(B_xy_again, B_xy)
+
+
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
@@ -343,7 +620,8 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
     line_elaborators=[elaborate_subset_proof],
-    rules=[EmptySetPropertyRule(), SetEqualityRule()],
+    rules=[EmptySetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule()],
+    axioms=SET_AXIOMS,
     declarations=SET_DECLARATIONS,
     term_parsers=[try_parse_set_term],
     nested_formula_parsers=[parse_set_formula],

@@ -177,7 +177,7 @@ def test_titled_set_theory_proof_runs_through_fixture_pipeline():
     text = (project / "tests" / "setTheoryProofs" / "empty_set_subset.txt").read_text()
     cases = mp.parse_multi_proof_file(text)
     assert [case.number for case in cases] == ["1"]
-    assert cases[0].description[-1] == "then the empty set is a subset of X"
+    assert cases[0].description[-1] == "then the empty set is a subset of X."
     assert mp.run_multi_proof_file(text) == [("1", True, True, None, False)]
 
 
