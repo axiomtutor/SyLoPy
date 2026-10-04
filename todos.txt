@@ -181,13 +181,19 @@ an explicit go-ahead.
       finite iff there is an n and a bijective function from {0, ..., n-1}
       to A. "Infinite" means not finite. The rule itself needs none of that
       vocabulary; unfolding the definition does.
-      Open: where the definition of "finite" lives. It needs natural
-      numbers, functions and bijections, but `SetTheory.py` cannot import
-      `NatThry.py`/`NumberTheory.py` (the dependency runs the other way).
-      Likely answer: the symbolic "infinite" predicate and the axiom rule
-      live in `SetTheory.py`, and the definition of "finite" goes in a
-      module that already has the naturals and functions. Not needed until
-      the syntax and the other three axiom rules exist.
+      Decided (where numbers and functions live): set theory is meant to be
+      the root of everything, so `SetTheory.py` must not depend on
+      `NatThry.py` or `NumberTheory.py`, and it should not be assumed they
+      will stay independent siblings of it. The definition of "finite" is
+      therefore stated in the metatheory: a natural number there is a
+      Python nonnegative integer, and a function is a symbolic object with a
+      domain and a codomain.
+      Known risk, to revisit only when a concrete proof hits it: quantifying
+      over Python integers ("there is an n") is not an object-language
+      quantifier, so "finite" and "infinite" may only be usable one numeral
+      at a time unless some form of quantification over metatheory integers
+      is added. Not needed until the syntax and the other three axiom rules
+      exist.
 
 - [ ] Implementation order (decided): build the syntax gaps first, then the
       rules. The syntax gaps are the "Remaining plain syntax gaps" item
