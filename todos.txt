@@ -172,13 +172,19 @@ an explicit go-ahead.
       - "X and Y are sets" multi-subject declaration phrasing
       - "x is a or b" as sugar for a disjunction of equalities
 
-- [ ] Infinity axiom -- open decision. Two readings: (a) the usual inductive
-      set (contains the empty set and is closed under x -> x union {x}),
-      which needs the empty set, union and pair notation; or (b) "there
-      exists an infinite set", which needs a definition of "infinite" (e.g.
-      Dedekind: a one-to-one map into a proper subset), and therefore
-      functions and ordered pairs first. Not needed until the syntax and the
-      other three axiom rules exist.
+- [ ] Infinity axiom. Decided: the axiom introduces a set with a symbolic
+      defining property, "is infinite", and that is all the rule asserts.
+      "Finite" is defined separately: A is finite iff there is an n and a
+      bijective function from {0, ..., n-1} to A. "Infinite" means not
+      finite. The rule itself needs none of that vocabulary; unfolding the
+      definition does.
+      Open: where the definition of "finite" lives. It needs natural
+      numbers, functions and bijections, but `SetTheory.py` cannot import
+      `NatThry.py`/`NumberTheory.py` (the dependency runs the other way).
+      Likely answer: the symbolic "infinite" predicate and the axiom rule
+      live in `SetTheory.py`, and the definition of "finite" goes in a
+      module that already has the naturals and functions. Not needed until
+      the syntax and the other three axiom rules exist.
 
 - [ ] Implementation order (decided): build the syntax gaps first, then the
       rules. The syntax gaps are the "Remaining plain syntax gaps" item
