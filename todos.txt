@@ -124,6 +124,16 @@ an explicit go-ahead.
       the axiom citation (`There is a set Y = {a, b} ... (Axiom of pairing)`)
       rather than citing existence and then doing a separate Existential
       Elimination.
+      Decided (scope): the new set is an ordinary declaration at the nesting
+      level of the citing line. It stays in scope for the rest of that level,
+      including nested subproofs below it, and is invisible outside the
+      subproof it was introduced in -- the same rule `ProofContext` already
+      applies to declarations, so no special scoping is needed.
+      Decided (what the citation records): the line does not have to restate
+      the instance formula. It introduces the set together with its defining
+      property (for pairing, membership iff equal to a or to b), and
+      `Set property` (below) is what later retrieves that property. The rule
+      itself only checks that the stated set has the shape the axiom allows.
 
 - [ ] WLOG as a subproof-copying rule.
       Confirmed design: `(WLOG)` closes a subproof, the way
@@ -133,7 +143,9 @@ an explicit go-ahead.
       term for the taken one throughout (reusing
       `_substitute_constants_in_formula`), re-applies the identical rule
       citations line by line, and validates each exactly as usual
-      (`applies()`) against the substituted formulas. Still needs a concrete
+      (`applies()`) against the substituted formulas. Decided (behavior): the
+      author proves one chosen disjunct; the checker confirms the same proof
+      works for each of the other disjuncts. Still needs a concrete
       surface syntax for delimiting the WLOG subproof before implementation
       starts.
 
@@ -144,6 +156,9 @@ an explicit go-ahead.
       exactly P and Q" assumption) and instantiate it, optionally
       substituting an equality from a cited line M. The citation should name
       the instantiation witness explicitly; the checker shouldn't guess it.
+      Decided: every set has a defining property, which `Set property`
+      checks. For a set with no stated property (e.g. "Let X be any set"),
+      the property is symbolic, i.e. just its own membership predicate.
 
 - [ ] `Uniqueness, N, M` as sugar.
       Expands to the ordinary `exists Y, (P(Y) and forall X, (P(X) -> X = Y))`
@@ -156,6 +171,18 @@ an explicit go-ahead.
       - a `subseteq` token, distinct from strict subset
       - "X and Y are sets" multi-subject declaration phrasing
       - "x is a or b" as sugar for a disjunction of equalities
+
+- [ ] Infinity axiom -- open decision. Two readings: (a) the usual inductive
+      set (contains the empty set and is closed under x -> x union {x}),
+      which needs the empty set, union and pair notation; or (b) "there
+      exists an infinite set", which needs a definition of "infinite" (e.g.
+      Dedekind: a one-to-one map into a proper subset), and therefore
+      functions and ordered pairs first. Not needed until the syntax and the
+      other three axiom rules exist.
+
+- [ ] Implementation order (decided): build the syntax gaps first, then the
+      rules. The syntax gaps are the "Remaining plain syntax gaps" item
+      above. Do not start until given an explicit go-ahead.
 
 - [ ] Mutatis mutandis (deferred -- larger, separate project).
       Confirmed to be a real, checkable rule: given two parallel subproofs of
