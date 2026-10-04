@@ -10,16 +10,21 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-At the time of writing, the project is in a stable state.
+At the time of writing, the project is in a stable state, with one known,
+tracked exception.
 
-- `./run_tests.sh` passes with 368 passing Python tests.
+- 384 Python tests; 383 pass, 1 known failure (a stale fixture test, tracked
+  in `todos.txt`).
 - All enforced proof fixtures pass.
-- All informational proof fixtures pass.
+- All but one informational proof fixture pass (the same known issue: a
+  fixture written ahead of an agreed-but-unimplemented feature).
 
 This is the key fact to keep in mind for planning: the core parser,
 elaboration pipeline, and kernel rule set are working as a coherent system.
 The remaining work is mostly consolidation, cleanup, and feature expansion,
-not repairing a broken proof engine.
+not repairing a broken proof engine. See `todos.txt` for the detailed,
+living task list, including design decisions that are agreed but not yet
+implemented.
 
 ## Proof-processing pipeline
 
@@ -91,6 +96,12 @@ The main architectural goal is to make the proof context the single source of
 truth for lexical bookkeeping while reducing legacy duplication in the
 elaborator and preserving the validated proof corpus.
 
+As new theory features are designed, the guiding principle is: most things
+beyond the level of pure logic should be sugar. New mathematical convenience
+— a notation, a derived fact like "exists a unique X" — should desugar into
+forms the kernel already understands rather than growing the kernel itself.
+Kernel/AST changes are reserved for genuinely new logical primitives.
+
 Short term, the project is heading toward:
 
 - a cleaner elaboration model with `ProofContext` fully authoritative;
@@ -117,6 +128,9 @@ make it easier to extend and maintain.
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
      elaboration hacks.
+   - Implement the agreed set-theory design backlog (named axiom-citation
+     rules, a checked WLOG rule, and more) — see `todos.txt` for the full,
+     current design.
 
 4. Continue proof-corpus growth.
    - Add more examples and end-to-end fixtures for edge cases, not just the core
@@ -131,6 +145,11 @@ make it easier to extend and maintain.
 - `source/ProofLogic.py` — proof kernel, rules, axioms, and validation.
 - `source/ProofContext.py` — lexical scoping for declarations, labels, and
   assumptions.
+- `source/ProofJustification.py` — parses proof-line justifications (e.g.
+  "Modus Ponens from 2, 3") into rule citations.
+- `source/SetTheory.py`, `source/NumberTheory.py`, `source/DiscreteMath.py` —
+  per-subject theory modules that extend the base logic (see "What the
+  project already supports").
 - `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
 - `tests/` and `pytest_tests/` — regression tests and proof fixtures.
 - `completion/run_tests.bash` — shell completion for the test runner.

@@ -2,16 +2,41 @@
 
 ## Project status
 
-The project is functionally green. The core proof-language pipeline has been
-validated against the repository's full regression suite:
+The project is functionally green, with one known, tracked exception. The
+core proof-language pipeline has been validated against the repository's
+full regression suite:
 
-- `./run_tests.sh` passes
-- 368 Python tests pass
-- all enforced proof fixture suites pass
-- all informational proof fixtures pass
+- 384 Python tests; 383 pass, 1 known failure (see "Known issues" below)
+- all enforced proof fixture suites pass (48/48)
+- informational proof fixtures: 43/44 pass (the one failure is the same
+  known issue)
 
 The current work is no longer about making the basics work. The remaining work
 is about making the system cleaner, easier to extend, and easier to use.
+
+## Known issues
+
+- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
+      is out of sync with its fixture, `tests/setTheoryProofs/zfc_remaining_axioms.txt`.
+      The fixture used to hold six short demonstration proofs, one per ZFC
+      axiom; it has since been rewritten -- axioms are now declared, not
+      proved, plus one worked "Unique pairing" proof that cites them -- as
+      part of designing the axiom-citation rules below, and the test still
+      expects the old shape. The fixture doesn't even parse yet, since none
+      of the syntax or rules it depends on exist. Update the test once
+      "ZFC axiom citations and derived rules" (below) lands -- not before;
+      the fixture is deliberately ahead of the implementation right now.
+
+## Design principles
+
+- Most things beyond the level of pure logic should be sugar. Prefer surface
+  syntax that desugars into core forms the kernel already understands --
+  formulas, rules, subproof shapes -- over adding new kernel/AST primitives.
+  Reserve real kernel changes for genuinely new logical primitives, not
+  convenience notation around an existing idea. "Exists unique" is the first
+  applied case: planned as sugar expanding to the ordinary
+  `exists Y, (P(Y) and forall X, (P(X) -> X = Y))` form (see "Uniqueness,
+  N, M" below), not a new `ExistsUnique` AST node.
 
 ## Current direction
 
@@ -58,7 +83,8 @@ bookkeeping into a single coherent elaboration context.
 
 - [x] Set theory, natural-number reasoning, and discrete math are in place.
 - [ ] Add additional theory-local syntax and declaration recipes rather than
-      expanding generic elaboration hacks.
+      expanding generic elaboration hacks (item 5 below is the concrete next
+      instance of this, in set theory).
 - [ ] Extend the proof corpus around algebraic and order-theoretic examples as
       the next non-core theory layer.
 
@@ -69,13 +95,78 @@ bookkeeping into a single coherent elaboration context.
 - [ ] Add smaller end-to-end examples that showcase the theorem-promotion and
       subproof features.
 
+### 5. ZFC axiom citations and derived rules for set theory
+
+Design agreed while working through the user's own "Unique pairing" proof
+(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). Nothing below is
+implemented yet -- this is the agreed design, written down so implementation
+can proceed later without re-litigating it. Do not start implementing without
+an explicit go-ahead.
+
+- [ ] Axiom citations as named, shape-checking rules.
+      Replace the `SET_AXIOMS` formula list plus generic "(Axiom)" citation
+      (which requires restating the axiom verbatim) for Pairing, Union, Power
+      Set, and Infinity with four named, zero-premise `InferenceRule`
+      subclasses (e.g. `PairingAxiomRule`, `UnionAxiomRule`,
+      `PowerSetAxiomRule`, `InfinityAxiomRule`), following the shape-checking
+      pattern already used by `SeparationSchemaRule` / `ReplacementSchemaRule`.
+      Each is cited by name -- `(Axiom of pairing)`, etc. -- against a
+      specific instance shape, never a restated formula. Each should also
+      bundle its own fresh-witness check (the way `ExistentialEliminationRule`
+      checks freshness), since the proof style names the new set directly off
+      the axiom citation (`There is a set Y = {a, b} ... (Axiom of pairing)`)
+      rather than citing existence and then doing a separate Existential
+      Elimination.
+
+- [ ] WLOG as a subproof-copying rule.
+      Confirmed design: `(WLOG)` closes a subproof, the way
+      `ExistentialEliminationRule` / `DisjunctionEliminationRule` do, rather
+      than standing alone as a one-line citation. On a WLOG citation, the
+      checker copies the cited subproof, substitutes the untaken disjunct's
+      term for the taken one throughout (reusing
+      `_substitute_constants_in_formula`), re-applies the identical rule
+      citations line by line, and validates each exactly as usual
+      (`applies()`) against the substituted formulas. Still needs a concrete
+      surface syntax for delimiting the WLOG subproof before implementation
+      starts.
+
+- [ ] Generalize `Set property` to `Set property, N[, M]`.
+      `EmptySetPropertyRule` only knows the empty set's defining property.
+      The general form needs to look up a membership-defining biconditional
+      from a cited line N (an axiom citation, or an elaborated "contains
+      exactly P and Q" assumption) and instantiate it, optionally
+      substituting an equality from a cited line M. The citation should name
+      the instantiation witness explicitly; the checker shouldn't guess it.
+
+- [ ] `Uniqueness, N, M` as sugar.
+      Expands to the ordinary `exists Y, (P(Y) and forall X, (P(X) -> X = Y))`
+      form, reusing `ExistentialIntroductionRule`'s witness-to-bound-variable
+      generalization technique, rather than becoming a new `ExistsUnique`
+      core connective. First applied case of the sugar principle above.
+
+- [ ] Remaining plain syntax gaps surfaced by the same proof:
+      - `{a, b}` pair / set-builder notation
+      - a `subseteq` token, distinct from strict subset
+      - "X and Y are sets" multi-subject declaration phrasing
+      - "x is a or b" as sugar for a disjunction of equalities
+
+- [ ] Mutatis mutandis (deferred -- larger, separate project).
+      Confirmed to be a real, checkable rule: given two parallel subproofs of
+      the same shape, it swaps *which cited line plays which role* (e.g. the
+      line supplying the disjunct fact and the line supplying the membership
+      conclusion trade places), rather than substituting terms. Bigger and
+      less well-specified than the items above; needs its own design pass and
+      does not block them.
+
 ## Short version
 
 What matters now is not "can we get proof checking to work at all?" It is:
 
 - finalize the context architecture;
-- keep the proof corpus green while improving maintainability;
-- extend the theory surface in a disciplined way;
+- keep the proof corpus green (see "Known issues" for the one current
+  exception) while improving maintainability;
+- extend the theory surface in a disciplined way, preferring sugar over
+  kernel changes where possible;
 - document the public story for users and contributors.
 
 ## Notes for contributors
@@ -85,3 +176,6 @@ What matters now is not "can we get proof checking to work at all?" It is:
   broadening examples, but the enforced corpus remains the correctness floor.
 - Any new theory feature should fit the pattern: theory environment + declaration
   recipe + rules + examples, rather than custom branches in the generic parser.
+- New rules and syntax get a written design in this file before implementation
+  starts -- see "Design principles" and the open design items under
+  "High-priority work".
