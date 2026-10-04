@@ -40,8 +40,9 @@ ElaboratedEntries
 ProofLogic proof validation
 ```
 
-The parser facade lives in `source/ProofParser.py`, while the elaboration logic
-and theory plumbing live around `source/ProofElaboration.py`. Source-origin
+The parser, elaborator and `ProofParser.elaborate_proof` live in
+`source/ProofParser.py`; `source/ProofElaboration.py` holds the surface AST,
+`ElaboratedEntries` and `TheoryEnvironment` data types they share. Source-origin
 metadata is preserved all the way through validation so diagnostics can still be
 mapped back to the user's original proof text.
 
@@ -59,6 +60,10 @@ and set-theoretic reasoning such as subset proofs and membership arguments.
  2.2. a is not in the empty set.
  2.3. a is in X.
 ```
+
+Set theory is the active frontier: the ZFC axiom-citation design (named
+axiom rules, WLOG, `{a, b}` notation, unique existence) is written up in
+`todos.txt` and is not implemented yet.
 
 ### Number theory
 
@@ -92,9 +97,11 @@ pattern of reconstructing visibility rules independently in multiple places.
 ## Where the project is going
 
 The current direction is not a rewrite; it is a consolidation phase.
-The main architectural goal is to make the proof context the single source of
-truth for lexical bookkeeping while reducing legacy duplication in the
-elaborator and preserving the validated proof corpus.
+`ProofContext` is now the single source of truth for declaration and label
+lookups during elaboration. What remains is small: remove one write-only
+leftover dictionary in the elaborator, and decide whether the kernel's own
+scope classes should be built on `ProofContext` or remain an independent
+validation-time check. The validated proof corpus is the constraint on both.
 
 As new theory features are designed, the guiding principle is: most things
 beyond the level of pure logic should be sugar. New mathematical convenience
@@ -104,8 +111,8 @@ Kernel/AST changes are reserved for genuinely new logical primitives.
 
 Short term, the project is heading toward:
 
-- a cleaner elaboration model with `ProofContext` fully authoritative;
-- less duplicated state between elaboration and validation;
+- the last context cleanup (see priority 1);
+- a clear relationship between elaboration scoping and kernel scoping;
 - a clearer public API for parsing and checking proofs;
 - broader theory support without breaking the existing proof corpus.
 
@@ -114,10 +121,10 @@ make it easier to extend and maintain.
 
 ## Next work priorities
 
-1. Consolidate remaining elaboration bookkeeping.
-   - Remove duplicated declaration/label state that still exists alongside
-     `ProofContext`.
-   - Confirm that elaboration and validation use the same lexical semantics.
+1. Finish the context cleanup.
+   - Remove the unused `formula_by_label` map from the elaborator.
+   - Decide how the kernel's `LabelScope`/`DeclarationScope` relate to
+     `ProofContext`; elaboration and validation already agree on semantics.
 
 2. Tighten the public-facing API.
    - Keep the parser and proof-checking entry points clear and documented.
@@ -139,19 +146,27 @@ make it easier to extend and maintain.
 
 ## Project structure
 
-- `source/ProofParser.py` — public proof parsing and elaboration facade.
-- `source/ProofElaboration.py` — surface representation, theory environment,
-  and elaboration logic.
+- `source/ProofParser.py` — proof parser and elaborator (public entry point).
+- `source/ProofParserPolicy.py`, `source/LineBreakSyntax.py` — small
+  language-policy and line-break syntax extensions installed on the parser.
+- `source/ProofElaboration.py` — shared data types: surface AST, source spans,
+  `ElaboratedEntries`, `TheoryEnvironment`.
 - `source/ProofLogic.py` — proof kernel, rules, axioms, and validation.
 - `source/ProofContext.py` — lexical scoping for declarations, labels, and
   assumptions.
 - `source/ProofJustification.py` — parses proof-line justifications (e.g.
   "Modus Ponens from 2, 3") into rule citations.
-- `source/SetTheory.py`, `source/NumberTheory.py`, `source/DiscreteMath.py` —
-  per-subject theory modules that extend the base logic (see "What the
+- `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`,
+  `source/DiscreteMath.py` (rules in `DiscreteMathCore.py`), plus
+  `TermLogic.py` / `FormulaLogic.py` for terms and formulas —
+  per-subject theory modules and logic building blocks that extend the base logic (see "What the
   project already supports").
 - `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
-- `tests/` and `pytest_tests/` — regression tests and proof fixtures.
+- `tests/` — enforced proof fixtures (plus `tests/setTheoryProofs`, which is
+  informational); `source/testProofs/` — informational fixtures.
+- `pytest_tests/` — Python unit/integration tests. The package imports as
+  `SyLoPy.source...`, so the checkout directory must be named `SyLoPy`;
+  `./run_tests.sh` sets `PYTHONPATH` accordingly.
 - `completion/run_tests.bash` — shell completion for the test runner.
 
 ## Running the project

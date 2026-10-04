@@ -45,10 +45,12 @@ parser/elaboration paths that are still reachable, then move additional
 theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
 The same pattern should be used for future order-theory and algebraic syntax.
 
-An explicit proof context for declarations, assumptions, labels, theorem
-visibility, and nested scopes remains a planned refinement. Declaration order
-and scope rules should become explicit context operations rather than being
-reconstructed independently by different stages.
+`ProofContext` is the lexical scope for declarations, assumptions, labels and
+arbitrary bindings during elaboration; the elaborator no longer keeps a
+parallel declaration scope. Open items: an unused `formula_by_label` map in
+`_ElaborationContext` should be deleted, and the kernel's own `LabelScope` /
+`DeclarationScope` in `ProofLogic.py` are still separate implementations that
+merely agree with `ProofContext` on semantics (see `todos.txt`, item 1).
 
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available

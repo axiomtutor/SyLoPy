@@ -54,21 +54,31 @@ The parser/elaboration stack remains the main public entry point, and
 `ProofContext` is now the authoritative lexical-scoping layer for declarations,
 labels, assumptions, and arbitrary/fresh bindings.
 
-The primary remaining task is to finish the migration from legacy duplicated
-bookkeeping into a single coherent elaboration context.
+The context migration is essentially done on the elaboration side: the
+remaining task is a small cleanup (a write-only leftover dict) plus a decision
+about the kernel's separate scope classes. See item 1 below.
 
 ## High-priority work
 
-### 1. Finish the context consolidation pass
+### 1. Finish the context consolidation pass (nearly done)
 
 - [x] Make `ProofContext` the explicit lexical scope for elaboration.
 - [x] Register declarations, labels, assumptions, and arbitrary bindings through
       the context during elaboration.
 - [x] Fix nested-scope behavior and prevent sibling-label leakage.
-- [ ] Remove the remaining legacy duplication between elaboration state and the
-      proof context so there is one clear source of truth for lexical state.
-- [ ] Confirm the final elaboration path relies on the context for all lookup and
-      scoping decisions, not just some of them.
+- [x] Resolve declaration and label/reference lookups during elaboration
+      through `ProofContext` (the parallel `DeclarationScope` the elaborator
+      used to dual-write is gone; sibling-subproof labels no longer leak).
+- [ ] Delete `_ElaborationContext.formula_by_label`. It is still written on
+      every labeled line but nothing reads it any more (lookups go through
+      `ProofContext.lookup_reference`); `origin_by_label` is a legitimate
+      flat map and stays.
+- [ ] Decide whether the kernel's own `LabelScope` / `DeclarationScope`
+      (`ProofLogic.py`) should be expressed in terms of `ProofContext`, or
+      stay as the independent validation-time authority. Today the two agree
+      on semantics (including label-shadowing rejection) but are separate
+      implementations; if they stay separate, say so in the docs and keep
+      the equivalence tests.
 
 ### 2. Harden the public API and docs
 
@@ -162,7 +172,7 @@ an explicit go-ahead.
 
 What matters now is not "can we get proof checking to work at all?" It is:
 
-- finalize the context architecture;
+- finish the last bit of context cleanup (item 1);
 - keep the proof corpus green (see "Known issues" for the one current
   exception) while improving maintainability;
 - extend the theory surface in a disciplined way, preferring sugar over
