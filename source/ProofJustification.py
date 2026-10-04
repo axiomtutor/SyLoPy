@@ -19,6 +19,10 @@ def _normalize(text: str) -> str:
     text = text.strip().lower().replace("’", "'")
     text = text.replace("-", " ")
     text = re.sub(r"\s+", " ", text)
+    # Strip surrounding parentheses if present
+    text = text.strip(" .")
+    if text.startswith("(") and text.endswith(")"):
+        text = text[1:-1].strip()
     return text.strip(" .")
 
 
@@ -87,6 +91,11 @@ def _rule(name: str):
         "axiom of replacement": "Replacement",
         "replacement schema": "Replacement",
         "axiom schema of replacement": "Replacement",
+        "axiom of pairing": "PairingAxiom",
+        "axiom of union": "UnionAxiom",
+        "axiom of power set": "PowerSetAxiom",
+        "power set axiom": "PowerSetAxiom",
+        "axiom of infinity": "InfinityAxiom",
     }
     target = placeholders.get(_normalize(name))
     if target is not None:

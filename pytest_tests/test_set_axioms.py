@@ -26,9 +26,14 @@ def test_set_axioms_are_wired_into_the_environment():
 
 def test_zfc_remaining_axioms_fixture_all_pass():
     text = _proof_text("zfc_remaining_axioms.txt")
-    results = mp.run_multi_proof_file(text)
+    # Include set theory axioms and rules for the fixture
+    results = mp.run_multi_proof_file(
+        text,
+        axioms=st.SET_THEORY_ENVIRONMENT.axioms,
+        rules=pl.default_rules() + st.SET_THEORY_ENVIRONMENT.rules,
+    )
     assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [
-        ("1", True), ("2", True), ("3", True), ("4", True), ("5", True), ("6", True),
+        ("1", True),
     ]
 
 

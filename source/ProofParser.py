@@ -365,7 +365,7 @@ def _fallback_declarations_for_clause(dc: 'DeclarationClause') -> List[pl.Declar
 
 
 def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[str]]:
-    """Parse a leading `Let ...` declaration clause.
+    """Parse a leading `Let ...` declaration clause, or a plain declaration like `X and Y are sets`.
 
     Returns `(declarations, formula_text)`.  A declaration-only line has
     `formula_text is None`; a premise line using `such that` returns the
@@ -386,36 +386,65 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     without going through a full line's worth of recipe-dispatch.
     """
     s = text.strip().rstrip('.').strip()
-    if not re.match(r'^let\b', s, flags=re.I):
-        return [], None
+    
+    # Try to parse as a "Let..." declaration first
+    if re.match(r'^let\b', s, flags=re.I):
+        m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
+        if m:
+            declaration_text = s[:m.start()].strip()
+            formula_text = s[m.end():].strip().rstrip('.').strip()
+            if not formula_text:
+                raise ValueError("'such that' must be followed by a formula")
+        else:
+            declaration_text = s
+            formula_text = None
 
-    m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
-    if m:
-        declaration_text = s[:m.start()].strip()
-        formula_text = s[m.end():].strip().rstrip('.').strip()
-        if not formula_text:
-            raise ValueError("'such that' must be followed by a formula")
-    else:
-        declaration_text = s
-        formula_text = None
+        m = re.match(r'^let\s+(.+)$', declaration_text, flags=re.I)
+        if not m:
+            return [], None
 
-    m = re.match(r'^let\s+(.+)$', declaration_text, flags=re.I)
-    if not m:
-        return [], None
+        declarations: List[pl.Declaration] = []
+        for clause in split_declaration_clauses(m.group(1)):
+            dc = parse_declaration_clause(clause)
+            if dc.domain is not None:
+                raise ValueError(
+                    f"Invalid declaration clause: {clause!r} (a 'NAME: DOM -> COD' "
+                    f"clause needs a matching structure recipe -- see "
+                    f"DECLARATION_RECIPE_REGISTRY -- to say what that typed "
+                    f"function's descriptor, {dc.descriptor!r}, means)"
+                )
+            declarations.extend(_fallback_declarations_for_clause(dc))
 
-    declarations: List[pl.Declaration] = []
-    for clause in split_declaration_clauses(m.group(1)):
-        dc = parse_declaration_clause(clause)
-        if dc.domain is not None:
-            raise ValueError(
-                f"Invalid declaration clause: {clause!r} (a 'NAME: DOM -> COD' "
-                f"clause needs a matching structure recipe -- see "
-                f"DECLARATION_RECIPE_REGISTRY -- to say what that typed "
-                f"function's descriptor, {dc.descriptor!r}, means)"
-            )
-        declarations.extend(_fallback_declarations_for_clause(dc))
+        return declarations, formula_text
+    
+    # Try to parse as a plain declaration like "X and Y are sets" without "Let"
+    if re.search(r'\b(?:be|are)\b', s, flags=re.I):
+        m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
+        if m:
+            declaration_text = s[:m.start()].strip()
+            formula_text = s[m.end():].strip().rstrip('.').strip()
+            if not formula_text:
+                raise ValueError("'such that' must be followed by a formula")
+        else:
+            declaration_text = s
+            formula_text = None
 
-    return declarations, formula_text
+        try:
+            dc = parse_declaration_clause(declaration_text)
+            if dc.domain is not None:
+                raise ValueError(
+                    f"Invalid declaration clause: {declaration_text!r} (a 'NAME: DOM -> COD' "
+                    f"clause needs a matching structure recipe -- see "
+                    f"DECLARATION_RECIPE_REGISTRY -- to say what that typed "
+                    f"function's descriptor, {dc.descriptor!r}, means)"
+                )
+            declarations = _fallback_declarations_for_clause(dc)
+            return declarations, formula_text
+        except ValueError:
+            # Not a valid declaration; return empty to try other parsing modes
+            return [], None
+
+    return [], None
 
 
 _DECLARATION_CLAUSE_SEPARATORS = (', and let ', ' and let ', ', let ', ' and ')
@@ -512,7 +541,7 @@ def parse_declaration_clause(clause: str) -> DeclarationClause:
     """Parse one clause (as produced by `split_declaration_clauses`) into
     a `DeclarationClause`. Recognizes, in this order: a typed-function
     target (`f: W -> W be ...`), a tuple target (`(W, <) be ...`), or a
-    plain comma-joined name list (`X be ...` / `a, b be ...`).
+    plain comma-joined name list (`X be ...` / `a, b be ...` / `a and b be ...`).
     """
     clause = clause.strip()
     m = _FUNCTION_TARGET_RE.match(clause)
@@ -527,7 +556,9 @@ def parse_declaration_clause(clause: str) -> DeclarationClause:
     m = _PLAIN_TARGET_RE.match(clause)
     if m:
         names_part, descriptor = m.groups()
-        names = [n.strip() for n in names_part.split(',') if n.strip()]
+        # Split on both commas and " and " (case-insensitive)
+        names_part_normalized = re.sub(r'\s+and\s+', ',', names_part, flags=re.I)
+        names = [n.strip() for n in names_part_normalized.split(',') if n.strip()]
         return DeclarationClause(names, is_tuple=False, descriptor=descriptor)
     raise ValueError(f"Invalid declaration clause: {clause!r}")
 

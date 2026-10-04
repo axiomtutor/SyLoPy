@@ -70,7 +70,7 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
 
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
 
-    m = re.match(r"^(.+?)\s+is\s+(?:a\s+)?subset\s+of\s+(.+)$", s, flags=re.I)
+    m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq)\s+(.+)$", s, flags=re.I)
     if m:
         left = try_parse_set_term(m.group(1), bound_vars)
         right = try_parse_set_term(m.group(2), bound_vars)
@@ -486,6 +486,374 @@ class SeparationSchemaRule(pl.InferenceRule):
                 and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u))
 
 
+class PairingAxiomRule(pl.InferenceRule):
+    """Axiom of pairing: for any a, b, there is a set Y containing exactly a and b.
+    
+    This is a zero-premise rule (like `SeparationSchemaRule` and 
+    `ReplacementSchemaRule`) that asserts a concrete instance outright,
+    cited as "(Axiom of pairing)".
+    
+    `phi` can have one of two shapes:
+    1. Universal form (matching the full axiom):
+        forall a, forall b, exists Y, forall u, (u in Y <-> (u = a or u = b))
+    
+    2. Instance form (instantiated with context variables):
+        exists Y, forall u, (u in Y <-> (u = a or u = b))
+       where a and b are specific variables from context.
+    """
+    name = "PairingAxiom"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates:
+            return False
+        
+        # Try to match the universal form first (original behavior)
+        if isinstance(phi, fl.ForAll):
+            return self._check_universal_form(phi)
+        
+        # Try to match the instance form (for specific a, b)
+        if isinstance(phi, fl.Exists):
+            return self._check_instance_form(phi)
+        
+        return False
+    
+    def _check_universal_form(self, phi: fl.ForAll) -> bool:
+        """Check the fully universal form: forall a, forall b, exists Y, forall u, ..."""
+        a_name = phi.var
+        inner1 = phi.body
+        
+        if not isinstance(inner1, fl.ForAll):
+            return False
+        b_name = inner1.var
+        if b_name == a_name:
+            return False
+        inner2 = inner1.body
+        
+        if not isinstance(inner2, fl.Exists):
+            return False
+        Y_name = inner2.var
+        if Y_name in (a_name, b_name):
+            return False
+        inner3 = inner2.body
+        
+        if not isinstance(inner3, fl.ForAll):
+            return False
+        u_name = inner3.var
+        if u_name in (a_name, b_name, Y_name):
+            return False
+        biconditional = inner3.body
+        
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_u_Y, right = biconditional.left, biconditional.right
+        
+        if not (isinstance(membership_u_Y, fl.AtomicFormula) and 
+                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_Y.args) == 2 and
+                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
+            return False
+        
+        if not isinstance(right, fl.Or) or len(right.disjuncts) != 2:
+            return False
+        eq1, eq2 = right.disjuncts
+        
+        if not (isinstance(eq1, fl.Equals) and isinstance(eq2, fl.Equals)):
+            return False
+        
+        a_term = tl.VariableTerm(a_name)
+        b_term = tl.VariableTerm(b_name)
+        u_term = tl.VariableTerm(u_name)
+        
+        return ((pl._ast_eq(eq1.left, u_term) and pl._ast_eq(eq1.right, a_term) and
+                 pl._ast_eq(eq2.left, u_term) and pl._ast_eq(eq2.right, b_term)) or
+                (pl._ast_eq(eq1.left, u_term) and pl._ast_eq(eq1.right, b_term) and
+                 pl._ast_eq(eq2.left, u_term) and pl._ast_eq(eq2.right, a_term)))
+    
+    def _check_instance_form(self, phi: fl.Exists) -> bool:
+        """Check an instantiated form: exists Y, forall u, (u in Y <-> (u = a or u = b))
+        where a and b are specific terms (not bound variables)."""
+        Y_name = phi.var
+        inner1 = phi.body
+        
+        if not isinstance(inner1, fl.ForAll):
+            return False
+        u_name = inner1.var
+        if u_name == Y_name:
+            return False
+        biconditional = inner1.body
+        
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_u_Y, right = biconditional.left, biconditional.right
+        
+        if not (isinstance(membership_u_Y, fl.AtomicFormula) and 
+                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_Y.args) == 2 and
+                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
+            return False
+        
+        if not isinstance(right, fl.Or) or len(right.disjuncts) != 2:
+            return False
+        eq1, eq2 = right.disjuncts
+        
+        if not (isinstance(eq1, fl.Equals) and isinstance(eq2, fl.Equals)):
+            return False
+        
+        u_term = tl.VariableTerm(u_name)
+        
+        # The disjuncts should be equations involving u and two distinct terms (a and b)
+        left1, right1 = eq1.left, eq1.right
+        left2, right2 = eq2.left, eq2.right
+        
+        # Check if the equations have the form (u = a) and (u = b) in either order
+        u_eq_a = (pl._ast_eq(left1, u_term) and not pl._ast_eq(right1, u_term))
+        a_eq_u = (pl._ast_eq(right1, u_term) and not pl._ast_eq(left1, u_term))
+        u_eq_b = (pl._ast_eq(left2, u_term) and not pl._ast_eq(right2, u_term))
+        b_eq_u = (pl._ast_eq(right2, u_term) and not pl._ast_eq(left2, u_term))
+        
+        return (u_eq_a or a_eq_u) and (u_eq_b or b_eq_u)
+
+
+
+class UnionAxiomRule(pl.InferenceRule):
+    """Axiom of union: for any X, there is a set Y = union(X) whose members
+    are exactly those objects that belong to some member of X.
+    
+    This is a zero-premise rule, cited as "(Axiom of union)".
+    
+    `phi` must have the exact shape:
+        forall X, exists Y, forall u, (u in Y <-> exists v, (v in X and u in v))
+    """
+    name = "UnionAxiom"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates:
+            return False
+        
+        if not isinstance(phi, fl.ForAll):
+            return False
+        X_name = phi.var
+        inner1 = phi.body
+        
+        if not isinstance(inner1, fl.Exists):
+            return False
+        Y_name = inner1.var
+        if Y_name == X_name:
+            return False
+        inner2 = inner1.body
+        
+        if not isinstance(inner2, fl.ForAll):
+            return False
+        u_name = inner2.var
+        if u_name in (X_name, Y_name):
+            return False
+        biconditional = inner2.body
+        
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_u_Y, right = biconditional.left, biconditional.right
+        
+        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
+                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_Y.args) == 2 and
+                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
+            return False
+        
+        if not isinstance(right, fl.Exists):
+            return False
+        v_name = right.var
+        if v_name in (X_name, Y_name, u_name):
+            return False
+        body = right.body
+        
+        if not isinstance(body, fl.And) or len(body.conjuncts) != 2:
+            return False
+        membership_v_X, membership_u_v = body.conjuncts
+        
+        return (isinstance(membership_v_X, fl.AtomicFormula) and
+                membership_v_X.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_v_X.args) == 2 and
+                pl._ast_eq(membership_v_X.args[0], tl.VariableTerm(v_name)) and
+                pl._ast_eq(membership_v_X.args[1], tl.VariableTerm(X_name)) and
+                isinstance(membership_u_v, fl.AtomicFormula) and
+                membership_u_v.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_v.args) == 2 and
+                pl._ast_eq(membership_u_v.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_v.args[1], tl.VariableTerm(v_name)))
+
+
+class PowerSetAxiomRule(pl.InferenceRule):
+    """Axiom of power set: for any X, there is a set Y = P(X) whose members
+    are exactly the subsets of X.
+    
+    This is a zero-premise rule, cited as "(Axiom of power set)".
+    
+    `phi` must have the exact shape:
+        forall X, exists Y, forall u, (u in Y <-> u subset X)
+    
+    where "u subset X" is the standard subset formula (forall v, (v in u -> v in X)).
+    """
+    name = "PowerSetAxiom"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates:
+            return False
+        
+        if not isinstance(phi, fl.ForAll):
+            return False
+        X_name = phi.var
+        inner1 = phi.body
+        
+        if not isinstance(inner1, fl.Exists):
+            return False
+        Y_name = inner1.var
+        if Y_name == X_name:
+            return False
+        inner2 = inner1.body
+        
+        if not isinstance(inner2, fl.ForAll):
+            return False
+        u_name = inner2.var
+        if u_name in (X_name, Y_name):
+            return False
+        biconditional = inner2.body
+        
+        if not isinstance(biconditional, fl.Iff):
+            return False
+        membership_u_Y, subset_clause = biconditional.left, biconditional.right
+        
+        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
+                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_Y.args) == 2 and
+                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
+            return False
+        
+        u_term = tl.VariableTerm(u_name)
+        X_term = tl.VariableTerm(X_name)
+        return pl._ast_eq(subset_clause, subset_formula(u_term, X_term))
+
+
+class InfinityAxiomRule(pl.InferenceRule):
+    """Axiom of infinity: there is a set X containing the empty set and
+    closed under the operation y |-> y union {y}.
+    
+    This is a zero-premise rule, cited as "(Axiom of infinity)".
+    
+    `phi` must have the exact shape:
+        exists X, (0 in X and forall y, (y in X -> exists S, 
+                  (forall u, (u in S <-> (u in y or u = y)) and S in X)))
+    
+    where 0 represents the empty set.
+    """
+    name = "InfinityAxiom"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates:
+            return False
+        
+        if not isinstance(phi, fl.Exists):
+            return False
+        X_name = phi.var
+        body = phi.body
+        
+        if not isinstance(body, fl.And) or len(body.conjuncts) != 2:
+            return False
+        membership_empty, closure = body.conjuncts
+        
+        if not (isinstance(membership_empty, fl.AtomicFormula) and
+                membership_empty.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_empty.args) == 2 and
+                pl._ast_eq(membership_empty.args[0], EMPTY_SET) and
+                pl._ast_eq(membership_empty.args[1], tl.VariableTerm(X_name))):
+            return False
+        
+        if not isinstance(closure, fl.ForAll):
+            return False
+        y_name = closure.var
+        if y_name == X_name:
+            return False
+        inner = closure.body
+        
+        if not isinstance(inner, fl.Implies):
+            return False
+        membership_y_X, exists_S = inner.antecedent, inner.consequent
+        
+        if not (isinstance(membership_y_X, fl.AtomicFormula) and
+                membership_y_X.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_y_X.args) == 2 and
+                pl._ast_eq(membership_y_X.args[0], tl.VariableTerm(y_name)) and
+                pl._ast_eq(membership_y_X.args[1], tl.VariableTerm(X_name))):
+            return False
+        
+        if not isinstance(exists_S, fl.Exists):
+            return False
+        S_name = exists_S.var
+        if S_name in (X_name, y_name):
+            return False
+        S_body = exists_S.body
+        
+        if not isinstance(S_body, fl.And) or len(S_body.conjuncts) != 2:
+            return False
+        subset_property, membership_S_X = S_body.conjuncts
+        
+        if not (isinstance(membership_S_X, fl.AtomicFormula) and
+                membership_S_X.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_S_X.args) == 2 and
+                pl._ast_eq(membership_S_X.args[0], tl.VariableTerm(S_name)) and
+                pl._ast_eq(membership_S_X.args[1], tl.VariableTerm(X_name))):
+            return False
+        
+        if not isinstance(subset_property, fl.ForAll):
+            return False
+        u_name = subset_property.var
+        if u_name in (X_name, y_name, S_name):
+            return False
+        inner_property = subset_property.body
+        
+        if not isinstance(inner_property, fl.Iff):
+            return False
+        membership_u_S, right = inner_property.left, inner_property.right
+        
+        if not (isinstance(membership_u_S, fl.AtomicFormula) and
+                membership_u_S.predicate == MEMBERSHIP_SYMBOL and
+                len(membership_u_S.args) == 2 and
+                pl._ast_eq(membership_u_S.args[0], tl.VariableTerm(u_name)) and
+                pl._ast_eq(membership_u_S.args[1], tl.VariableTerm(S_name))):
+            return False
+        
+        if not isinstance(right, fl.Or) or len(right.disjuncts) != 2:
+            return False
+        membership_u_y, equality = right.disjuncts
+        
+        u_term = tl.VariableTerm(u_name)
+        y_term = tl.VariableTerm(y_name)
+        
+        return ((isinstance(membership_u_y, fl.AtomicFormula) and
+                 membership_u_y.predicate == MEMBERSHIP_SYMBOL and
+                 len(membership_u_y.args) == 2 and
+                 pl._ast_eq(membership_u_y.args[0], u_term) and
+                 pl._ast_eq(membership_u_y.args[1], y_term) and
+                 isinstance(equality, fl.Equals) and
+                 pl._ast_eq(equality.left, u_term) and
+                 pl._ast_eq(equality.right, y_term)) or
+                (isinstance(equality, fl.AtomicFormula) and
+                 equality.predicate == MEMBERSHIP_SYMBOL and
+                 len(equality.args) == 2 and
+                 pl._ast_eq(equality.args[0], u_term) and
+                 pl._ast_eq(equality.args[1], y_term) and
+                 isinstance(membership_u_y, fl.Equals) and
+                 pl._ast_eq(membership_u_y.left, u_term) and
+                 pl._ast_eq(membership_u_y.right, y_term)))
+
+
 class ReplacementSchemaRule(pl.InferenceRule):
     """Jech's Axiom schema of replacement: if a formula B(x,y) -- free
     variables x, y, plus whatever parameters are already in scope -- is
@@ -620,12 +988,14 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
     line_elaborators=[elaborate_subset_proof],
-    rules=[EmptySetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule()],
+    rules=[EmptySetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
+           PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
     axioms=SET_AXIOMS,
     declarations=SET_DECLARATIONS,
     term_parsers=[try_parse_set_term],
     nested_formula_parsers=[parse_set_formula],
 )
+
 
 
 
