@@ -8,13 +8,24 @@ fixture-file container format and validation/reporting policy.
 from __future__ import annotations
 
 import argparse
+import atexit
 import re
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Sequence
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_REPOSITORY_ROOT.parent))
+# The code imports itself as ``SyLoPy.source...``. If the checkout directory
+# has another name, expose it under that name through a temporary symlink.
+if _REPOSITORY_ROOT.name == "SyLoPy":
+    _IMPORT_PARENT = _REPOSITORY_ROOT.parent
+else:
+    _IMPORT_PARENT = Path(tempfile.mkdtemp(prefix="sylopy-alias-"))
+    atexit.register(shutil.rmtree, _IMPORT_PARENT, ignore_errors=True)
+    (_IMPORT_PARENT / "SyLoPy").symlink_to(_REPOSITORY_ROOT, target_is_directory=True)
+sys.path.insert(0, str(_IMPORT_PARENT))
 
 import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl

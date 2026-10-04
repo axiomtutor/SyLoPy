@@ -1459,15 +1459,10 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     if not clauses:
         raise ElaborationError("'Define' with nothing to define", entry.span)
 
-    # Resolved through ProofContext (see `_ElaborationContext.lookup_reference`)
-    # rather than the flat `context.formula_by_label` dict this used to read
-    # directly: that dict is never subproof-scoped, so two sibling branches
-    # reusing the same label (see LabelScope's docstring on why that's
-    # legitimate) could previously leak one branch's binding into a
-    # citation made from the *other* branch, simply because it happened to
-    # be elaborated first. `lookup_reference` walks the same ancestor chain
-    # `ProofValidator`/`LabelScope` would at validation time, so a label
-    # local to a closed sibling scope is correctly invisible here too.
+    # Resolved through ProofContext (see `_ElaborationContext.lookup_reference`),
+    # which is subproof-scoped: it walks the same ancestor chain
+    # `ProofValidator`/`LabelScope` would at validation time, so a label local
+    # to a closed sibling scope is correctly invisible here.
     cited_formula = context.lookup_reference(citation_label)
     if cited_formula is None:
         raise ElaborationError(f"'Existence' cites unknown label {citation_label!r}", entry.span)
@@ -1584,10 +1579,6 @@ class _ElaborationContext:
         self.context = pc.ProofContext()
         for declaration in pl._dedupe_declarations(list(environment.declarations)):
             self.context.declare(declaration)
-        # Populated by `elaborate_entry` as it goes, label -> that label's
-        # resulting core formula (or bundle). See `elaborate_entry`'s
-        # docstring for why this exists.
-        self.formula_by_label: Dict[str, Any] = {}
 
     def add_extra_rule(self, rule: Any) -> None:
         self.extra_rules.append(rule)
@@ -1689,12 +1680,12 @@ class _ElaborationContext:
         inside (`ProofContext.child()` inherits, per its own
         implementation).
 
-        `self.origin_by_label` and `self.formula_by_label` remain
-        flat/global elaboration-time bookkeeping, untouched by this
-        method -- both are keyed by full dotted label strings, which are
-        unique across the whole proof by construction, so flatness never
-        risked a collision the way `self.context` (keyed by bare
-        symbol/label names, reused freely across sibling scopes) did.
+        `self.origin_by_label` remains flat/global elaboration-time
+        bookkeeping, untouched by this method -- it is keyed by full dotted
+        label strings, which are unique across the whole proof by
+        construction, so flatness never risked a collision the way
+        `self.context` (keyed by bare symbol/label names, reused freely
+        across sibling scopes) did.
         """
         parent_context = self.context
         self.context = parent_context.child()
@@ -1704,17 +1695,14 @@ class _ElaborationContext:
             self.context = parent_context
 
     def elaborate_entry(self, entry: Any) -> Any:
-        """Thin wrapper around `_elaborate_entry_impl` that also records
-        each labeled line's resulting formula into `self.formula_by_label`
-        as elaboration proceeds -- so a later `line_elaborator` (e.g. the
-        base logic's `Existence` sugar, see `try_elaborate_existence`) can
-        look up what an earlier-cited label actually says, the same way
-        validation later looks facts up by label, just one pass earlier.
-        Recurses the same way the old single method did, so nested
-        subproof entries get recorded too, in source order.
-
-        Also dual-writes into `self.context` (see `elaborate_subproof_body`
-        for how that context is now scoped per subproof), choosing the
+        """Thin wrapper around `_elaborate_entry_impl` that records each
+        labeled line's resulting formula into `self.context` as elaboration
+        proceeds -- so a later `line_elaborator` (e.g. the base logic's
+        `Existence` sugar, see `try_elaborate_existence`) can look up what an
+        earlier-cited label actually says, the same way validation later
+        looks facts up by label, just one pass earlier. Nested subproof
+        entries get recorded too, in source order, in a per-subproof child
+        context (see `elaborate_subproof_body`), choosing the
         binding that matches the line's own justification tag rather than
         always calling `bind_label`:
 
@@ -1738,8 +1726,7 @@ class _ElaborationContext:
         LabelScope`'s docstring for why that was changed. The two now
         agree: `ProofContext.bind_label`/`assume` reject a shadowed label
         here, during elaboration, exactly as `LabelScope` would reject it
-        later, during kernel validation, if this dual-write didn't exist
-        at all. Rejecting it here just reports the problem earlier and
+        later, during kernel validation. Rejecting it here just reports the problem earlier and
         against the surface line directly, as an `ElaborationError`,
         rather than waiting for `Proof.check_detailed()`'s
         `CATEGORY_LABEL_SHADOWING`.
@@ -1749,7 +1736,6 @@ class _ElaborationContext:
                 and isinstance(result[0], str)
                 and not (isinstance(result[1], str) and result[1] == 'subproof')):
             label, formula, justification = result[0], result[1], result[2]
-            self.formula_by_label[label] = formula
             tag = justification[0] if isinstance(justification, tuple) and justification else None
 
             def bind_label_here(value: Any) -> None:

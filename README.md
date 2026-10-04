@@ -98,9 +98,8 @@ pattern of reconstructing visibility rules independently in multiple places.
 
 The current direction is not a rewrite; it is a consolidation phase.
 `ProofContext` is now the single source of truth for declaration and label
-lookups during elaboration. What remains is small: remove one write-only
-leftover dictionary in the elaborator, and decide whether the kernel's own
-scope classes should be built on `ProofContext` or remain an independent
+lookups during elaboration. What remains is a decision: whether the kernel's
+own scope classes should be built on `ProofContext` or remain an independent
 validation-time check. The validated proof corpus is the constraint on both.
 
 As new theory features are designed, the guiding principle is: most things
@@ -111,7 +110,7 @@ Kernel/AST changes are reserved for genuinely new logical primitives.
 
 Short term, the project is heading toward:
 
-- the last context cleanup (see priority 1);
+- the kernel-vs-`ProofContext` scoping decision (see priority 1);
 - a clear relationship between elaboration scoping and kernel scoping;
 - a clearer public API for parsing and checking proofs;
 - broader theory support without breaking the existing proof corpus.
@@ -121,8 +120,7 @@ make it easier to extend and maintain.
 
 ## Next work priorities
 
-1. Finish the context cleanup.
-   - Remove the unused `formula_by_label` map from the elaborator.
+1. Finish the context consolidation.
    - Decide how the kernel's `LabelScope`/`DeclarationScope` relate to
      `ProofContext`; elaboration and validation already agree on semantics.
 
@@ -164,9 +162,9 @@ make it easier to extend and maintain.
 - `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
 - `tests/` — enforced proof fixtures (plus `tests/setTheoryProofs`, which is
   informational); `source/testProofs/` — informational fixtures.
-- `pytest_tests/` — Python unit/integration tests. The package imports as
-  `SyLoPy.source...`, so the checkout directory must be named `SyLoPy`;
-  `./run_tests.sh` sets `PYTHONPATH` accordingly.
+- `pytest_tests/` — Python unit/integration tests. The code imports itself as
+  `SyLoPy.source...`; `pytest_tests/support.py` and `./run_tests.sh` make that
+  work whatever the checkout directory is called.
 - `completion/run_tests.bash` — shell completion for the test runner.
 
 ## Running the project

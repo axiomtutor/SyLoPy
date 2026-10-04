@@ -1,19 +1,35 @@
 """Shared imports and small AST constructors for the SyLoPy test suite."""
 from __future__ import annotations
 
+import atexit
 import importlib
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 
 def _find_project_parent() -> Path:
-    candidates = [Path.cwd(), *Path(__file__).resolve().parents]
-    for candidate in candidates:
-        if (candidate / "SyLoPy" / "source" / "ProofLogic.py").exists():
-            return candidate
-        if (candidate / "source" / "ProofLogic.py").exists() and candidate.name == "SyLoPy":
-            return candidate.parent
-    raise RuntimeError("Could not locate SyLoPy/source/ProofLogic.py")
+    """Return a directory that contains the project as a package named ``SyLoPy``.
+
+    The code imports itself as ``SyLoPy.source...``, so some directory on
+    ``sys.path`` must contain an entry called ``SyLoPy``. Normally that is the
+    parent of the checkout. If the checkout has any other name (``sylopy``,
+    ``SyLoPy-main``, a CI workspace, ...), a temporary directory holding a
+    ``SyLoPy`` symlink to the real root is used instead.
+    """
+    root = next(
+        (c for c in Path(__file__).resolve().parents if (c / "source" / "ProofLogic.py").exists()),
+        None,
+    )
+    if root is None:
+        raise RuntimeError("Could not locate source/ProofLogic.py above pytest_tests/")
+    if root.name == "SyLoPy":
+        return root.parent
+    alias_parent = Path(tempfile.mkdtemp(prefix="sylopy-alias-"))
+    atexit.register(shutil.rmtree, alias_parent, ignore_errors=True)
+    (alias_parent / "SyLoPy").symlink_to(root, target_is_directory=True)
+    return alias_parent
 
 
 PROJECT_PARENT = _find_project_parent()

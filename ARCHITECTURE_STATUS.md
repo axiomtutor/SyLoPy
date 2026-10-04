@@ -47,8 +47,7 @@ The same pattern should be used for future order-theory and algebraic syntax.
 
 `ProofContext` is the lexical scope for declarations, assumptions, labels and
 arbitrary bindings during elaboration; the elaborator no longer keeps a
-parallel declaration scope. Open items: an unused `formula_by_label` map in
-`_ElaborationContext` should be deleted, and the kernel's own `LabelScope` /
+parallel declaration scope. Open item: the kernel's own `LabelScope` /
 `DeclarationScope` in `ProofLogic.py` are still separate implementations that
 merely agree with `ProofContext` on semantics (see `todos.txt`, item 1).
 
