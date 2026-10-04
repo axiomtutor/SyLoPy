@@ -41,7 +41,7 @@
 ### then there exists a unique set {a, b} that contains exactly a and b.
 
 1. a and b are sets. (Declaration)
-2. There is a set Y = {a, b} that contains {a, b}. (Axiom of pairing)
+2. There is a set Y = {a, b} that contains exactly a and b. (Axiom of pairing)
 3. If X is any set that contains exactly a and b, then X = Y. (Conditional proof below)
  3.1. X is a set that contains exactly a and b.  (Assumption for conditional proof)
  3.2. X subseteq Y. (Subset proof below)
@@ -51,3 +51,4 @@
   3.2.4. x in Y. (Set property, 2, 3.2.3)
  3.3. Y subseteq X. (Mutatis mutandis, 3.1 to 3.2)
  3.4. X = Y. (Set equality, 3.2, 3.3)
+4. There is a unique set Y = {a, b} that contains exactly a and b. (Uniqueness, 2, 3)
