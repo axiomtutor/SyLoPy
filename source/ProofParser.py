@@ -1402,6 +1402,9 @@ def parse_surface_proof(text: str) -> SurfaceProof:
 _EXISTENCE_JUSTIFICATION_RE = re.compile(r'^existence\s+from\s+(.+)$', re.IGNORECASE)
 _DEFINE_PREFIX_RE = re.compile(r'^define\s+(.+)$', re.IGNORECASE)
 _NAME_EQUALS_RE = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$')
+# "Let Y be such a set" / "Let m be such an object": names the witness of the
+# cited existential with no right-hand side to document it.
+_LET_SUCH_RE = re.compile(r'^let\s+([A-Za-z_][A-Za-z0-9_]*)\s+be\s+such\s+an?\s+[A-Za-z_][A-Za-z0-9_]*$', re.IGNORECASE)
 
 
 def _split_and_clauses(s: str) -> List[str]:
@@ -1478,14 +1481,19 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
         return None
     citation_label = m_just.group(1).strip()
 
-    m_define = _DEFINE_PREFIX_RE.match(entry.formula_text.strip().rstrip('.').strip())
-    if not m_define:
-        raise ElaborationError(
-            "'Existence' expects a line of the form 'Define NAME = ...'", entry.span,
-        )
-    clauses = _split_and_clauses(m_define.group(1))
-    if not clauses:
-        raise ElaborationError("'Define' with nothing to define", entry.span)
+    line_text = entry.formula_text.strip().rstrip('.').strip()
+    m_let = _LET_SUCH_RE.match(line_text)
+    clauses: List[str] = []
+    if not m_let:
+        m_define = _DEFINE_PREFIX_RE.match(line_text)
+        if not m_define:
+            raise ElaborationError(
+                "'Existence' expects a line of the form 'Define NAME = ...' "
+                "or 'Let NAME be such a set'", entry.span,
+            )
+        clauses = _split_and_clauses(m_define.group(1))
+        if not clauses:
+            raise ElaborationError("'Define' with nothing to define", entry.span)
 
     # Resolved through ProofContext (see `_ElaborationContext.lookup_reference`),
     # which is subproof-scoped: it walks the same ancestor chain
@@ -1500,11 +1508,14 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
             f"label to name a witness from, not {cited_formula!r}", entry.span,
         )
 
-    m_witness = _NAME_EQUALS_RE.match(clauses[0])
-    if not m_witness:
-        raise ElaborationError(f"Invalid 'Define' clause: {clauses[0]!r}", entry.span)
-    witness_name = m_witness.group(1)
-    parse_term(m_witness.group(2), set())  # parsed to catch typos; see docstring above
+    if m_let:
+        witness_name = m_let.group(1)
+    else:
+        m_witness = _NAME_EQUALS_RE.match(clauses[0])
+        if not m_witness:
+            raise ElaborationError(f"Invalid 'Define' clause: {clauses[0]!r}", entry.span)
+        witness_name = m_witness.group(1)
+        parse_term(m_witness.group(2), set())  # parsed to catch typos; see docstring above
 
     declarations = [pl.Declaration(name=witness_name, kind=pl.DeclarationKind.OBJECT,
                                     type_name="existential witness")]

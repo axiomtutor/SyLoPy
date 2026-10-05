@@ -53,3 +53,20 @@
   4.4. In(a, Y). (Set property from 4.1, 4.3)
   4.5. Exists Y, In(a, Y). (Existential Introduction from 4.4)
  end subproof
+
+
+# 5: A pair set contains both generators (witness named with "Let Y be such a set")
+## Proof that
+### there exists Y such that In(a, Y) and In(b, Y).
+
+1. Let a, b be any set. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. a = a. (Reflexivity)
+5. a = a or a = b. (Disjunction Introduction from 4)
+6. In(a, Y). (Set property from 3, 5)
+7. b = b. (Reflexivity)
+8. b = a or b = b. (Disjunction Introduction from 7)
+9. In(b, Y). (Set property from 3, 8)
+10. In(a, Y) and In(b, Y). (Conjunction Introduction from 6, 9)
+11. Exists Y, (In(a, Y) and In(b, Y)). (Existential Introduction from 10)

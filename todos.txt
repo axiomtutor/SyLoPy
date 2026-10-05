@@ -6,9 +6,9 @@ The project is functionally green, with one known, tracked exception. The
 core proof-language pipeline has been validated against the repository's
 full regression suite:
 
-- 426 Python tests; 425 pass, 1 known failure (see "Known issues" below)
+- 434 Python tests; 433 pass, 1 known failure (see "Known issues" below)
 - all enforced proof fixture suites pass (48/48)
-- informational proof fixtures: 47/48 pass (the one failure is the same
+- informational proof fixtures: 48/49 pass (the one failure is the same
   known issue)
 
 The current work is no longer about making the basics work. The remaining work
@@ -109,6 +109,20 @@ Design agreed while working through the user's own "Unique pairing" proof
 implemented yet -- this is the agreed design, written down so implementation
 can proceed later without re-litigating it. Do not start implementing without
 an explicit go-ahead.
+
+- [x] Witness naming for axiom instances (decided: sugar, not a context-aware
+      citation). `Let Y be such a set. (Existence from L)` extends the
+      existing `Define NAME = ... (Existence from L)` sugar: it declares Y
+      through the ordinary scoped declaration pathway and states L's
+      existential body instantiated at Y, so Y lasts to the end of its
+      nesting level and is invisible outside the subproof. Axiom citations
+      themselves stay ordinary existential formulas. Covered in
+      `pytest_tests/test_set_property.py` and proof 5 of
+      `tests/setTheoryProofs/pairing_theorems.txt`. Caveat: like `Define`,
+      the elaborator checks that L is an existential and the kernel sees the
+      line as a premise-tagged declaration, not an Existential Elimination
+      step it re-validates; wrapping in a real elimination subproof would
+      make the kernel check it, at the cost of nesting later lines.
 
 - [ ] Axiom citations as named, shape-checking rules.
       Replace the `SET_AXIOMS` formula list plus generic "(Axiom)" citation

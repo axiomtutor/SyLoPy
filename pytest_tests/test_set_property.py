@@ -194,7 +194,7 @@ def _pairing_text() -> str:
 def test_pairing_theorems_fixture_all_pass():
     results = mp.run_multi_proof_file(_pairing_text())
     assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [
-        ("1", True), ("2", True), ("3", True), ("4", True),
+        ("1", True), ("2", True), ("3", True), ("4", True), ("5", True),
     ]
 
 
@@ -205,3 +205,85 @@ def test_a_wrong_instance_inside_a_real_proof_is_rejected():
     )
     results = mp.run_multi_proof_file(broken)
     assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [("1", False)]
+
+
+# --------------------------------------------------------------------
+# "Let Y be such a set": witness-naming sugar over the Existence mechanism
+# --------------------------------------------------------------------
+
+_PAIR_EXISTS = "Exists Y, forall u, (In(u, Y) iff (u = a or u = b))"
+
+
+def _entries(text):
+    import SyLoPy.source.ProofParser as proof_parser
+    return proof_parser.parse_proof_text(text)[0]
+
+
+def test_let_such_a_set_declares_the_witness_and_states_the_characterization():
+    entries = _entries(
+        "1. Let a, b be any set. (Declaration)\n"
+        f"2. {_PAIR_EXISTS}. (Axiom of pairing)\n"
+        "3. Let Y be such a set. (Existence from 2)\n"
+    )
+    label, formula, justification = entries[2]
+    assert label == "3"
+    assert justification[0] == "premise"
+    assert [d.name for d in justification[1]] == ["Y"]
+    expected = st.match_membership_characterization(formula)
+    assert expected is not None
+    var, set_term, _prop = expected
+    assert set_term == tl.ConstantTerm("Y", "Y")
+
+
+def test_let_such_a_set_needs_an_existential_at_the_cited_line():
+    import SyLoPy.source.ProofElaboration as pe
+    with pytest.raises(pe.ElaborationError, match="needs an existential"):
+        _entries(
+            "1. Let a, b be any set. (Declaration)\n"
+            "2. a = a. (Reflexivity)\n"
+            "3. Let Y be such a set. (Existence from 2)\n"
+        )
+
+
+def test_let_such_a_set_rejects_an_unknown_citation():
+    import SyLoPy.source.ProofElaboration as pe
+    with pytest.raises(pe.ElaborationError, match="unknown label"):
+        _entries("1. Let Y be such a set. (Existence from 9)\n")
+
+
+def test_let_such_a_set_cannot_reuse_a_name_already_declared():
+    results = mp.run_multi_proof_file(
+        "# 1: Reused name\n## Proof that\n### a = a.\n\n"
+        "1. Let a, b, Y be any set. (Declaration)\n"
+        f"2. {_PAIR_EXISTS}. (Axiom of pairing)\n"
+        "3. Let Y be such a set. (Existence from 2)\n"
+        "4. a = a. (Reflexivity)\n"
+    )
+    assert [ok for _n, _e, ok, _m, _c in results] == [False]
+
+
+def _scoped_witness_proof(use_line_inside: bool) -> str:
+    inside = " 3.3. Y = Y. (Reflexivity)\n" if use_line_inside else ""
+    outside = "" if use_line_inside else "4. Y = Y. (Reflexivity)\n"
+    return (
+        "# 1: Scoped witness\n## Proof that\n### a = a.\n\n"
+        "1. Let a, b be any set. (Declaration)\n"
+        f"2. {_PAIR_EXISTS}. (Axiom of pairing)\n"
+        "3. If a = a then a = a. (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 3.1. a = a. (Assumption)\n"
+        " 3.2. Let Y be such a set. (Existence from 2)\n"
+        + inside +
+        " 3.4. a = a. (Reiteration from 3.1)\n"
+        "end subproof\n"
+        + outside
+    )
+
+
+def test_witness_is_usable_inside_but_not_outside_the_subproof_that_introduced_it():
+    inside = mp.run_multi_proof_file(_scoped_witness_proof(use_line_inside=True))
+    assert [ok for _n, _e, ok, _m, _c in inside] == [True]
+
+    outside = mp.run_multi_proof_file(_scoped_witness_proof(use_line_inside=False))
+    assert [ok for _n, _e, ok, _m, _c in outside] == [False]
+    assert "Y" in outside[0][3]
