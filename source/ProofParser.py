@@ -315,10 +315,38 @@ def _parse_formula_or_bundle(text: str, environment: Optional[TheoryEnvironment]
     all of its component formulas at once.
     """
     parts = [part.strip() for part in split_top_level(text.strip().rstrip('.'), '.') if part.strip()]
-    formulas = [parse_formula(part, environment=environment) for part in parts]
+    formulas = [_parse_premise_part(part, environment) for part in parts]
     if len(formulas) == 1:
         return formulas[0]
     return formulas
+
+
+def _lower_surface_expression(expression: SurfaceExpression) -> fl.Formula:
+    """Lower a theory `SurfaceExpression` to its core formula."""
+    if expression.kind == "core":
+        return expression.value
+    if expression.kind == "subset":
+        import SyLoPy.source.SetTheory as st
+        left, right = expression.value
+        return st.subset_formula(left, right)
+    raise ValueError(f"no core lowering registered for surface expression kind {expression.kind!r}")
+
+
+def _parse_premise_part(part: str, environment: Optional[TheoryEnvironment]) -> fl.Formula:
+    """Parse one premise formula.
+
+    Like every other proof line (see `_ElaborationContext.parse_surface_expression`),
+    a premise is first offered whole to the theories' line-level formula
+    parsers, and only then handed to the generic grammar. Without this,
+    sugar whose wording contains a connective -- "x is a or b" -- would be
+    split at its "or" by the generic grammar before any theory saw it.
+    """
+    if environment is not None:
+        for parser in environment.formula_parsers:
+            expression = parser(part, set())
+            if expression is not None:
+                return _lower_surface_expression(expression)
+    return parse_formula(part, environment=environment)
 
 
 def _declaration_kind_from_descriptor(descriptor: str) -> Tuple[str, Optional[str]]:
@@ -1639,14 +1667,7 @@ class _ElaborationContext:
         return SurfaceExpression("core", parse_formula(text, bound_vars, self.environment), text)
 
     def parse_core_formula(self, text: str, bound_vars: Optional[set] = None) -> fl.Formula:
-        expression = self.parse_surface_expression(text, bound_vars)
-        if expression.kind == "core":
-            return expression.value
-        if expression.kind == "subset":
-            import SyLoPy.source.SetTheory as st
-            left, right = expression.value
-            return st.subset_formula(left, right)
-        raise ValueError(f"no core lowering registered for surface expression kind {expression.kind!r}")
+        return _lower_surface_expression(self.parse_surface_expression(text, bound_vars))
 
     def display_term(self, term: tl.Term) -> str:
         try:

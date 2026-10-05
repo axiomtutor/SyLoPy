@@ -13,7 +13,7 @@ It should soon develop features for more mathematical subjects.
 At the time of writing, the project is in a stable state, with one known,
 tracked exception.
 
-- 384 Python tests; 383 pass, 1 known failure (a stale fixture test, tracked
+- 402 Python tests; 401 pass, 1 known failure (a stale fixture test, tracked
   in `todos.txt`).
 - All enforced proof fixtures pass.
 - All but one informational proof fixture pass (the same known issue: a

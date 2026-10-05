@@ -12,7 +12,7 @@ to Universal Generalization plus Conditional Introduction before
 from __future__ import annotations
 
 import re
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.ProofLogic as pl
@@ -65,10 +65,124 @@ def subset_formula(left: tl.Term, right: tl.Term, var_name: str = SUBSET_BOUND_V
     )
 
 
+# --- Enumeration sugar: `{a, b}` and "x is a or b" ---------------------------
+#
+# `{a, b}` is deliberately NOT a term. As `PAIRING_AXIOM`'s docstring explains,
+# a function symbol for "the pair of a and b" has to wait until a proof has
+# derived the pair's existence *and* uniqueness and promoted it. Instead, an
+# enumeration is sugar that exists only next to a relation, and desugars into
+# ordinary formulas the kernel already understands:
+#
+#     x is in {a, b}      ==>  x = a or x = b
+#     x is not in {a, b}  ==>  not (x = a or x = b)
+#     Y = {a, b}          ==>  forall u, (In(u, Y) iff (u = a or u = b))
+#     {a, b} = Y          ==>  (same as above)
+#     x is a or b         ==>  x = a or x = b
+#     x is a, b, or c     ==>  x = a or x = b or x = c
+#
+# An enumeration is not accepted anywhere else (for example as a function
+# argument), because there is no term for it to be.
+
+_ENUMERATION_PATTERN = r"\{[^{}]*\}"
+_VARIABLE_LIKE = re.compile(r"[A-Za-z][0-9_']*")
+_ELEMENT_NAME_CANDIDATES = ["u", "v", "w", "t", "s", "r"]
+
+
+def _parse_enumeration(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
+    """Parse ``{t1, t2, ...}`` into its element terms, or return None."""
+
+    m = re.fullmatch(r"\{\s*([^{}]*?)\s*\}", text.strip())
+    if not m:
+        return None
+    pieces = [piece.strip() for piece in m.group(1).split(",")]
+    if not pieces or any(not piece for piece in pieces):
+        return None
+    terms = [try_parse_set_term(piece, bound_vars) for piece in pieces]
+    if any(term is None for term in terms):
+        return None
+    return terms
+
+
+def _term_names(term: tl.Term) -> set:
+    if isinstance(term, (tl.VariableTerm, tl.ConstantTerm)):
+        return {term.name}
+    if isinstance(term, tl.FunctionTerm):
+        names = set()
+        for arg in term.args:
+            names |= _term_names(arg)
+        return names
+    return set()
+
+
+def _equals_any(element: tl.Term, options: List[tl.Term]) -> fl.Formula:
+    """``element = o1 or element = o2 or ...`` (just ``element = o1`` for one)."""
+
+    equalities = [fl.Equals(element, option) for option in options]
+    return equalities[0] if len(equalities) == 1 else fl.Or(*equalities)
+
+
+def _enumeration_equality(set_term: tl.Term, elements: List[tl.Term]) -> fl.Formula:
+    """``S = {t1, ...}``: S has exactly the listed members."""
+
+    used = _term_names(set_term)
+    for element in elements:
+        used |= _term_names(element)
+    name = next((c for c in _ELEMENT_NAME_CANDIDATES if c not in used), None)
+    if name is None:
+        name = "__enumeration_element"
+    variable = tl.VariableTerm(name)
+    return fl.ForAll(
+        name,
+        fl.Iff(membership_formula(variable, set_term), _equals_any(variable, elements)),
+    )
+
+
+def _try_parse_enumeration_expression(s: str, text: str, bound_vars: set) -> Optional[SurfaceExpression]:
+    m = re.match(rf"^(.+?)\s*=\s*({_ENUMERATION_PATTERN})$", s)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        elements = _parse_enumeration(m.group(2), bound_vars)
+        if set_term is not None and elements is not None:
+            return SurfaceExpression("core", _enumeration_equality(set_term, elements), text)
+
+    m = re.match(rf"^({_ENUMERATION_PATTERN})\s*=\s*(.+)$", s)
+    if m:
+        elements = _parse_enumeration(m.group(1), bound_vars)
+        set_term = try_parse_set_term(m.group(2), bound_vars)
+        if set_term is not None and elements is not None:
+            return SurfaceExpression("core", _enumeration_equality(set_term, elements), text)
+
+    m = re.match(rf"^(.+?)\s+is\s+(not\s+)?in\s+({_ENUMERATION_PATTERN})$", s, flags=re.I)
+    if m:
+        element = try_parse_set_term(m.group(1), bound_vars)
+        elements = _parse_enumeration(m.group(3), bound_vars)
+        if element is not None and elements is not None:
+            formula = _equals_any(element, elements)
+            return SurfaceExpression("core", fl.Not(formula) if m.group(2) else formula, text)
+
+    # "x is a or b" / "x is a, b, or c". Only variable-like names are accepted
+    # as alternatives, so ordinary English such as "n is even or odd" is not
+    # misread as a disjunction of equalities.
+    m = re.match(r"^(\S+?)\s+is\s+(.+)$", s, flags=re.I)
+    if m:
+        subject = try_parse_set_term(m.group(1), bound_vars)
+        alternatives = [a.strip() for a in re.split(r"\s*,\s*(?:or\s+)?|\s+or\s+", m.group(2).strip())]
+        if (subject is not None and len(alternatives) >= 2
+                and all(_VARIABLE_LIKE.fullmatch(a) for a in alternatives)):
+            options = [_name_term(a, bound_vars) for a in alternatives]
+            return SurfaceExpression("core", _equals_any(subject, options), text)
+
+    return None
+
+
 def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpression]:
     """Parse membership and subset wording before the generic formula parser."""
 
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+
+    enumeration = _try_parse_enumeration_expression(s, text, bound_vars)
+    if enumeration is not None:
+        return enumeration
 
     m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq)\s+(.+)$", s, flags=re.I)
     if m:
