@@ -103,6 +103,15 @@ def _rule(name: str):
     raise ValueError(f"Unknown inference rule '{name.strip()}' in justification")
 
 
+def _cited_rule(rule_name: str, refs: List[str]):
+    """Resolve `rule_name`, choosing by citation count where a name covers
+    two rules: bare "Set property" is the empty-set rule, while "Set
+    property" citing lines is the general one."""
+    if refs and _normalize(rule_name) in {"set property", "set property rule"}:
+        return pl.NamedRulePlaceholder("SetProperty")
+    return _rule(rule_name)
+
+
 def parse_justification(s: str):
     s = s.strip()
     if not s:
@@ -129,7 +138,12 @@ def parse_justification(s: str):
     citation = re.match(r"^(.*?)from\s+([0-9]+(?:\.[A-Za-z0-9_]+)*(?:\s*(?:,|and)\s*[0-9]+(?:\.[A-Za-z0-9_]+)*)*)$", low)
     if citation:
         rule_name = s[:citation.start(0) + len(citation.group(1))].strip()
-        return ("rule", _rule(rule_name), _parse_indices(citation.group(2)))
+        refs = _parse_indices(citation.group(2))
+        return ("rule", _cited_rule(rule_name, refs), refs)
+    comma = re.match(r"^([a-z][a-z' \-]*?)\s*,\s*([0-9]+(?:\.[A-Za-z0-9_]+)*(?:\s*,\s*[0-9]+(?:\.[A-Za-z0-9_]+)*)*)\s*$", low)
+    if comma:
+        refs = _parse_indices(comma.group(2))
+        return ("rule", _cited_rule(s[:comma.end(1)].strip(), refs), refs)
     normalized = _normalize(s)
     if normalized in {"arbitrary", "fresh variable", "fresh constant", "arbitrary object"}:
         return ("arbitrary",)
@@ -146,5 +160,11 @@ def parse_justification(s: str):
     if normalized in {"set property", "empty set property"}:
         return ("rule", pl.NamedRulePlaceholder("EmptySetProperty"), [])
     if "from" not in low and "subproof" not in low:
-        return ("rule", pl.NamedRulePlaceholder(s), [])
+        # A bare, zero-citation rule name ("Axiom of pairing", "Separation"):
+        # resolve known aliases and theory placeholders, and otherwise keep
+        # the raw text as a placeholder so the validator reports it by name.
+        try:
+            return ("rule", _rule(s), [])
+        except ValueError:
+            return ("rule", pl.NamedRulePlaceholder(s), [])
     raise ValueError(f"Invalid justification format: '{s}'")

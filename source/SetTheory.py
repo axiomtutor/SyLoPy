@@ -254,6 +254,107 @@ class EmptySetPropertyRule(pl.InferenceRule):
         )
 
 
+def _membership_parts(formula: fl.Formula) -> Optional[Tuple[tl.Term, tl.Term]]:
+    """`(element, set)` if `formula` is exactly `In(element, set)`; else `None`."""
+    if (isinstance(formula, fl.AtomicFormula) and formula.predicate == MEMBERSHIP_SYMBOL
+            and len(formula.args) == 2):
+        return formula.args[0], formula.args[1]
+    return None
+
+
+def match_membership_characterization(formula: fl.Formula) -> Optional[Tuple[str, tl.Term, fl.Formula]]:
+    """Recognize `forall u, (In(u, S) <-> P(u))` (either side of the
+    biconditional may carry the membership atom) and return `(u, S, P)`.
+
+    Purely structural: this says what the formula *looks like*, and makes
+    no judgment about what may be inferred from it -- that stays with
+    `SetPropertyRule`. It rejects a formula whose set term `S` mentions the
+    bound variable `u` itself, since then "u in S" is not a statement about
+    one fixed set.
+    """
+    if not isinstance(formula, fl.ForAll) or not isinstance(formula.body, fl.Iff):
+        return None
+    var, iff = formula.var, formula.body
+    for membership_side, property_side in ((iff.left, iff.right), (iff.right, iff.left)):
+        parts = _membership_parts(membership_side)
+        if parts is None:
+            continue
+        element, set_term = parts
+        if not pl._ast_eq(element, tl.VariableTerm(var)):
+            continue
+        if var in fl.term_free_variables(set_term):
+            continue
+        return var, set_term, property_side
+    return None
+
+
+class SetPropertyRule(pl.InferenceRule):
+    """General `Set property`: use a set's defining membership property.
+
+    Cites two lines: a membership characterization
+    `forall u, (In(u, S) <-> P(u))`, and an instance of one side of it for
+    a particular term `t`. The conclusion is the matching instance of the
+    other side. All four directions are accepted, positive and negated::
+
+        In(t, S)      =>  P(t)          P(t)      =>  In(t, S)
+        not In(t, S)  =>  not P(t)      not P(t)  =>  not In(t, S)
+
+    Example (the characterization of a pair set, then reasoning about an
+    arbitrary x)::
+
+        1. forall u, (In(u, Y) iff (u = a or u = b)). (...)
+        2. In(x, Y). (...)
+        3. x = a or x = b. (Set property from 1, 2)
+
+    The rule knows nothing about *which* set it is -- the empty set,
+    a pair, a union, a power set all work alike; only the cited
+    characterization matters. Like `UniversalModusPonensRule`, it bundles
+    steps already derivable from Universal Instantiation and Biconditional
+    Elimination, so the kernel gains no new logical power. The citation
+    order is free: the rule recognizes the characterization wherever it
+    appears among the two cited lines.
+    """
+
+    name = "SetProperty"
+    premise_arity = 2
+
+    def applies(self, candidates, phi) -> bool:
+        if len(candidates) != 2 or not all(isinstance(c, fl.Formula) for c in candidates):
+            return False
+        for characterization, instance in (candidates, candidates[::-1]):
+            if self._derives(characterization, instance, phi):
+                return True
+        return False
+
+    @staticmethod
+    def _derives(characterization, instance, phi) -> bool:
+        matched = match_membership_characterization(characterization)
+        if matched is None:
+            return False
+        var, set_term, prop = matched
+        # Peel matching negations off both sides (nonmembership <-> negated property).
+        while isinstance(instance, fl.Not) and isinstance(phi, fl.Not):
+            instance, phi = instance.sub, phi.sub
+        # One of instance/phi must be the membership atom; the other is the property instance.
+        for membership, other in ((instance, phi), (phi, instance)):
+            parts = _membership_parts(membership)
+            if parts is None:
+                continue
+            element, member_of = parts
+            if not pl._ast_eq(member_of, set_term):
+                continue
+            matcher = pl.FormulaMatcher(var)
+            if not matcher.match_formula(prop, other):
+                continue
+            bound_to = matcher.mapping.get(var)
+            if bound_to is not None and not pl._ast_eq(bound_to, element):
+                continue
+            # If P does not mention u, the match is vacuous; the instance must
+            # then still agree exactly with P, which match_formula already checked.
+            return True
+        return False
+
+
 def _extract_subset_operands(formula: fl.Formula) -> Optional[Tuple[tl.Term, tl.Term]]:
     """If `formula` has exactly the shape `subset_formula` produces --
     `forall v, (In(v, A) -> In(v, B))` -- return `(A, B)`; otherwise `None`.
@@ -1102,7 +1203,7 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
     line_elaborators=[elaborate_subset_proof],
-    rules=[EmptySetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
+    rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
     axioms=SET_AXIOMS,
     declarations=SET_DECLARATIONS,

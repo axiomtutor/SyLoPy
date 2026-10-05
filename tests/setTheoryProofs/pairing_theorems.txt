@@ -1,0 +1,55 @@
+# Elementary theorems about pair sets, each exercising the general
+# `Set property` rule (SetPropertyRule) on a set whose defining
+# membership property is "u = a or u = b", and the Axiom of pairing. Each
+# proof stands alone, like the proofs in basic_theorems.txt.
+
+
+# 1: A pair set contains its first generator
+## Proof that
+### If Y contains exactly a and b
+### then In(a, Y).
+
+1. Let a, b, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. a = a. (Reflexivity)
+4. a = a or a = b. (Disjunction Introduction from 3)
+5. In(a, Y). (Set property from 2, 4)
+
+
+# 2: Every member of a pair set is one of its generators
+## Proof that
+### If Y contains exactly a and b, and x is in Y
+### then x = a or x = b.
+
+1. Let a, b, Y, x be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. In(x, Y). (Premise)
+4. x = a or x = b. (Set property from 2, 3)
+
+
+# 3: Nothing else belongs to a pair set
+## Proof that
+### If Y contains exactly a and b, and c is neither a nor b
+### then c is not in Y.
+
+1. Let a, b, c, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. not (c = a or c = b). (Premise)
+4. not In(c, Y). (Set property from 2, 3)
+
+
+# 4: The Axiom of pairing gives a set containing a
+## Proof that
+### there exists Y such that In(a, Y).
+
+1. Let a, b be any set. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be an object. (Declare)
+4. Exists Y, In(a, Y). (Existential Elimination from 2, subproof below)
+ begin subproof
+  4.1. forall u, (In(u, Y) iff (u = a or u = b)). (Assumption for Existential Elimination)
+  4.2. a = a. (Reflexivity)
+  4.3. a = a or a = b. (Disjunction Introduction from 4.2)
+  4.4. In(a, Y). (Set property from 4.1, 4.3)
+  4.5. Exists Y, In(a, Y). (Existential Introduction from 4.4)
+ end subproof
