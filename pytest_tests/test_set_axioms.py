@@ -180,3 +180,40 @@ def test_replacement_rejects_renamed_variables_in_the_consequent():
 def test_replacement_rejects_a_bare_implication_without_the_replacement_shape():
     rule = st.ReplacementSchemaRule()
     assert not rule.applies([], fl.Implies(atom("P"), atom("Q")))
+
+
+# --------------------------------------------------------------------
+# PairingAxiomRule: paired terms must lie outside the quantifiers
+# --------------------------------------------------------------------
+
+def _pairing_instance_of(first, second, y_name="Y", u_name="u"):
+    u, Y = v(u_name), v(y_name)
+    return fl.Exists(y_name, fl.ForAll(u_name, fl.Iff(
+        st.membership_formula(u, Y),
+        fl.Or(fl.Equals(u, first), fl.Equals(u, second)),
+    )))
+
+
+def test_pairing_instance_accepts_ordinary_terms_and_equal_generators():
+    rule = st.PairingAxiomRule()
+    assert rule.applies([], _pairing_instance_of(c("a"), c("b")))
+    assert rule.applies([], _pairing_instance_of(c("a"), c("a")))
+    assert rule.applies([], _pairing_instance_of(tl.FunctionTerm("f", [c("a")]), c("b")))
+
+
+def test_pairing_instance_rejects_paired_terms_mentioning_the_bound_variables():
+    rule = st.PairingAxiomRule()
+    assert not rule.applies([], _pairing_instance_of(v("Y"), c("b")))
+    assert not rule.applies([], _pairing_instance_of(c("a"), v("Y")))
+    assert not rule.applies([], _pairing_instance_of(tl.FunctionTerm("f", [v("u")]), c("b")))
+    assert not rule.applies([], _pairing_instance_of(v("u"), c("b")))
+
+
+def test_pairing_instance_requires_u_on_one_side_of_each_equation():
+    rule = st.PairingAxiomRule()
+    u, Y = v("u"), v("Y")
+    bad = fl.Exists("Y", fl.ForAll("u", fl.Iff(
+        st.membership_formula(u, Y),
+        fl.Or(fl.Equals(c("a"), c("b")), fl.Equals(u, c("b"))),
+    )))
+    assert not rule.applies([], bad)

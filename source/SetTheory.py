@@ -818,18 +818,23 @@ class PairingAxiomRule(pl.InferenceRule):
             return False
         
         u_term = tl.VariableTerm(u_name)
-        
-        # The disjuncts should be equations involving u and two distinct terms (a and b)
-        left1, right1 = eq1.left, eq1.right
-        left2, right2 = eq2.left, eq2.right
-        
-        # Check if the equations have the form (u = a) and (u = b) in either order
-        u_eq_a = (pl._ast_eq(left1, u_term) and not pl._ast_eq(right1, u_term))
-        a_eq_u = (pl._ast_eq(right1, u_term) and not pl._ast_eq(left1, u_term))
-        u_eq_b = (pl._ast_eq(left2, u_term) and not pl._ast_eq(right2, u_term))
-        b_eq_u = (pl._ast_eq(right2, u_term) and not pl._ast_eq(left2, u_term))
-        
-        return (u_eq_a or a_eq_u) and (u_eq_b or b_eq_u)
+
+        def other_side(eq: fl.Equals) -> Optional[tl.Term]:
+            """The term `u` is equated with, if one side is exactly `u`."""
+            if pl._ast_eq(eq.left, u_term):
+                return eq.right
+            if pl._ast_eq(eq.right, u_term):
+                return eq.left
+            return None
+
+        a_term, b_term = other_side(eq1), other_side(eq2)
+        if a_term is None or b_term is None:
+            return False
+        # The paired terms must be genuinely outside the quantifiers: if one
+        # mentioned the bound Y or u, this would not be an instance of
+        # Pairing at all (e.g. `u = Y` would make Y a member of itself).
+        bound = {u_name, Y_name}
+        return not (fl.term_free_variables(a_term) & bound or fl.term_free_variables(b_term) & bound)
 
 
 
