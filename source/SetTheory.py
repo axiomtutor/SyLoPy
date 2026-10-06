@@ -985,8 +985,8 @@ class PairingAxiomRule(pl.InferenceRule):
             return False
         witness = self.witness_name
         return not (
-            witness in fl.term_free_variables(first)
-            or witness in fl.term_free_variables(second)
+            witness in fl.term_names(first)
+            or witness in fl.term_names(second)
         )
 
     def _check_universal_form(self, phi: fl.ForAll) -> bool:
@@ -1466,6 +1466,13 @@ def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
     directly.
     """
     if entry.justification_text.strip().lower() != "axiom of pairing":
+        return None
+
+    # Keep the existing symbolic existential citation form intact. Direct
+    # witness introduction is specifically the natural-language form beginning
+    # with "there is" or "there exists".
+    surface = entry.formula_text.strip()
+    if not re.match(r"^there\\s+(?:is|exists)\\b", surface, re.I):
         return None
 
     try:
