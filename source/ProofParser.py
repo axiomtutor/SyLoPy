@@ -151,7 +151,8 @@ def _cached_default_environment() -> TheoryEnvironment:
 
 def split_top_level(s: str, sep: str) -> List[str]:
     """Split `s` on every top-level (paren-depth-0) occurrence of `sep`,
-    left to right, leaving anything inside parentheses untouched.
+    left to right, leaving anything inside parentheses or braces untouched
+    (braces enclose set notation such as `{a, b}` or `{u in X: P(u)}`).
 
     This is what lets `parse_formula` tell "the *outer* connective is
     this" from "there's a connective-looking substring, but it's nested
@@ -171,10 +172,10 @@ def split_top_level(s: str, sep: str) -> List[str]:
     buf = []
     i = 0
     while i < len(s):
-        if s[i] == '(':
+        if s[i] in '({':
             depth += 1
             buf.append(s[i])
-        elif s[i] == ')':
+        elif s[i] in ')}':
             depth -= 1
             if depth < 0:
                 raise ValueError("Unmatched closing parenthesis in string: " + s)
@@ -509,6 +510,9 @@ def split_declaration_clauses(s: str) -> List[str]:
             continue
         if depth == 0:
             sep = next((c for c in _DECLARATION_CLAUSE_SEPARATORS if s.startswith(c, i)), None)
+            if (sep == ' and ' and _is_bare_name_list(''.join(buf))
+                    and _text_after_is_declaration_start(s[i + len(sep):])):
+                sep = None  # "X and Y be sets": this "and" joins the names of one clause
             if sep:
                 parts.append(''.join(buf).strip())
                 buf = []
@@ -593,6 +597,17 @@ def parse_declaration_clause(clause: str) -> DeclarationClause:
 
 
 _IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+_BARE_NAME_LIST_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*\s*,?$')
+
+
+def _is_bare_name_list(text: str) -> bool:
+    """Is `text` just names ("X", "X, Y", "X, Y,") with no copula yet?
+
+    Used to tell the "and" in "Let X and Y be sets" -- which joins the names
+    of ONE clause -- from the "and" in "Let X be a set and Y be a set", which
+    separates two clauses.
+    """
+    return bool(_BARE_NAME_LIST_RE.match(text.strip()))
 _DECL_START_RE = re.compile(r'^(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b', re.I)
 _FORMULA_START_RE = re.compile(
     r'^(?:not\b|for\s+all\b|forall\b|exists\b|there\s+exists\b|if\b|[A-Za-z_][A-Za-z0-9_]*\s*\()',
@@ -707,6 +722,12 @@ def _split_compound_declaration_items(body: str) -> List[str]:
         if depth == 0 and body[i:i + 5].lower() == ' and ':
             rest = body[i + 5:].lstrip()
             current = ''.join(buf).strip()
+            # "Let X and Y be sets" / "Let X, Y and Z be sets": here "and" joins
+            # the names of one clause, exactly like the grouped-name commas below.
+            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest):
+                buf.append(body[i:i + 5])
+                i += 5
+                continue
             if _text_after_is_declaration_start(rest):
                 flush()
                 premise_mode = False

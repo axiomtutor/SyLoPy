@@ -13,8 +13,8 @@ It should soon develop features for more mathematical subjects.
 At the time of writing, the project is in a stable state, with one known,
 tracked exception.
 
-- 402 Python tests; 401 pass, 1 known failure (a stale fixture test, tracked
-  in `todos.txt`).
+- 531 Python tests; 529 pass, 1 skipped, 1 known failure (a stale fixture
+  test, tracked in `todos.txt`).
 - All enforced proof fixtures pass.
 - All but one informational proof fixture pass (the same known issue: a
   fixture written ahead of an agreed-but-unimplemented feature).
@@ -61,9 +61,22 @@ and set-theoretic reasoning such as subset proofs and membership arguments.
  2.3. a is in X.
 ```
 
+Set theory reads a good deal of ordinary mathematical wording, all of it
+sugar for plain first-order formulas:
+
+```text
+Y = {a, b}                          x is in {a, b}          x is a or b
+Y = {u in X: P(u)}                  Y = {F(x): x in X}      S contains exactly a, b and c
+X subseteq Y                        Let X and Y be sets.
+there exists a unique set {a, b} that contains exactly a and b
+```
+
+Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
+
 Set theory is the active frontier: the ZFC axiom-citation design (named
-axiom rules, WLOG, `{a, b}` notation, unique existence) is written up in
-`todos.txt` and is not implemented yet.
+axiom rules, WLOG, unique existence) is written up in `todos.txt`; the syntax
+above is implemented, the rules `Uniqueness`, `WLOG` and `Mutatis mutandis`
+are not.
 
 ### Number theory
 
@@ -162,6 +175,8 @@ make it easier to extend and maintain.
 - `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
 - `tests/` — enforced proof fixtures (plus `tests/setTheoryProofs`, which is
   informational); `source/testProofs/` — informational fixtures.
+- `parse_oracle/` — independent surface-to-formula cases for the parser,
+  checked by `pytest_tests/test_parse_oracle.py`.
 - `pytest_tests/` — Python unit/integration tests. The code imports itself as
   `SyLoPy.source...`; `pytest_tests/support.py` and `./run_tests.sh` make that
   work whatever the checkout directory is called.

@@ -28,6 +28,8 @@ A theory should provide, as appropriate:
 
 - surface formula parsers;
 - nested formula parsers;
+- phrase parsers and phrase-span finders, for phrases that contain connective
+  words ("x is a or b"), so the connective grammar cannot cut them apart;
 - term parsers;
 - line elaborators;
 - declaration recipes;

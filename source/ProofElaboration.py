@@ -19,7 +19,7 @@ surface line that produced them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -199,6 +199,7 @@ FormulaParser = Callable[[str, set], Optional[SurfaceExpression]]
 LineElaborator = Callable[[SurfaceLine, Any], Optional[Any]]
 TermParser = Callable[[str, set], Optional[Any]]
 NestedFormulaParser = Callable[[str, set], Optional[Any]]
+PhraseSpanFinder = Callable[[str], List[Tuple[int, int]]]
 
 
 @dataclass
@@ -213,6 +214,22 @@ class TheoryEnvironment:
     declarations: List[Any] = field(default_factory=list)
     term_parsers: List[TermParser] = field(default_factory=list)
     nested_formula_parsers: List[NestedFormulaParser] = field(default_factory=list)
+    # Consulted at the start of every recursive formula parse, on the whole
+    # (sub)string, *before* the generic grammar splits it at a connective.
+    # For theory phrases whose wording contains a connective or "=" -- "x is
+    # a or b", "Y = {a, b}" -- which the grammar would otherwise cut apart.
+    # A phrase parser must return None unless the *entire* string is its
+    # phrase, so it can never swallow more than it should.
+    phrase_parsers: List[NestedFormulaParser] = field(default_factory=list)
+    # Finds theory phrases *inside* a longer string, as (start, end) character
+    # spans, for phrases that contain connective words or commas and so would
+    # be cut apart when they sit in a larger formula: "Q(w) and w is h, i, j,
+    # or k"; "Q(S) and S contains exactly a, b and c". Before the generic
+    # grammar splits at "and"/"or"/"if"/..., each top-level span is wrapped in
+    # parentheses, so that only a phrase parser ever sees the inside of a span.
+    # A finder should return a span only for text its own phrase parser accepts
+    # as a whole.
+    phrase_spans: List[PhraseSpanFinder] = field(default_factory=list)
     declaration_recipes: List[Any] = field(default_factory=list)
 
     def extended(self, *others: "TheoryEnvironment") -> "TheoryEnvironment":
@@ -225,6 +242,8 @@ class TheoryEnvironment:
             result.declarations.extend(environment.declarations)
             result.term_parsers.extend(environment.term_parsers)
             result.nested_formula_parsers.extend(environment.nested_formula_parsers)
+            result.phrase_parsers.extend(environment.phrase_parsers)
+            result.phrase_spans.extend(environment.phrase_spans)
             result.declaration_recipes.extend(environment.declaration_recipes)
         return result
 

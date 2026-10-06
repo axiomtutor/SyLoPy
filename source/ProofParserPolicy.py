@@ -37,6 +37,216 @@ def _parse_surface_declaration_statement(text, span):
 _parser.parse_surface_declaration_statement = _parse_surface_declaration_statement
 
 
+_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
+# Words that can never be the *kind* in "there exists a KIND NAME ...", and
+# words that can never be the *variable* (the kinds "set" and "object" are
+# also kept out, so that "there exists a set such that P" is an error rather
+# than a quantifier over a variable named "set").
+_NOT_A_KEYWORD = r"(?!(?:such|that|which|unique)\b)"
+_NOT_A_VARIABLE = r"(?!(?:such|that|which|unique|set|object)\b)"
+# "there exists x such that BODY"  (one variable; several are handled by the
+# multi-variable "such that" forms in `_parse_formula_conventional`)
+_EXISTS_SUCH_THAT_RE = re.compile(
+    rf"^(?:exists|there\s+exists)\s+(?P<name>{_NOT_A_VARIABLE}{_NAME})\s+such\s+that\s*:?\s*(?P<rest>.+)$",
+    re.I,
+)
+# "there exists a [unique] [kind] NAME  (such that BODY | that PHRASE | = TERM)"
+_EXISTS_ARTICLE_RE = re.compile(
+    r"^there\s+(?:exists|is)\s+"
+    r"(?P<quant>(?:an?\s+)?unique|exactly\s+one|an?|one)\s+"
+    rf"(?:{_NOT_A_KEYWORD}(?P<kind>{_NAME})\s+)?"
+    rf"(?P<name>{_NOT_A_VARIABLE}{_NAME}|\{{[^{{}}]*\}})\s*"
+    r"(?P<connector>such\s+that|that|which|=|,)\s*:?\s*(?P<rest>.+)$",
+    re.I,
+)
+# Kinds that add no condition: every object of set theory is a set.
+_UNTYPED_KINDS = {"set", "object"}
+# The start of the article form, used only to explain a failure to read it.
+_ARTICLE_FORM_START_RE = re.compile(r"^there\s+(?:exists|is)\s+(?:an?|one|unique|exactly\s+one)\s+\S", re.I)
+_EXISTENTIAL_FORMS_HELP = (
+    "Supported: 'there exists x such that BODY', "
+    "'there exists a [unique] [set] Y such that BODY', "
+    "'there exists a [unique] [set] Y that PHRASE', "
+    "'there exists a [unique] [set] Y = {a, b}', "
+    "'there exists a [unique] [set] Y, BODY'"
+)
+
+
+def _bracket_depths(s: str) -> list:
+    """For each index of `s`, how many ( or { are open just before it."""
+    depths, depth = [], 0
+    for ch in s:
+        depths.append(depth)
+        if ch in "({":
+            depth += 1
+        elif ch in ")}":
+            depth = max(0, depth - 1)
+    return depths
+
+
+_EXISTENTIAL_OPENER_RE = re.compile(r"\b(?:there\s+(?:exists|is)|exists)\s", re.I)
+_THEN_RE = re.compile(r"\s+then\s+", re.I)
+
+
+def _embedded_existential_spans(s: str) -> list:
+    """Spans of natural-language existentials that follow something else in `s`.
+
+    "P and there exists a unique set {c, d} that contains exactly c and d": like
+    an existential at the start of a string, the quantifier takes everything to
+    its right, so the span runs to the end of `s` -- except that it stops at a
+    top-level "then", which can only belong to an enclosing "if ... then".
+    Only the natural forms count (see `_parse_natural_existential`); the
+    symbolic ``exists x, BODY`` keeps the scope the grammar gives it.
+    """
+    depths = _bracket_depths(s)
+    spans = []
+    for opener in _EXISTENTIAL_OPENER_RE.finditer(s):
+        start = opener.start()
+        if start == 0 or depths[start] != 0:
+            continue
+        end = len(s)
+        for then in _THEN_RE.finditer(s, start):
+            if depths[then.start()] == 0:
+                end = then.start()
+                break
+        candidate = s[start:end]
+        if _EXISTS_SUCH_THAT_RE.match(candidate) or _EXISTS_ARTICLE_RE.match(candidate):
+            spans.append((start, end))
+    return spans
+
+
+def _protect_phrases(s: str, environment) -> str:
+    """Wrap each top-level theory phrase inside `s` in parentheses.
+
+    The phrases are those the environment's `phrase_spans` finders report (see
+    `TheoryEnvironment.phrase_spans`), plus natural-language existentials that
+    follow something else in the string. The grammar below cuts a string at its
+    top-level "or"/"and"/..., and a phrase such as "w is h, i, j, or k" would
+    be cut apart with it; inside parentheses it is out of the grammar's reach
+    and arrives whole at the phrase parsers. A span that is already inside
+    brackets needs nothing, which is also what ends the recursion: the wrapped
+    string has no top-level spans left. `s` is returned unchanged when there is
+    nothing to protect, or when one span is the whole string.
+    """
+    spans = _embedded_existential_spans(s)
+    for find in environment.phrase_spans:
+        spans.extend(find(s))
+    if not spans:
+        return s
+    depths = _bracket_depths(s)
+    spans = sorted({span for span in spans if span[0] < span[1] and depths[span[0]] == 0})
+    merged = []
+    for start, end in spans:
+        if merged and start < merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    if not merged or merged == [(0, len(s))]:
+        return s
+    pieces, position = [], 0
+    for start, end in merged:
+        pieces.extend((s[position:start], "(", s[start:end], ")"))
+        position = end
+    pieces.append(s[position:])
+    return "".join(pieces)
+
+
+def _fresh_name(used, candidates) -> str:
+    for candidate in candidates:
+        if candidate not in used:
+            return candidate
+    index = 1
+    while f"{candidates[0]}{index}" in used:
+        index += 1
+    return f"{candidates[0]}{index}"
+
+
+def _parse_natural_existential(s, bound_vars, environment):
+    """Natural-language existentials, desugared to ordinary quantifiers.
+
+        there exists x such that BODY            ==>  exists x, BODY
+        there exists a set Y such that BODY      ==>  exists Y, BODY
+        there exists an integer n such that BODY ==>  exists n, (n is an integer and BODY)
+        there is a set Y = {a, b}                ==>  exists Y, (Y = {a, b})
+        there exists a set Y that PHRASE         ==>  exists Y, (Y PHRASE)
+
+    "unique" (or "exactly one") adds the uniqueness clause, so with P(Y) the
+    condition above,
+
+        there exists a unique set Y such that P(Y)
+            ==>  exists Y, (P(Y) and forall Z, (P(Z) -> Z = Y))
+
+    for a variable Z that occurs nowhere in P. There is no "exists unique"
+    connective: this is the ordinary formula, written out. The braces in
+    "a unique set {a, b} that ..." only label the set; the condition after
+    "that" is what constrains it.
+
+    Returns None when `s` is not of this form.
+    """
+    import SyLoPy.source.FormulaLogic as fl
+    import SyLoPy.source.TermLogic as tl
+
+    m = _EXISTS_SUCH_THAT_RE.match(s)
+    if m:
+        variable = m.group("name")
+        body = _parse_formula_conventional(m.group("rest"), bound_vars | {variable}, environment)
+        return fl.Exists(variable, body)
+
+    m = _EXISTS_ARTICLE_RE.match(s)
+    if not m:
+        return None
+    quantity = re.sub(r"\s+", " ", m.group("quant").lower())
+    unique = quantity.endswith("unique") or quantity == "exactly one"
+    kind = m.group("kind")
+    name = m.group("name")
+    connector = re.sub(r"\s+", " ", m.group("connector").lower())
+    rest = m.group("rest").strip()
+
+    if name.startswith("{"):
+        used = set(re.findall(_NAME, rest)) | set(bound_vars)
+        variable = _fresh_name(used, ("S", "Y", "Z", "T", "V", "W"))
+    else:
+        variable = name
+    inner_bound = bound_vars | {variable}
+
+    if connector in ("that", "which"):
+        body_text = f"{variable} {rest}"
+    elif connector in ("such that", ","):
+        body_text = rest
+    else:
+        body_text = f"{variable} = {rest}"
+    condition = _parse_formula_conventional(body_text, inner_bound, environment)
+
+    if kind and kind.lower() not in _UNTYPED_KINDS:
+        article = "an" if kind[0].lower() in "aeiou" else "a"
+        kind_text = f"{variable} is {article} {kind}"
+        try:
+            kind_condition = _parse_formula_conventional(kind_text, inner_bound, environment)
+        except ValueError as error:
+            raise ValueError(
+                f"Cannot read {s!r}: no imported theory defines the condition {kind_text!r} "
+                f"for the word {kind!r}. Say 'there exists {variable} such that ...' and state "
+                f"the condition yourself ({error})"
+            ) from None
+        condition = fl.And(kind_condition, condition)
+
+    if not unique:
+        return fl.Exists(variable, condition)
+
+    other = _fresh_name(fl.formula_names(condition) | set(bound_vars) | {variable}, ("X", "Z", "W", "V", "U", "T"))
+    same_for_other = fl.substitute_in_formula(condition, variable, tl.VariableTerm(other))
+    return fl.Exists(
+        variable,
+        fl.And(
+            condition,
+            fl.ForAll(
+                other,
+                fl.Implies(same_for_other, fl.Equals(tl.VariableTerm(other), tl.VariableTerm(variable))),
+            ),
+        ),
+    )
+
+
 def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     """Parse formulas using conventional connective precedence: ``not``
     binds tightest, then ``and``, then ``or``, then ``->``/``implies``,
@@ -99,6 +309,18 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
       14. ``pred(arg, arg, ...)`` -- an atomic predicate with arguments
       15. (fallback) a bare atomic proposition, `AtomicFormula(s, [])`
 
+    (Before step 1, `environment.phrase_parsers` get the whole string: a
+    theory phrase that is not splittable at a connective *because it is one
+    phrase*, such as "x is a or b", is claimed there. Each phrase parser
+    must match the entire string or return None. Right after them come the
+    natural-language existentials, ``there exists x such that BODY`` and
+    ``there exists a [unique] [set] Y such that/that/=/, ...``; see
+    `_parse_natural_existential`. Like ``exists x, BODY``, they extend as
+    far to the right as the string goes. Then any theory phrase *embedded*
+    in a longer string (`environment.phrase_spans`) is wrapped in
+    parentheses so that the connective grammar below cannot cut it apart:
+    "Q(w) and w is h, i, j, or k" reads as "Q(w) and (w is h, i, j, or k)".)
+
     Because whichever check fires *first* on an unparenthesized string
     becomes that string's outermost connective, this recognition order is
     also, read top to bottom through steps 4-10, exactly the precedence
@@ -148,6 +370,24 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
 
     import SyLoPy.source.FormulaLogic as fl
 
+    # Theory phrases that contain a connective or "=" must get the whole
+    # string before the grammar below cuts it up (see
+    # `TheoryEnvironment.phrase_parsers`).
+    for phrase_parser in environment.phrase_parsers:
+        formula = phrase_parser(s, bound_vars)
+        if formula is not None:
+            return formula
+
+    existential = _parse_natural_existential(s, bound_vars, environment)
+    if existential is not None:
+        return existential
+
+    # A theory phrase sitting inside a larger formula is fenced off before the
+    # grammar can cut it at one of its own connective words.
+    protected = _protect_phrases(s, environment)
+    if protected != s:
+        return _parse_formula_conventional(protected, bound_vars, environment)
+
     m = re.match(
         r"^(?:for all|forall)\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)+)\s+such\s+that\s*:?\s*(.*)$",
         s,
@@ -191,10 +431,15 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     )
     if m:
         var = m.group(1)
-        return fl.Exists(
-            var,
-            _parse_formula_conventional(m.group(2), bound_vars | {var}, environment),
-        )
+        try:
+            body = _parse_formula_conventional(m.group(2), bound_vars | {var}, environment)
+        except ValueError as error:
+            if _ARTICLE_FORM_START_RE.match(s):
+                # "there exists a ..." read as "the variable a, then a body"
+                # failed; most likely the article form was meant.
+                raise ValueError(f"Cannot read {s!r} ({error}). {_EXISTENTIAL_FORMS_HELP}") from None
+            raise
+        return fl.Exists(var, body)
 
     for sep in (" if and only if ", " <-> ", " <=> ", " ↔ ", " iff "):
         parts = _parser.split_top_level(s, sep)

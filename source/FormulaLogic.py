@@ -248,6 +248,62 @@ def free_variables(formula: Formula) -> set:
     return set()
 
 
+def term_names(term: tl.Term) -> set:
+    """Every variable and constant name occurring in a term (arguments included)."""
+    if isinstance(term, (tl.VariableTerm, tl.ConstantTerm)):
+        return {term.name}
+    if isinstance(term, tl.FunctionTerm):
+        names = set()
+        for a in term.args:
+            names |= term_names(a)
+        return names
+    return set()
+
+
+def bound_variable_names(formula: Formula) -> set:
+    """The name of every variable bound by a quantifier anywhere inside `formula`."""
+    if isinstance(formula, (ForAll, Exists)):
+        return {formula.var} | bound_variable_names(formula.body)
+    if isinstance(formula, And):
+        return set().union(*[bound_variable_names(c) for c in formula.conjuncts])
+    if isinstance(formula, Or):
+        return set().union(*[bound_variable_names(d) for d in formula.disjuncts])
+    if isinstance(formula, Not):
+        return bound_variable_names(formula.sub)
+    if isinstance(formula, Implies):
+        return bound_variable_names(formula.antecedent) | bound_variable_names(formula.consequent)
+    if isinstance(formula, Iff):
+        return bound_variable_names(formula.left) | bound_variable_names(formula.right)
+    return set()
+
+
+def formula_names(formula: Formula) -> set:
+    """Every variable and constant name occurring in `formula`, free or bound,
+    plus the names of all bound variables -- i.e. every name a fresh variable
+    must avoid in order not to capture or be captured."""
+    if isinstance(formula, AtomicFormula):
+        names = set()
+        for t in formula.args:
+            if isinstance(t, tl.Term):
+                names |= term_names(t)
+        return names
+    if isinstance(formula, And):
+        return set().union(*[formula_names(c) for c in formula.conjuncts])
+    if isinstance(formula, Or):
+        return set().union(*[formula_names(d) for d in formula.disjuncts])
+    if isinstance(formula, Not):
+        return formula_names(formula.sub)
+    if isinstance(formula, Implies):
+        return formula_names(formula.antecedent) | formula_names(formula.consequent)
+    if isinstance(formula, Iff):
+        return formula_names(formula.left) | formula_names(formula.right)
+    if isinstance(formula, Equals):
+        return term_names(formula.left) | term_names(formula.right)
+    if isinstance(formula, (ForAll, Exists)):
+        return {formula.var} | formula_names(formula.body)
+    return set()
+
+
 def is_closed(formula: Formula) -> bool:
     """A formula is closed when it has no free variables."""
     return len(free_variables(formula)) == 0

@@ -103,7 +103,9 @@ def _top_level_formulas(entries: list) -> List[fl.Formula]:
 def conclusion_is_derived(entries, stated_conclusion):
     if stated_conclusion is None:
         return True
-    return any(pl._ast_eq(stated_conclusion, formula) for formula in _top_level_formulas(entries))
+    # Up to the names of bound variables: a stated "there exists a unique set ..."
+    # and the proof's own `exists Y, ... forall X, ...` are the same statement.
+    return any(pl._alpha_eq(stated_conclusion, formula) for formula in _top_level_formulas(entries))
 
 
 def _split_header_block(block):

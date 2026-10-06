@@ -65,27 +65,39 @@ def subset_formula(left: tl.Term, right: tl.Term, var_name: str = SUBSET_BOUND_V
     )
 
 
-# --- Enumeration sugar: `{a, b}` and "x is a or b" ---------------------------
+# --- Set-display sugar: `{a, b}`, `{u in X: P(u)}`, "x is a or b", "S contains exactly a and b" ---
 #
-# `{a, b}` is deliberately NOT a term. As `PAIRING_AXIOM`'s docstring explains,
-# a function symbol for "the pair of a and b" has to wait until a proof has
-# derived the pair's existence *and* uniqueness and promoted it. Instead, an
-# enumeration is sugar that exists only next to a relation, and desugars into
-# ordinary formulas the kernel already understands:
+# A braced expression -- an enumeration `{a, b}` or a builder `{u in X: P(u)}` --
+# is deliberately NOT a term. As `PAIRING_AXIOM`'s docstring explains, a function
+# symbol for "the pair of a and b" has to wait until a proof has derived the
+# pair's existence *and* uniqueness and promoted it. Instead, a display is sugar
+# that exists only next to a relation, and desugars into ordinary formulas the
+# kernel already understands. Writing "v in D" for "v belongs to the set that the
+# display D describes":
 #
-#     x is in {a, b}      ==>  x = a or x = b
-#     x is not in {a, b}  ==>  not (x = a or x = b)
-#     Y = {a, b}          ==>  forall u, (In(u, Y) iff (u = a or u = b))
-#     {a, b} = Y          ==>  (same as above)
-#     x is a or b         ==>  x = a or x = b
-#     x is a, b, or c     ==>  x = a or x = b or x = c
+#     Y = D  /  D = Y               ==>  forall v, (In(v, Y) iff (v in D))
+#     x is in D                     ==>  x in D
+#     x is not in D                 ==>  not (x in D)
 #
-# An enumeration is not accepted anywhere else (for example as a function
-# argument), because there is no term for it to be.
+# where "v in D" unfolds, depending on the display, as
+#
+#     {a, b}            :  v = a or v = b
+#     {u in X: P(u)}    :  In(v, X) and P(v)
+#     {y: P(y)}         :  P(v)
+#     {F(x): x in X}    :  exists x, (In(x, X) and v = F(x))
+#
+# Related sentence-level sugar, also pure disjunction/biconditional:
+#
+#     x is a or b                    ==>  x = a or x = b     (also "x is a, b, or c")
+#     S contains exactly a, b and c  ==>  S = {a, b, c}
+#
+# A display is not accepted anywhere else (for example as a function argument),
+# because there is no term for it to be.
 
-_ENUMERATION_PATTERN = r"\{[^{}]*\}"
+_DISPLAY_PATTERN = r"\{[^{}]*\}"
 _VARIABLE_LIKE = re.compile(r"[A-Za-z][0-9_']*")
 _ELEMENT_NAME_CANDIDATES = ["u", "v", "w", "t", "s", "r"]
+_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 
 
 def _parse_enumeration(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
@@ -104,14 +116,7 @@ def _parse_enumeration(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
 
 
 def _term_names(term: tl.Term) -> set:
-    if isinstance(term, (tl.VariableTerm, tl.ConstantTerm)):
-        return {term.name}
-    if isinstance(term, tl.FunctionTerm):
-        names = set()
-        for arg in term.args:
-            names |= _term_names(arg)
-        return names
-    return set()
+    return fl.term_names(term)
 
 
 def _equals_any(element: tl.Term, options: List[tl.Term]) -> fl.Formula:
@@ -121,44 +126,207 @@ def _equals_any(element: tl.Term, options: List[tl.Term]) -> fl.Formula:
     return equalities[0] if len(equalities) == 1 else fl.Or(*equalities)
 
 
-def _enumeration_equality(set_term: tl.Term, elements: List[tl.Term]) -> fl.Formula:
-    """``S = {t1, ...}``: S has exactly the listed members."""
+class _SetDisplay:
+    """A braced set expression, seen as a membership condition.
 
-    used = _term_names(set_term)
+    `names`: every name the expression mentions, so a fresh variable can avoid them.
+    `bound`: the names it binds internally (an element term may not use them).
+    `variable`: the expression's own variable, reused as the quantified variable
+        of "Y = {...}" when that is free of clashes (so `Y = {u in X: P(u)}`
+        reads `forall u, ...` rather than `forall v, ...`).
+    """
+
+    def __init__(self, names, condition, bound=(), variable=None):
+        self.names = set(names)
+        self._condition = condition
+        self.bound = set(bound)
+        self.variable = variable
+
+    def contains(self, element: tl.Term) -> fl.Formula:
+        """The formula saying `element` belongs to the set this display describes."""
+
+        clash = fl.term_names(element) & self.bound
+        if clash:
+            raise ValueError(
+                f"{sorted(clash)[0]!r} cannot be used as an element of this set expression: "
+                "that name is bound inside the expression"
+            )
+        return self._condition(element)
+
+
+def _enumeration_display(elements: List[tl.Term]) -> _SetDisplay:
+    names = set()
     for element in elements:
-        used |= _term_names(element)
-    name = next((c for c in _ELEMENT_NAME_CANDIDATES if c not in used), None)
-    if name is None:
-        name = "__enumeration_element"
+        names |= fl.term_names(element)
+    return _SetDisplay(names, lambda element: _equals_any(element, elements))
+
+
+def _split_once_at_colon(text: str) -> Optional[Tuple[str, str]]:
+    import SyLoPy.source.ProofParser as pp  # late import: ProofParser imports this module lazily too
+
+    try:
+        parts = pp.split_top_level(text, ":")
+    except ValueError:
+        return None
+    if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+        return None
+    return parts[0].strip(), parts[1].strip()
+
+
+def _parse_builder(text: str, bound_vars: set) -> Optional[_SetDisplay]:
+    """Parse ``{u in X: P(u)}``, ``{y: P(y)}`` or ``{F(x): x in X}``, or return None."""
+
+    import SyLoPy.source.ProofParser as pp
+
+    m = re.fullmatch(r"\{(.*)\}", text.strip(), flags=re.S)
+    if not m:
+        return None
+    halves = _split_once_at_colon(m.group(1))
+    if halves is None:
+        return None
+    head, body = halves
+
+    m_in = re.fullmatch(rf"({_NAME})\s+in\s+(.+)", head, flags=re.I)
+    if m_in:  # {u in X: P(u)}
+        variable = m_in.group(1)
+        source = try_parse_set_term(m_in.group(2), bound_vars)
+        if source is None:
+            return None
+        predicate = pp.parse_formula(body, bound_vars | {variable})
+        return _SetDisplay(
+            fl.formula_names(predicate) | fl.term_names(source) | {variable},
+            lambda element: fl.And(
+                membership_formula(element, source),
+                fl.substitute_in_formula(predicate, variable, element),
+            ),
+            bound=fl.bound_variable_names(predicate),
+            variable=variable,
+        )
+
+    if re.fullmatch(_NAME, head):  # {y: P(y)}
+        variable = head
+        predicate = pp.parse_formula(body, bound_vars | {variable})
+        return _SetDisplay(
+            fl.formula_names(predicate) | {variable},
+            lambda element: fl.substitute_in_formula(predicate, variable, element),
+            bound=fl.bound_variable_names(predicate),
+            variable=variable,
+        )
+
+    return _parse_replacement_builder(head, body, bound_vars)  # {F(x): x in X}
+
+
+def _parse_replacement_builder(head: str, body: str, bound_vars: set) -> Optional[_SetDisplay]:
+    """``{t(x): x in X}`` -- the values of a term as ``x`` ranges over a set.
+
+    The body is a list of clauses joined by "and" or commas. Clauses of the
+    form ``x in X`` say what the variables range over; any other clause is an
+    extra condition on them.
+    """
+
+    import SyLoPy.source.ProofParser as pp
+
+    clauses: List[str] = []
+    try:
+        for piece in pp.split_top_level(body, " and "):
+            clauses.extend(pp.split_top_level(piece, ","))
+    except ValueError:
+        return None
+    ranges: List[Tuple[str, tl.Term]] = []
+    extras: List[str] = []
+    for clause in clauses:
+        m = re.fullmatch(rf"({_NAME})\s+in\s+(.+)", clause.strip(), flags=re.I)
+        source = try_parse_set_term(m.group(2), bound_vars) if m else None
+        if m and source is not None:
+            ranges.append((m.group(1), source))
+        else:
+            extras.append(clause.strip())
+    if not ranges:
+        return None
+
+    variables = [name for name, _source in ranges]
+    inner_bound = bound_vars | set(variables)
+    head_term = pp.parse_term(head, inner_bound)
+    extra_formulas = [pp.parse_formula(text, inner_bound) for text in extras]
+    names = set(variables) | fl.term_names(head_term)
+    bound = set(variables)
+    for _name, source in ranges:
+        names |= fl.term_names(source)
+    for formula in extra_formulas:
+        names |= fl.formula_names(formula)
+        bound |= fl.bound_variable_names(formula)
+
+    def condition(element: tl.Term) -> fl.Formula:
+        conjuncts = [membership_formula(tl.VariableTerm(name), source) for name, source in ranges]
+        conjuncts += extra_formulas
+        conjuncts.append(fl.Equals(element, head_term))
+        result = conjuncts[0] if len(conjuncts) == 1 else fl.And(*conjuncts)
+        for name in reversed(variables):
+            result = fl.Exists(name, result)
+        return result
+
+    return _SetDisplay(names, condition, bound=bound)
+
+
+def _parse_display(text: str, bound_vars: set) -> Optional[_SetDisplay]:
+    elements = _parse_enumeration(text, bound_vars)
+    if elements is not None:
+        return _enumeration_display(elements)
+    return _parse_builder(text, bound_vars)
+
+
+def _display_equality(set_term: tl.Term, display: _SetDisplay) -> fl.Formula:
+    """``S = D``: S has exactly the members the display describes."""
+
+    set_names = fl.term_names(set_term)
+    if display.variable is not None and display.variable not in set_names:
+        name = display.variable
+    else:
+        used = set_names | display.names
+        name = next((c for c in _ELEMENT_NAME_CANDIDATES if c not in used), "__display_element")
     variable = tl.VariableTerm(name)
-    return fl.ForAll(
-        name,
-        fl.Iff(membership_formula(variable, set_term), _equals_any(variable, elements)),
-    )
+    return fl.ForAll(name, fl.Iff(membership_formula(variable, set_term), display.contains(variable)))
 
 
-def _try_parse_enumeration_expression(s: str, text: str, bound_vars: set) -> Optional[SurfaceExpression]:
-    m = re.match(rf"^(.+?)\s*=\s*({_ENUMERATION_PATTERN})$", s)
+def _parse_element_list(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
+    """``a``, ``a and b``, ``a, b and c``, ``a, b, and c`` -> their terms, or None."""
+
+    pieces = [p.strip() for p in re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", text.strip()) if p.strip()]
+    if not pieces:
+        return None
+    terms = [try_parse_set_term(piece, bound_vars) for piece in pieces]
+    return None if any(term is None for term in terms) else terms
+
+
+def _try_parse_display_expression(s: str, text: str, bound_vars: set) -> Optional[SurfaceExpression]:
+    m = re.match(rf"^(.+?)\s*=\s*({_DISPLAY_PATTERN})$", s)
     if m:
         set_term = try_parse_set_term(m.group(1), bound_vars)
-        elements = _parse_enumeration(m.group(2), bound_vars)
-        if set_term is not None and elements is not None:
-            return SurfaceExpression("core", _enumeration_equality(set_term, elements), text)
+        display = _parse_display(m.group(2), bound_vars)
+        if set_term is not None and display is not None:
+            return SurfaceExpression("core", _display_equality(set_term, display), text)
 
-    m = re.match(rf"^({_ENUMERATION_PATTERN})\s*=\s*(.+)$", s)
+    m = re.match(rf"^({_DISPLAY_PATTERN})\s*=\s*(.+)$", s)
     if m:
-        elements = _parse_enumeration(m.group(1), bound_vars)
+        display = _parse_display(m.group(1), bound_vars)
         set_term = try_parse_set_term(m.group(2), bound_vars)
-        if set_term is not None and elements is not None:
-            return SurfaceExpression("core", _enumeration_equality(set_term, elements), text)
+        if set_term is not None and display is not None:
+            return SurfaceExpression("core", _display_equality(set_term, display), text)
 
-    m = re.match(rf"^(.+?)\s+is\s+(not\s+)?in\s+({_ENUMERATION_PATTERN})$", s, flags=re.I)
+    m = re.match(rf"^(.+?)\s+is\s+(not\s+)?in\s+({_DISPLAY_PATTERN})$", s, flags=re.I)
     if m:
         element = try_parse_set_term(m.group(1), bound_vars)
-        elements = _parse_enumeration(m.group(3), bound_vars)
-        if element is not None and elements is not None:
-            formula = _equals_any(element, elements)
+        display = _parse_display(m.group(3), bound_vars)
+        if element is not None and display is not None:
+            formula = display.contains(element)
             return SurfaceExpression("core", fl.Not(formula) if m.group(2) else formula, text)
+
+    m = re.match(r"^(.+?)\s+contains\s+exactly\s+(.+)$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        elements = _parse_element_list(m.group(2), bound_vars)
+        if set_term is not None and elements is not None:
+            return SurfaceExpression("core", _display_equality(set_term, _enumeration_display(elements)), text)
 
     # "x is a or b" / "x is a, b, or c". Only variable-like names are accepted
     # as alternatives, so ordinary English such as "n is even or odd" is not
@@ -175,16 +343,53 @@ def _try_parse_enumeration_expression(s: str, text: str, bound_vars: set) -> Opt
     return None
 
 
+# Candidate wording for the two phrases that contain "and"/"or"/commas. A
+# candidate counts only if the phrase parser accepts exactly that text.
+_ALTERNATIVE_NAME = r"[A-Za-z][0-9_']*(?![\w(])"
+# Words that begin or join phrases rather than naming the subject of one: "...
+# a unique set {a, b} that contains exactly a and b" is not about a set "that".
+_NOT_A_SUBJECT = r"(?!(?:that|which|and|or|not|if|then|iff|implies|such)\b)"
+_ALTERNATIVES_CANDIDATE = re.compile(
+    rf"(?<![\w.]){_NOT_A_SUBJECT}{_NAME}\s+is\s+{_ALTERNATIVE_NAME}"
+    rf"(?:(?:\s*,\s*(?:or\s+)?|\s+or\s+){_ALTERNATIVE_NAME})+(?!\s+is\b)",
+    re.I,
+)
+_LISTED_NAME = rf"{_NAME}(?![\w(])"
+_CONTAINS_EXACTLY_CANDIDATE = re.compile(
+    rf"(?<![\w.]){_NOT_A_SUBJECT}{_NAME}\s+contains\s+exactly\s+{_LISTED_NAME}"
+    rf"(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+){_LISTED_NAME})*",
+    re.I,
+)
+
+
+def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
+    """Spans of `text` that are one set-theory phrase although they contain
+    "or"/"and"/commas: "x is a, b, or c" and "S contains exactly a, b and c".
+
+    Used to keep such a phrase whole when it sits inside a larger formula (see
+    `TheoryEnvironment.phrase_spans`). Names after "contains exactly" run on
+    as long as the list does, so in "S contains exactly a and b and Q" the
+    trailing "Q" is read as a third name; parenthesize the phrase to end it.
+    """
+
+    spans = []
+    for pattern in (_ALTERNATIVES_CANDIDATE, _CONTAINS_EXACTLY_CANDIDATE):
+        for match in pattern.finditer(text):
+            if _try_parse_display_expression(match.group(0), match.group(0), set()) is not None:
+                spans.append(match.span())
+    return spans
+
+
 def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpression]:
     """Parse membership and subset wording before the generic formula parser."""
 
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
 
-    enumeration = _try_parse_enumeration_expression(s, text, bound_vars)
-    if enumeration is not None:
-        return enumeration
+    display = _try_parse_display_expression(s, text, bound_vars)
+    if display is not None:
+        return display
 
-    m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq)\s+(.+)$", s, flags=re.I)
+    m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq|subset)\s+(.+)$", s, flags=re.I)
     if m:
         left = try_parse_set_term(m.group(1), bound_vars)
         right = try_parse_set_term(m.group(2), bound_vars)
@@ -1214,6 +1419,8 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     declarations=SET_DECLARATIONS,
     term_parsers=[try_parse_set_term],
     nested_formula_parsers=[parse_set_formula],
+    phrase_parsers=[parse_set_formula],
+    phrase_spans=[find_phrase_spans],
 )
 
 

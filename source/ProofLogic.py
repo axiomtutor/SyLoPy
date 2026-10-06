@@ -453,6 +453,57 @@ def _ast_eq(a: Any, b: Any) -> bool:
     return a == b
 
 
+def _alpha_eq(a: Any, b: Any) -> bool:
+    """Like `_ast_eq`, but two formulas that differ only in the *names of their
+    bound variables* are equal: ``forall x, P(x)`` and ``forall y, P(y)`` are
+    `_alpha_eq`, while ``forall x, P(x, c)`` and ``forall x, P(x, d)`` (different
+    free names) are not.
+
+    This is the right notion of "the same statement" for comparing what a proof
+    derived with what it claimed to prove. Rules that match formula *shapes*
+    keep using the stricter `_ast_eq`.
+    """
+    return _alpha_eq_in(a, b, {}, {}, 0)
+
+
+def _alpha_eq_in(a: Any, b: Any, env_a: dict, env_b: dict, depth: int) -> bool:
+    if type(a) != type(b):
+        return False
+
+    if isinstance(a, tl.VariableTerm):
+        bound_a, bound_b = a.name in env_a, b.name in env_b
+        if bound_a or bound_b:
+            return bound_a and bound_b and env_a[a.name] == env_b[b.name]
+        return a.name == b.name
+    if isinstance(a, tl.ConstantTerm):
+        return a.name == b.name
+    if isinstance(a, tl.FunctionTerm):
+        return (a.symbol == b.symbol and len(a.args) == len(b.args) and
+                all(_alpha_eq_in(x, y, env_a, env_b, depth) for x, y in zip(a.args, b.args)))
+
+    if isinstance(a, fl.AtomicFormula):
+        return (a.predicate == b.predicate and len(a.args) == len(b.args) and
+                all(_alpha_eq_in(x, y, env_a, env_b, depth) for x, y in zip(a.args, b.args)))
+    if isinstance(a, fl.And):
+        return (len(a.conjuncts) == len(b.conjuncts) and
+                all(_alpha_eq_in(x, y, env_a, env_b, depth) for x, y in zip(a.conjuncts, b.conjuncts)))
+    if isinstance(a, fl.Or):
+        return (len(a.disjuncts) == len(b.disjuncts) and
+                all(_alpha_eq_in(x, y, env_a, env_b, depth) for x, y in zip(a.disjuncts, b.disjuncts)))
+    if isinstance(a, fl.Not):
+        return _alpha_eq_in(a.sub, b.sub, env_a, env_b, depth)
+    if isinstance(a, fl.Implies):
+        return (_alpha_eq_in(a.antecedent, b.antecedent, env_a, env_b, depth) and
+                _alpha_eq_in(a.consequent, b.consequent, env_a, env_b, depth))
+    if isinstance(a, (fl.Iff, fl.Equals)):
+        return (_alpha_eq_in(a.left, b.left, env_a, env_b, depth) and
+                _alpha_eq_in(a.right, b.right, env_a, env_b, depth))
+    if isinstance(a, (fl.ForAll, fl.Exists)):
+        return _alpha_eq_in(a.body, b.body, {**env_a, a.var: depth}, {**env_b, b.var: depth}, depth + 1)
+
+    return a == b
+
+
 # ==========================================================================
 # SECTION 2 -- Pattern matching (quantifier instantiation / generalization)
 # ==========================================================================

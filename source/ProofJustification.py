@@ -65,6 +65,26 @@ def _parse_indices(text: str) -> List[str]:
     return [token.strip() for token in re.split(r"\s*(?:,|and)\s*", text) if token.strip()]
 
 
+# A cited line label ("3", "3.2.1"), and a reference list made of labels and
+# "A to B" ranges: "3, 3.2.1", "3.1 to 3.2", "2 and 3".
+_LABEL_PATTERN = r"[0-9]+(?:\.[A-Za-z0-9_]+)*"
+_REF_ITEM_PATTERN = rf"{_LABEL_PATTERN}(?:\s+to\s+{_LABEL_PATTERN})?"
+_REF_LIST_PATTERN = rf"{_REF_ITEM_PATTERN}(?:\s*(?:,|and)\s*{_REF_ITEM_PATTERN})*"
+
+
+def _parse_refs(text: str) -> List[str]:
+    """Split a reference list into line labels, in order.
+
+    ``"3, 3.2.1"`` gives ``["3", "3.2.1"]``. An ``A to B`` range gives its two
+    endpoint labels, ``"3.1 to 3.2"`` -> ``["3.1", "3.2"]``; what the endpoints
+    mean is up to the rule that is cited (the range is not expanded).
+    """
+    labels: List[str] = []
+    for item in re.split(r"\s*(?:,|\band\b)\s*", text.strip()):
+        labels.extend(part.strip() for part in re.split(r"\s+to\s+", item.strip()) if part.strip())
+    return labels
+
+
 def _rule(name: str):
     factory = _ALIASES.get(_normalize(name))
     if factory is not None:
@@ -96,6 +116,10 @@ def _rule(name: str):
         "axiom of power set": "PowerSetAxiom",
         "power set axiom": "PowerSetAxiom",
         "axiom of infinity": "InfinityAxiom",
+        "uniqueness": "Uniqueness",
+        "wlog": "WLOG",
+        "without loss of generality": "WLOG",
+        "mutatis mutandis": "MutatisMutandis",
     }
     target = placeholders.get(_normalize(name))
     if target is not None:
@@ -140,10 +164,11 @@ def parse_justification(s: str):
         rule_name = s[:citation.start(0) + len(citation.group(1))].strip()
         refs = _parse_indices(citation.group(2))
         return ("rule", _cited_rule(rule_name, refs), refs)
-    comma = re.match(r"^([a-z][a-z' \-]*?)\s*,\s*([0-9]+(?:\.[A-Za-z0-9_]+)*(?:\s*,\s*[0-9]+(?:\.[A-Za-z0-9_]+)*)*)\s*$", low)
-    if comma:
-        refs = _parse_indices(comma.group(2))
-        return ("rule", _cited_rule(s[:comma.end(1)].strip(), refs), refs)
+    # "Rule, 3, 3.2.1" / "Rule, 3.1 to 3.2": the rule's name, then the lines it cites.
+    comma_citation = re.match(rf"^(?P<name>[^,]*[A-Za-z][^,]*?)\s*,\s*(?P<refs>{_REF_LIST_PATTERN})\s*$", s)
+    if comma_citation:
+        refs = _parse_refs(comma_citation.group("refs"))
+        return ("rule", _cited_rule(comma_citation.group("name"), refs), refs)
     normalized = _normalize(s)
     if normalized in {"arbitrary", "fresh variable", "fresh constant", "arbitrary object"}:
         return ("arbitrary",)

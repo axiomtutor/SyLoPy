@@ -88,6 +88,8 @@ A `TheoryEnvironment` may contribute:
 
 - `formula_parsers` -- consulted only at the top of a single proof line (by `_ElaborationContext.parse_surface_expression`); return a `SurfaceExpression`, which may carry extra structure (e.g. SetTheory's raw subset operands) a line elaborator later needs.
 - `nested_formula_parsers` / `term_parsers` -- consulted by `ProofParser.parse_formula`/`parse_term` themselves, so theory syntax is also recognized in *nested* positions (inside `and`/`or`/`if...then`/etc., e.g. NumberTheory's `a|n` inside `if a|n then b`), not only when a formula consists of nothing else. `nested_formula_parsers` is checked *after* every connective the base grammar splits on, not before -- a theory phrase containing a connective-looking substring must not be given the chance to swallow more than intended before the grammar gets to split around it. Return a plain `Formula`/`Term` directly (no wrapper).
+- `phrase_parsers` -- given the *whole* (sub)string at the start of every recursive formula parse, before the grammar splits it at a connective. For a theory phrase whose wording contains a connective or `=` ("x is a or b", `Y = {a, b}`). A phrase parser must return `None` unless the entire string is its phrase.
+- `phrase_spans` -- finders that locate such phrases *inside* a longer string, as `(start, end)` spans ("Q(w) and w is h, i, j, or k"). Each top-level span is wrapped in parentheses before the grammar splits, so the phrase reaches its phrase parser whole. A finder should report only text its own phrase parser accepts. (Natural-language existentials -- `there exists a unique set Y such that ...` -- are read by `ProofParserPolicy` itself, right after the phrase parsers, and desugar to ordinary quantifiers.)
 - `line_elaborators`
 - core `rules`
 - core `axioms`
@@ -95,7 +97,8 @@ A `TheoryEnvironment` may contribute:
 
 Set theory registers:
 
-- natural membership, subset, and "has no elements" syntax
+- natural membership, subset (`subseteq`, `subset`, "is a subset of"), and "has no elements" syntax
+- `{a, b}` enumerations, set-builder notation, `S contains exactly a, b and c`, "x is a or b" -- each desugared to a plain membership formula, none a term of its own
 - `EmptySetPropertyRule`, `SetEqualityRule`
 - declarations for `EmptySet` and the binary predicate `In`
 - the `Subset proof below` elaborator
