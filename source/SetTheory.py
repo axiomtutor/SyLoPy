@@ -1472,7 +1472,7 @@ def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
     # witness introduction is specifically the natural-language form beginning
     # with "there is" or "there exists".
     surface = entry.formula_text.strip()
-    if not re.match(r"^there\\s+(?:is|exists)\\b", surface, re.I):
+    if not re.match(r"^there\s+(?:is|exists)\b", surface, re.I):
         return None
 
     try:
