@@ -39,6 +39,9 @@ A `Proof` is built from a list of *entries*. Each entry is one of:
                                             first line)
     ('rule', rule_instance, [labels...])   phi follows from the cited
                                             earlier lines by this rule
+    ('rule', rule_instance, [labels...], [declarations...])
+                                            same, with declarations made
+                                            visible at this proof line
     ('rule_below', rule_instance)          phi follows from the subproof
                                             immediately below (paired with
                                             the 4-tuple entry form above)
