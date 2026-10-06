@@ -36,7 +36,7 @@ def test_direct_pairing_citation_names_the_witness_and_states_its_property():
     assert pl._ast_eq(property_formula, fl.Or(
         fl.Equals(tl.VariableTerm("u"), tl.ConstantTerm("a", "a")),
         fl.Equals(tl.VariableTerm("u"), tl.ConstantTerm("b", "b")),
-    )
+    ))
 
 
 def test_direct_pairing_citation_checks_end_to_end():
