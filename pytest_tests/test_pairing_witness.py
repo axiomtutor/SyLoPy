@@ -2,6 +2,7 @@
 import pytest
 
 from .support import fl, pl, pp, st, tl
+from SyLoPy.source.ProofElaboration import ElaborationError
 
 
 PAIRING_PROOF = """1. Let a, b be any set. (Declaration)
@@ -32,7 +33,7 @@ def test_direct_pairing_citation_names_the_witness_and_states_its_property():
     assert match is not None
     _, set_term, property_formula = match
     assert set_term == tl.ConstantTerm("Y", "Y")
-    assert property_formula == fl.Or(
+    assert pl._ast_eq(property_formula, fl.Or(
         fl.Equals(tl.VariableTerm("u"), tl.ConstantTerm("a", "a")),
         fl.Equals(tl.VariableTerm("u"), tl.ConstantTerm("b", "b")),
     )
@@ -63,7 +64,7 @@ def test_direct_pairing_rejects_a_reused_witness_name():
     text = """1. Let a, b, Y be any set. (Declaration)
 2. There is a set Y = {a, b}. (Axiom of pairing)
 """
-    with pytest.raises(pp.ElaborationError, match="already declared"):
+    with pytest.raises(ElaborationError, match="already declared"):
         pp.parse_proof_text(text)
 
 
