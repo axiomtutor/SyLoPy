@@ -3051,6 +3051,13 @@ class ProofValidator:
 
         tag = justification[0]
         explicit_declarations = list(justification[1]) if len(justification) >= 2 and isinstance(justification[1], list) else []
+        # A rule may optionally produce declarations alongside its conclusion.
+        # This is used by theory sugar such as direct Pairing witness
+        # introduction: the cited axiom names a fresh witness and states its
+        # defining property on the same proof line. The optional fourth slot
+        # leaves all existing three-slot rule justifications unchanged.
+        if tag == "rule" and len(justification) >= 4 and isinstance(justification[3], list):
+            explicit_declarations.extend(justification[3])
 
         err = self._register_declarations(explicit_declarations, declarations, label, sidx, block_label)
         if err:
@@ -3465,7 +3472,7 @@ class ProofValidator:
     def _validate_rule(self, phi: fl.Formula, justification: tuple, label: Optional[str],
                        sidx: int, block_label: Optional[str], labels: LabelScope) -> Optional[ValidationError]:
         """Validate a rule citation, including labels that denote bundled premises."""
-        if len(justification) != 3:
+        if len(justification) not in (3, 4):
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed rule justification (expected a rule and a list of cited lines)")
         rule, indices = justification[1], justification[2]
