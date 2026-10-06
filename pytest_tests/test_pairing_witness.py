@@ -1,7 +1,7 @@
 """Regression tests for direct named-witness Pairing citations."""
 import pytest
 
-from .support import fl, mp, pp, st, tl
+from .support import fl, pl, pp, st, tl
 
 
 PAIRING_PROOF = """1. Let a, b be any set. (Declaration)
@@ -25,7 +25,7 @@ def test_direct_pairing_citation_names_the_witness_and_states_its_property():
     assert justification[1].name == "PairingAxiom"
     assert justification[2] == []
     assert [(d.name, d.kind) for d in justification[3]] == [
-        ("Y", st.pl.DeclarationKind.OBJECT)
+        ("Y", pl.DeclarationKind.OBJECT)
     ]
 
     match = st.match_membership_characterization(formula)
