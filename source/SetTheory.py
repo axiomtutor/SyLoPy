@@ -924,20 +924,71 @@ class PairingAxiomRule(pl.InferenceRule):
     name = "PairingAxiom"
     premise_arity = 0
 
+    def __init__(self, witness_name: Optional[str] = None):
+        self.witness_name = witness_name
+
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
-        
-        # Try to match the universal form first (original behavior)
+
+        if self.witness_name is not None:
+            return self._check_witness_form(phi)
+
+        # Preserve the ordinary zero-premise axiom-instance behavior.
         if isinstance(phi, fl.ForAll):
             return self._check_universal_form(phi)
-        
-        # Try to match the instance form (for specific a, b)
+
         if isinstance(phi, fl.Exists):
             return self._check_instance_form(phi)
-        
+
         return False
-    
+
+    def _check_witness_form(self, phi: fl.Formula) -> bool:
+        """Check the defining property produced by direct witness syntax.
+
+        The witness has already been introduced as an ordinary constant by
+        the elaborator. This rule therefore checks only the defining property:
+        forall u, (In(u, Y) iff (u = a or u = b)).
+        """
+        if not isinstance(phi, fl.ForAll):
+            return False
+        u_name = phi.var
+        body = phi.body
+        if not isinstance(body, fl.Iff):
+            return False
+        membership, right = body.left, body.right
+        if not (
+            isinstance(membership, fl.AtomicFormula)
+            and membership.predicate == MEMBERSHIP_SYMBOL
+            and len(membership.args) == 2
+            and pl._ast_eq(membership.args[0], tl.VariableTerm(u_name))
+            and pl._ast_eq(membership.args[1], tl.ConstantTerm(self.witness_name, self.witness_name))
+        ):
+            return False
+        if not isinstance(right, fl.Or) or len(right.disjuncts) != 2:
+            return False
+        eq1, eq2 = right.disjuncts
+        if not (isinstance(eq1, fl.Equals) and isinstance(eq2, fl.Equals)):
+            return False
+
+        u_term = tl.VariableTerm(u_name)
+
+        def other_side(eq: fl.Equals) -> Optional[tl.Term]:
+            if pl._ast_eq(eq.left, u_term):
+                return eq.right
+            if pl._ast_eq(eq.right, u_term):
+                return eq.left
+            return None
+
+        first, second = other_side(eq1), other_side(eq2)
+        if first is None or second is None:
+            return False
+        witness = self.witness_name
+        return not (
+            witness in fl.term_names(first)
+            or witness in fl.term_names(second)
+        )
+
     def _check_universal_form(self, phi: fl.ForAll) -> bool:
         """Check the fully universal form: forall a, forall b, exists Y, forall u, ..."""
         a_name = phi.var
@@ -1404,6 +1455,66 @@ class ReplacementSchemaRule(pl.InferenceRule):
         return pl._ast_eq(B_xy_again, B_xy)
 
 
+def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
+    """Elaborate direct Pairing witness syntax.
+
+    The ordinary natural-existential parser already turns
+    there is a set Y = {a, b}
+    into Exists Y, P(Y), where P is the membership characterization of the
+    displayed set. This elaborator names Y as an ordinary scoped declaration
+    and lowers the citation to P(Y), so later Set property steps can use it
+    directly.
+    """
+    if entry.justification_text.strip().lower() != "axiom of pairing":
+        return None
+
+    # Keep the existing symbolic existential citation form intact. Direct
+    # witness introduction is specifically the natural-language form beginning
+    # with "there is" or "there exists".
+    surface = entry.formula_text.strip()
+    if not re.match(r"^there\s+(?:is|exists)\b", surface, re.I):
+        return None
+
+    try:
+        parsed = context.parse_core_formula(entry.formula_text)
+    except (TypeError, ValueError) as exc:
+        raise ElaborationError(str(exc), entry.span) from exc
+
+    if not isinstance(parsed, fl.Exists):
+        raise ElaborationError(
+            "'Axiom of pairing' witness syntax must introduce an existentially named set, "
+            "for example 'There is a set Y = {a, b}'",
+            entry.span,
+        )
+
+    witness_name = parsed.var
+    if context.lookup_declaration(witness_name) is not None:
+        raise ElaborationError(
+            f"pairing witness '{witness_name}' is already declared in this proof or an enclosing scope",
+            entry.span,
+        )
+
+    declaration = pl.Declaration(
+        name=witness_name,
+        kind=pl.DeclarationKind.OBJECT,
+        type_name="set-theoretic witness",
+    )
+    witness_term = tl.ConstantTerm(witness_name, witness_name)
+    defining_property = fl.substitute_in_formula(parsed.body, parsed.var, witness_term)
+
+    rule = PairingAxiomRule(witness_name=witness_name)
+    if not rule.applies([], defining_property):
+        raise ElaborationError(
+            "'Axiom of pairing' witness syntax must describe a set containing exactly two terms, "
+            "for example 'There is a set Y = {a, b}'",
+            entry.span,
+        )
+
+    context.register_declaration(declaration, entry.span)
+    context.register_origin(entry.label, entry.span)
+    return (entry.label, defining_property, ("rule", rule, [], [declaration]))
+
+
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
@@ -1412,7 +1523,7 @@ SET_DECLARATIONS = [
 SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
-    line_elaborators=[elaborate_subset_proof],
+    line_elaborators=[elaborate_subset_proof, elaborate_pairing_witness],
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
     axioms=SET_AXIOMS,
