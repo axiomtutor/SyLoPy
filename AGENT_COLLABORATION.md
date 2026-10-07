@@ -137,3 +137,162 @@ describe the mismatch rather than quietly changing the design through code.
 The goal is not for every coding agent to make independent progress as quickly
 as possible. The goal is for their changes to compose without losing the
 project's accumulated design decisions.
+
+
+# Here is what CoPilot wrote
+
+# Response from Microsoft Copilot
+
+After reading README.md, todos.txt, and AGENT_COLLABORATION.md, my view is that the project is no longer limited by proof-checking capability. It is limited by specification clarity and by the cost of extending the language safely.
+
+## What I would do next
+
+### 1. Finish the parser oracle before adding more theory features
+
+I think the highest-leverage work is not another inference rule.
+
+It is expanding and merging the parser oracle.
+
+Reasoning:
+
+- The architecture is intentionally parser -> elaboration -> kernel.
+- Most future features are planned as sugar.
+- Sugar is where misunderstandings accumulate.
+- An independent oracle gives a specification of language meaning that is separate from implementation.
+
+The oracle is already being treated correctly as a specification, not merely a regression suite. I would continue that direction aggressively.
+
+For every new syntax proposal:
+
+1. Add oracle cases first.
+2. Write intended logical readings.
+3. Resolve ambiguities before implementation.
+4. Only then modify parser/elaboration.
+
+This reduces the risk of accumulating accidental language semantics.
+
+### 2. Create a formal "surface-language specification"
+
+The README explains what the language can do.
+
+The oracle explains many examples.
+
+A missing piece is a document that answers:
+
+- What constructs are officially part of the language?
+- What are merely implementation details?
+- What is guaranteed stable?
+
+I would create a markdown document describing:
+
+- declarations;
+- assumptions;
+- subproof structure;
+- citation syntax;
+- theorem promotion;
+- scope rules;
+- elaboration guarantees.
+
+Think of it as a language reference manual.
+
+This would likely provide more long-term value than another theorem rule.
+
+### 3. Keep resisting kernel growth
+
+The current design principle appears correct.
+
+The kernel should remain small.
+
+Whenever evaluating a new feature, ask:
+
+"Can this elaborate into something the kernel already understands?"
+
+If yes, prefer elaboration.
+
+The existing plans for:
+
+- unique existence;
+- bounded quantifiers;
+- set-builder notation;
+- witness naming;
+
+all seem aligned with this philosophy.
+
+I would continue following it.
+
+## About the remaining architecture decision
+
+I agree with the current separation between:
+
+- ProofContext
+- kernel validation scopes
+
+provided equivalence tests remain strong.
+
+The elaborator and validator serve different purposes.
+
+Some duplication is acceptable if it preserves a clear trust boundary.
+
+A proof checker benefits from being able to ask:
+
+"Did elaboration accidentally permit something the kernel rejects?"
+
+Separation helps answer that question.
+
+Unless maintenance becomes painful, I would keep them independent.
+
+## Theory work I would prioritize
+
+If theory expansion resumes, my suggested order is:
+
+1. Merge parse-oracle work.
+2. Bounded quantifiers.
+3. Named ZFC axiom citations.
+4. Set-property completion.
+5. Uniqueness sugar.
+6. WLOG.
+7. Mutatis mutandis.
+
+Why?
+
+The first five mostly fit existing architecture.
+
+WLOG and especially mutatis mutandis appear qualitatively different.
+
+Both involve proof transformation rather than simple elaboration.
+
+I would not rush them.
+
+## WLOG caution
+
+The replay-based design is intellectually attractive because it preserves actual proof checking.
+
+The danger is combinatorial complexity.
+
+Before implementing WLOG:
+
+- define exact region boundaries;
+- define citation remapping formally;
+- define correspondence invariants;
+- create tiny proof examples covering each rule interaction.
+
+I would build a design-level test corpus before writing code.
+
+## Long-term vision
+
+My impression is that SyLoPy's unique strength is not theorem proving.
+
+It is readable mathematical proofs that elaborate into a rigorously checked core.
+
+I would optimize for:
+
+- language quality;
+- explainability;
+- reliable elaboration;
+- maintainable theory extensions;
+
+rather than for maximal automation.
+
+Many systems can search for proofs.
+
+Much fewer systems can act as a readable mathematical language with a small, understandable kernel underneath.
