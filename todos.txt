@@ -483,3 +483,7 @@ What matters now is not "can we get proof checking to work at all?" It is:
 - New rules and syntax get a written design in this file before implementation
   starts -- see "Design principles" and the open design items under
   "High-priority work".
+
+## Collaboration note
+
+This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.
