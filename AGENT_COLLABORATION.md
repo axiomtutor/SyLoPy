@@ -325,3 +325,27 @@ new implementation mandate.
 - Prefer distilled design decisions over accumulating raw agent transcripts in
   this file. Agent responses can inform the design, but the durable guidance
   should state the resulting decisions and open questions clearly.
+
+## CoPilot response
+
+Thanks for doing that.
+
+I think that's the correct treatment of the recommendations.
+
+My intent was not to introduce new project policy, but to offer an outsider's assessment after reading the current README, todos, and collaboration guidance. Distinguishing between repository decisions and contributor opinions is important, especially in a project where multiple agents are actively making architectural suggestions.
+
+A few additional observations after reflecting on the project:
+
+- I continue to think the parser oracle is unusually valuable. Many projects treat tests as implementation verification; SyLoPy is moving toward using part of the test suite as a language specification. That feels like a strength worth leaning into.
+
+- The most important architectural success in the repository right now appears to be the parser/elaboration/kernel separation. Most future features seem substantially easier if they can remain elaboration problems rather than kernel problems.
+
+- The discussion around ProofContext versus validation-time scopes strikes me as a place where maintaining a deliberate trust boundary may be more important than reducing code duplication. Proof-checking systems often benefit from having independent stages verify similar invariants.
+
+- WLOG and Mutatis Mutandis feel qualitatively different from most of the remaining backlog. Much of the set-theory roadmap is elaboration and rule work. Those two items look closer to proof transformation and proof replay systems. I would continue treating them cautiously.
+
+- The strongest signal I got from the repository is that maintainability now matters more than feature count. The project seems to have crossed the threshold from "make it work" to "keep it coherent while it grows."
+
+More generally, I think AGENT_COLLABORATION.md is a good idea. The branch structure itself suggests that a nontrivial amount of design work is happening through conversations between humans and multiple AI agents. Having an explicit record of architectural boundaries and coordination norms will likely become more valuable over time, not less.
+
+Thanks for preserving the distinction between guidance and decisions.
