@@ -1,0 +1,548 @@
+# Questions for the author
+# Q1. "contains exactly" is specified explicitly for three elements, but the
+#     grammar for one, two, and four elements is not stated. I read these as
+#     "contains exactly a", "contains exactly a and b", and
+#     "contains exactly a, b, c and d", respectively.
+# Q2. The nested-context examples specify that a phrase occurs inside a larger
+#     formula, but do not prescribe the English wrapper. I use ordinary
+#     wrappers such as "if ... then ...", "... and ...", "not (...)", and
+#     "... iff ..."; the intended nesting is the mathematical one.
+# Q3. In the set-builder readings, P and F are treated as ordinary predicate
+#     and function symbols, not as metasyntactic placeholders.
+# Q4. "there exists a unique set Y such that BODY(Y)" is read using
+#     capture-avoiding substitution of a fresh variable Z for Y in BODY.
+# Q5. The braces in "there exists a unique set {a, b} ..." are treated only
+#     as a label for the witness, exactly as the stated reading says; they do
+#     not introduce a set term.
+
+# Enumeration equality
+
+id: enum-eq-one-line
+context: line
+surface: Y = {a}
+expect: forall u, (In(u, Y) iff u = a)
+why: Equality with a one-element enumeration says exactly a is a member of Y.
+
+id: enum-eq-two-nested
+context: nested
+surface: if Y = {a, b} then a is in Y
+expect: (forall u, (In(u, Y) iff (u = a or u = b))) -> In(a, Y)
+why: The equality characterizes Y as having exactly a and b, then the consequent asserts a is in Y.
+
+id: enum-eq-three-line-reverse
+context: line
+surface: {c, d, e} = S
+expect: forall u, (In(u, S) iff (u = c or u = d or u = e))
+why: Equality is symmetric, so the enumeration on the left characterizes S by its three listed members.
+
+id: enum-eq-four-nested
+context: nested
+surface: T = {p, q, r, s} iff Q(T)
+expect: (forall u, (In(u, T) iff (u = p or u = q or u = r or u = s))) iff Q(T)
+why: The enumeration equality is the left operand of the biconditional.
+
+id: enum-eq-two-line-uppercase
+context: line
+surface: A = {m, n}
+expect: forall u, (In(u, A) iff (u = m or u = n))
+why: A contains exactly the two listed elements.
+
+id: enum-eq-one-nested-reverse
+context: nested
+surface: not ({r} = B)
+expect: not (forall u, (In(u, B) iff u = r))
+why: Negating the equality negates its exact-membership characterization.
+
+id: enum-eq-four-line
+context: line
+surface: C = {w, x, y, z}
+expect: forall u, (In(u, C) iff (u = w or u = x or u = y or u = z))
+why: C is characterized as containing exactly the four listed elements.
+
+id: enum-eq-three-nested
+context: nested
+surface: P(A) and A = {g, h, i}
+expect: P(A) and (forall u, (In(u, A) iff (u = g or u = h or u = i)))
+why: The conjunction keeps the preceding property and adds the enumeration equality characterization.
+
+id: enum-eq-four-digit-names
+context: nested
+surface: if X = {a1, b2, c3, d4} then R(X)
+expect: (forall u, (In(u, X) iff (u = a1 or u = b2 or u = c3 or u = d4))) -> R(X)
+why: Names with digits are ordinary constants, so the four listed constants determine X.
+
+# Membership in an enumeration
+
+id: enum-member-one-line
+context: line
+surface: x is in {a}
+expect: x = a
+why: Membership in a singleton enumeration is equality with its sole element.
+
+id: enum-member-two-nested
+context: nested
+surface: if y is in {b, c} then P(y)
+expect: (y = b or y = c) -> P(y)
+why: Membership in the two-element enumeration means equality with b or c.
+
+id: enum-member-three-line
+context: line
+surface: z is in {p, q, r}
+expect: z = p or z = q or z = r
+why: Membership means equality with at least one of the three listed elements.
+
+id: enum-member-four-nested
+context: nested
+surface: Q(x) and x is in {h, i, j, k}
+expect: Q(x) and (x = h or x = i or x = j or x = k)
+why: The membership phrase contributes the four-way equality disjunction.
+
+id: enum-not-member-one-line
+context: line
+surface: x is not in {m}
+expect: not (x = m)
+why: Nonmembership is the negation of membership, which for a singleton is x = m.
+
+id: enum-not-member-two-nested
+context: nested
+surface: not (y is in {n, p})
+expect: not (y = n or y = p)
+why: The nonmembership phrase is the negation of the two-way membership disjunction.
+
+id: enum-not-member-three-line
+context: line
+surface: z is not in {a, b, c}
+expect: not (z = a or z = b or z = c)
+why: z is not equal to any of the three listed alternatives.
+
+id: enum-not-member-four-nested
+context: nested
+surface: R(x) iff x is not in {e, f, g, h}
+expect: R(x) iff not (x = e or x = f or x = g or x = h)
+why: The right side is the negation of membership in the four-element enumeration.
+
+# "x is a or b" alternatives
+
+id: alternatives-two-line
+context: line
+surface: x is a or b
+expect: x = a or x = b
+why: The specified alternative syntax is equality to one of the two single-letter names.
+
+id: alternatives-three-nested
+context: nested
+surface: if y is c or d or e then P(y)
+expect: (y = c or y = d or y = e) -> P(y)
+why: The three alternatives become a three-way equality disjunction.
+
+id: alternatives-three-comma-line
+context: line
+surface: z is p, q, or r
+expect: z = p or z = q or z = r
+why: The comma-and-or form lists the same three equality alternatives.
+
+id: alternatives-four-nested
+context: nested
+surface: Q(w) and w is h, i, j, or k
+expect: Q(w) and (w = h or w = i or w = j or w = k)
+why: Four single-letter alternatives desugar to four equalities joined by or.
+
+id: alternatives-digits-line
+context: line
+surface: x1 is a2 or b3
+expect: x1 = a2 or x1 = b3
+why: A single letter followed by digits still qualifies as an alternative name.
+
+id: alternatives-digits-nested
+context: nested
+surface: not (y2 is c1 or d4)
+expect: not (y2 = c1 or y2 = d4)
+why: The digit-suffixed names are ordinary alternatives and the outer not negates the disjunction.
+
+id: alternatives-four-comma-line
+context: line
+surface: t is a1, b2, c3, or d4
+expect: t = a1 or t = b2 or t = c3 or t = d4
+why: The allowed single-letter-plus-digits names form a four-way equality disjunction.
+
+id: alternatives-two-iff-nested
+context: nested
+surface: x is r or s iff R(x)
+expect: (x = r or x = s) iff R(x)
+why: The alternative phrase is the left operand of the biconditional.
+
+# Subset is non-strict
+
+id: subseteq-line
+context: line
+surface: X subseteq Y
+expect: forall v, (In(v, X) -> In(v, Y))
+why: The subset relation says every member of X is a member of Y.
+
+id: subset-of-nested
+context: nested
+surface: if A is a subset of B then P(A, B)
+expect: (forall v, (In(v, A) -> In(v, B))) -> P(A, B)
+why: "is a subset of" has the same non-strict meaning as subseteq.
+
+id: subset-token-line
+context: line
+surface: M subset N
+expect: forall v, (In(v, M) -> In(v, N))
+why: The project's subset syntax is explicitly non-strict.
+
+id: subset-token-nested
+context: nested
+surface: Q(P) and Q subset R
+expect: Q(P) and (forall v, (In(v, Q) -> In(v, R)))
+why: The subset clause expands to universal membership implication inside the conjunction.
+
+id: subset-of-line-reverse-names
+context: line
+surface: S is a subset of T
+expect: forall v, (In(v, S) -> In(v, T))
+why: Every element of S must also belong to T.
+
+id: subseteq-iff-nested
+context: nested
+surface: X subseteq Y iff P(X, Y)
+expect: (forall v, (In(v, X) -> In(v, Y))) iff P(X, Y)
+why: The non-strict subset formula is the left operand of the biconditional.
+
+id: subset-line-quantified
+context: nested
+surface: forall x, X subseteq Y
+expect: forall x, (forall v, (In(v, X) -> In(v, Y)))
+why: The subset phrase is the body of an outer universal quantifier; its own witness variable is fresh.
+
+id: subset-not-nested
+context: nested
+surface: not (A is a subset of B)
+expect: not (forall v, (In(v, A) -> In(v, B)))
+why: Negating a subset statement negates its universal implication.
+
+# Set-builder notation
+
+id: builder-restricted-line
+context: line
+surface: Y = {u in X: P(u)}
+expect: forall u, (In(u, Y) iff (In(u, X) and P(u)))
+why: A member of Y is exactly an element of X satisfying P.
+
+id: builder-restricted-nested
+context: nested
+surface: if Y = {u in X: P(u)} then Q(Y)
+expect: (forall u, (In(u, Y) iff (In(u, X) and P(u)))) -> Q(Y)
+why: The set-builder equality supplies the membership characterization used as the antecedent.
+
+id: builder-unrestricted-line
+context: line
+surface: A = {y: Q(y)}
+expect: forall y, (In(y, A) iff Q(y))
+why: The unrestricted builder characterizes A by exactly the elements satisfying Q.
+
+id: builder-unrestricted-nested
+context: nested
+surface: R(A) and A = {y: Q(y)}
+expect: R(A) and (forall y, (In(y, A) iff Q(y)))
+why: The builder equality is the second conjunct of the larger formula.
+
+id: builder-image-line
+context: line
+surface: B = {F(x): x in X}
+expect: forall v, (In(v, B) iff exists x, (In(x, X) and v = F(x)))
+why: A value v is in the image set exactly when some x in X maps to v under F.
+
+id: builder-image-nested
+context: nested
+surface: if B = {F(x): x in X} then B subseteq C
+expect: (forall v, (In(v, B) iff exists x, (In(x, X) and v = F(x)))) -> (forall v, (In(v, B) -> In(v, C)))
+why: The antecedent characterizes the image set and the consequent states that it is a subset of C.
+
+id: builder-membership-line
+context: line
+surface: z is in {u in X: P(u)}
+expect: In(z, X) and P(z)
+why: Membership in the restricted builder means both membership in X and satisfaction of P.
+
+id: builder-membership-nested
+context: nested
+surface: Q(z) and z is in {u in X: P(u)}
+expect: Q(z) and (In(z, X) and P(z))
+why: The builder membership phrase becomes its defining conjunction inside the surrounding conjunction.
+
+id: builder-image-nested-iff
+context: nested
+surface: B = {G(t): t in S} iff R(B)
+expect: (forall v, (In(v, B) iff exists t, (In(t, S) and v = G(t)))) iff R(B)
+why: The image-set characterization is the left side of the biconditional.
+
+id: builder-unrestricted-line-two-symbols
+context: line
+surface: C = {x: P(x) and Q(x)}
+expect: forall x, (In(x, C) iff (P(x) and Q(x)))
+why: The property in an unrestricted builder is the full conjunction P(x) and Q(x).
+
+id: builder-restricted-four-context
+context: nested
+surface: not (C = {w in D: R(w)})
+expect: not (forall w, (In(w, C) iff (In(w, D) and R(w))))
+why: Negation applies to the full membership characterization of the restricted builder.
+
+# "contains exactly"
+
+id: contains-exactly-one-line
+context: line
+surface: S contains exactly a
+expect: forall u, (In(u, S) iff u = a)
+why: Interpreting the one-element wording naturally, S has exactly the member a.
+ambiguous: yes
+
+id: contains-exactly-two-nested
+context: nested
+surface: if T contains exactly b and c then P(T)
+expect: (forall u, (In(u, T) iff (u = b or u = c))) -> P(T)
+why: Interpreting the two-element wording naturally, T has exactly b and c.
+ambiguous: yes
+
+id: contains-exactly-three-line
+context: line
+surface: U contains exactly d, e and f
+expect: forall u, (In(u, U) iff (u = d or u = e or u = f))
+why: This is the specified three-element reading, so U has exactly d, e and f.
+
+id: contains-exactly-four-nested
+context: nested
+surface: Q(V) and V contains exactly g, h, i and j
+expect: Q(V) and (forall u, (In(u, V) iff (u = g or u = h or u = i or u = j)))
+why: Interpreting the four-element wording as the evident extension of the specified three-element form.
+ambiguous: yes
+
+id: contains-exactly-two-line
+context: line
+surface: W contains exactly m and n
+expect: forall u, (In(u, W) iff (u = m or u = n))
+why: The natural two-element extension says exactly m and n are members of W.
+ambiguous: yes
+
+id: contains-exactly-one-nested
+context: nested
+surface: not (A contains exactly p)
+expect: not (forall u, (In(u, A) iff u = p))
+why: Negation applies to the one-element exact-membership characterization.
+ambiguous: yes
+
+id: contains-exactly-four-line
+context: line
+surface: B contains exactly q, r, s and t
+expect: forall u, (In(u, B) iff (u = q or u = r or u = s or u = t))
+why: The natural four-element extension says exactly q, r, s and t are members of B.
+ambiguous: yes
+
+id: contains-exactly-three-nested
+context: nested
+surface: R(C) iff C contains exactly v, w and x
+expect: R(C) iff (forall u, (In(u, C) iff (u = v or u = w or u = x)))
+why: The exact-three-members statement is the right operand of the biconditional.
+
+# Existentials and unique existence
+
+id: exists-set-line
+context: line
+surface: there exists a set Y such that P(Y)
+expect: exists Y, P(Y)
+why: The word "set" adds no logical condition; Y is simply existentially quantified.
+
+id: exists-set-nested
+context: nested
+surface: if there exists a set S such that In(a, S) then Q(a)
+expect: (exists S, In(a, S)) -> Q(a)
+why: The existential phrase is the antecedent of the implication.
+
+id: exists-set-conjunction-line
+context: line
+surface: there exists a set T such that (P(T) and Q(T))
+expect: exists T, (P(T) and Q(T))
+why: The entire body of the existential is the stated conjunction.
+
+id: exists-set-nested-and
+context: nested
+surface: R(a) and there exists a set U such that In(a, U)
+expect: R(a) and (exists U, In(a, U))
+why: The existential clause is the second conjunct.
+
+id: exists-object-line
+context: line
+surface: there exists x such that P(x)
+expect: exists x, P(x)
+why: The existential quantifier directly binds x and the word "such that" introduces its body.
+
+id: exists-object-nested
+context: nested
+surface: not (there exists y such that y is in X)
+expect: not (exists y, In(y, X))
+why: The existential membership claim is negated by the surrounding not.
+
+id: exists-object-inequality-line
+context: line
+surface: there exists z such that z =/= a
+expect: exists z, z =/= a
+why: The existentially bound object is required to be unequal to a.
+
+id: exists-object-iff-nested
+context: nested
+surface: (there exists w such that P(w)) iff Q(a)
+expect: (exists w, P(w)) iff Q(a)
+why: The existential clause is one side of the biconditional.
+
+id: unique-set-line
+context: line
+surface: there exists a unique set Y such that P(Y)
+expect: exists Y, (P(Y) and forall Z, (P(Z) -> Z = Y))
+why: Existence is conjoined with the statement that every other witness satisfying P is equal to Y.
+
+id: unique-set-nested
+context: nested
+surface: if there exists a unique set S such that In(a, S) then Q(a)
+expect: (exists S, (In(a, S) and forall T, (In(a, T) -> T = S))) -> Q(a)
+why: The unique-existence formula is the antecedent, with a fresh T used for comparison.
+
+id: unique-set-conjunction-line
+context: line
+surface: there exists a unique set U such that (P(U) and Q(U))
+expect: exists U, ((P(U) and Q(U)) and forall V, ((P(V) and Q(V)) -> V = U))
+why: Uniqueness applies to the whole body P(U) and Q(U), not just one conjunct.
+
+id: unique-set-not-nested
+context: nested
+surface: not (there exists a unique set W such that R(W))
+expect: not (exists W, (R(W) and forall X, (R(X) -> X = W)))
+why: Negation applies to the complete unique-existence formula.
+
+id: there-is-enumerated-line
+context: line
+surface: there is a set Y = {a, b}
+expect: exists Y, forall u, (In(u, Y) iff (u = a or u = b))
+why: The sentence asserts an existential witness Y and requires it to equal the two-element enumeration.
+
+id: there-is-enumerated-nested
+context: nested
+surface: if there is a set S = {c, d} then R(S)
+expect: (exists S, forall u, (In(u, S) iff (u = c or u = d))) -> R(S)
+why: The existential enumeration statement is the antecedent of the implication.
+
+id: there-is-enumerated-four-line
+context: line
+surface: there is a set T = {p, q, r, s}
+expect: exists T, forall u, (In(u, T) iff (u = p or u = q or u = r or u = s))
+why: The same existential enumeration reading applies to any finite listed enumeration.
+
+id: there-is-enumerated-nested-not
+context: nested
+surface: not (there is a set V = {m, n})
+expect: not (exists V, forall u, (In(u, V) iff (u = m or u = n)))
+why: Negation states that no witness V has exactly m and n as its members.
+
+id: unique-labeled-pair-line
+context: line
+surface: there exists a unique set {a, b} that contains exactly a and b
+expect: exists V, ((forall u, (In(u, V) iff (u = a or u = b))) and forall W, ((forall u, (In(u, W) iff (u = a or u = b))) -> W = V))
+why: The braces label the unique witness; the body says the witness and every competing witness contain exactly a and b.
+
+id: unique-labeled-pair-nested
+context: nested
+surface: if there exists a unique set {c, d} that contains exactly c and d then P(c, d)
+expect: (exists V, ((forall u, (In(u, V) iff (u = c or u = d))) and forall W, ((forall u, (In(u, W) iff (u = c or u = d))) -> W = V))) -> P(c, d)
+why: The unique labeled pair assertion is the antecedent, with fresh V and W standing for the witness and competitor.
+
+id: unique-labeled-pair-line-three
+context: line
+surface: there exists a unique set {p, q, r} that contains exactly p, q and r
+expect: exists V, ((forall u, (In(u, V) iff (u = p or u = q or u = r))) and forall W, ((forall u, (In(u, W) iff (u = p or u = q or u = r))) -> W = V))
+why: The label identifies the unique set characterized by its three listed members.
+
+id: unique-labeled-pair-nested-not
+context: nested
+surface: not (there exists a unique set {g, h} that contains exactly g and h)
+expect: not (exists V, ((forall u, (In(u, V) iff (u = g or u = h))) and forall W, ((forall u, (In(u, W) iff (u = g or u = h))) -> W = V)))
+why: The unique-existence claim is negated as a whole.
+
+id: unique-set-free-parameter-nested
+context: nested
+surface: R(a) iff there exists a unique set Y such that (In(a, Y) and P(Y))
+expect: R(a) iff (exists Y, ((In(a, Y) and P(Y)) and forall Z, ((In(a, Z) and P(Z)) -> Z = Y)))
+why: The free parameter a remains free while Y and the fresh uniqueness witness Z are bound.
+
+# Reject cases
+
+id: reject-unbalanced-enumeration-line
+context: line
+surface: Y = {a, b
+expect: REJECT
+why: The enumeration has an unmatched opening brace, so it is not a well-formed enumeration.
+
+id: reject-empty-enumeration-line
+context: line
+surface: x is in {}
+expect: REJECT
+why: The specification explicitly requires listed elements for an enumeration and separately requires empty braces to be rejected.
+
+id: reject-trailing-comma-nested
+context: nested
+surface: if x is in {a, b,} then P(x)
+expect: REJECT
+why: A trailing comma does not form a listed element and must not be silently accepted.
+
+id: reject-missing-alternative-line
+context: line
+surface: x is a or
+expect: REJECT
+why: The alternative syntax requires a complete alternative after or.
+
+id: reject-english-alternatives-line
+context: line
+surface: n is even or odd
+expect: REJECT
+why: "even" and "odd" are not single-letter names optionally followed by digits, so the phrase cannot be treated as equality alternatives.
+
+id: reject-english-alternatives-nested
+context: nested
+surface: if n is even or odd then P(n)
+expect: REJECT
+why: The same near-miss must remain a parse error when nested rather than being split into ordinary logic.
+
+id: reject-builder-no-colon-line
+context: line
+surface: Y = {u in X P(u)}
+expect: REJECT
+why: The restricted set-builder syntax requires a colon separating the domain from the property.
+
+id: reject-builder-empty-property-line
+context: line
+surface: Y = {u in X:}
+expect: REJECT
+why: A set-builder needs a nonempty property after its colon.
+
+id: reject-builder-unbalanced-nested
+context: nested
+surface: if Y = {u in X: P(u) then Q(Y)
+expect: REJECT
+why: The builder has an unmatched opening brace, so the nested formula is malformed.
+
+id: reject-free-enumeration-line
+context: line
+surface: {a, b}
+expect: REJECT
+why: An enumeration is notation for specific set relations here, not a standalone set term or formula.
+
+id: reject-function-enumeration-nested
+context: nested
+surface: P({a, b})
+expect: REJECT
+why: Enumeration braces do not denote a term that can be passed as a predicate argument.
+
+id: reject-commaless-alternatives-line
+context: line
+surface: x is a b or c
+expect: REJECT
+why: The allowed multi-alternative surface form requires separately named alternatives, with the stated comma-and-or structure when there are three or more.
