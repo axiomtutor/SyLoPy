@@ -296,3 +296,32 @@ rather than for maximal automation.
 Many systems can search for proofs.
 
 Much fewer systems can act as a readable mathematical language with a small, understandable kernel underneath.
+# Distilled follow-up notes from ChatGPT's review of Copilot's response
+
+Copilot's useful conclusions should be treated as design guidance, but not as a
+new implementation mandate.
+
+- The parser oracle is high-leverage infrastructure. Prefer adding independent
+  oracle cases for new surface syntax before changing parser/elaboration
+  behavior. Resolve disagreements as specification-versus-implementation
+  questions rather than weakening the oracle to fit the parser.
+- A future formal surface-language reference would be useful, but it is a
+  documentation improvement, not a prerequisite for current implementation.
+  Do not create documentation work merely for its own sake.
+- The separation between elaboration-time ProofContext and validation-time
+  kernel scopes is settled. Keep the separation unless maintenance experience
+  gives a concrete reason to change it, and preserve tests for their overlapping
+  scope semantics.
+- Do not adopt Copilot's proposed theory-feature ordering as a fixed project
+  plan. Let the existing TODO dependencies and unresolved design questions
+  determine the order.
+- WLOG deserves special caution because it transforms and rechecks an existing
+  proof region rather than merely elaborating local syntax. Before implementing
+  it, specify the region boundary, citation-remapping rules, and
+  line-correspondence invariants, then build small focused tests for the
+  interactions that the replay must handle.
+- WLOG should not be reduced to an unchecked symmetry assertion. Its replay and
+  revalidation are the soundness check.
+- Prefer distilled design decisions over accumulating raw agent transcripts in
+  this file. Agent responses can inform the design, but the durable guidance
+  should state the resulting decisions and open questions clearly.
