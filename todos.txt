@@ -121,10 +121,10 @@ item is a decision about the kernel's separate scope classes. See item 1 below.
 ### 5. ZFC axiom citations and derived rules for set theory
 
 Design agreed while working through the user's own "Unique pairing" proof
-(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). Nothing below is
-implemented yet -- this is the agreed design, written down so implementation
-can proceed later without re-litigating it. Do not start implementing without
-an explicit go-ahead.
+(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). The unchecked items below
+are not implemented yet -- this is the agreed design, written down so
+implementation can proceed later without re-litigating it. Do not start
+implementing the rules without an explicit go-ahead.
 
 - [x] Witness naming for axiom instances (decided: sugar, not a context-aware
       citation). `Let Y be such a set. (Existence from L)` extends the
@@ -260,6 +260,23 @@ an explicit go-ahead.
       deliberately left alone: declaration descriptors swallow a following
       " a ..." (`Let X be any set, a in X` gives X a garbage `type_name`), and
       the `type_name` wording differs between declaration paths.
+
+- [ ] Bounded quantifiers (proposed; not started). Found by checking the nine
+      axiom statements at the top of `zfc_remaining_axioms.txt`: Axiom 1 says
+      "for all a in X we have a in Y", and no bounded form parses today
+      (`forall a in X, ...`, `exists a in X such that ...`). They are sugar,
+      and could live in set theory, since they use `In`: `forall a in S, P`
+      is `forall a, (a in S -> P)` and `exists a in S, P` is
+      `exists a, (a in S and P)`, with the English spellings "for all a in S
+      we have P" and "there exists a in S such that P". Open: which spellings
+      to accept, and whether a `### then` clause wrapped over two lines (as in
+      that Axiom 1) should be joined -- today, in a numbered proof, only its
+      first line is read, so the stated-conclusion check is skipped with a
+      warning. The nine `# Axiom N` statements themselves are comments (the
+      runner reads only numbered `# N:` blocks). Most are informal ("P is a
+      property with parameter p", "choice function"), and Axiom 4's
+      `{u in U: U in X}` leaves U free, so it cannot stand for the union as
+      written.
 
 - [ ] Infinity axiom. Decided: the axiom introduces a set I whose defining
       property is an abstract, unspecified property P(x) -- x is in I iff
