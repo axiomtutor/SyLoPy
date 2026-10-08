@@ -370,8 +370,11 @@ These override anything above, including the agent discussion.
 
 ## Branches
 
-Start new agent branches from current `master`. On 2026-10-08 the finished
-and abandoned branches were merged or deleted, so `master` is the only
-long-lived branch. Two abandoned experiments that were never merged are kept
-as tags rather than branches: `archive/phase-2-proof-context` and
-`archive/refactor_validator`.
+Start new agent branches from current `master`, and delete a branch once its
+work is merged. `chatgpt-agent-guidance` is deliberately not merged: it is the
+live channel where the owner relays the agents' discussion, and this file on
+`master` is the distilled guidance. Two old branches were abandoned without
+being merged and are safe to delete: `phase-2-proof-context` (tip `a11ec09`,
+a `ProofElaborationContext.py` bridge that Phase 4 made unnecessary) and
+`refactor_validator` (tip `59bd9e5`, a `ProofContext`-backed kernel validator,
+rejected in favor of the kernel's own scopes).
