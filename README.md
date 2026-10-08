@@ -102,18 +102,23 @@ not a shared lexical environment.
 
 ### Proof context and lexical scoping
 
-The project now treats declarations, assumptions, labels, arbitrary bindings,
-and nested scopes as explicit lexical state through `source/ProofContext.py`.
-This aligns elaboration with the kernel's scoping behavior and avoids the old
-pattern of reconstructing visibility rules independently in multiple places.
+`source/ProofContext.py` is the lexical environment used during elaboration.
+It tracks declarations, assumptions, proof-line labels, arbitrary bindings,
+and nested scopes.
+
+The kernel deliberately does not use `ProofContext` directly. During validation,
+`source/ProofLogic.py` uses its own `LabelScope` and `DeclarationScope` over the
+already-elaborated proof entries. The two layers implement the same relevant
+lexical-scope semantics, but keeping them separate preserves the boundary
+between elaboration and kernel validation.
 
 ## Where the project is going
 
 The current direction is not a rewrite; it is a consolidation phase.
-`ProofContext` is now the single source of truth for declaration and label
-lookups during elaboration. What remains is a decision: whether the kernel's
-own scope classes should be built on `ProofContext` or remain an independent
-validation-time check. The validated proof corpus is the constraint on both.
+`ProofContext` is the lexical environment used during elaboration. The kernel
+retains independent scope structures for validation of the elaborated proof.
+This separation is intentional: the elaborator resolves source-level bindings,
+while the kernel validates the resulting proof representation.
 
 As new theory features are designed, the guiding principle is: most things
 beyond the level of pure logic should be sugar. New mathematical convenience
@@ -123,21 +128,16 @@ Kernel/AST changes are reserved for genuinely new logical primitives.
 
 Short term, the project is heading toward:
 
-- the kernel-vs-`ProofContext` scoping decision (see priority 1);
-- a clear relationship between elaboration scoping and kernel scoping;
 - a clearer public API for parsing and checking proofs;
-- broader theory support without breaking the existing proof corpus.
+- broader theory support without breaking the existing proof corpus;
+- continued proof-corpus growth and regression coverage.
 
 In other words, the project is already functionally solid. The next step is to
 make it easier to extend and maintain.
 
 ## Next work priorities
 
-1. Finish the context consolidation.
-   - Decide how the kernel's `LabelScope`/`DeclarationScope` relate to
-     `ProofContext`; elaboration and validation already agree on semantics.
-
-2. Tighten the public-facing API.
+1. Tighten the public-facing API.
    - Keep the parser and proof-checking entry points clear and documented.
    - Document canonical usage patterns and expected outputs for users.
 
@@ -163,8 +163,8 @@ make it easier to extend and maintain.
 - `source/ProofElaboration.py` — shared data types: surface AST, source spans,
   `ElaboratedEntries`, `TheoryEnvironment`.
 - `source/ProofLogic.py` — proof kernel, rules, axioms, and validation.
-- `source/ProofContext.py` — lexical scoping for declarations, labels, and
-  assumptions.
+- `source/ProofContext.py` — elaboration-time lexical scoping for declarations,
+  labels, assumptions, and arbitrary/fresh bindings.
 - `source/ProofJustification.py` — parses proof-line justifications (e.g.
   "Modus Ponens from 2, 3") into rule citations.
 - `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`,

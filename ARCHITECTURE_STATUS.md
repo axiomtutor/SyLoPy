@@ -49,9 +49,14 @@ The same pattern should be used for future order-theory and algebraic syntax.
 
 `ProofContext` is the lexical scope for declarations, assumptions, labels and
 arbitrary bindings during elaboration; the elaborator no longer keeps a
-parallel declaration scope. Open item: the kernel's own `LabelScope` /
-`DeclarationScope` in `ProofLogic.py` are still separate implementations that
-merely agree with `ProofContext` on semantics (see `todos.txt`, item 1).
+parallel declaration scope.
+
+The kernel's `LabelScope` and `DeclarationScope` in `ProofLogic.py` deliberately
+remain separate validation-time scope structures. This preserves the compiler
+boundary between elaboration and kernel validation: `ProofContext` manages
+source-level bindings, while the kernel scopes operate only on elaborated
+entries. Their overlapping lexical semantics are maintained by regression
+tests.
 
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available
