@@ -6,9 +6,8 @@ The project is functionally green, with one known, tracked exception. The
 core proof-language pipeline has been validated against the repository's
 full regression suite:
 
-- 531 Python tests; 529 pass, 1 skipped, 1 known failure (see "Known issues"
-  below). The skip is the parser-oracle test, which has nothing to check until
-  `parse_oracle/` is merged (see item 4).
+- 621 Python tests; 620 pass, 1 known failure (see "Known issues" below).
+  That includes the 85-case parser oracle in `parse_oracle/`.
 - all enforced proof fixture suites pass (48/48)
 - informational proof fixtures: 48/49 pass (the one failure is the same
   known issue)
@@ -117,11 +116,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
       malformed input), and `pytest_tests/test_parse_oracle.py` checks the
       parser against every file there, up to the names of bound variables
       (set `SYLOPY_ORACLE_DIR` to check another directory). The first file,
-      `set_theory_phrases.txt` (85 cases), was written by ChatGPT on branch
-      `chatgpt-parse-oracle`, from the intended readings and not from the
-      code; all 85 agree with the parser (it found two real gaps, both fixed).
-- [ ] Merge `chatgpt-parse-oracle` (one new file) so the oracle test has
-      cases to run on master.
+      `set_theory_phrases.txt` (85 cases), was written by ChatGPT (PR #3),
+      from the intended readings and not from the code; all 85 agree with the
+      parser (it found two real gaps, both fixed).
 
 ### 5. ZFC axiom citations and derived rules for set theory
 
@@ -158,22 +155,23 @@ implementing the rules without an explicit go-ahead.
       `PowerSetAxiomRule`, `InfinityAxiomRule`), following the shape-checking
       pattern already used by `SeparationSchemaRule` / `ReplacementSchemaRule`.
       Each is cited by name -- `(Axiom of pairing)`, etc. -- against a
-      specific instance shape, never a restated formula. Each should also
-      bundle its own fresh-witness check (the way `ExistentialEliminationRule`
-      checks freshness), since the proof style names the new set directly off
-      the axiom citation (`There is a set Y = {a, b} ... (Axiom of pairing)`)
-      rather than citing existence and then doing a separate Existential
-      Elimination.
-      Decided (scope): the new set is an ordinary declaration at the nesting
-      level of the citing line. It stays in scope for the rest of that level,
-      including nested subproofs below it, and is invisible outside the
-      subproof it was introduced in -- the same rule `ProofContext` already
-      applies to declarations, so no special scoping is needed.
-      Decided (what the citation records): the line does not have to restate
-      the instance formula. It introduces the set together with its defining
-      property (for pairing, membership iff equal to a or to b), and
-      `Set property` (below) is what later retrieves that property. The rule
-      itself only checks that the stated set has the shape the axiom allows.
+      specific instance shape, never a restated formula. The citation stays an
+      ordinary existential formula, and the rule only checks that the cited
+      formula has the shape the axiom allows. Naming the set the axiom
+      provides is the witness-naming sugar above (`Let Y be such a set.
+      (Existence from L)`), not part of the citation: the named rules check
+      shapes and introduce nothing. Scope is the sugar's -- the named set
+      stays in scope for the rest of its nesting level, including nested
+      subproofs below it, and is invisible outside the subproof it was
+      introduced in (the rule `ProofContext` already applies to
+      declarations). `Set property` (below) is what later retrieves a set's
+      defining property.
+      Decided (owner, 2026-10-08): ignore ChatGPT's direct-witness approach,
+      where the axiom line itself introduces the set. PR #2 added that form
+      for Pairing only (`There is a set Y = {a, b}. (Axiom of pairing)`, via
+      `PairingAxiomRule(witness_name=...)` and rule-introduced declarations).
+      It stays on master for now but is not the design, and it is not to be
+      extended to Union, Power Set or Infinity.
 
 - [ ] WLOG as a proof-region replay rule.
       Surface form: WLOG is not a special subproof. It is an ordinary
@@ -182,7 +180,11 @@ implementing the rules without an explicit go-ahead.
       asserted formula must be exactly one of its disjuncts. The WLOG region
       begins at that line and runs to the end of the current proof block
       (ending at the enclosing subproof's boundary, if any).
-      
+      Decided (owner, 2026-10-08): the region is the WLOG line and everything
+      after it in that block, so WLOG needs no surface syntax of its own to
+      delimit a subproof. Implementation still waits for an explicit
+      go-ahead.
+
       WLOG is therefore a validator-level structural construct rather than a
       normal backward-only `InferenceRule`: its justification depends on the
       suffix of the current proof block. When the validator reaches WLOG, it

@@ -349,227 +349,29 @@ A few additional observations after reflecting on the project:
 More generally, I think AGENT_COLLABORATION.md is a good idea. The branch structure itself suggests that a nontrivial amount of design work is happening through conversations between humans and multiple AI agents. Having an explicit record of architectural boundaries and coordination norms will likely become more valuable over time, not less.
 
 Thanks for preserving the distinction between guidance and decisions.
-# Current-state recommendation: what should happen next
 
-Current `master` is `2eb90309abd63e32fb8565be0ad5a535a6ecbc83`.
-PR #3 (the 85-case parser oracle) and PR #2 (direct Pairing witness citations)
-are both merged. The source therefore already supports the direct Pairing form
-such as:
+# Owner decisions
 
-```text
-1. Let a, b be any set. (Declaration)
-2. There is a set Y = {a, b}. (Axiom of pairing)
-```
+These override anything above, including the agent discussion.
 
-The TODO and README on `master` have not yet caught up with those merges, and
-the ProofContext decision is also not yet recorded on `master`. The immediate
-documentation task should therefore be to refresh those documents before the
-next feature branch is treated as the new baseline.
+- **WLOG region.** A WLOG line is an ordinary assertion citing a disjunction.
+  Its region is that line and everything after it to the end of the current
+  proof block, so there is no separate syntax for delimiting a WLOG subproof.
+  Implementation still needs an explicit go-ahead; the replay design and its
+  acceptance tests are in `todos.txt`.
+- **Witness naming.** Naming the set an axiom provides is surface sugar over
+  the ordinary existential citation (`Let Y be such a set. (Existence from
+  L)`). Do not make an axiom citation introduce its witness, and do not
+  extend the direct Pairing form from PR #2 (`There is a set Y = {a, b}.
+  (Axiom of pairing)`) to Union, Power Set or Infinity. An earlier version of
+  this file recommended exactly that as the next step; the recommendation was
+  removed (it is in git history, commit 636c1fc).
+- **What comes next** is decided from `todos.txt`, not from this file.
 
-## Recommended next implementation
+## Branches
 
-After the documentation catch-up, the next source feature should be to extend
-the direct named-witness axiom pattern from Pairing to Union, Power Set, and
-Infinity. This is preferable to jumping directly into WLOG: it is a small
-extension of an implementation pattern that now exists and it completes the
-four ordinary named axiom citations listed together in the TODO.
-
-The semantic decision is:
-
-- A named axiom citation is a zero-premise, shape-checking rule.
-- A natural-language existential names the witness directly.
-- The witness becomes an ordinary object declaration in the current lexical scope.
-- The rule receives the witness name and checks the instantiated defining
-  property, not an existential formula.
-- Later reasoning can cite that defining property with `Set property`.
-- Existing symbolic existential citations remain supported.
-
-Use the same surface pattern already established by Pairing. Suggested examples:
-
-```text
-1. Let X be any set. (Declaration)
-2. There is a set Y = {u: there exists v, (In(v, X) and In(u, v))}. (Axiom of union)
-
-1. Let X be any set. (Declaration)
-2. There is a set Y = {y: y subset X}. (Axiom of power set)
-
-1. There is a set X such that
-     In(EmptySet, X) and
-     forall y, (In(y, X) ->
-       exists S, (forall u, (In(u, S) iff (In(u, y) or u = y)) and In(S, X))).
-   (Axiom of infinity)
-```
-
-The exact human-facing spelling of the three examples should be checked against
-the parser oracle before implementation. The semantic core, not the typography
-of the set display, is what the axiom rule should care about.
-
-## Implementation pattern
-
-The existing Pairing implementation should be generalized rather than copied
-three more times. A usable starting point is:
-
-```python
-def _elaborate_named_axiom_witness(
-    entry: SurfaceLine,
-    context,
-    *,
-    citation: str,
-    make_rule,
-    error_example: str,
-) -> Optional[tuple]:
-    if entry.justification_text.strip().lower() != citation:
-        return None
-
-    surface = entry.formula_text.strip()
-    if not re.match(r"^there\s+(?:is|exists)\b", surface, re.I):
-        return None
-
-    try:
-        parsed = context.parse_core_formula(entry.formula_text)
-    except (TypeError, ValueError) as exc:
-        raise ElaborationError(str(exc), entry.span) from exc
-
-    if not isinstance(parsed, fl.Exists):
-        raise ElaborationError(
-            f"'{citation}' witness syntax must introduce an existentially "
-            f"named set, for example {error_example}",
-            entry.span,
-        )
-
-    witness_name = parsed.var
-    if context.lookup_declaration(witness_name) is not None:
-        raise ElaborationError(
-            f"{citation} witness '{witness_name}' is already declared "
-            "in this proof or an enclosing scope",
-            entry.span,
-        )
-
-    declaration = pl.Declaration(
-        name=witness_name,
-        kind=pl.DeclarationKind.OBJECT,
-        type_name="set-theoretic witness",
-    )
-    witness_term = tl.ConstantTerm(witness_name, witness_name)
-    defining_property = fl.substitute_in_formula(
-        parsed.body, parsed.var, witness_term
-    )
-
-    rule = make_rule(witness_name)
-    if not rule.applies([], defining_property):
-        raise ElaborationError(
-            f"{citation} witness syntax does not have a valid axiom instance; "
-            f"expected {error_example}",
-            entry.span,
-        )
-
-    context.register_declaration(declaration, entry.span)
-    context.register_origin(entry.label, entry.span)
-    return (entry.label, defining_property, ("rule", rule, [], [declaration]))
-```
-
-Then the theory-local elaborator can dispatch on the citation:
-
-```python
-_NAMED_AXIOM_WITNESSES = {
-    "axiom of pairing": lambda name: PairingAxiomRule(witness_name=name),
-    "axiom of union": lambda name: UnionAxiomRule(witness_name=name),
-    "axiom of power set": lambda name: PowerSetAxiomRule(witness_name=name),
-    "axiom of infinity": lambda name: InfinityAxiomRule(witness_name=name),
-}
-
-def elaborate_named_axiom_witness(entry: SurfaceLine, context) -> Optional[tuple]:
-    citation = entry.justification_text.strip().lower()
-    make_rule = _NAMED_AXIOM_WITNESSES.get(citation)
-    if make_rule is None:
-        return None
-    return _elaborate_named_axiom_witness(
-        entry, context, citation=citation, make_rule=make_rule,
-        error_example=_WITNESS_EXAMPLES[citation],
-    )
-```
-
-The three new rule classes should gain `witness_name` exactly as
-`PairingAxiomRule` does and split `applies()` into the existing universal or
-existential-instance checks plus a `_check_witness_form()` branch. The witness
-branch should recognize the already-instantiated defining property:
-
-```python
-class UnionAxiomRule(pl.InferenceRule):
-    name = "UnionAxiom"
-    premise_arity = 0
-
-    def __init__(self, witness_name=None):
-        self.witness_name = witness_name
-
-    def applies(self, candidates, phi):
-        if candidates:
-            return False
-        if self.witness_name is not None:
-            return self._check_witness_form(phi)
-        return self._check_universal_form(phi)
-```
-
-The same structure applies to `PowerSetAxiomRule` and `InfinityAxiomRule`.
-Do not replace their existing universal-form checking; direct witness syntax
-should be an additional accepted form.
-
-## Focused tests to add with the implementation
-
-Use small proof-text tests rather than only testing `InferenceRule.applies()`
-directly. At minimum:
-
-```python
-@pytest.mark.parametrize((
-    "text", "rule_name",
-), [
-    (UNION_WITNESS_PROOF, "UnionAxiom"),
-    (POWER_SET_WITNESS_PROOF, "PowerSetAxiom"),
-    (INFINITY_WITNESS_PROOF, "InfinityAxiom"),
-])
-def test_named_axiom_witness_end_to_end(text, rule_name):
-    entries, _ = pp.parse_proof_text(text)
-    assert entries[1][2][1].name == rule_name
-    ok, error = pp.check_proof_text(text)
-    assert ok, error
-
-def test_named_witness_rejects_reused_name():
-    ...
-
-def test_named_witness_respects_subproof_scope():
-    ...
-
-def test_named_witness_rejects_wrong_axiom_shape():
-    ...
-```
-
-Also add oracle cases for the human-facing Union/Power-Set syntax if the
-surface parser needs a new spelling. The oracle should describe the plain
-formula and remain independent of the rule implementation.
-
-## What should wait
-
-Do not start WLOG implementation immediately after these three rules. The WLOG
-design is settled at the semantic level but its citation-correspondence
-invariants are still open. Before source changes there, create tiny structural
-tests for:
-
-- replaying a two-way equality disjunction;
-- replaying a three-way disjunction;
-- remapping a citation to an already-visible corresponding line;
-- failure when that transformed counterpart is unavailable;
-- transformed declarations;
-- nested subproofs and scope boundaries;
-- prevention of future-line and sibling-scope references.
-
-Then implement WLOG as a proof-region replay mechanism, not as an ordinary
-one-premise `InferenceRule`.
-
-## Coordination instruction
-
-This is a recommended next step, not a request to begin implementation
-automatically. Before changing `SetTheory.py`, check for another active branch
-or agent working there. If implementation begins, keep the generic witness
-elaborator and each theory-specific shape check separate: the elaborator should
-handle naming/scope/lowering, while each axiom rule should decide whether its
-instantiated formula is actually a valid instance of that axiom.
+Start new agent branches from current `master`. On 2026-10-08 the finished
+and abandoned branches were merged or deleted, so `master` is the only
+long-lived branch. Two abandoned experiments that were never merged are kept
+as tags rather than branches: `archive/phase-2-proof-context` and
+`archive/refactor_validator`.
