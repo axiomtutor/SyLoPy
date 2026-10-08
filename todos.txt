@@ -175,19 +175,159 @@ implementing the rules without an explicit go-ahead.
       `Set property` (below) is what later retrieves that property. The rule
       itself only checks that the stated set has the shape the axiom allows.
 
-- [ ] WLOG as a subproof-copying rule.
-      Confirmed design: `(WLOG)` closes a subproof, the way
-      `ExistentialEliminationRule` / `DisjunctionEliminationRule` do, rather
-      than standing alone as a one-line citation. On a WLOG citation, the
-      checker copies the cited subproof, substitutes the untaken disjunct's
-      term for the taken one throughout (reusing
-      `_substitute_constants_in_formula`), re-applies the identical rule
-      citations line by line, and validates each exactly as usual
-      (`applies()`) against the substituted formulas. Decided (behavior): the
-      author proves one chosen disjunct; the checker confirms the same proof
-      works for each of the other disjuncts. Still needs a concrete
-      surface syntax for delimiting the WLOG subproof before implementation
-      starts.
+- [ ] WLOG as a proof-region replay rule.
+      Surface form: WLOG is not a special subproof. It is an ordinary
+      asserted formula whose justification is a WLOG citation, e.g.
+      `a = x. (WLOG from 1)`. The cited line must be a disjunction, and the
+      asserted formula must be exactly one of its disjuncts. The WLOG region
+      begins at that line and runs to the end of the current proof block
+      (ending at the enclosing subproof's boundary, if any).
+      
+      WLOG is therefore a validator-level structural construct rather than a
+      normal backward-only `InferenceRule`: its justification depends on the
+      suffix of the current proof block. When the validator reaches WLOG, it
+      should take control of the remainder of that block: validate the
+      author's chosen case normally, then replay the same region once for each
+      other disjunct and require every replayed line to validate.
+      
+      Current implementation target: equality cases such as
+      `a = x or a = y or a = z`. Derive a constant-term substitution by
+      comparing the chosen disjunct with each alternative; for the first
+      implementation require that the two equalities differ in exactly one
+      constant term, e.g. `x -> y`. Use
+      `_substitute_constants_in_formula` for formulas and add corresponding
+      substitution for declarations/structured declaration metadata. Only the
+      WLOG region is transformed. Lines before WLOG are not mutated.
+      
+      Citation remapping is part of the replay, not a post-processing step.
+      Maintain a map from every original region label already replayed to the
+      corresponding replay value. If a replayed line cites an earlier line
+      inside the WLOG region, use that replayed counterpart. If it cites a
+      line outside the region, transform the cited line's *formula* with the
+      current substitution and search the visible pre-WLOG proof state for an
+      already-established line with that transformed value. The original outer
+      line is never changed. This is what turns, for example, a citation of
+      `P(x)) into a citation of an existing `P(y)) when the latter is
+      available. Search only lines visible at the corresponding point in the
+      original proof; never use a future line or a line from a closed sibling
+      scope. When several matching lines exist, choose the earliest visible
+      match deterministically. If no matching line exists, the WLOG replay
+      fails.
+      
+      The replay should preserve dependency structure: transform a line's
+      formula and declarations, resolve its transformed citations, then call
+      the same rule's `applies()` on the transformed candidate values.
+      Replayed nested subproofs are transformed recursively; a citation to an
+      outer subproof requires an already-validated corresponding outer
+      subproof with the transformed assumption/conclusion, rather than
+      retroactively transforming the old subproof.
+      
+      Suggested implementation skeleton:
+      
+      ```python
+      @dataclass(frozen=True)
+      class WLOGReplayRef:
+          source_label: str
+          value: Union[fl.Formula, SubproofRecord]
+          origin: str                 # "replay" or "outer"
+      
+      
+      def _wlog_substitution(chosen: fl.Formula,
+                             alternative: fl.Formula) -> Dict[str, tl.Term]:
+          """Derive the equality-case substitution x -> y."""
+          if not isinstance(chosen, fl.Equals) or not isinstance(alternative, fl.Equals):
+              raise WLOGError("current WLOG form requires equality disjuncts")
+      
+          differences = []
+          for left, right in (
+              (chosen.left, alternative.left),
+              (chosen.right, alternative.right),
+          ):
+              if not _ast_eq(left, right):
+                  differences.append((left, right))
+      
+          if len(differences) != 1:
+              raise WLOGError("WLOG alternatives must differ in exactly one term")
+          source, target = differences[0]
+          if not isinstance(source, tl.ConstantTerm):
+              raise WLOGError("the changing WLOG term must be a constant")
+          return {source.name: target}
+      
+      
+      def _resolve_wlog_citation(
+          label: str,
+          *,
+          region_labels: set[str],
+          replayed: Dict[str, WLOGReplayRef],
+          outer_visible: Iterable[Tuple[str, Any]],
+          substitution: Dict[str, tl.Term],
+      ) -> WLOGReplayRef:
+          # References into the replay region follow the replayed dependency
+          # graph exactly.
+          if label in region_labels:
+              return replayed[label]
+      
+          # References outside the region are not transformed in place. Find
+          # an already-visible fact that is the transformed counterpart.
+          original = lookup_visible_outer(label)
+          expected = _substitute_wlog_value(original, substitution)
+          for visible_label, value in outer_visible:
+              if _wlog_value_matches(value, expected):
+                  return WLOGReplayRef(visible_label, value, "outer")
+          raise WLOGError(
+              f"no visible counterpart for {label!r} after WLOG substitution"
+          )
+      
+      
+      def _replay_wlog_region(block, wlog_index, visible_before, disjunction,
+                              selected):
+          """Validate the chosen suffix normally, then replay it for every
+          other disjunct.
+      
+          The actual validator should call this when it encounters a WLOG
+          line, because the line's justification depends on the suffix of the
+          current block.
+          """
+          alternatives = list(disjunction.disjuncts)
+          for alternative in alternatives:
+              substitution = _wlog_substitution(selected, alternative)
+              replayed = {}
+              # The WLOG line itself is the seed of the replay.
+              replayed[block[wlog_index].label] = WLOGReplayRef(
+                  block[wlog_index].label,
+                  alternative,
+                  "replay",
+              )
+              for entry in block[wlog_index + 1:]:
+                  transformed = _transform_wlog_entry(entry, substitution)
+                  candidates = [
+                      _resolve_wlog_citation(
+                          ref, region_labels=..., replayed=replayed,
+                          outer_visible=..., substitution=substitution,
+                      ).value
+                      for ref in transformed.cited_labels
+                  ]
+                  _validate_transformed_entry(transformed, candidates)
+                  replayed[transformed.label] = WLOGReplayRef(
+                      transformed.label, transformed.value, "replay"
+                  )
+      ```
+      
+      The skeleton is deliberately split into substitution, citation
+      resolution, and rule validation so that line correspondence is explicit
+      rather than hidden inside formula matching.
+      
+      Acceptance tests should cover: two and three disjuncts; a correct WLOG
+      proof and an incorrect symmetric case; remapping a citation from
+      `P(x)` to an already-visible `P(y)`; failure when that counterpart is
+      absent; substitution of declarations; nested subproofs; prevention of
+      future-line/cross-sibling references; and preservation of the original
+      proof when the WLOG region is not replayed.
+      
+      Future generalization: replace equality-specific substitution with a
+      theory-independent transformation between arbitrary WLOG properties
+      `phi` and `psi`. Equality cases such as `a = x` / `a = y` then
+      become one particular transformation mechanism.
 
 - [x] (Partly done.) General `Set property` -- `SetPropertyRule`, cited as
       `Set property from N, M` or `Set property, N, M` (bare `Set property`
@@ -348,3 +488,7 @@ What matters now is not "can we get proof checking to work at all?" It is:
 - New rules and syntax get a written design in this file before implementation
   starts -- see "Design principles" and the open design items under
   "High-priority work".
+
+## Collaboration note
+
+This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.
