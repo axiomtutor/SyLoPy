@@ -276,6 +276,44 @@ def test_subset_inside_a_conjunction():
 
 
 # --------------------------------------------------------------------
+# Bounded quantifiers
+# --------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,plain", [
+    ("forall a in X, P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("for all a in X, P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("for all a in X we have P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("exists a in X, P(a)", "exists a, (In(a, X) and P(a))"),
+    ("there exists a in X such that P(a)", "exists a, (In(a, X) and P(a))"),
+])
+def test_bounded_quantifiers_desugar_to_membership_restricted_quantifiers(text, plain):
+    reads_as(text, plain)
+
+
+def test_bounded_quantifier_body_can_contain_connectives():
+    reads_as(
+        "forall a in X, P(a) and Q(a)",
+        "forall a, (In(a, X) -> (P(a) and Q(a)))",
+    )
+
+
+def test_bounded_quantifier_can_appear_after_a_connective():
+    reads_as(
+        "P and forall a in X, Q(a) and R(a)",
+        "P and (forall a, (In(a, X) -> (Q(a) and R(a))))",
+    )
+
+
+@pytest.mark.parametrize("text", [
+    "forall a in X",
+    "exists a in X",
+    "forall a in X,",
+    "exists a in X such that",
+])
+def test_malformed_bounded_quantifiers_are_refused(text):
+    is_refused(text)
+
+# --------------------------------------------------------------------
 # Natural-language existentials
 # --------------------------------------------------------------------
 

@@ -424,6 +424,78 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
     return None
 
 
+_BOUNDED_QUANTIFIER_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
+
+_BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
+    rf"(?<![\w.])(?:for\s+all|forall|there\s+exists|exists)\s+"
+    rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
+    flags=re.I,
+)
+
+
+def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
+    """Protect bounded quantifiers embedded in larger formulas."""
+    spans = []
+    depths = []
+    depth = 0
+    for ch in text:
+        depths.append(depth)
+        if ch in "({":
+            depth += 1
+        elif ch in ")}":
+            depth = max(0, depth - 1)
+    for match in re.finditer(r"\b(?:for\s+all|forall|there\s+exists|exists)\s+", text, flags=re.I):
+        start = match.start()
+        if start > 0 and depths[start] != 0:
+            continue
+        end = len(text)
+        for then in re.finditer(r"\s+then\s+", text[match.end():], flags=re.I):
+            absolute = match.end() + then.start()
+            if depths[absolute] == 0:
+                end = absolute
+                break
+        candidate = text[start:end]
+        if _BOUNDED_QUANTIFIER_SPAN_RE.fullmatch(candidate.strip()):
+            spans.append((start, end))
+    return spans
+
+
+def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Parse set-bounded quantifiers into ordinary first-order logic."""
+    s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+
+    forall = re.fullmatch(
+        rf"(?:for\s+all|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
+        rf"\s*(?:,\s*|we\s+have\s+)(.+)",
+        s, flags=re.I,
+    )
+    if forall:
+        variable, source_text, body_text = forall.groups()
+        source = try_parse_set_term(source_text.strip(), bound_vars)
+        if source is None:
+            return None
+        import SyLoPy.source.ProofParser as pp
+        body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
+        return fl.ForAll(variable, fl.Implies(
+            membership_formula(tl.VariableTerm(variable), source), body))
+
+    exists = re.fullmatch(
+        rf"(?:there\s+exists|exists)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
+        rf"\s*(?:,\s*|such\s+that\s+)(.+)",
+        s, flags=re.I,
+    )
+    if exists:
+        variable, source_text, body_text = exists.groups()
+        source = try_parse_set_term(source_text.strip(), bound_vars)
+        if source is None:
+            return None
+        import SyLoPy.source.ProofParser as pp
+        body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
+        return fl.Exists(variable, fl.And(
+            membership_formula(tl.VariableTerm(variable), source), body))
+
+    return None
+
 def parse_set_formula(text: str, bound_vars: Optional[set] = None) -> Optional[fl.Formula]:
     """Public convenience parser for set expressions.
 
@@ -431,14 +503,13 @@ def parse_set_formula(text: str, bound_vars: Optional[set] = None) -> Optional[f
     """
 
     expression = try_parse_set_expression(text, bound_vars or set())
-    if expression is None:
-        return None
-    if expression.kind == "core":
-        return expression.value
-    if expression.kind == "subset":
-        left, right = expression.value
-        return subset_formula(left, right)
-    return None
+    if expression is not None:
+        if expression.kind == "core":
+            return expression.value
+        if expression.kind == "subset":
+            left, right = expression.value
+            return subset_formula(left, right)
+    return _parse_bounded_quantifier(text, bound_vars or set())
 
 
 class EmptySetPropertyRule(pl.InferenceRule):
@@ -1531,7 +1602,7 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     term_parsers=[try_parse_set_term],
     nested_formula_parsers=[parse_set_formula],
     phrase_parsers=[parse_set_formula],
-    phrase_spans=[find_phrase_spans],
+    phrase_spans=[find_phrase_spans, find_bounded_quantifier_spans],
 )
 
 
