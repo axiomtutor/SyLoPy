@@ -89,3 +89,34 @@ context: line
 surface: n/
 expect: REJECT
 why: Quotient notation requires a denominator.
+
+id: nt-reject-empty-quotient-numerator
+context: line
+surface: /a
+expect: REJECT
+why: Quotient notation requires a numerator as well as a denominator.
+
+id: nt-reject-multiple-quotient-slashes
+context: line
+surface: n/a/b
+expect: REJECT
+why: Quotient syntax is binary; an unparenthesized chain of two slash operators has no defined reading.
+
+id: nt-reject-multiple-divisibility-bars
+context: line
+surface: a|n|m
+expect: REJECT
+why: Divisibility notation has exactly one divisor and one dividend; chaining bars is not part of the surface language.
+
+id: nt-reject-missing-english-dividend
+context: line
+surface: a divides
+expect: REJECT
+why: The English divisibility phrase requires a dividend.
+
+id: nt-reject-missing-english-divisor
+context: line
+surface: divides n
+expect: REJECT
+why: The English divisibility phrase requires a divisor.
+
