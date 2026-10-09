@@ -1,0 +1,122 @@
+# Number-theory surface-to-core oracle cases.
+# Quotient notation and divisibility are sugar for ordinary terms/formulas.
+
+id: nt-integer-predicate
+context: line
+surface: n is an integer
+expect: Int(n)
+why: The natural-language integer predicate elaborates to the unary predicate Int.
+
+id: nt-integer-predicate-capitalization
+context: nested
+surface: N IS AN INTEGER
+expect: Int(N)
+why: The predicate phrase is recognized without making the object symbol's spelling case-insensitive.
+
+id: nt-quotient-term-in-integer
+context: line
+surface: n/a is an integer
+expect: Int(Quotient(n, a))
+why: The slash term is the partial-quotient function, and the surrounding phrase asserts that its value is an integer.
+
+id: nt-quotient-equality-left
+context: nested
+surface: n/a = m
+expect: Quotient(n, a) = m
+why: In an equality, the left slash term is lowered to Quotient(n, a).
+
+id: nt-quotient-equality-right
+context: nested
+surface: m = n/a
+expect: m = Quotient(n, a)
+why: Quotient notation works on the right-hand side as well.
+
+id: nt-quotient-spaces
+context: line
+surface: n / a is an integer
+expect: Int(Quotient(n, a))
+why: Whitespace around the infix slash does not alter its meaning.
+
+id: nt-divides-pipe
+context: line
+surface: a|n
+expect: exists m, (Int(m) and n = Times(a, m))
+why: The vertical-bar notation expands to an existential integer multiplier witnessing divisibility.
+
+id: nt-divides-pipe-spaced
+context: nested
+surface: a | n
+expect: exists m, (Int(m) and n = Times(a, m))
+why: Whitespace around the vertical bar does not change divisibility.
+
+id: nt-divides-english
+context: line
+surface: a divides n
+expect: exists m, (Int(m) and n = Times(a, m))
+why: The English divisibility phrase has the same existential definition as a|n.
+
+id: nt-divides-english-capitalization
+context: nested
+surface: A DIVIDES N
+expect: exists m, (Int(m) and N = Times(A, m))
+why: The English keyword is case-insensitive while the object symbols retain their written names.
+
+id: nt-divides-composite-numerator
+context: nested
+surface: Plus(n, m) divides k
+expect: exists w, (Int(w) and k = Times(Plus(n, m), w))
+why: The divisor may itself be a compound term.
+
+id: nt-divides-composite-dividend
+context: nested
+surface: a divides Plus(n, m)
+expect: exists w, (Int(w) and Plus(n, m) = Times(a, w))
+why: The dividend may be a compound term.
+
+id: nt-divides-in-antecedent
+context: nested
+surface: if a|n then P
+expect: (exists m, (Int(m) and n = Times(a, m))) -> P
+why: Divisibility in an implication's antecedent is parsed as the complete existential formula.
+
+id: nt-divides-in-consequent
+context: nested
+surface: if P then a|n
+expect: P -> (exists m, (Int(m) and n = Times(a, m)))
+why: Divisibility in an implication's consequent retains the implication's scope.
+
+id: nt-two-divisibility-claims
+context: nested
+surface: a|n and b|n
+expect: (exists m, (Int(m) and n = Times(a, m))) and (exists k, (Int(k) and n = Times(b, k)))
+why: Each divisibility claim contributes a separate existential witness.
+
+id: nt-quotient-and-divisibility
+context: nested
+surface: n/a is an integer and a|n
+expect: Int(Quotient(n, a)) and (exists m, (Int(m) and n = Times(a, m)))
+why: Quotient and divisibility sugar both compose with conjunction without swallowing each other's scope.
+
+id: nt-universal-divisibility
+context: nested
+surface: forall n, a divides n
+expect: forall n, exists m, (Int(m) and n = Times(a, m))
+why: Under a universal quantifier, n remains bound in the generated divisibility formula.
+
+id: nt-universal-quotient-condition
+context: nested
+surface: forall n, (n/a is an integer -> a divides n)
+expect: forall n, (Int(Quotient(n, a)) -> exists m, (Int(m) and n = Times(a, m)))
+why: Both number-theory phrases work within the body of an ordinary quantified implication.
+
+id: nt-negated-divisibility
+context: nested
+surface: not (a|n)
+expect: not (exists m, (Int(m) and n = Times(a, m)))
+why: Parenthesized divisibility can be negated as a whole, rather than treating the bar as a logical connective.
+
+id: nt-nested-integer-antecedent
+context: nested
+surface: if n/a is an integer then a|n
+expect: Int(Quotient(n, a)) -> exists m, (Int(m) and n = Times(a, m))
+why: The existing quotient-integer and divisibility phrases compose across the implication parser.
