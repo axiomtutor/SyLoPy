@@ -62,3 +62,20 @@ def test_line_broken_declaration_accepts_and_on_a_continuation_line():
     ok, err = check(text)
     assert ok, err
 
+def test_comments_in_line_broken_declaration_preserve_physical_source_span():
+    text = """
+(* file comment
+   continued *)
+1. Let X be any set, (* relation declaration follows
+   on the next physical line *)
+   R be a reflexive relation on X, a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+"""
+    surface = pp.parse_surface_proof(text)
+    declaration = surface.entries[0]
+    assert declaration.span.start_line == 3
+    assert declaration.span.end_line == 5
+
+    ok, err = check(text)
+    assert ok, err
+
