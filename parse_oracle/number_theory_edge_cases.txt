@@ -1,0 +1,79 @@
+# Edge cases and composition tests for number-theory syntax.
+
+id: nt-divides-under-negation
+context: nested
+surface: not a divides n
+expect: not (exists m, (Int(m) and n = Times(a, m)))
+why: Negation should apply to the entire divisibility statement.
+
+id: nt-divides-disjunction-left
+context: nested
+surface: a divides n or P
+expect: (exists m, (Int(m) and n = Times(a, m))) or P
+why: Divisibility should elaborate before disjunction structure is interpreted.
+
+id: nt-divides-disjunction-right
+context: nested
+surface: P or a divides n
+expect: P or (exists m, (Int(m) and n = Times(a, m)))
+why: Divisibility should elaborate correctly in the right disjunct.
+
+id: nt-divides-conjunction-parenthesized
+context: nested
+surface: (a divides n) and Q
+expect: (exists m, (Int(m) and n = Times(a, m))) and Q
+why: Parentheses should not alter the divisibility expansion.
+
+id: nt-quotient-in-function-argument
+context: nested
+surface: P(n/a)
+expect: P(Quotient(n, a))
+why: Quotient notation should elaborate when used as a function argument.
+
+id: nt-quotient-nested-term
+context: nested
+surface: Plus(n/a, b) = c
+expect: Plus(Quotient(n, a), b) = c
+why: Quotient notation should elaborate inside larger terms.
+
+id: nt-divides-with-quantified-variable
+context: nested
+surface: forall a, a divides n
+expect: forall a, exists m, (Int(m) and n = Times(a, m))
+why: The generated witness should not interfere with outer binders.
+
+id: nt-divides-inside-exists
+context: nested
+surface: exists a, a divides n
+expect: exists a, exists m, (Int(m) and n = Times(a, m))
+why: Divisibility should compose correctly with existential quantification.
+
+id: nt-quotient-biconditional
+context: nested
+surface: n/a is an integer iff P
+expect: Int(Quotient(n, a)) <-> P
+why: Quotient phrases should work under biconditional parsing.
+
+id: nt-divides-biconditional
+context: nested
+surface: a divides n iff P
+expect: (exists m, (Int(m) and n = Times(a, m))) <-> P
+why: Divisibility should elaborate before biconditional structure is formed.
+
+id: nt-reject-empty-divides-left
+context: line
+surface: |n
+expect: REJECT
+why: Divisibility requires a left operand.
+
+id: nt-reject-empty-divides-right
+context: line
+surface: a|
+expect: REJECT
+why: Divisibility requires a right operand.
+
+id: nt-reject-empty-quotient-denominator
+context: line
+surface: n/
+expect: REJECT
+why: Quotient notation requires a denominator.
