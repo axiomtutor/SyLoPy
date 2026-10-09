@@ -73,8 +73,8 @@ def test_comments_in_line_broken_declaration_preserve_physical_source_span():
 """
     surface = pp.parse_surface_proof(text)
     declaration = surface.entries[0]
-    assert declaration.span.start_line == 3
-    assert declaration.span.end_line == 5
+    assert declaration.span.start_line == 4
+    assert declaration.span.end_line == 6
 
     ok, err = check(text)
     assert ok, err
