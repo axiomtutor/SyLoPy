@@ -1,0 +1,212 @@
+# Bounded quantifier surface-to-core oracle cases.
+# The expected formulas use only ordinary first-order logic and membership.
+
+id: bounded-forall-symbolic
+context: nested
+surface: forall a in X, P(a)
+expect: forall a, (In(a, X) -> P(a))
+why: The set restriction is the antecedent of an implication under universal quantification.
+
+id: bounded-forall-spelled-out
+context: nested
+surface: for all a in X, P(a)
+expect: forall a, (In(a, X) -> P(a))
+why: The spelled-out universal keyword has the same meaning as forall.
+
+id: bounded-forall-english
+context: nested
+surface: for all a in X we have P(a)
+expect: forall a, (In(a, X) -> P(a))
+why: The natural-language form introduces the same bounded universal quantifier.
+
+id: bounded-exists-symbolic
+context: nested
+surface: exists a in X, P(a)
+expect: exists a, (In(a, X) and P(a))
+why: The set restriction is conjoined with the existential witness property.
+
+id: bounded-exists-english
+context: nested
+surface: there exists a in X such that P(a)
+expect: exists a, (In(a, X) and P(a))
+why: The natural-language form has the usual existential meaning restricted to X.
+
+id: bounded-forall-membership-body
+context: nested
+surface: forall a in X, a is in Y
+expect: forall a, (In(a, X) -> In(a, Y))
+why: The body is a membership statement, and the restriction remains an implication antecedent.
+
+id: bounded-exists-membership-body
+context: nested
+surface: exists a in X, a is in Y
+expect: exists a, (In(a, X) and In(a, Y))
+why: The witness must belong to both X and Y.
+
+id: bounded-forall-body-and
+context: nested
+surface: forall a in X, P(a) and Q(a)
+expect: forall a, (In(a, X) -> (P(a) and Q(a)))
+why: The whole conjunction belongs to the bounded universal's scope.
+
+id: bounded-forall-body-or
+context: nested
+surface: forall a in X, P(a) or Q(a)
+expect: forall a, (In(a, X) -> (P(a) or Q(a)))
+why: The whole disjunction belongs to the bounded universal's scope.
+
+id: bounded-exists-body-and
+context: nested
+surface: exists a in X, P(a) and Q(a)
+expect: exists a, (In(a, X) and (P(a) and Q(a)))
+why: The whole conjunction belongs to the existential's property.
+
+id: bounded-exists-body-or
+context: nested
+surface: exists a in X, P(a) or Q(a)
+expect: exists a, (In(a, X) and (P(a) or Q(a)))
+why: The existential witness needs to satisfy the disjunction, not just one separately quantified part.
+
+id: bounded-forall-body-not
+context: nested
+surface: forall a in X, not P(a)
+expect: forall a, (In(a, X) -> not P(a))
+why: Negation applies to the body while membership remains the universal restriction.
+
+id: bounded-exists-body-not
+context: nested
+surface: exists a in X, not P(a)
+expect: exists a, (In(a, X) and not P(a))
+why: The witness belongs to X and fails P.
+
+id: bounded-forall-implication-antecedent
+context: nested
+surface: if forall a in X, P(a) then Q
+expect: (forall a, (In(a, X) -> P(a))) -> Q
+why: The bounded universal is the entire antecedent of the implication.
+
+id: bounded-forall-implication-consequent
+context: nested
+surface: if P then forall a in X, Q(a)
+expect: P -> (forall a, (In(a, X) -> Q(a)))
+why: The bounded universal is the consequent of the implication.
+
+id: bounded-negated-forall
+context: nested
+surface: not forall a in X, P(a)
+expect: not (forall a, (In(a, X) -> P(a)))
+why: Negation applies to the complete bounded universal.
+
+id: bounded-negated-exists
+context: nested
+surface: not exists a in X, P(a)
+expect: not (exists a, (In(a, X) and P(a)))
+why: Negation applies to the complete bounded existential.
+
+id: bounded-forall-after-and
+context: nested
+surface: P and forall a in X, Q(a) and R(a)
+expect: P and (forall a, (In(a, X) -> (Q(a) and R(a))))
+why: The embedded bounded quantifier owns the remaining conjunction in its body.
+
+id: bounded-exists-after-or
+context: nested
+surface: P or exists a in X, Q(a) or R(a)
+expect: P or (exists a, (In(a, X) and (Q(a) or R(a))))
+why: The embedded bounded existential owns the remaining disjunction in its property.
+
+id: bounded-nested-forall
+context: nested
+surface: forall a in X, forall b in Y, R(a, b)
+expect: forall a, (In(a, X) -> forall b, (In(b, Y) -> R(a, b)))
+why: Each universal contributes its own membership restriction.
+
+id: bounded-nested-exists
+context: nested
+surface: exists a in X, exists b in Y, R(a, b)
+expect: exists a, (In(a, X) and exists b, (In(b, Y) and R(a, b)))
+why: Each existential witness must belong to its own specified set.
+
+id: bounded-forall-exists
+context: nested
+surface: forall a in X, exists b in Y, R(a, b)
+expect: forall a, (In(a, X) -> exists b, (In(b, Y) and R(a, b)))
+why: The existential is inside the universal's body, so b may depend on a.
+
+id: bounded-exists-forall
+context: nested
+surface: exists a in X, forall b in Y, R(a, b)
+expect: exists a, (In(a, X) and forall b, (In(b, Y) -> R(a, b)))
+why: The universal condition on b is part of the property required of the chosen a.
+
+id: bounded-exists-after-and-in-body
+context: nested
+surface: forall a in X, P(a) and exists b in Y, R(a, b)
+expect: forall a, (In(a, X) -> (P(a) and exists b, (In(b, Y) and R(a, b))))
+why: A second bounded quantifier inside the first quantifier's conjunctive body is scoped locally.
+
+id: bounded-inside-unbounded-forall
+context: nested
+surface: forall z, forall a in X, R(a, z)
+expect: forall z, forall a, (In(a, X) -> R(a, z))
+why: A bounded quantifier can occur in the body of an ordinary unbounded quantifier.
+
+id: bounded-variable-name
+context: nested
+surface: forall item_2 in X, P(item_2)
+expect: forall item_2, (In(item_2, X) -> P(item_2))
+why: The bound-variable grammar permits identifiers with underscores and digits.
+
+id: bounded-keywords-case-insensitive
+context: nested
+surface: FORALL a IN X, P(a)
+expect: forall a, (In(a, X) -> P(a))
+why: Keyword capitalization does not change the formula's meaning.
+
+id: bounded-reject-set-display-bound
+context: line
+surface: forall x in {a, b}, P(x)
+expect: REJECT
+why: A set display is a relation-level expression, not a term that can serve as the bound.
+
+id: bounded-reject-compound-bound
+context: line
+surface: forall x in f(a), P(x)
+expect: REJECT
+why: The current set-bounded quantifier syntax accepts a set name or the empty set as its bound, not a compound term.
+
+id: bounded-reject-forall-missing-body
+context: line
+surface: forall x in X
+expect: REJECT
+why: A bounded universal requires a body after its set restriction.
+
+id: bounded-reject-exists-missing-body
+context: line
+surface: exists x in X
+expect: REJECT
+why: A bounded existential requires a property after its set restriction.
+
+id: bounded-reject-forall-empty-comma-body
+context: line
+surface: forall x in X,
+expect: REJECT
+why: The comma introduces a body and cannot be left without one.
+
+id: bounded-reject-exists-empty-such-that-body
+context: line
+surface: there exists x in X such that
+expect: REJECT
+why: The natural-language existential requires a property after such that.
+
+id: bounded-reject-forall-missing-in
+context: line
+surface: forall x X, P(x)
+expect: REJECT
+why: The set restriction must explicitly use the word in.
+
+id: bounded-reject-exists-missing-in
+context: line
+surface: exists x X, P(x)
+expect: REJECT
+why: The set restriction must explicitly use the word in.
