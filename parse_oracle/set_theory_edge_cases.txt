@@ -1,0 +1,8 @@
+# Edge cases for generated binders in set-theory surface syntax.
+
+id: st-no-elements-does-not-capture-bound-set-name
+context: nested
+surface: forall __no_elements_witness, __no_elements_witness has no elements
+expect: forall __no_elements_witness, forall u, not In(u, __no_elements_witness)
+why: The generated element quantifier must not shadow the enclosing variable naming the set.
+
