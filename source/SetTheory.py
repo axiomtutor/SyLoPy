@@ -396,11 +396,21 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
         if left is not None and right is not None:
             return SurfaceExpression("subset", (left, right), text)
 
-    m = re.match(r"^(.+?)\s+has\s+no\s+elements$", s, flags=re.I)
+    m = re.match(r"^(.+?)\\s+has\\s+no\\s+elements$", s, flags=re.I)
     if m:
         set_term = try_parse_set_term(m.group(1), bound_vars)
         if set_term is not None:
-            witness = "__no_elements_witness"
+            # The generated element variable must not shadow an enclosing
+            # binder that names the set itself (or any other source name).
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = next((name for name in _ELEMENT_NAME_CANDIDATES if name not in used_names), None)
+            if witness is None:
+                base_name = "__no_elements_witness"
+                witness = base_name
+                suffix = 1
+                while witness in used_names:
+                    witness = f"{base_name}_{suffix}"
+                    suffix += 1
             return SurfaceExpression(
                 "core",
                 fl.ForAll(witness, fl.Not(membership_formula(tl.VariableTerm(witness), set_term))),
