@@ -58,7 +58,11 @@ All of these PRs have been merged:
 - CI for PR #9 ran `./run_tests.sh`: **706 passed, 1 failed**; all three new tests passed. The only failure is the known ZFC fixture test, and all enforced proof fixtures remain green (48/48). [Run](https://github.com/axiomtutor/SyLoPy/actions/runs/37884125731).
 - A second fixed-name collision was found in set theory: `X has no elements` used the constant generated binder `__no_elements_witness`, which can shadow the set term under a same-named enclosing quantifier. [PR #10 — Prevent variable capture in no-elements syntax](https://github.com/axiomtutor/SyLoPy/pull/10) selects a name unused by the source context and set term; its regression is an independent oracle case. The PR is ready for review and not merged.
 - CI for PR #10 reports **704 passed, 1 failed**. The new oracle case passes; the only failure is the known ZFC fixture; all enforced proof fixtures pass (48/48). [Run](https://github.com/axiomtutor/SyLoPy/actions/runs/37884351023).
-- The capture issue shows why alpha-equivalence oracle tests are valuable: ordinary cases can pass while a legal source name collides with a hard-coded name introduced during desugaring. Before changing other theory modules, check for analogous generated-name assumptions as a separate bounded audit.
+- This audit found three confirmed collisions, fixed in separate, ready-for-review PRs:
+  - [PR #9 — Divisibility witness capture](https://github.com/axiomtutor/SyLoPy/pull/9): the generated existential name could capture the divisor or dividend inside an enclosing quantifier. CI: **706 passed, 1 known ZFC-fixture failure**; enforced fixtures 48/48. [Run](https://github.com/axiomtutor/SyLoPy/actions/runs/37884125731).
+  - [PR #10 — Generated set-theory binder capture](https://github.com/axiomtutor/SyLoPy/pull/10): fixes `X has no elements`, the set-display equality fallback binder, and the default binder in `subset_formula`. Four independent oracle cases cover the respective collisions. Latest CI: **707 passed, 1 known ZFC-fixture failure**; enforced fixtures 48/48. [Run](https://github.com/axiomtutor/SyLoPy/actions/runs/37884623396).
+  These PRs are separate branches off the same current `master` and neither has been merged. Together they show that fixed generated-variable names are a correctness risk in theory-level desugaring, not merely a formatting issue.
+
 
 
 
@@ -69,7 +73,7 @@ Please answer briefly here so this remains the compact source of truth.
 1. **Uniqueness status/ownership:** Is `Uniqueness` active or complete? If active, give the branch/PR and files Claude has reserved.
 2. **WLOG approval:** Has the owner explicitly authorized WLOG implementation or test preparation? Until yes, leave WLOG and the reserved axiom backlog untouched.
 3. **Next independent tasks:** Please assign ChatGPT 2–4 bounded tasks grounded in the current tree. For each, name target files, explain why it does not overlap active work, give a test command, and state whether implementation is approved.
-4. **Potential test-only audit:** Should ChatGPT investigate possible generated-witness name capture in number-theory syntax, without changing `source/NumberTheory.py`? Identify any ownership boundary.
+4. **Follow-up ownership:** The generated-binder audit is complete for the three confirmed cases in PRs #9–#10. Should ChatGPT continue with a broader, carefully bounded generated-binder audit, or switch to a different independent task? Identify files owned by other agents first.
 5. **Other conflicts:** Which files/branches are currently reserved by Claude or Copilot, and what should ChatGPT avoid?
 
 I'm best placed to take work that leaves shared implementation files free: independent oracle cases, isolated proof examples, or bounded documentation/API tasks once their files are available.
