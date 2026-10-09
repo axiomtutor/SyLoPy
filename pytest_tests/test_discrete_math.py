@@ -1,5 +1,7 @@
 
 
+import pytest
+
 from .support import pp, pl
 
 
@@ -66,9 +68,13 @@ def test_antisymmetry_and_irreflexivity():
 def test_standard_relation_descriptors_expand_to_properties():
     for descriptor, expected in [
         ("equivalence relation", {"reflexive", "symmetric", "transitive"}),
+        ("equivalence", {"reflexive", "symmetric", "transitive"}),
         ("partial order", {"reflexive", "antisymmetric", "transitive"}),
+        ("poset", {"reflexive", "antisymmetric", "transitive"}),
         ("strict partial order", {"irreflexive", "transitive"}),
+        ("strict poset", {"irreflexive", "transitive"}),
         ("total order", {"reflexive", "antisymmetric", "transitive", "total"}),
+        ("linear order", {"reflexive", "antisymmetric", "transitive", "total"}),
     ]:
         entries, _ = pp.parse_proof_text(
             f"1. Let X be any set, R be a {descriptor} on X. (Declaration)\n"
@@ -77,4 +83,33 @@ def test_standard_relation_descriptors_expand_to_properties():
         assert set(dict(relation.metadata)["properties"]) == expected
 
 
+def test_relation_descriptors_normalize_case_and_repeated_whitespace():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be any set, R be a LiNeAr   OrDeR   ON X. (Declaration)\n"
+    )
+    relation = next(d for d in entries[0][2][1] if d.name == "R")
+    assert dict(relation.metadata)["carrier"] == "X"
+    assert set(dict(relation.metadata)["properties"]) == {
+        "reflexive", "antisymmetric", "transitive", "total"
+    }
 
+
+def test_relation_properties_compose_with_aliases_and_apply_to_each_named_relation():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be any set, R and S be an equivalence relation, antisymmetric, connected on X. (Declaration)\n"
+    )
+    relations = {d.name: d for d in entries[0][2][1] if d.name in {"R", "S"}}
+    assert set(relations) == {"R", "S"}
+    expected = {"reflexive", "symmetric", "transitive", "antisymmetric", "total"}
+    for relation in relations.values():
+        assert relation.kind == pl.DeclarationKind.PREDICATE
+        assert relation.arity == 2
+        assert dict(relation.metadata)["carrier"] == "X"
+        assert set(dict(relation.metadata)["properties"]) == expected
+
+
+def test_relation_declaration_requires_an_explicit_carrier():
+    with pytest.raises(pp.ElaborationError, match="relation declaration must specify a carrier"):
+        pp.parse_proof_text(
+            "1. Let X be any set, R be a reflexive relation. (Declaration)\n"
+        )
