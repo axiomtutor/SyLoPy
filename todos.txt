@@ -6,10 +6,10 @@ The project is functionally green, with one known, tracked exception. The
 core proof-language pipeline has been validated against the repository's
 full regression suite:
 
-- 632 Python tests; 631 pass, 1 known failure (see "Known issues" below).
-  That includes the 85-case parser oracle in `parse_oracle/`.
-- all enforced proof fixture suites pass (48/48)
-- informational proof fixtures: 48/49 pass (the one failure is the same
+- 766 Python tests; 765 pass, 1 known failure (see "Known issues" below).
+  That includes the 159-case parser oracle in `parse_oracle/`.
+- all enforced proof fixture suites pass (54/54)
+- informational proof fixtures: 51/52 pass (the one failure is the same
   known issue)
 
 The current work is no longer about making the basics work. The remaining work
@@ -28,10 +28,15 @@ is about making the system cleaner, easier to extend, and easier to use.
       such a set. (Existence from 2)` and `Let X be any set. (Declaration)`,
       the same way pairing proof 5 does) and now fails only at validation, at
       line 5.2.3, because `WLOG` is not a registered rule. `Mutatis mutandis`
-      (line 5.3) and `Uniqueness` (line 6) are the other two rules it needs
-      that don't exist yet. Update the test once "ZFC axiom citations and
-      derived rules" (below) lands -- not before; the fixture is deliberately
-      ahead of the implementation right now.
+      (line 5.3) is the other rule it needs that doesn't exist yet.
+      `Uniqueness` (line 6) now exists; the proof stops at its first missing
+      rule, so line 6 is not reached here. Its last step was checked by
+      replacing `WLOG` and `Mutatis mutandis` with stand-ins, and the same
+      proof written without either is the enforced fixture
+      `tests/testSetTheory/unique_pairing_without_wlog.txt`. Update the test
+      once "ZFC axiom citations and derived rules" (below) lands -- not
+      before; the fixture is deliberately ahead of the implementation right
+      now.
 
 ## Design principles
 
@@ -40,7 +45,7 @@ is about making the system cleaner, easier to extend, and easier to use.
   formulas, rules, subproof shapes -- over adding new kernel/AST primitives.
   Reserve real kernel changes for genuinely new logical primitives, not
   convenience notation around an existing idea. "Exists unique" is the first
-  applied case: planned as sugar expanding to the ordinary
+  applied case: the `Uniqueness` rule concludes the ordinary
   `exists Y, (P(Y) and forall X, (P(X) -> X = Y))` form (see "Uniqueness,
   N, M" below), not a new `ExistsUnique` AST node.
 
@@ -359,11 +364,38 @@ implementing the rules without an explicit go-ahead.
       checks. For a set with no stated property (e.g. "Let X be any set"),
       the property is symbolic, i.e. just its own membership predicate.
 
-- [ ] `Uniqueness, N, M` as sugar.
-      Expands to the ordinary `exists Y, (P(Y) and forall X, (P(X) -> X = Y))`
-      form, reusing `ExistentialIntroductionRule`'s witness-to-bound-variable
-      generalization technique, rather than becoming a new `ExistsUnique`
-      core connective. First applied case of the sugar principle above.
+- [x] `Uniqueness, N, M`. Implemented as `UniquenessRule` in `ProofLogic.py`.
+      It concludes the ordinary `exists W, (B(W) and forall V, (B(V) -> V = W))`
+      form, not a new `ExistsUnique` core connective (first applied case of
+      the sugar principle above). From an existence line `exists Y, B(Y)`
+      (line N) and a conditional `B(c) -> c = d` (line M), cited in either
+      order, it infers that exactly one Y has B. The bound names of the
+      conclusion may differ from the cited lines.
+      The rule is only sound if `c` stands for any object with B, so it
+      checks that `c` is arbitrary. It applies only when all of these hold:
+      1. `c` and `d` are distinct constants;
+      2. `c` does not occur in the existence line (so not in the conclusion);
+      3. `c` is a constant the proof introduced as arbitrary: by a plain
+         declaration line (`Let X be any set. (Declaration)`) or as the flag
+         of a Fresh Variable subproof. Not arbitrary: the constants the proof
+         starts with, a witness from `Existence from L`, a constant a rule
+         declares (the direct Pairing witness form), and an object declared
+         with structure (`Let x in X`, or a Type such as natural number);
+      4. `c` occurs in no hypothesis in force: premises, cited axiom lines,
+         declarations that state a formula, and the open assumptions.
+         Premises and cited axioms stay in force for the rest of the proof,
+         which is conservative.
+      Mechanism: `InferenceRule.applies_in_context(candidates, phi, context)`
+      is a new opt-in hook (the default forwards to `applies`, so no other
+      rule changes). The validator builds a `RuleContext` (`hypotheses`,
+      `arbitrary_constants`) before each rule check. A rule asked without a
+      context never applies. Tests: `pytest_tests/test_uniqueness_rule.py`;
+      fixtures `tests/testProofs/uniqueness.txt` (two valid, three invalid)
+      and `tests/testSetTheory/unique_pairing_without_wlog.txt`. As a check,
+      32 deliberate bugs, introduced one at a time into the rule and the
+      validator's bookkeeping, each made at least one test fail. `WLOG` and
+      `Mutatis mutandis` will probably need a similar view of the proof around
+      them; that design is not written yet.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
@@ -391,8 +423,8 @@ implementing the rules without an explicit go-ahead.
         not already in use; the braces in "a unique set {a, b} that ..." only label the witness;
       - citations written `Rule, 3, 3.2.1` and `Rule, 3.1 to 3.2` (a range
         gives its two endpoints) beside `Rule from 3, 3.2.1`; the names of
-        planned rules (`Uniqueness`, `WLOG`, `Mutatis mutandis`) resolve to
-        named placeholders;
+        planned rules (`WLOG`, `Mutatis mutandis`) resolve to named
+        placeholders (`Uniqueness` is now a real rule);
       - a fixture's stated conclusion (`### then ...`) is compared with what
         the proof derived up to the names of bound variables
         (`ProofLogic._alpha_eq`).

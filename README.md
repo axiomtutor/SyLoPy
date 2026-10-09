@@ -13,8 +13,8 @@ It should soon develop features for more mathematical subjects.
 At the time of writing, the project is in a stable state, with one known,
 tracked exception.
 
-- 531 Python tests; 529 pass, 1 skipped, 1 known failure (a stale fixture
-  test, tracked in `todos.txt`).
+- 766 Python tests; 765 pass, 1 known failure (a stale fixture test,
+  tracked in `todos.txt`).
 - All enforced proof fixtures pass.
 - All but one informational proof fixture pass (the same known issue: a
   fixture written ahead of an agreed-but-unimplemented feature).
@@ -75,8 +75,8 @@ Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
 Set theory is the active frontier: the ZFC axiom-citation design (named
 axiom rules, WLOG, unique existence) is written up in `todos.txt`; the syntax
-above is implemented, the rules `Uniqueness`, `WLOG` and `Mutatis mutandis`
-are not.
+above is implemented, and so is the rule `Uniqueness`. The rules `WLOG` and
+`Mutatis mutandis` are not.
 
 ### Number theory
 

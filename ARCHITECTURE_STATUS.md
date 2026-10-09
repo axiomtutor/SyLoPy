@@ -40,6 +40,17 @@ A theory should provide, as appropriate:
 Adding a structure should therefore normally mean adding a recipe and core
 rules to a theory module rather than modifying generic elaboration logic.
 
+## Rules that look at the proof around them
+
+A rule normally sees only the lines it cites. A rule that is sound only
+relative to the rest of the proof can implement
+`InferenceRule.applies_in_context(candidates, phi, context)` instead. The
+validator passes a `RuleContext`: `hypotheses` (premises, cited axiom lines,
+declarations that state a formula, and the open assumptions) and
+`arbitrary_constants` (constants introduced by a plain declaration or as the
+flag of a Fresh Variable subproof). Rules that do not opt in are unchanged.
+`Uniqueness` is the first user; a rule asked without a context never applies.
+
 ## Remaining consolidation work
 
 The main remaining architectural work is to identify and remove any duplicated

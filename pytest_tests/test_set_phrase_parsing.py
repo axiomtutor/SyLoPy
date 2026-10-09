@@ -81,7 +81,6 @@ def test_ranges_mix_with_single_labels():
 
 
 @pytest.mark.parametrize("text,name", [
-    ("Uniqueness, 2, 3", "Uniqueness"),
     ("WLOG, 3.2.2", "WLOG"),
     ("Without loss of generality, 3.2.2", "WLOG"),
     ("Mutatis mutandis, 3.1 to 3.2", "MutatisMutandis"),
@@ -93,6 +92,13 @@ def test_planned_rule_names_resolve_to_named_placeholders(text, name):
     assert kind == "rule"
     assert isinstance(rule, pl.NamedRulePlaceholder)
     assert rule.name == name
+
+
+def test_uniqueness_is_a_real_rule_cited_either_way():
+    for text in ("Uniqueness, 2, 3", "Uniqueness from 2, 3"):
+        kind, rule, refs = _cite(text)
+        assert (kind, refs) == ("rule", ["2", "3"])
+        assert isinstance(rule, pl.UniquenessRule)
 
 
 def test_set_property_with_citations_is_the_general_rule():

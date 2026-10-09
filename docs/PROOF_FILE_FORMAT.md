@@ -208,6 +208,7 @@ case-insensitive; hyphens are normalized to spaces.
 | Universal Modus Ponens | Universal Modus Ponens; Universal Modus Ponens Rule |
 | Existential Introduction | Existential Introduction; Existential Introduction Rule; Existential Generalization |
 | Existential Elimination | Existential Elimination; Existential Elimination Rule; Existential Instantiation |
+| Uniqueness | Uniqueness; Uniqueness Rule |
 | Conjunction Elimination | Conjunction Elimination; Conjunction Elimination Rule; And Elimination; And Elim |
 | Conjunction Introduction | Conjunction Introduction; Conjunction Introduction Rule; And Introduction; And Intro |
 | Disjunction Introduction | Disjunction Introduction; Disjunction Introduction Rule; Or Introduction; Or Intro; Addition |
@@ -270,8 +271,8 @@ for the following spellings:
 | Axiom of power set / Power set axiom | PowerSetAxiom |
 | Axiom of infinity | InfinityAxiom |
 
-`Uniqueness`, `WLOG`, and `Mutatis mutandis` are named placeholders on
-this commit, not implemented inference rules.
+`WLOG` and `Mutatis mutandis` are named placeholders on this commit, not
+implemented inference rules.
 
 ## 8. Premises, axioms, and conclusions
 

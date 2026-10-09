@@ -629,6 +629,53 @@ class FormulaMatcher:
 # SECTION 3 -- Core proof data structures
 # ==========================================================================
 
+class RuleContext:
+    """What a rule may learn about the proof around the line it justifies.
+
+    A rule that generalizes a constant -- today only `UniquenessRule` -- has
+    to know that the constant is *arbitrary*: that nothing the proof took for
+    granted says anything about it. The context answers that with two things.
+
+    `hypotheses` are the formulas in force at that line that were taken for
+    granted rather than derived: every premise line, every axiom cited so far,
+    and every declaration line that states a formula (all of them for the rest
+    of the proof), plus the assumption that opened each subproof still open.
+    A constant that occurs in one is constrained by it. Derived lines are not
+    listed: whatever one of them says about the constant, the hypothesis it
+    ultimately depends on is listed.
+
+    `arbitrary_constants` are the names of the constants a plain declaration
+    line of this proof introduced and that are still in scope: `Let X be any
+    set. (Declaration)`, or the flag line of a `Fresh Variable` subproof. A
+    declaration is the only way into this set, so a constant the proof was
+    handed up front (`Proof(declarations=...)`), a witness named from an
+    existential, and a constant a rule declared are all absent -- each of
+    them comes with something already said about it. The set is empty unless
+    the validator fills it, so a rule asked outside a proof finds nothing
+    arbitrary and says no.
+
+    The validator builds one of these per rule citation and hands it to
+    `InferenceRule.applies_in_context`. It holds references to the
+    validator's own lists, not copies, so creating one costs nothing for the
+    many rules that never look at it -- and it is only good for the call it
+    was made for: a rule reads it while deciding and does not keep it.
+    """
+    __slots__ = ("_given", "_assumptions", "_arbitrary")
+
+    def __init__(self, given=(), assumptions=(), arbitrary_constants=()):
+        self._given = given
+        self._assumptions = assumptions
+        self._arbitrary = arbitrary_constants
+
+    @property
+    def hypotheses(self) -> Tuple[Any, ...]:
+        return tuple(self._given) + tuple(self._assumptions)
+
+    @property
+    def arbitrary_constants(self) -> frozenset:
+        return frozenset(self._arbitrary)
+
+
 class InferenceRule:
     """Base class for every inference rule.
 
@@ -651,12 +698,22 @@ class InferenceRule:
         must have -- `len(indices) != rule.premise_arity` is rejected
         before `applies` is ever consulted
       * implement `applies(candidates, phi) -> bool`
+
+    A rule whose soundness also depends on the rest of the proof -- today
+    only `UniquenessRule`, which generalizes a constant and so needs to know
+    the constant is arbitrary (see `RuleContext`) -- overrides
+    `applies_in_context` as well. The validator always calls that one; the
+    default simply forwards to `applies`, so every other rule is unaffected.
     """
     name = "base"
     premise_arity = 1
 
     def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
         raise NotImplementedError
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> bool:
+        return self.applies(candidates, phi)
 
 
 class ExplosionRule(InferenceRule):
@@ -1487,6 +1544,133 @@ class UniversalGeneralizationRule(InferenceRule):
                 return False
 
         return True
+
+
+class UniquenessRule(InferenceRule):
+    """Uniqueness: from `exists Y, B(Y)` (existence) and `B(c) -> c = d`
+    (any `c` satisfying `B` is `d`), infer
+
+        exists W, (B(W) and forall V, (B(V) -> V = W))
+
+    -- "there is exactly one" written out in ordinary quantifiers, the same
+    form ProofParserPolicy writes for "there exists a unique ...". There is
+    no unique-existence connective; this rule is a citable shortcut for the
+    quantifier steps, in the spirit of `UniversalModusPonensRule`.
+
+    Example (testProofs/uniqueness.txt)::
+
+        1. Let a be any set. (Declaration)
+        2. a = a. (Reflexivity)
+        3. exists Y, Y = a. (Existential Introduction from 2)
+        4. Let Y be such a set. (Existence from 3)       [names the witness: d = Y]
+        5. Let X be any set. (Declaration)               [the arbitrary constant: c = X]
+        6. If X = a then X = Y. (Conditional Introduction from subproof below)
+           ...
+        7. exists Y, (Y = a and forall X, (X = a -> X = Y)). (Uniqueness, 3, 6)
+
+    The two cited lines may come in either order. `B` is read off the
+    existence line; the other line must be `B` instantiated at a constant `c`
+    implying `c = d` for a different constant `d`. The conclusion may name
+    its bound variables anything (`W` and `V` must differ).
+
+    Why this is sound: the conditional holds for an *arbitrary* `c`, so it
+    holds for all of them, `forall V, (B(V) -> V = d)`. Take any `Y` with
+    `B(Y)`; then `Y = d`, so `B(d)` and `d` is the one and only element
+    satisfying `B`. `d` can be any constant -- a witness named earlier or
+    not -- and needs no check. What the rule must check is that `c` really is
+    arbitrary:
+
+      1. `c` is a constant, distinct from `d`.
+      2. `c` does not occur in the existence line, so it is not a parameter
+         of `B` that would be generalized away along with the rest. (The
+         conclusion is `B` again, so `c` is not in it either.)
+      3. `c` was introduced by a plain declaration line of this proof
+         (`RuleContext.arbitrary_constants`): `Let X be any set.
+         (Declaration)`, or the flag line of a `Fresh Variable` subproof. A
+         constant the proof was handed up front, or named as the witness of
+         an existential, or declared by a rule, arrives with something
+         already said about it, and an axiom can say more about a constant
+         the proof never mentions.
+      4. `c` occurs in no hypothesis in force (`RuleContext.hypotheses`): no
+         premise, no cited axiom, no declaration line stating a formula, no
+         assumption of an enclosing subproof. A premise like "X is in W"
+         would make the conditional a statement about one particular `X`,
+         and generalizing it would be unsound. (Derived lines need no check:
+         whatever they say about `c` comes from a hypothesis, and that is
+         checked.) Items 3 and 4 overlap on purpose: a constant has to pass
+         both, so a gap in how the validator records one is not enough to
+         let a constrained constant through.
+
+    The rule cannot tell that a constant is arbitrary from the formulas
+    alone, so asked outside a proof -- `applies(candidates, phi)` with no
+    context -- it never applies. Unit tests of the shapes pass a context
+    that names the constant arbitrary; inside a proof the validator always
+    supplies the real one.
+    """
+    name = "Uniqueness"
+    premise_arity = 2
+
+    def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        return self.applies_in_context(candidates, phi, RuleContext())
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: RuleContext) -> bool:
+        if len(candidates) != 2:
+            return False
+        first, second = candidates
+        return (self._check(first, second, phi, context)
+                or self._check(second, first, phi, context))
+
+    @staticmethod
+    def _check(existence: Any, step: Any, phi: Any, context: RuleContext) -> bool:
+        if not (isinstance(existence, fl.Exists) and isinstance(step, fl.Implies)
+                and isinstance(phi, fl.Exists)):
+            return False
+
+        # The conclusion: exists W, (held and forall V, (held(V) -> V = W)).
+        if not isinstance(phi.body, fl.And) or len(phi.body.conjuncts) < 2:
+            return False
+        *held_parts, uniqueness = phi.body.conjuncts
+        if not isinstance(uniqueness, fl.ForAll) or not isinstance(uniqueness.body, fl.Implies):
+            return False
+        held = held_parts[0] if len(held_parts) == 1 else fl.And(*held_parts)
+        w, v_name = phi.var, uniqueness.var
+        if w == v_name:
+            return False
+        w_term, v_term = tl.VariableTerm(w), tl.VariableTerm(v_name)
+        equal_to_witness = uniqueness.body.consequent
+        if not (isinstance(equal_to_witness, fl.Equals)
+                and ((_ast_eq(equal_to_witness.left, v_term) and _ast_eq(equal_to_witness.right, w_term))
+                     or (_ast_eq(equal_to_witness.left, w_term) and _ast_eq(equal_to_witness.right, v_term)))):
+            return False
+
+        # The same property throughout: the existence line, the first
+        # conjunct, and the antecedent under the universal quantifier.
+        if not _alpha_eq(fl.Exists(w, held), existence):
+            return False
+        if not _alpha_eq(fl.ForAll(v_name, uniqueness.body.antecedent), fl.ForAll(w, held)):
+            return False
+
+        # The step line: B(c) -> c = d, for constants c != d.
+        step_equality = step.consequent
+        if not isinstance(step_equality, fl.Equals):
+            return False
+        arbitrary = context.arbitrary_constants
+        for c, d in ((step_equality.left, step_equality.right), (step_equality.right, step_equality.left)):
+            if not (isinstance(c, tl.ConstantTerm) and isinstance(d, tl.ConstantTerm)) or c.name == d.name:
+                continue
+            instance = fl.substitute_in_formula(existence.body, existence.var, c)
+            if not _alpha_eq(step.antecedent, instance):
+                continue
+            # c must really be arbitrary (see the class docstring, 2-4).
+            if _term_occurs_in_formula(c, existence):
+                continue
+            if c.name not in arbitrary:
+                continue
+            if any(_term_occurs_in_formula(c, hypothesis) for hypothesis in context.hypotheses):
+                continue
+            return True
+        return False
 
 
 # ==========================================================================
@@ -2694,6 +2878,7 @@ def default_rules() -> List[InferenceRule]:
         UniversalInstantiationRule(),
         UniversalModusPonensRule(),
         UniversalGeneralizationRule(),
+        UniquenessRule(),
         ExistentialIntroductionRule(),
         ExistentialEliminationRule(),
         ConjunctionEliminationRule(),
@@ -2947,8 +3132,22 @@ class ProofValidator:
         self.premises = premises
         self.axioms = axioms
         self.initial_declarations = list(declarations or [])
+        # What a rule that generalizes a constant needs to know about the
+        # proof so far (see `RuleContext`). `_given_lines` holds what was
+        # taken for granted -- premise lines, cited axioms, declaration lines
+        # that state a formula -- for the rest of the proof;
+        # `_assumption_stack` holds the assumption of every subproof still
+        # open; `_arbitrary_names` holds the constants a plain declaration
+        # introduced, as long as they are in scope. The last two shrink when
+        # a subproof closes (`_validate_block`).
+        self._given_lines: list = []
+        self._assumption_stack: list = []
+        self._arbitrary_names: list = []
 
     def validate(self, entries: list) -> Tuple[bool, Optional[ValidationError], Optional[SubproofRecord]]:
+        self._given_lines = []
+        self._assumption_stack = []
+        self._arbitrary_names = []
         seen: list = []
         labels = LabelScope()
         declarations = DeclarationScope(initial=self.initial_declarations)
@@ -2984,6 +3183,8 @@ class ProofValidator:
             detail = "subproof has no lines" if is_subproof else "proof has no lines"
             return False, _mk_error(None, block_label, None, CATEGORY_EMPTY_SUBPROOF, detail), None
 
+        assumptions_in_force = len(self._assumption_stack)
+        arbitrary_in_force = len(self._arbitrary_names)
         if is_subproof:
             opening_detail, opening_label = self._check_opens_with_assumption(block_entries[0])
             if opening_detail:
@@ -3012,6 +3213,8 @@ class ProofValidator:
                 return False, err, None
 
         if is_subproof:
+            del self._assumption_stack[assumptions_in_force:]
+            del self._arbitrary_names[arbitrary_in_force:]
             boundary = len(outer_context) if outer_context else 0
             return True, None, SubproofRecord(seen[0], seen, outer_context_ref=outer_context, boundary_index=boundary)
 
@@ -3071,6 +3274,14 @@ class ProofValidator:
                 if not explicit_declarations:
                     return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                                      "declaration line contains no declarations")
+                # A declaration that states no formula says nothing about the
+                # objects it introduces: they are this proof's arbitrary
+                # constants (see `RuleContext`). Structure metadata is
+                # something the kernel cannot read, so an object that carries
+                # any is not assumed to be unconstrained.
+                self._arbitrary_names.extend(
+                    d.name for d in explicit_declarations
+                    if d.kind == DeclarationKind.OBJECT and not d.metadata)
                 return None
 
             if not isinstance(phi, fl.Formula):
@@ -3089,6 +3300,7 @@ class ProofValidator:
                 return _mk_error(label, block_label, sidx, CATEGORY_NOT_CLOSED,
                                  "formula is not closed (has a free variable)")
 
+            self._given_lines.append(phi)
             seen.append(phi)
             err = self._bind_label(labels, label, phi, block_label, sidx)
             if err:
@@ -3125,6 +3337,7 @@ class ProofValidator:
                 if err:
                     return err
 
+            self._given_lines.extend(phi)
             seen.extend(phi)
             err = self._bind_label(labels, label, list(phi), block_label, sidx)
             if err:
@@ -3184,6 +3397,15 @@ class ProofValidator:
 
         if err:
             return err
+
+        if tag in ('premise', 'axiom'):
+            self._given_lines.append(phi)
+        elif tag == 'assume':
+            self._assumption_stack.append(phi)
+        elif tag == 'arbitrary' and isinstance(phi, fl.AtomicFormula) and not phi.args and isinstance(phi.predicate, str):
+            # The flag line of a `Fresh Variable` subproof: its constant is
+            # as arbitrary as one can be, for as long as the subproof is open.
+            self._arbitrary_names.append(phi.predicate)
 
         seen.append(phi)
         err = self._bind_label(labels, label, phi, block_label, sidx)
@@ -3437,7 +3659,7 @@ class ProofValidator:
         for candidate_indices in itertools.combinations(range(len(available)), arity):
             candidates = [available[i] for i in candidate_indices]
             try:
-                if rule.applies(candidates, phi):
+                if self._applies(rule, candidates, phi):
                     return None
             except Exception as raised:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3468,7 +3690,7 @@ class ProofValidator:
 
         if not self._rule_is_registered(rule):
             return _mk_error(label, block_label, sidx, CATEGORY_UNRECOGNIZED_RULE, f"rule '{rule.name}' is not one of the rules this proof allows")
-        if not rule.applies([sp_rec], phi):
+        if not self._applies(rule, [sp_rec], phi):
             return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH, f"'{rule.name}' does not justify {phi!r} from the subproof immediately below this line")
         return None
 
@@ -3537,7 +3759,7 @@ class ProofValidator:
             for candidate_indices in itertools.combinations(range(len(available)), arity_to_try):
                 candidates = [available[i] for i in candidate_indices]
                 try:
-                    if rule.applies(candidates, phi):
+                    if self._applies(rule, candidates, phi):
                         return None
                 except Exception as raised:
                     return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3545,6 +3767,17 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}")
+
+    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula) -> bool:
+        """Ask `rule` whether it justifies `phi` from `candidates`, giving
+        it the `RuleContext` of this point in the proof if it wants one
+        (`applies_in_context`). The one place the validator calls a rule, so
+        a context-aware rule sees the same context however it was cited."""
+        in_context = getattr(rule, 'applies_in_context', None)
+        if in_context is None:
+            return rule.applies(candidates, phi)
+        return in_context(candidates, phi, RuleContext(
+            self._given_lines, self._assumption_stack, self._arbitrary_names))
 
     def _rule_is_registered(self, rule: InferenceRule) -> bool:
         """Is `rule` an instance of one of the rule *types* this `Proof`
