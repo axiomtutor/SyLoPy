@@ -96,16 +96,24 @@ def test_relation_descriptors_normalize_case_and_repeated_whitespace():
 
 def test_relation_properties_compose_with_aliases_across_declarations():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be any set, R be an equivalence relation, antisymmetric, connected on X, S be an equivalence relation, antisymmetric, connected on X. (Declaration)\n"
+        "1. Let X be any set, R be an equivalence relation, antisymmetric on X, S be an equivalence relation, antisymmetric on X. (Declaration)\n"
     )
     relations = {d.name: d for d in entries[0][2][1] if d.name in {"R", "S"}}
     assert set(relations) == {"R", "S"}
-    expected = {"reflexive", "symmetric", "transitive", "antisymmetric", "total"}
+    expected = {"reflexive", "symmetric", "transitive", "antisymmetric"}
     for relation in relations.values():
         assert relation.kind == pl.DeclarationKind.PREDICATE
         assert relation.arity == 2
         assert dict(relation.metadata)["carrier"] == "X"
         assert set(dict(relation.metadata)["properties"]) == expected
+
+
+def test_connected_relation_records_totality():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be any set, R be a connected relation on X. (Declaration)\\n"
+    )
+    relation = next(d for d in entries[0][2][1] if d.name == "R")
+    assert set(dict(relation.metadata)["properties"]) == {"total"}
 
 
 def test_relation_declaration_requires_an_explicit_carrier():
