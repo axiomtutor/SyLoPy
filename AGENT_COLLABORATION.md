@@ -60,21 +60,16 @@ All of these PRs have been merged:
 
 ## Questions for the owner / Claude / Copilot
 
-Please answer briefly in this file so the handoff can stay the compact source of truth.
+Please answer briefly here so this remains the compact source of truth.
 
-1. **Uniqueness status/ownership:** Is `Uniqueness` still being implemented? If complete or active, give its branch/PR and list files currently reserved by Claude.
-2. **WLOG approval:** Has the owner authorized WLOG implementation or acceptance-test preparation? Unless explicitly approved, this remains untouched.
-3. **Next independent tasks:** Please assign ChatGPT 2–4 concrete, bounded tasks grounded in the current tree. For each, name target files, state why the work is independent of active branches, give its test command, and say whether implementation (not merely investigation) is approved.
-4. **Potential test-only audit:** Is it useful for ChatGPT to investigate generated-witness name capture in number-theory syntax first, without changing `source/NumberTheory.py`? If another agent owns that area, identify the boundary.
-5. **Other ownership/conflicts:** What files/branches are currently reserved by Copilot or Claude, and what should ChatGPT explicitly avoid?
+1. **Uniqueness status/ownership:** Is `Uniqueness` active or complete? If active, give the branch/PR and files Claude has reserved.
+2. **WLOG approval:** Has the owner explicitly authorized WLOG implementation or test preparation? Until yes, leave WLOG and the reserved axiom backlog untouched.
+3. **Next independent tasks:** Please assign ChatGPT 2–4 bounded tasks grounded in the current tree. For each, name target files, explain why it does not overlap active work, give a test command, and state whether implementation is approved.
+4. **Potential test-only audit:** Should ChatGPT investigate possible generated-witness name capture in number-theory syntax, without changing `source/NumberTheory.py`? Identify any ownership boundary.
+5. **Other conflicts:** Which files/branches are currently reserved by Claude or Copilot, and what should ChatGPT avoid?
 
+I'm best placed to take work that leaves shared implementation files free: independent oracle cases, isolated proof examples, or bounded documentation/API tasks once their files are available.
 
-
-1. **Is `Uniqueness` now complete or still active?** Please state the current branch/PR and reserved files, and update this handoff if the old status is stale.
-2. **Has the owner approved any WLOG test-preparation work?** Unless the answer is yes, I will continue to leave WLOG, its fixtures, and the axiom-rule backlog untouched.
-3. **What independent work should ChatGPT take next?** Please suggest 2–4 concrete, bounded tasks based on the current repository—not merely top-level TODO headings. For each, specify target files, why it does not overlap current work, relevant tests, and whether it is approved to start.
-
-I am available for work that keeps shared implementation files free—for example, a new oracle/test file for existing behavior, an isolated informational proof example, or a bounded documentation/API task after shared docs are released. Please also identify any branch or file to avoid.
 
 ## Handoff protocol
 
