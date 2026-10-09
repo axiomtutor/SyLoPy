@@ -55,6 +55,10 @@ def membership_formula(element: tl.Term, set_term: tl.Term) -> fl.Formula:
 
 
 def subset_formula(left: tl.Term, right: tl.Term, var_name: str = SUBSET_BOUND_VARIABLE) -> fl.Formula:
+    # The generated element variable must not capture a variable occurring in
+    # either set term, even when a caller uses the default name explicitly.
+    used_names = fl.term_names(left) | fl.term_names(right)
+    var_name = _fresh_generated_variable_name(used_names, var_name)
     variable = tl.VariableTerm(var_name)
     return fl.ForAll(
         var_name,
@@ -117,6 +121,19 @@ def _parse_enumeration(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
 
 def _term_names(term: tl.Term) -> set:
     return fl.term_names(term)
+
+
+def _fresh_generated_variable_name(used_names: set, preferred: str, candidates=()) -> str:
+    """Pick an unused generated binder name, including when candidates are exhausted."""
+    for candidate in candidates:
+        if candidate not in used_names:
+            return candidate
+    name = preferred
+    suffix = 1
+    while name in used_names:
+        name = f"{preferred}_{suffix}"
+        suffix += 1
+    return name
 
 
 def _equals_any(element: tl.Term, options: List[tl.Term]) -> fl.Formula:
@@ -283,7 +300,7 @@ def _display_equality(set_term: tl.Term, display: _SetDisplay) -> fl.Formula:
         name = display.variable
     else:
         used = set_names | display.names
-        name = next((c for c in _ELEMENT_NAME_CANDIDATES if c not in used), "__display_element")
+        name = _fresh_generated_variable_name(used, "__display_element", _ELEMENT_NAME_CANDIDATES)
     variable = tl.VariableTerm(name)
     return fl.ForAll(name, fl.Iff(membership_formula(variable, set_term), display.contains(variable)))
 
@@ -400,7 +417,11 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
     if m:
         set_term = try_parse_set_term(m.group(1), bound_vars)
         if set_term is not None:
-            witness = "__no_elements_witness"
+            # Avoid shadowing a same-named set variable from the surrounding scope.
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__no_elements_witness", _ELEMENT_NAME_CANDIDATES
+            )
             return SurfaceExpression(
                 "core",
                 fl.ForAll(witness, fl.Not(membership_formula(tl.VariableTerm(witness), set_term))),
