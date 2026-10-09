@@ -46,10 +46,29 @@ All of these PRs have been merged:
 - [PR #5 — Bounded-quantifier oracle cases](https://github.com/axiomtutor/SyLoPy/pull/5): scope, nesting, connective composition, and rejection cases for the new syntax.
 - [PR #6 — Executable proof-file format examples](https://github.com/axiomtutor/SyLoPy/pull/6): a test validates marked complete proofs from `docs/PROOF_FILE_FORMAT.md` and checks concrete justification examples.
 - [PR #7 — Number-theory parser oracle cases](https://github.com/axiomtutor/SyLoPy/pull/7): independent readings for integer assertions, quotient notation, divisibility, compound terms, and nested logical contexts.
+- [PR #8 — Theorem promotion and subproof example](https://github.com/axiomtutor/SyLoPy/pull/8): end-to-end coverage of a proof with a subproof, promotion to a reusable theorem, a later theorem instance, and rejection of a wrong-shape instance.
 
-CI for these changes continued to report the single known ZFC-fixture failure; the new tests/oracle cases passed. The full test suite should be rerun against current `master` when assessing later work.
+## Latest progress and assessment (2026-10-09)
+
+- Copilot added `parse_oracle/number_theory_edge_cases.txt` on `master` (commit `16dec2e`): 13 cases covering negation, divisibility inside connectives and quantifiers, nested quotient terms, biconditionals, and malformed divisibility/quotient syntax. They complement the existing number-theory oracle rather than changing parser behavior. ChatGPT reviewed them as a useful, well-scoped addition (8.5/10); retain them.
+- The latest observed full test run after the recent test additions reported **703 passed, 1 failed**. The sole failure remains `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`; it is expected to remain pending because the fixture uses the unimplemented `WLOG`, `Mutatis mutandis`, and `Uniqueness`. All enforced proof fixtures pass (48/48). [Run](https://github.com/axiomtutor/SyLoPy/actions/runs/37883443051).
+- PRs #3–#8 are merged. Recent independent work has strengthened the surface-language specification and executable examples without adding kernel rules. This is valuable regression coverage, while the main set-theory design backlog remains intentionally gated by owner approval.
+- The counts in `README.md` and `todos.txt` are older than the current run. Do not edit those status/count lines opportunistically; the owner can decide when to refresh the documentation.
+- A possible next test-only audit is lexical capture/shadowing in theory-generated formulas, particularly whether a generated divisibility witness name can collide with a legal source variable. First construct a focused reproducer/oracle expectation; do not change theory implementation until the behavior is demonstrated and file ownership is clear.
+
+
 
 ## Questions for the owner / Claude / Copilot
+
+Please answer briefly in this file so the handoff can stay the compact source of truth.
+
+1. **Uniqueness status/ownership:** Is `Uniqueness` still being implemented? If complete or active, give its branch/PR and list files currently reserved by Claude.
+2. **WLOG approval:** Has the owner authorized WLOG implementation or acceptance-test preparation? Unless explicitly approved, this remains untouched.
+3. **Next independent tasks:** Please assign ChatGPT 2–4 concrete, bounded tasks grounded in the current tree. For each, name target files, state why the work is independent of active branches, give its test command, and say whether implementation (not merely investigation) is approved.
+4. **Potential test-only audit:** Is it useful for ChatGPT to investigate generated-witness name capture in number-theory syntax first, without changing `source/NumberTheory.py`? If another agent owns that area, identify the boundary.
+5. **Other ownership/conflicts:** What files/branches are currently reserved by Copilot or Claude, and what should ChatGPT explicitly avoid?
+
+
 
 1. **Is `Uniqueness` now complete or still active?** Please state the current branch/PR and reserved files, and update this handoff if the old status is stale.
 2. **Has the owner approved any WLOG test-preparation work?** Unless the answer is yes, I will continue to leave WLOG, its fixtures, and the axiom-rule backlog untouched.
