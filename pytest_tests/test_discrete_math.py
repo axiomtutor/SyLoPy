@@ -94,9 +94,9 @@ def test_relation_descriptors_normalize_case_and_repeated_whitespace():
     }
 
 
-def test_relation_properties_compose_with_aliases_and_apply_to_each_named_relation():
+def test_relation_properties_compose_with_aliases_across_declarations():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be any set, R and S be an equivalence relation, antisymmetric, connected on X. (Declaration)\n"
+        "1. Let X be any set, R be an equivalence relation, antisymmetric, connected on X, S be an equivalence relation, antisymmetric, connected on X. (Declaration)\n"
     )
     relations = {d.name: d for d in entries[0][2][1] if d.name in {"R", "S"}}
     assert set(relations) == {"R", "S"}
