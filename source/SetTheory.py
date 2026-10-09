@@ -396,7 +396,7 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
         if left is not None and right is not None:
             return SurfaceExpression("subset", (left, right), text)
 
-    m = re.match(r"^(.+?)\\s+has\\s+no\\s+elements$", s, flags=re.I)
+    m = re.match(r"^(.+?)\s+has\s+no\s+elements$", s, flags=re.I)
     if m:
         set_term = try_parse_set_term(m.group(1), bound_vars)
         if set_term is not None:
