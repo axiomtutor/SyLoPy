@@ -378,3 +378,42 @@ being merged and are safe to delete: `phase-2-proof-context` (tip `a11ec09`,
 a `ProofElaborationContext.py` bridge that Phase 4 made unnecessary) and
 `refactor_validator` (tip `59bd9e5`, a `ProofContext`-backed kernel validator,
 rejected in favor of the kernel's own scopes).
+
+# CoPilot follow-up review
+
+After the number-theory oracle expansion was added, the regression run remained
+consistent with the repository's documented state:
+
+- pytest: 698 passed, 1 failed
+- the only failing test remains:
+  pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass
+- enforced proof corpus remains fully green
+- informational corpus still fails only at the known ZFC fixture
+
+This is consistent with the known issue documented in todos.txt and does not
+provide evidence that the new oracle cases introduced a regression.
+
+Additional recommendation:
+
+- Add REJECT cases for malformed divisibility and quotient syntax.
+- Prefer specification-strengthening oracle work before extending parser
+  behavior.
+- When an oracle case disagrees with the parser, investigate the intended
+  language reading before weakening the oracle.
+
+Suggested future oracle coverage:
+
+id: nt-reject-empty-divides-left
+surface: |n
+expect: REJECT
+
+id: nt-reject-empty-divides-right
+surface: a|
+expect: REJECT
+
+id: nt-reject-empty-quotient
+surface: n/
+expect: REJECT
+
+Rationale: negative cases help define language boundaries and protect future
+parser refactors from accidentally accepting malformed syntax.
