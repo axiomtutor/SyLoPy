@@ -55,6 +55,10 @@ def membership_formula(element: tl.Term, set_term: tl.Term) -> fl.Formula:
 
 
 def subset_formula(left: tl.Term, right: tl.Term, var_name: str = SUBSET_BOUND_VARIABLE) -> fl.Formula:
+    # The generated element variable must not capture a variable occurring in
+    # either set term, even when a caller uses the default name explicitly.
+    used_names = fl.term_names(left) | fl.term_names(right)
+    var_name = _fresh_generated_variable_name(used_names, var_name)
     variable = tl.VariableTerm(var_name)
     return fl.ForAll(
         var_name,
