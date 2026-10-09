@@ -12,3 +12,15 @@ surface: forall __display_element, __display_element = {u, v, w, t, s, r}
 expect: forall __display_element, forall q, (In(q, __display_element) iff (q = u or q = v or q = w or q = t or q = s or q = r))
 why: When the ordinary element-name candidates are all used, the fallback binder must still avoid shadowing the variable naming the set.
 
+id: st-subset-does-not-capture-bound-right-term
+context: nested
+surface: forall __subset_element, A subseteq __subset_element
+expect: forall __subset_element, forall q, (In(q, A) -> In(q, __subset_element))
+why: The generated element binder for subset syntax must not capture the outer variable used as the right-hand set.
+
+id: st-subset-does-not-capture-bound-left-term
+context: nested
+surface: forall __subset_element, __subset_element subseteq A
+expect: forall __subset_element, forall q, (In(q, __subset_element) -> In(q, A))
+why: The generated element binder for subset syntax must not capture the outer variable used as the left-hand set.
+
