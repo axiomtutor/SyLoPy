@@ -48,6 +48,18 @@ surface: exists a, a divides n
 expect: exists a, exists m, (Int(m) and n = Times(a, m))
 why: Divisibility should compose correctly with existential quantification.
 
+id: nt-divides-does-not-capture-bound-divisor
+context: nested
+surface: forall __div_witness, __div_witness divides n
+expect: forall __div_witness, exists m, (Int(m) and n = Times(__div_witness, m))
+why: The generated existential witness must not shadow the enclosing universal variable when that variable is the divisor.
+
+id: nt-divides-does-not-capture-bound-dividend
+context: nested
+surface: forall __div_witness, a divides __div_witness
+expect: forall __div_witness, exists m, (Int(m) and __div_witness = Times(a, m))
+why: The generated existential witness must not shadow the enclosing universal variable when that variable is the dividend.
+
 id: nt-quotient-biconditional
 context: nested
 surface: n/a is an integer iff P
