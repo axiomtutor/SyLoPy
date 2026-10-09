@@ -110,7 +110,7 @@ def test_relation_properties_compose_with_aliases_across_declarations():
 
 def test_connected_relation_records_totality():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be any set, R be a connected relation on X. (Declaration)\\n"
+        "1. Let X be any set, R be a connected relation on X. (Declaration)\n"
     )
     relation = next(d for d in entries[0][2][1] if d.name == "R")
     assert set(dict(relation.metadata)["properties"]) == {"total"}
