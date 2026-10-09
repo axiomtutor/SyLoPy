@@ -1,0 +1,34 @@
+(* Informational example: a theorem proved with a subproof is promoted by
+   title, can be instantiated at new objects in a later proof, and still
+   checks its conclusion shape when cited. *)
+
+# 1: Equality symmetry theorem
+## Proof that
+### then X = Y -> Y = X.
+
+1. Let X be any object. (Declaration)
+2. Let Y be any object. (Declaration)
+3. X = Y -> Y = X. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. X = Y. (Assumption for conditional introduction)
+ 3.2. Y = X. (Symmetry from 3.1)
+end subproof
+
+
+# 2: Apply equality symmetry theorem
+## Proof that
+### then B = A.
+
+1. Let A be any object. (Declaration)
+2. Let B be any object. (Declaration)
+3. A = B. (Premise)
+4. A = B -> B = A. (Equality symmetry theorem)
+5. B = A. (Modus Ponens from 3, 4)
+
+
+# 3: Reject a wrong theorem instance
+## Invalid proof.
+
+1. Let A be any object. (Declaration)
+2. Let B be any object. (Declaration)
+3. A = B -> A = B. (Equality symmetry theorem)
