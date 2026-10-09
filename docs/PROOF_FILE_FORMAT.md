@@ -124,7 +124,7 @@ Explicit subproofs use:
 ## Proof that
 ### then A -> B.
 
-1. A -> B. (Premise)
+1. Let A, B be closed formulas such that: A -> B. (Premise)
 2. A -> B. (Conditional Introduction from subproof below)
 begin subproof
  2.1. A. (Assumption for conditional introduction)
