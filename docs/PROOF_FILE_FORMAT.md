@@ -51,6 +51,7 @@ The theorem rule is named by the title and promotion is local to that file.
 
 For example, `tests/setTheoryProofs/basic_theorems.txt` contains:
 
+<!-- proof-format-test: valid-proof -->
 ```text
 # 1: Subset is reflexive
 ## Proof that
