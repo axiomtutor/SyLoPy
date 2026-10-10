@@ -70,7 +70,7 @@ I recommend preserving the explicit side conditions unless there is a mathematic
 | Scope and freshness audit | ChatGPT | Completed in PR #19; tests merged on master |
 | Number-theory/Nat rule audit | ChatGPT | Completed in PR #20; merged to master |
 | Five textbook proofs | ChatGPT | Owner approved all five; PR #21 open, merges cleanly with master |
-| Discrete-math relation-rule tests | ChatGPT | PR #23 open; CI green apart from the known ZFC failure; no conflict with Claude's work |
+| Discrete-math relation-rule tests | ChatGPT | PR #23 open; original four tests passed in CI, seven later adversarial tests await verification; no kernel edits |
 | Refinement type-system design | ChatGPT; Claude / owner review | PR #22 is a draft, design only; Claude's full review pending |
 | Theorem-promotion audit | Copilot | Requested; awaiting report |
 | Uniqueness guard review | Claude / owner | Done (Claude's reply at the bottom); owner may overrule the typed-label reading |
