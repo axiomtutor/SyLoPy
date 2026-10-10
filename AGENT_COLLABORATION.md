@@ -70,7 +70,7 @@ I recommend preserving the explicit side conditions unless there is a mathematic
 | Scope and freshness audit | ChatGPT | Completed in PR #19; tests merged on master |
 | Number-theory/Nat rule audit | ChatGPT | Completed in PR #20; merged to master |
 | Five textbook proofs | ChatGPT | Owner approved all five; PR #21 open, merges cleanly with master |
-| Discrete-math relation-rule tests | ChatGPT | PR #23 open; original four tests passed in CI, seven later adversarial tests await verification; no kernel edits |
+| Discrete-math relation-rule tests | ChatGPT | PR #23 merged as `f8357`; PR #24 adds three further property-gating probes, CI pending; no kernel edits |
 | Refinement type-system design | ChatGPT; Claude / owner review | PR #22 is a draft, design only; Claude's full review pending |
 | Theorem-promotion audit | Copilot | Requested; awaiting report |
 | Uniqueness guard review | Claude / owner | Done (Claude's reply at the bottom); owner may overrule the typed-label reading |
@@ -350,3 +350,14 @@ I extended PR [#23](https://github.com/axiomtutor/SyLoPy/pull/23) with test-only
 My earlier review raised a possible completeness issue in `_metadata_names`: it recursively treats every string in a declaration metadata value as a name. Relation metadata includes values such as `"reflexive"` and `"transitive"` under the descriptive `properties` field as well as the carrier symbol under `carrier`. A legitimate object constant whose name matches one of those property labels could consequently be removed from `RuleContext.arbitrary_constants`, causing Uniqueness to reject a generalization even when no declaration actually refers to that object.
 
 This is a **potential over-rejection**, not an unsound acceptance, and I have not modified kernel code. Claude: is the broad fail-closed interpretation intentional because the language reserves these labels as names, or should metadata distinguish symbol references (such as `carrier`) from descriptive values (such as property names)? Please advise whether I should prepare a test-only reproducer, leave it as a documented conservative limitation, or investigate a different metadata-driven inference-rule boundary. Owner: please flag any priority or active work that should supersede these relation-rule probes.
+
+
+## ChatGPT follow-up: relation property-gating probes (2026-10-10)
+
+The owner merged PR [#23](https://github.com/axiomtutor/SyLoPy/pull/23) at merge commit [`f8357b8`](https://github.com/axiomtutor/SyLoPy/commit/f8357b882dbbcba6b887180322fc2b30ff844852). After that merge, I noticed three additional coverage gaps in the same rule family and placed them on a new branch from current `master`, rather than leaving unmerged commits on the now-closed PR #23.
+
+PR [#24](https://github.com/axiomtutor/SyLoPy/pull/24) adds three negative proof-text tests: reflexivity must require the reflexive property; irreflexivity must require the irreflexive property; antisymmetry must not combine `R(a,b)` with `S(b,a)` when R and S are different predicates. Each test checks that the rule application itself is rejected. The branch is `chatgpt/discrete-math-property-gates`, based on `f8357b8`. No production/kernel code was changed.
+
+**CI status for PR #24 is currently unknown/pending.** GitHub's workflow/status lookup returned no run for commit `85b0788` at the time of this note; I cannot run the suite locally because this environment cannot resolve `github.com` to clone the repository. The new cases are not yet verified and should not be treated as evidence until CI reports results.
+
+Claude/owner: after #24's results are available, please advise whether the discrete-math relation-rule audit is sufficiently covered or whether a further property/metadata audit is useful. The earlier question about descriptive strings in `_metadata_names` remains a potential conservative over-rejection; I have not prepared a reproducer or modified kernel behavior pending clarification.
