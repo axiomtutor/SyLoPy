@@ -1,0 +1,231 @@
+# Adversarial regression fixtures for the Uniqueness rule.
+# Each Invalid proof should be rejected for the condition stated in its title.
+# These tests exercise the public proof language and do not modify the kernel.
+
+# 1
+## Invalid: condition 3 — the candidate c is an existential witness, not arbitrary.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. If Y = a then Y = a. (Conditional Introduction from subproof below)
+ 5.1. Y = a. (Assumption for Conditional Introduction)
+ 5.2. Y = a. (Reiteration from 5.1)
+6. Exists W, (W = a and forall X, (X = a -> X = W)). (Uniqueness, 3, 5)
+
+
+# 2
+## Invalid: condition 4 — a premise directly mentions c.
+
+1. Let a, S be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. In(X, S). (Premise)
+7. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 7.1. X = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 4)
+ 7.3. X = Y. (Transitivity from 7.1, 7.2)
+8. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 7)
+
+
+# 3
+## Invalid: condition 4 — a premise mentions c under a quantifier and inside a term.
+
+1. Let a, S be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. Forall z, In(F(X), z). (Premise)
+7. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 7.1. X = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 4)
+ 7.3. X = Y. (Transitivity from 7.1, 7.2)
+8. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 7)
+
+
+# 4
+## Invalid: condition 4 — a premise mentions c inside a compound term.
+
+1. Let a, S be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. In(F(X), S). (Premise)
+7. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 7.1. X = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 4)
+ 7.3. X = Y. (Transitivity from 7.1, 7.2)
+8. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 7)
+
+
+# 5
+## Invalid: condition 3 — c was declared with a type, not as an arbitrary object.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be an integer. (Declaration)
+6. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. a = Y. (Symmetry from 4)
+ 6.3. X = Y. (Transitivity from 6.1, 6.2)
+7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 6
+## Invalid: condition 1 — c is a compound term, not a constant.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If F(X) = a then F(X) = a. (Conditional Introduction from subproof below)
+ 6.1. F(X) = a. (Assumption for Conditional Introduction)
+ 6.2. F(X) = a. (Reiteration from 6.1)
+7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 7
+## Invalid: condition 1 — d is a compound term, not a constant.
+
+1. Let a be any set. (Declaration)
+2. F(a) = F(a). (Reflexivity)
+3. Exists Y, Y = F(a). (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = F(a) then X = F(a). (Conditional Introduction from subproof below)
+ 6.1. X = F(a). (Assumption for Conditional Introduction)
+ 6.2. X = F(a). (Reiteration from 6.1)
+7. Exists V, (V = F(a) and forall Z, (Z = F(a) -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 8
+## Invalid: condition 1 — c and d are the same constant.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = a then X = X. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. X = X. (Reflexivity)
+7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 9
+## Invalid: condition 2 — c occurs free in the existence line.
+
+1. Let X be any set. (Declaration)
+2. X = X. (Reflexivity)
+3. Exists Y, Y = X. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. If X = X then X = Y. (Conditional Introduction from subproof below)
+ 5.1. X = X. (Assumption for Conditional Introduction)
+ 5.2. X = Y. (Symmetry from 4)
+6. Exists V, (V = X and forall Z, (Z = X -> Z = V)). (Uniqueness, 3, 5)
+
+
+# 10
+## Invalid: shape — the conditional is about a different property.
+
+1. Let a, b be any set. (Declaration)
+2. a = b. (Premise)
+3. b = a. (Symmetry from 2)
+4. a = a. (Reflexivity)
+5. Exists Y, Y = a. (Existential Introduction from 4)
+6. Let Y be such a set. (Existence from 5)
+7. Let X be any set. (Declaration)
+8. If X = b then X = Y. (Conditional Introduction from subproof below)
+ 8.1. X = b. (Assumption for Conditional Introduction)
+ 8.2. X = a. (Transitivity from 8.1, 3)
+ 8.3. a = Y. (Symmetry from 6)
+ 8.4. X = Y. (Transitivity from 8.2, 8.3)
+9. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 5, 8)
+
+
+# 11
+## Invalid: shape — the conclusion does not state the uniqueness implication.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. a = Y. (Symmetry from 4)
+ 6.3. X = Y. (Transitivity from 6.1, 6.2)
+7. Exists V, (V = a and forall Z, (Z = a -> a = V)). (Uniqueness, 3, 6)
+
+
+# 12
+## Invalid: scope — the cited conditional is inside a closed subproof.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If P then (If X = a then X = Y). (Conditional Introduction from subproof below)
+ 6.1. P. (Assumption for Conditional Introduction)
+ 6.2. If X = a then X = Y. (Conditional Introduction from subproof below)
+  6.2.1. X = a. (Assumption for Conditional Introduction)
+  6.2.2. a = Y. (Symmetry from 4)
+  6.2.3. X = Y. (Transitivity from 6.2.1, 6.2.2)
+7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6.2)
+
+
+# 13
+## Invalid: condition 3 — an arbitrary name from a closed subproof is reused for the witness.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. If P then a = a. (Conditional Introduction from subproof below)
+ 4.1. P. (Assumption for Conditional Introduction)
+ 4.2. Let X be any set. (Declaration)
+ 4.3. a = a. (Reflexivity)
+5. Let X be such a set. (Existence from 3)
+6. If X = a then X = a. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. X = a. (Reiteration from 6.1)
+7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 14
+## Invalid: condition 4 — the cited pairing axiom mentions c.
+
+1. Let a, b, d be any set. (Declaration)
+2. d = d. (Reflexivity)
+3. Exists Y, Y = d. (Existential Introduction from 2)
+4. Exists Z, forall u, (In(u, Z) iff (u = a or u = b)). (Axiom of pairing)
+5. Let Y be such a set. (Existence from 3)
+6. If a = d then a = Y. (Conditional Introduction from subproof below)
+ 6.1. a = d. (Assumption for Conditional Introduction)
+ 6.2. d = Y. (Symmetry from 5)
+ 6.3. a = Y. (Transitivity from 6.1, 6.2)
+7. Exists V, (V = d and forall Z, (Z = d -> Z = V)). (Uniqueness, 3, 6)
+
+
+# 15
+## Invalid: condition 3 and condition 4 — this claims a unique set contains a or b even though a and b differ.
+
+1. Let a, b be any set. (Declaration)
+2. a =/= b. (Premise)
+3. a = a. (Reflexivity)
+4. a = a or a = b. (Disjunction Introduction from 3)
+5. Exists Y, (Y = a or Y = b). (Existential Introduction from 4)
+6. Let Y be such a set. (Existence from 5)
+7. Y = a. (Premise)
+8. If (Y = a or Y = b) then Y = a. (Conditional Introduction from subproof below)
+ 8.1. Y = a or Y = b. (Assumption for Conditional Introduction)
+ 8.2. Y = a. (Reiteration from 7)
+9. Exists V, ((V = a or V = b) and forall Z, ((Z = a or Z = b) -> Z = V)). (Uniqueness, 5, 8)
