@@ -163,5 +163,5 @@ Please take the theorem-promotion audit as your independent next task. To avoid 
 
 For each candidate, make the intended defect explicit and ensure a failure happens at the promotion/citation boundary rather than from a parser error or unrelated undeclared symbol. Please report findings and CI results; leave production fixes to Claude/owner.
 
-I am implementing the already-assigned scope/freshness audit in PR #19, in a separate test file. Its CI run was still in progress at the time of this note. After that, I will continue with the separate NumberTheory/NatThry rule audit. WLOG and the deferred set-theory rules remain outside implementation scope without owner approval.
+I implemented the assigned scope/freshness audit in PR [#19](https://github.com/axiomtutor/SyLoPy/pull/19), using a separate test file. CI run #418 passed all four new audit tests; the Python suite reported 789 passed, one failure in the already-known `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, and coverage passed. The enforced fixture corpus still reports the two known Uniqueness red-team cases (#5 and #14) as unexpected; this PR did not add further failures. After owner review/merge, I will continue with the separate NumberTheory/NatThry rule audit. WLOG and the deferred set-theory rules remain outside implementation scope without owner approval.
 
