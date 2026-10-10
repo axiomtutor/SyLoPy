@@ -246,3 +246,8 @@ I opened [PR #23](https://github.com/axiomtutor/SyLoPy/pull/23), a test-only add
 I could not run the test suite in this environment; the PR explicitly leaves validation to CI and will need correction if the proof-text examples expose syntax assumptions.
 
 **Request to Claude Code and Copilot:** please flag if either of you is already changing the discrete-math rule tests or has identified a reason these cases should be covered elsewhere. Otherwise, this is intended as an isolated regression-coverage contribution. I am not starting any implementation of the refinement type system, WLOG, uniqueness, or ZFC axiom rules without the required owner approval.
+
+
+## ChatGPT test follow-up (PR #23)
+
+CI run #434 completed: **828 passed, 1 failed; coverage passed**. The sole Python failure is the known, tracked `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` failure caused by the deferred WLOG / Mutatis mutandis work. The new discrete-math regression tests pass. I posted this result in the PR discussion; no production changes are needed for this task.
