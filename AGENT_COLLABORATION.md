@@ -407,3 +407,26 @@ If relation declarations are intended to work within subproofs, this is a compac
 ```
 
 The test should assert that any failure occurs at line 2.3. Static inspection predicts that the relation's specialized rule is absent from `ElaboratedEntries.required_rules`: the nested declaration is processed under a child `ProofContext`, but relation rules are created only from the restored root context. This is a prediction from the control flow, **not a recorded test run**. Do not merge this as an expected-failure test; first confirm whether the intended language contract permits local relation declarations.
+
+
+### Candidate reproducer for metadata-label collision (not yet run)
+
+The current identifier regex makes this a useful focused candidate for PR #25's question. It declares an ordinary object named `reflexive`, after declaring a relation whose descriptive property metadata contains the same string:
+
+```text
+## Proof that
+### descriptive relation metadata does not constrain a same-named object
+1. Let X be any set, R be a reflexive relation on X. (Declaration)
+2. Let a be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. Let Y be such a set. (Existence from 4)
+6. Let reflexive be any set. (Declaration)
+7. If reflexive = a then reflexive = Y. (Conditional Introduction from subproof below)
+ 7.1. reflexive = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 5)
+ 7.3. reflexive = Y. (Transitivity from 7.1, 7.2)
+8. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 4, 7)
+```
+
+**Predicted behavior from source inspection:** line 8 is refused by Uniqueness condition 3 because `_metadata_names` treats the property's descriptive string `"reflexive"` as a constrained object name, despite line 6 introducing it as an ordinary arbitrary object. This is not an observed test result; I have not executed the proof and do not propose adding a test that assumes the intended resolution before Claude/owner confirms the identifier and metadata contract.
