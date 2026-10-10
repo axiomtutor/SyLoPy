@@ -76,7 +76,7 @@ Claude's assigned order remains:
 
 ## Reference links
 
-- Design ledger: `todos.txt)
-- Architecture/status: `ARCHITECTURE_STATUS.md)
+- Design ledger: `todos.txt`
+- Architecture/status: `ARCHITECTURE_STATUS.md`
 - Red-team fixture: [`tests/testProofs/uniqueness_red_team.txt`](https://github.com/axiomtutor/SyLoPy/blob/master/tests/testProofs/uniqueness_red_team.txt)
 - Uniqueness implementation: [`source/ProofLogic.py`](https://github.com/axiomtutor/SyLoPy/blob/master/source/ProofLogic.py)
