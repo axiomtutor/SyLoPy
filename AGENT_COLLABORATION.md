@@ -470,3 +470,10 @@ This section supersedes earlier status lines that describe PRs #24 and #25 as op
 - There are no open PRs at this refresh. Copilot's separately assigned theorem-promotion audit has not appeared in the current master tree; do not duplicate it until the agent reports back.
 
 The typed-declaration recommendation and integration-path review immediately above remain design notes only. The relation carrier concern was also corrected above: the intended semantics treats relation atoms as carrier-restricted, so absence of membership citations for symmetry / antisymmetry / asymmetry / transitivity is not itself a defect.
+
+
+### Type-declaration scope hazard to verify before implementation
+
+There is one separate scope question worth testing. A successful `Type.as_declaration_recipe()` currently produces a formula-bearing line encoded with the ordinary `premise` tag. The validator appends every formula on a premise/axiom line to `_given_lines`; that list is monotone across recursive subproof validation, while only `_assumption_stack` and `_arbitrary_names` are visibly scoped/populated and unwound. This is appropriate for genuine global premises, but the intended status of a *local typed declaration* formula such as `Int(n)` inside a subproof is less obvious.
+
+Do not call this a proven bug without an end-to-end test: constants are represented by names, and the language's policy on reusing a name after a local declaration closes matters. Before using the premise-line mechanism as the complete implementation of scoped typed declarations, test a type fact introduced in a subproof and then a same-spelled name introduced after that subproof closes. The required behavior must follow an explicit name/scope contract, not an accidental property of the global hypothesis list. If the fact must be local, type-context facts need a scope discipline separate from the unconditional global-premise list; changing the kernel is out of ChatGPT's ownership without explicit permission.
