@@ -216,7 +216,11 @@ def test_existence_witness_name_does_not_escape_closed_subproof():
  3.4. a = a. (Reflexivity)
 4. Y = Y. (Reflexivity)
 """
-    # Fail during elaboration because Y was introduced only in line 3's
-    # subproof. This is specifically a scope failure, not a kernel-rule test.
-    with pytest.raises(pp.ElaborationError, match="Y"):
-        pp.parse_proof_text(text)
+    entries, _ = pp.parse_proof_text(text)
+    # Disable programmatic auto-declaration so the kernel must respect the
+    # witness declaration's lexical scope rather than infer Y globally from
+    # its later use.
+    ok, error = pl.Proof(entries, auto_declare=False).check_detailed()
+    assert not ok
+    assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL
+    assert error.label == "4"
