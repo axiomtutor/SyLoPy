@@ -34,6 +34,15 @@ Add a small, independent typing module (working name: `source/TypeSystem.py`) wi
 
 The exact class names are provisional. The architectural requirement is that signatures be explicit, inspectable data rather than logic hidden in parser callbacks.
 
+
+### Metadata consumed by proof rules
+
+Declaration metadata needs a schema, not just arbitrary nested strings. Some values identify symbols whose meaning a rule reads (for example, the carrier symbol `X` in a relation declaration); other values are descriptive labels or enum members (for example, `reflexive` in a relation's property set). These categories must not be confused when determining whether a constant is constrained for generalization.
+
+The current Uniqueness guard conservatively traverses metadata values to avoid missing a symbol reference. That is a defensible fail-closed measure for the current kernel, but it can over-reject if a descriptive label happens to match a legal object name. Do not reuse that heuristic as the long-term metadata model for the type system. Each metadata record should expose its symbol references explicitly (for example, a relation declaration record could expose `carrier_symbol="X"` separately from `properties={"reflexive", ...}`). Context-sensitive rules should consume the declared references, not guess which arbitrary strings are names.
+
+This is a design requirement, not a request to weaken the current kernel guard. Unknown or unclassified metadata must remain conservatively handled until its semantics are reviewed. The migration from legacy tuple metadata should be separately tested for both directions: a real symbol reference must continue to block unsound generalization, while a descriptive label alone should not block a same-named arbitrary constant if such identifiers are legal.
+
 `TheoryEnvironment` should register/compose this metadata alongside rules, axioms, and vocabulary. `ElaboratedEntries` should carry the required typing metadata just as it currently carries required rules, axioms, and declarations. The validator must receive the same type system whether the caller uses the text API or constructs a `Proof` directly.
 
 A signature with a result type must have one authoritative meaning. The type checker should not silently assume closure facts that contradict the theory's logical axioms. The implementation should either derive the relevant closure axiom from the signature or validate the signature against the theory's explicit closure axiom/schema. This is an important consistency check, not a documentation detail.
