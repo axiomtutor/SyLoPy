@@ -379,23 +379,54 @@ implementing the rules without an explicit go-ahead.
          declaration line (`Let X be any set. (Declaration)`) or as the flag
          of a Fresh Variable subproof. Not arbitrary: the constants the proof
          starts with, a witness from `Existence from L`, a constant a rule
-         declares (the direct Pairing witness form), and an object declared
-         with structure (`Let x in X`, or a Type such as natural number);
-      4. `c` occurs in no hypothesis in force: premises, cited axiom lines,
-         declarations that state a formula, and the open assumptions.
-         Premises and cited axioms stay in force for the rest of the proof,
-         which is conservative.
+         declares (the direct Pairing witness form), an object declared with
+         structure metadata, and any name that a declaration's metadata
+         refers to (`X` in `Let R be a reflexive relation on X`: the relation
+         rules read the carrier, and no line says so). A type descriptor
+         (`Let X be an integer.`) is only a label: no rule reads it and it
+         states no formula, so it changes nothing here. A Type that wants
+         more must state a formula (`Nat(x)`, then condition 4 applies) or
+         record metadata;
+      4. `c` occurs in no hypothesis in force: premises, `(Axiom)` lines,
+         declarations that state a formula (`Let x in X` states `x in X`),
+         witness lines (the bundle `Existence from L` makes, and the direct
+         Pairing witness line, which states a property of the witness in
+         terms of other constants), and the open assumptions. Premises and
+         cited axioms stay in force for the rest of the proof, which is
+         conservative. Not hypotheses: lines a rule derives from nothing --
+         an instance of an axiom schema such as `(Axiom of pairing)`, or
+         `a = a` -- which hold of every object.
       Mechanism: `InferenceRule.applies_in_context(candidates, phi, context)`
       is a new opt-in hook (the default forwards to `applies`, so no other
       rule changes). The validator builds a `RuleContext` (`hypotheses`,
-      `arbitrary_constants`) before each rule check. A rule asked without a
-      context never applies. Tests: `pytest_tests/test_uniqueness_rule.py`;
-      fixtures `tests/testProofs/uniqueness.txt` (two valid, three invalid)
-      and `tests/testSetTheory/unique_pairing_without_wlog.txt`. As a check,
-      32 deliberate bugs, introduced one at a time into the rule and the
-      validator's bookkeeping, each made at least one test fail. `WLOG` and
-      `Mutatis mutandis` will probably need a similar view of the proof around
-      them; that design is not written yet.
+      `arbitrary_constants`, minus the names metadata refers to) before each
+      rule check. A rule asked without a context never applies. A second
+      opt-in hook, `explain_in_context`, lets a rule say why it refused:
+      Uniqueness reports which of conditions 1-4 failed (or that the lines
+      lack the form), and the validator appends that to its message, e.g.
+      "... condition 4: X occurs in a hypothesis in force, In(X, W), so the
+      conditional may depend on it". Tests: `pytest_tests/test_uniqueness_rule.py`;
+      fixtures `tests/testProofs/uniqueness.txt` (two valid, three invalid),
+      `tests/testSetTheory/unique_pairing_without_wlog.txt`, and the red-team
+      file below. As a check, 47 deliberate bugs, introduced one at a time
+      into the rule, the validator's bookkeeping and the explanations, each
+      made at least one test fail.
+      Red team (ChatGPT, PR #18, then Claude's follow-up):
+      `tests/testProofs/uniqueness_red_team.txt` has 19 cases and
+      `pytest_tests/test_uniqueness_red_team_reasons.py` checks that each
+      invalid one is refused for the condition its title names. Cases 5
+      (`Let X be an integer`) and 14 (a Pairing instance that mentions c) were
+      first written as invalid; they are accepted by design and say why in
+      their titles. The exercise did find two real holes, now cases 16-19:
+      the direct Pairing witness line (`There is a set Y = {a, b}`) states a
+      property of Y in terms of a and b that nothing derives, and it was not
+      counted as a hypothesis; and the carrier of a relation declaration is
+      constrained by metadata the relation rules read. A false "exactly one"
+      statement could be proved through each. Lesson for any rule that
+      generalizes a constant (`WLOG` and `Mutatis mutandis` will probably need
+      a similar view of the proof around them; that design is not written
+      yet): list everything the proof relies on, not only the lines that
+      mention the constant.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing

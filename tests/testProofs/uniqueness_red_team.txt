@@ -1,6 +1,12 @@
 # Adversarial regression fixtures for the Uniqueness rule.
 # Each Invalid proof should be rejected for the condition stated in its title.
 # These tests exercise the public proof language and do not modify the kernel.
+#
+# Cases 5 and 14 were first written as Invalid. They are accepted by design and
+# now say so: their titles give the reason. Cases 16-19 were added after the
+# first run of this file, for gaps the first fifteen did not reach (see the
+# notes on each). pytest_tests/test_uniqueness_rule.py checks the reason each
+# invalid case is rejected for.
 
 # 1
 ## Invalid: condition 3 — the candidate c is an existential witness, not arbitrary.
@@ -64,7 +70,12 @@
 
 
 # 5
-## Invalid: condition 3 — c was declared with a type, not as an arbitrary object.
+## Proof that
+### Accepted by design: "an integer" is a label, not a hypothesis. `Let X be an
+### integer` states no formula and records no structure that any rule reads, so
+### X is as arbitrary as after `Let X be any set` (case 1 of uniqueness.txt is
+### this proof with "any set"). When types start to carry meaning, this case
+### is the one to revisit.
 
 1. Let a be any set. (Declaration)
 2. a = a. (Reflexivity)
@@ -201,7 +212,11 @@
 
 
 # 14
-## Invalid: condition 4 — the cited pairing axiom mentions c.
+## Proof that
+### Accepted by design: a line an axiom schema produces from nothing, here an
+### instance of Pairing that mentions a, holds of every a, so it does not
+### constrain a. What does constrain a is a witness named from such a line
+### (cases 16 and 17), because the name chooses an object.
 
 1. Let a, b, d be any set. (Declaration)
 2. d = d. (Reflexivity)
@@ -229,3 +244,78 @@
  8.1. Y = a or Y = b. (Assumption for Conditional Introduction)
  8.2. Y = a. (Reiteration from 7)
 9. Exists V, ((V = a or V = b) and forall Z, ((Z = a or Z = b) -> Z = V)). (Uniqueness, 5, 8)
+
+
+# 16
+## Invalid: condition 4 — the direct Pairing witness line states a property of the witness in terms of c.
+### `There is a set Y = {a, b}` names Y and states Y's defining property on one
+### line, so it is the witness assumption of an existential elimination: it
+### constrains a and b. Line 5 gets In(a, Y) from it, which refutes
+### `not In(a, Y)`, so `not In(a, Y) -> a = b` is provable for this a; the
+### rule must not generalize it, or it would conclude that Y has exactly one
+### non-member although line 6 says only that it has one.
+
+1. Let a, b be any set. (Declaration)
+2. There is a set Y = {a, b}. (Axiom of pairing)
+3. a = a. (Reflexivity)
+4. a = a or a = b. (Disjunction Introduction from 3)
+5. In(a, Y). (Set property from 2, 4)
+6. Exists W, not In(W, Y). (Premise)
+7. If not In(a, Y) then a = b. (Conditional Introduction from subproof below)
+ 7.1. not In(a, Y). (Assumption for Conditional Introduction)
+ 7.2. a = b. (Explosion from 5, 7.1)
+8. Exists V, (not In(V, Y) and forall Z, (not In(Z, Y) -> Z = V)). (Uniqueness, 6, 7)
+
+
+# 17
+## Invalid: condition 4 — the witness named from a Pairing instance states a property in terms of c.
+### The same argument as case 16, with the witness named in two steps
+### (`Existence from`); the bundle that names it is a hypothesis.
+
+1. Let a, b be any set. (Declaration)
+2. Exists Z, forall u, (In(u, Z) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. a = a. (Reflexivity)
+5. a = a or a = b. (Disjunction Introduction from 4)
+6. In(a, Y). (Set property from 3, 5)
+7. Exists W, not In(W, Y). (Premise)
+8. If not In(a, Y) then a = b. (Conditional Introduction from subproof below)
+ 8.1. not In(a, Y). (Assumption for Conditional Introduction)
+ 8.2. a = b. (Explosion from 6, 8.1)
+9. Exists V, (not In(V, Y) and forall Z, (not In(Z, Y) -> Z = V)). (Uniqueness, 7, 8)
+
+
+# 18
+## Invalid: condition 3 — c is the carrier of a relation declared with it.
+### `R be a reflexive relation on X` records X as R's carrier, which the
+### relation rules read: it says something about X that no line states. Line 4
+### is provable only through it (Relation Reflexivity needs the declared
+### carrier), for this X; generalizing it would conclude that exactly one set
+### contains a, although line 3 says only that one does.
+
+1. Let X be any set, R be a reflexive relation on X. (Declaration)
+2. Let a be any set. (Declaration)
+3. Exists Y, (In(a, Y) and not R(a, a)). (Premise)
+4. If (In(a, X) and not R(a, a)) then X = a. (Conditional Introduction from subproof below)
+ 4.1. In(a, X) and not R(a, a). (Assumption for Conditional Introduction)
+ 4.2. In(a, X). (Conjunction Elimination from 4.1)
+ 4.3. R(a, a). (Relation Reflexivity from 4.2)
+ 4.4. not R(a, a). (Conjunction Elimination from 4.1)
+ 4.5. X = a. (Explosion from 4.3, 4.4)
+5. Exists W, ((In(a, W) and not R(a, a)) and forall V, ((In(a, V) and not R(a, a)) -> V = W)). (Uniqueness, 3, 4)
+
+
+# 19
+## Invalid: condition 3 — c is the carrier of a relation declared on a later line.
+### The proof never uses the relation, and is refused anyway: the rule does not
+### try to work out whether the hidden structure was used. Without line 2's
+### relation the same proof is accepted.
+
+1. Let X be any set. (Declaration)
+2. Let a be any set, R be a reflexive relation on X. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. If X = a then X = a. (Conditional Introduction from subproof below)
+ 5.1. X = a. (Assumption for Conditional Introduction)
+ 5.2. X = a. (Reiteration from 5.1)
+6. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 4, 5)

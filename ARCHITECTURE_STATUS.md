@@ -45,11 +45,23 @@ rules to a theory module rather than modifying generic elaboration logic.
 A rule normally sees only the lines it cites. A rule that is sound only
 relative to the rest of the proof can implement
 `InferenceRule.applies_in_context(candidates, phi, context)` instead. The
-validator passes a `RuleContext`: `hypotheses` (premises, cited axiom lines,
-declarations that state a formula, and the open assumptions) and
-`arbitrary_constants` (constants introduced by a plain declaration or as the
-flag of a Fresh Variable subproof). Rules that do not opt in are unchanged.
+validator passes a `RuleContext`: `hypotheses` (what the proof takes for
+granted: premises, `(Axiom)` lines, declarations that state a formula,
+witness lines such as `Existence from L` and the direct Pairing witness, and
+the open assumptions) and `arbitrary_constants` (constants introduced by a
+plain declaration or as the flag of a Fresh Variable subproof, minus any name
+that a declaration's metadata refers to, such as a relation's carrier). Rules
+that do not opt in are unchanged. A rule that refuses can also implement
+`explain_in_context`, and the validator appends its reason to the message.
 `Uniqueness` is the first user; a rule asked without a context never applies.
+
+The invariant for such a rule: whatever the proof relies on that says
+something about a constant must reach the context, as a recorded formula or as
+declaration metadata. A fact a rule reads from somewhere else (a new kind of
+declaration with hidden structure, a recipe that registers a rule about a
+declared constant) must be made visible the same way, or the rule is unsound
+for that constant. The two holes found so far -- the direct witness line and
+the relation carrier -- are in `tests/testProofs/uniqueness_red_team.txt`.
 
 ## Remaining consolidation work
 

@@ -545,3 +545,334 @@ def test_an_open_assumption_is_in_the_context_until_its_subproof_closes():
     inside, after = _check_with(probe, entries)
     assert inside.hypotheses_are("P(a)", "Q(a)")
     assert after.hypotheses_are("P(a)")
+
+
+# --------------------------------------------------------------------
+# Through the validator: what the proof relies on without a line that says it
+# --------------------------------------------------------------------
+#
+# Found by red-teaming, and not by looking at lines that mention the constant:
+# a constant can be constrained by something the proof relies on although no
+# premise, axiom or assumption names it. Each proof below, accepted, would
+# derive a false "exactly one" statement, so the rule has to refuse it.
+
+def check(text):
+    ok, error = pp.check_proof_text(text)
+    return ok, str(error)
+
+
+def assert_rejected_by_uniqueness(text, line):
+    ok, message = check(text)
+    assert not ok
+    assert f"Line {line}:" in message and "'Uniqueness' does not justify" in message, message
+
+
+# `There is a set Y = {a, b}` names a witness AND states its defining property
+# on one line, so the line is the existential-elimination assumption of the
+# witness: a statement about Y, a and b that nothing derives. Line 5 uses it to
+# get `In(a, Y)`, which refutes `not In(a, Y)`; so `not In(a, Y) -> a = b` is
+# provable for this particular `a`. Generalizing it would say that Y has exactly
+# one non-member, although line 6 only says it has one. The constant `a` is
+# arbitrary as far as the premises go (line 6 does not mention it) -- only the
+# witness line ties it down.
+_DIRECT_WITNESS_EXPLOIT = """1. Let a, b be any set. (Declaration)
+2. There is a set Y = {a, b}. (Axiom of pairing)
+3. a = a. (Reflexivity)
+4. a = a or a = b. (Disjunction Introduction from 3)
+5. In(a, Y). (Set property from 2, 4)
+6. Exists W, not In(W, Y). (Premise)
+7. If not In(a, Y) then a = b. (Conditional Introduction from subproof below)
+ 7.1. not In(a, Y). (Assumption for Conditional Introduction)
+ 7.2. a = b. (Explosion from 5, 7.1)
+8. Exists V, (not In(V, Y) and forall Z, (not In(Z, Y) -> Z = V)). (Uniqueness, 6, 7)
+"""
+
+# The same argument with the witness named in two steps: `Existence from`
+# turns the existential into a premise bundle, which the validator always
+# recorded as a hypothesis.
+_NAMED_WITNESS_EXPLOIT = """1. Let a, b be any set. (Declaration)
+2. Exists Z, forall u, (In(u, Z) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. a = a. (Reflexivity)
+5. a = a or a = b. (Disjunction Introduction from 4)
+6. In(a, Y). (Set property from 3, 5)
+7. Exists W, not In(W, Y). (Premise)
+8. If not In(a, Y) then a = b. (Conditional Introduction from subproof below)
+ 8.1. not In(a, Y). (Assumption for Conditional Introduction)
+ 8.2. a = b. (Explosion from 6, 8.1)
+9. Exists V, (not In(V, Y) and forall Z, (not In(Z, Y) -> Z = V)). (Uniqueness, 7, 8)
+"""
+
+# The same line of the witness proof about a constant it does not mention: the
+# unique thing equal to `b` is `b`, generalized over a fresh `X`.
+_DIRECT_WITNESS_CONTROL = """1. Let a, b be any set. (Declaration)
+2. There is a set Y = {a, b}. (Axiom of pairing)
+3. b = b. (Reflexivity)
+4. Exists V, V = b. (Existential Introduction from 3)
+5. Let X be any set. (Declaration)
+6. If X = b then X = b. (Conditional Introduction from subproof below)
+ 6.1. X = b. (Assumption for Conditional Introduction)
+ 6.2. X = b. (Reiteration from 6.1)
+7. Exists W, (W = b and forall U, (U = b -> U = W)). (Uniqueness, 4, 6)
+"""
+
+
+def test_a_witness_line_that_states_a_property_in_terms_of_the_constant_blocks_it():
+    assert_rejected_by_uniqueness(_DIRECT_WITNESS_EXPLOIT, 8)
+
+
+def test_a_named_witness_bundle_that_states_it_blocks_the_constant_too():
+    assert_rejected_by_uniqueness(_NAMED_WITNESS_EXPLOIT, 9)
+
+
+def test_a_witness_line_about_other_constants_does_not_block_a_fresh_one():
+    ok, message = check(_DIRECT_WITNESS_CONTROL)
+    assert ok, message
+
+
+# `Let R be a reflexive relation on X` records the carrier X as metadata that
+# the relation rules read (`Relation Reflexivity` only derives `R(a, a)` from
+# `In(a, X)` for the declared carrier). So R says something about X that no
+# line states. Below, the step `(In(a, X) and not R(a, a)) -> X = a` is
+# provable by that hidden fact, for this X; generalizing it would say that
+# exactly one set contains a, although line 3 only says one does.
+_CARRIER_EXPLOIT = """Use discrete math.
+1. Let X be any set, R be a reflexive relation on X. (Declaration)
+2. Let a be any set. (Declaration)
+3. Exists Y, (In(a, Y) and not R(a, a)). (Premise)
+4. If (In(a, X) and not R(a, a)) then X = a. (Conditional Introduction from subproof below)
+ 4.1. In(a, X) and not R(a, a). (Assumption for Conditional Introduction)
+ 4.2. In(a, X). (Conjunction Elimination from 4.1)
+ 4.3. R(a, a). (Relation Reflexivity from 4.2)
+ 4.4. not R(a, a). (Conjunction Elimination from 4.1)
+ 4.5. X = a. (Explosion from 4.3, 4.4)
+5. Exists W, ((In(a, W) and not R(a, a)) and forall V, ((In(a, V) and not R(a, a)) -> V = W)). (Uniqueness, 3, 4)
+"""
+
+# The unobjectionable version of the same shape: nothing hidden constrains X
+# (no relation), and the step is a plain instance of B.
+_CARRIER_FREE = """Use discrete math.
+1. Let X be any set. (Declaration)
+2. Let a be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. If X = a then X = a. (Conditional Introduction from subproof below)
+ 5.1. X = a. (Assumption for Conditional Introduction)
+ 5.2. X = a. (Reiteration from 5.1)
+6. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 4, 5)
+"""
+
+# The same harmless proof, with a relation declared on X: it is the carrier,
+# and the kernel cannot read what that says about it, so it is not arbitrary.
+_CARRIER_NAMED_BY_A_RELATION = _CARRIER_FREE.replace(
+    "1. Let X be any set. (Declaration)",
+    "1. Let X be any set, R be a reflexive relation on X. (Declaration)")
+
+# The relation may also be declared after the carrier, on a later line.
+_CARRIER_NAMED_LATER = _CARRIER_FREE.replace(
+    "3. a = a. (Reflexivity)",
+    "3. a = a. (Reflexivity)").replace(
+    "2. Let a be any set. (Declaration)",
+    "2. Let a be any set, R be a reflexive relation on X. (Declaration)")
+
+
+def test_a_carrier_a_relation_is_declared_on_does_not_count_as_arbitrary():
+    assert_rejected_by_uniqueness(_CARRIER_EXPLOIT, 5)
+
+
+def test_control_a_set_no_relation_is_declared_on_is_arbitrary():
+    ok, message = check(_CARRIER_FREE)
+    assert ok, message
+
+
+def test_the_carrier_is_refused_even_when_the_proof_does_not_use_the_relation():
+    # Fail closed: the rule does not try to work out whether the hidden
+    # structure was used.
+    assert_rejected_by_uniqueness(_CARRIER_NAMED_BY_A_RELATION, 6)
+
+
+def test_the_carrier_is_refused_when_the_relation_comes_on_a_later_line():
+    assert_rejected_by_uniqueness(_CARRIER_NAMED_LATER, 6)
+
+
+# --------------------------------------------------------------------
+# Saying why: the reason in the refusal
+# --------------------------------------------------------------------
+
+def explained(existence=EXISTENCE, step=STEP, conclusion=CONCLUSION, ctx=None):
+    rule = pl.UniquenessRule()
+    candidates = [formula(existence), formula(step)]
+    return rule.explain_in_context(candidates, formula(conclusion), ctx if ctx is not None else context())
+
+
+def test_there_is_nothing_to_explain_when_the_rule_applies():
+    assert explained() is None
+
+
+@pytest.mark.parametrize("kwargs,condition", [
+    (dict(step="if X = a then X = X"), 1),
+    (dict(step="if X = a then X = f(a)"), 1),
+    (dict(existence="exists Y, In(Y, X)", step="if In(X, X) then X = Y",
+          conclusion="exists V, (In(V, X) and forall U, (In(U, X) -> U = V))"), 2),
+    (dict(ctx=context(arbitrary=[])), 3),
+    (dict(ctx=context(given=["In(X, W)"])), 4),
+    (dict(ctx=context(assumptions=["In(X, W)"])), 4),
+])
+def test_it_names_the_condition_that_failed(kwargs, condition):
+    reason = explained(**kwargs)
+    assert reason is not None and f"condition {condition}:" in reason, reason
+
+
+def test_it_names_every_condition_that_failed():
+    reason = explained(ctx=context(arbitrary=[], given=["In(X, W)"]))
+    assert "condition 3:" in reason and "condition 4:" in reason
+    assert "condition 1:" not in reason and "condition 2:" not in reason
+
+
+def test_it_points_at_the_hypothesis_and_the_constant():
+    reason = explained(ctx=context(given=["In(a, W)", "In(X, W)"]))
+    assert "X occurs in a hypothesis in force, In(X, W)" in reason
+
+
+@pytest.mark.parametrize("kwargs", [
+    dict(conclusion="exists Y, Y = a"),
+    dict(step="if X = b then X = Y"),
+    dict(existence="Y = a"),
+    dict(step="X = a"),
+])
+def test_when_the_lines_have_the_wrong_form_it_says_so_and_names_no_condition(kwargs):
+    reason = explained(**kwargs)
+    assert "unique-existence shape" in reason and "condition" not in reason.replace("conclusion", "")
+
+
+def test_the_reason_is_found_whichever_way_round_the_lines_are_cited():
+    rule = pl.UniquenessRule()
+    candidates = [formula(STEP), formula(EXISTENCE)]
+    reason = rule.explain_in_context(candidates, formula(CONCLUSION), context(arbitrary=[]))
+    assert "condition 3:" in reason
+
+
+def test_other_rules_have_nothing_to_add():
+    rule = pl.ModusPonensRule()
+    assert rule.explain_in_context([formula("P(a)"), formula("if P(a) then Q(a)")], formula("R(a)"),
+                                   pl.RuleContext()) is None
+
+
+def test_the_validator_puts_the_reason_after_its_own_message():
+    text, uniqueness_line = proof_with("6. In(X, W). (Premise)")
+    ok, message = run(text)
+    assert not ok
+    assert "'Uniqueness' does not justify" in message
+    assert message.rstrip().endswith("so the conditional may depend on it"), message
+    assert ": condition 4: X occurs in a hypothesis in force, In(X, W)" in message
+
+
+# What the validator does with a rule's explanation, shown with test-only rules.
+
+class _Refuser(pl.InferenceRule):
+    """Test-only rule that refuses everything, with a canned explanation."""
+    name = "Refuser"
+    premise_arity = 0
+
+    def __init__(self, explanation):
+        self.explanation = explanation
+
+    def applies(self, candidates, phi):
+        return False
+
+    def explain_in_context(self, candidates, phi, context):
+        if isinstance(self.explanation, Exception):
+            raise self.explanation
+        return self.explanation
+
+
+def _refusal(rule):
+    entries = [("1", None, ("declare", [pl.Declaration("a", _OBJECT)])),
+               ("2", formula("a = a"), ("rule", rule, []))]
+    ok, err = pl.Proof(entries, rules=pl.default_rules() + [rule]).check_detailed()
+    assert not ok
+    return err
+
+
+def test_a_rules_explanation_is_appended_to_the_refusal():
+    err = _refusal(_Refuser("because of this"))
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert str(err).endswith("'Refuser' does not justify a = a from the cited line(s) []: because of this")
+
+
+def test_a_rule_that_explains_nothing_leaves_the_refusal_as_it_was():
+    err = _refusal(_Refuser(None))
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert str(err).endswith("from the cited line(s) []")
+
+
+def test_an_explanation_that_raises_cannot_turn_a_refusal_into_a_crash():
+    err = _refusal(_Refuser(RuntimeError("boom")))
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert "boom" not in str(err)
+
+
+# --------------------------------------------------------------------
+# Names that declaration metadata refers to
+# --------------------------------------------------------------------
+
+_PRED = pl.DeclarationKind.PREDICATE
+
+
+def _relation_on(carrier, name="R"):
+    return pl.Declaration(name, _PRED, arity=2,
+                          metadata=(("carrier", carrier), ("properties", ("reflexive", "symmetric"))))
+
+
+def test_metadata_names_are_the_strings_in_the_values():
+    names = pl._metadata_names([_relation_on("X")])
+    assert names == {"X", "reflexive", "symmetric"}
+
+
+def test_metadata_keys_are_not_names():
+    assert "carrier" not in pl._metadata_names([_relation_on("X")])
+
+
+def test_metadata_names_are_found_in_nested_values():
+    declaration = pl.Declaration("S", _OBJECT, metadata=(("between", ("X", ("Y", ["Z"]))),))
+    assert pl._metadata_names([declaration]) == {"X", "Y", "Z"}
+
+
+def test_metadata_names_are_found_in_dict_values():
+    declaration = pl.Declaration("S", _OBJECT, metadata=(("by", {"k": "W", "j": ("V",)}),))
+    assert pl._metadata_names([declaration]) == {"W", "V"}
+
+
+def test_an_entry_that_is_not_a_pair_is_read_whole():
+    declaration = pl.Declaration("S", _OBJECT, metadata=("X", ("Y", "Z", "W")))
+    assert pl._metadata_names([declaration]) == {"X", "Y", "Z", "W"}
+
+
+def test_declarations_without_metadata_name_nothing():
+    assert pl._metadata_names([pl.Declaration("X", _OBJECT), pl.Declaration("P", _PRED, arity=1)]) == set()
+    assert pl._metadata_names([]) == set()
+
+
+_PLAIN_X_FOR_CARRIER = ("4", None, ("declare", [pl.Declaration("X", _OBJECT)]))
+
+
+def test_a_carrier_named_by_a_declaration_the_proof_was_handed_is_not_arbitrary():
+    # Same proof as the plain control, but the proof was handed a relation on
+    # X: nothing in its lines mentions the relation, yet X is its carrier.
+    proof = pl.Proof(_entries(_PLAIN_X_FOR_CARRIER), declarations=[_relation_on("X")])
+    ok, err = proof.check_detailed()
+    assert not ok and err.category == pl.CATEGORY_RULE_MISMATCH and err.label == "6", str(err)
+
+
+def test_control_without_that_relation_the_same_proof_is_accepted():
+    ok, err = pl.Proof(_entries(_PLAIN_X_FOR_CARRIER)).check_detailed()
+    assert ok, str(err)
+
+
+def test_the_names_one_run_found_are_not_remembered_by_the_next():
+    validator = pl.ProofValidator(pl.default_rules(), None, None, declarations=[_relation_on("X")])
+    assert not validator.validate(_entries(_PLAIN_X_FOR_CARRIER))[0]
+    # The same validator, now handed no relation: X is arbitrary again.
+    validator.initial_declarations = []
+    ok, err, _ = validator.validate(_entries(_PLAIN_X_FOR_CARRIER))
+    assert ok, str(err)

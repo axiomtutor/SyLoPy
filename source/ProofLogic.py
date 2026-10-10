@@ -269,6 +269,35 @@ def _dedupe_declarations(declarations: List[Declaration]) -> List[Declaration]:
     return result
 
 
+def _metadata_names(declarations: Iterable[Declaration]) -> set:
+    """Every string anywhere in the values of the declarations' structure
+    metadata (`(("carrier", "X"), ("properties", ("reflexive",)))` gives
+    `{"X", "reflexive"}`). The kernel cannot read metadata, but it can tell
+    that a name appears in it: `X` is then something a declaration says
+    something about. Over-approximate on purpose -- a string that is not a
+    name does no harm, and a name that is missed would be a hole."""
+    names: set = set()
+
+    def walk(value: Any) -> None:
+        if isinstance(value, str):
+            names.add(value)
+        elif isinstance(value, dict):
+            for item in value.values():
+                walk(item)
+        elif isinstance(value, (tuple, list, set, frozenset)):
+            for item in value:
+                walk(item)
+
+    for declaration in declarations:
+        for entry in getattr(declaration, 'metadata', None) or ():
+            # (key, value) pairs; anything else is walked whole.
+            if isinstance(entry, tuple) and len(entry) == 2:
+                walk(entry[1])
+            else:
+                walk(entry)
+    return names
+
+
 def infer_declarations(formulas: Iterable[fl.Formula]) -> List[Declaration]:
     """Public wrapper around the same inference `(Declare)` lines use
     internally: derive a `Declaration` for every predicate, function, and
@@ -637,12 +666,21 @@ class RuleContext:
     granted says anything about it. The context answers that with two things.
 
     `hypotheses` are the formulas in force at that line that were taken for
-    granted rather than derived: every premise line, every axiom cited so far,
-    and every declaration line that states a formula (all of them for the rest
-    of the proof), plus the assumption that opened each subproof still open.
-    A constant that occurs in one is constrained by it. Derived lines are not
-    listed: whatever one of them says about the constant, the hypothesis it
-    ultimately depends on is listed.
+    granted rather than derived: every premise line, every axiom cited so far
+    with `(Axiom)`, every declaration line that states a formula, and every
+    line that names a witness and states what it satisfies -- a bundle from
+    `Existence from L`, or a rule line that declares a fresh constant (the
+    direct Pairing witness, `There is a set Y = {a, b}`) -- all of them for
+    the rest of the proof, plus the assumption that opened each subproof still
+    open. A constant that occurs in one is constrained by it. Derived lines
+    are not listed: whatever one of them says about the constant, the
+    hypothesis it ultimately depends on is listed. That includes a line a rule
+    derives from nothing at all, such as an instance of an axiom schema
+    (`Exists Z, ... (Axiom of pairing)`) or `a = a`: it holds of every
+    object, so it says nothing about the constants it mentions. A witness line
+    is different -- it is not derived from the axiom, it *chooses* an object
+    for it, and what it says about that object in terms of `a` and `b` is
+    assumed.
 
     `arbitrary_constants` are the names of the constants a plain declaration
     line of this proof introduced and that are still in scope: `Let X be any
@@ -650,9 +688,14 @@ class RuleContext:
     declaration is the only way into this set, so a constant the proof was
     handed up front (`Proof(declarations=...)`), a witness named from an
     existential, and a constant a rule declared are all absent -- each of
-    them comes with something already said about it. The set is empty unless
-    the validator fills it, so a rule asked outside a proof finds nothing
-    arbitrary and says no.
+    them comes with something already said about it. So is a constant that
+    some declaration's structure refers to -- the carrier `X` of `Let R be a
+    reflexive relation on X` -- because the relation rules read that and the
+    kernel cannot see what it says about `X` (`constrained_names` lists such
+    names; they are taken out of the set whenever they appear). A descriptor
+    such as "an integer" is not structure in this sense: no rule reads it, so
+    it neither helps nor hurts. The set is empty unless the validator fills
+    it, so a rule asked outside a proof finds nothing arbitrary and says no.
 
     The validator builds one of these per rule citation and hands it to
     `InferenceRule.applies_in_context`. It holds references to the
@@ -660,12 +703,13 @@ class RuleContext:
     many rules that never look at it -- and it is only good for the call it
     was made for: a rule reads it while deciding and does not keep it.
     """
-    __slots__ = ("_given", "_assumptions", "_arbitrary")
+    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained")
 
-    def __init__(self, given=(), assumptions=(), arbitrary_constants=()):
+    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=()):
         self._given = given
         self._assumptions = assumptions
         self._arbitrary = arbitrary_constants
+        self._constrained = constrained_names
 
     @property
     def hypotheses(self) -> Tuple[Any, ...]:
@@ -673,7 +717,7 @@ class RuleContext:
 
     @property
     def arbitrary_constants(self) -> frozenset:
-        return frozenset(self._arbitrary)
+        return frozenset(self._arbitrary) - frozenset(self._constrained)
 
 
 class InferenceRule:
@@ -704,6 +748,10 @@ class InferenceRule:
     the constant is arbitrary (see `RuleContext`) -- overrides
     `applies_in_context` as well. The validator always calls that one; the
     default simply forwards to `applies`, so every other rule is unaffected.
+
+    A rule with several independent side conditions can also override
+    `explain_in_context`, which the validator asks, after the rule has said
+    no, for the reason to put in the error message. The default says nothing.
     """
     name = "base"
     premise_arity = 1
@@ -714,6 +762,12 @@ class InferenceRule:
     def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
                            context: "RuleContext") -> bool:
         return self.applies(candidates, phi)
+
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> Optional[str]:
+        """Why `applies_in_context` said no, in a sentence, if the rule can
+        tell; None otherwise. Only called after a refusal."""
+        return None
 
 
 class ExplosionRule(InferenceRule):
@@ -1590,22 +1644,45 @@ class UniquenessRule(InferenceRule):
          constant the proof was handed up front, or named as the witness of
          an existential, or declared by a rule, arrives with something
          already said about it, and an axiom can say more about a constant
-         the proof never mentions.
+         the proof never mentions. So does a name that a declaration's
+         structure refers to -- `X` in `Let R be a reflexive relation on X`
+         -- because the relation rules read that, and no line says it.
+         A type descriptor ("an integer") is only a label, which no rule
+         reads, so it does not stop a constant being arbitrary; for a type
+         to do that it must state a formula (condition 4) or record
+         structure metadata (this condition).
       4. `c` occurs in no hypothesis in force (`RuleContext.hypotheses`): no
-         premise, no cited axiom, no declaration line stating a formula, no
+         premise, no `(Axiom)` line, no declaration line stating a formula,
+         no witness line (a bundle from `Existence from L`, or a rule line
+         that declares a constant, like `There is a set Y = {a, b}`), no
          assumption of an enclosing subproof. A premise like "X is in W"
          would make the conditional a statement about one particular `X`,
-         and generalizing it would be unsound. (Derived lines need no check:
-         whatever they say about `c` comes from a hypothesis, and that is
-         checked.) Items 3 and 4 overlap on purpose: a constant has to pass
-         both, so a gap in how the validator records one is not enough to
-         let a constrained constant through.
+         and generalizing it would be unsound. A witness line is not
+         derived: it chooses an object for an existential, and what it says
+         about that object in terms of other constants is assumed. (Other
+         derived lines need no check: whatever they say about `c` comes from
+         a hypothesis, and that is checked -- including a line a rule
+         derives from nothing, an instance of an axiom schema or `a = a`,
+         which holds of every object.) Items 3 and 4 overlap on purpose: a
+         constant has to pass both, so a gap in how the validator records
+         one is not enough to let a constrained constant through.
 
     The rule cannot tell that a constant is arbitrary from the formulas
     alone, so asked outside a proof -- `applies(candidates, phi)` with no
     context -- it never applies. Unit tests of the shapes pass a context
     that names the constant arbitrary; inside a proof the validator always
-    supplies the real one.
+    supplies the real one. When the rule says no, `explain_in_context` says
+    which of the conditions above failed (or that the lines do not have the
+    form), and the validator appends that to its message.
+
+    What a theory must do to stay sound with this rule: anything the proof
+    relies on that says something about a constant has to reach the context
+    -- as a formula on a line the validator records as a hypothesis, or as
+    structure metadata on a declaration. Something a rule reads that is
+    neither (a new kind of declaration that adds hidden facts, a recipe that
+    registers a rule about a declared constant) is a hole until it is made
+    visible; `test_uniqueness_rule.py` and `uniqueness_red_team.txt` have a
+    proof for each hole found so far.
     """
     name = "Uniqueness"
     premise_arity = 2
@@ -1621,56 +1698,99 @@ class UniquenessRule(InferenceRule):
         return (self._check(first, second, phi, context)
                 or self._check(second, first, phi, context))
 
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: RuleContext) -> Optional[str]:
+        """Which condition failed, numbered as in the class docstring (every
+        failed one, if several), or -- when the lines do not have the form
+        at all, so no condition is in question -- a reminder of the form."""
+        if len(candidates) != 2:
+            return None
+        first, second = candidates
+        reasons: List[str] = []
+        for existence, step in ((first, second), (second, first)):
+            accepted, found = self._judge(existence, step, phi, context)
+            if accepted:
+                return None
+            reasons.extend(found)
+        if reasons:
+            return "; ".join(dict.fromkeys(reasons))
+        return ("the cited lines and the conclusion do not have the unique-existence shape: "
+                "`exists Y, B(Y)` and `B(c) -> c = d` give "
+                "`exists W, (B(W) and forall V, (B(V) -> V = W))`")
+
     @staticmethod
     def _check(existence: Any, step: Any, phi: Any, context: RuleContext) -> bool:
+        return UniquenessRule._judge(existence, step, phi, context)[0]
+
+    @staticmethod
+    def _judge(existence: Any, step: Any, phi: Any, context: RuleContext) -> Tuple[bool, List[str]]:
+        """`(accepted, reasons)` for one way of reading the cited lines.
+        `reasons` has a sentence for each condition that fails, and is empty
+        when the lines do not have the right form in the first place (or when
+        they are accepted)."""
+        refused: Tuple[bool, List[str]] = (False, [])
         if not (isinstance(existence, fl.Exists) and isinstance(step, fl.Implies)
                 and isinstance(phi, fl.Exists)):
-            return False
+            return refused
 
         # The conclusion: exists W, (held and forall V, (held(V) -> V = W)).
         if not isinstance(phi.body, fl.And) or len(phi.body.conjuncts) < 2:
-            return False
+            return refused
         *held_parts, uniqueness = phi.body.conjuncts
         if not isinstance(uniqueness, fl.ForAll) or not isinstance(uniqueness.body, fl.Implies):
-            return False
+            return refused
         held = held_parts[0] if len(held_parts) == 1 else fl.And(*held_parts)
         w, v_name = phi.var, uniqueness.var
         if w == v_name:
-            return False
+            return refused
         w_term, v_term = tl.VariableTerm(w), tl.VariableTerm(v_name)
         equal_to_witness = uniqueness.body.consequent
         if not (isinstance(equal_to_witness, fl.Equals)
                 and ((_ast_eq(equal_to_witness.left, v_term) and _ast_eq(equal_to_witness.right, w_term))
                      or (_ast_eq(equal_to_witness.left, w_term) and _ast_eq(equal_to_witness.right, v_term)))):
-            return False
+            return refused
 
         # The same property throughout: the existence line, the first
         # conjunct, and the antecedent under the universal quantifier.
         if not _alpha_eq(fl.Exists(w, held), existence):
-            return False
+            return refused
         if not _alpha_eq(fl.ForAll(v_name, uniqueness.body.antecedent), fl.ForAll(w, held)):
-            return False
+            return refused
 
         # The step line: B(c) -> c = d, for constants c != d.
         step_equality = step.consequent
         if not isinstance(step_equality, fl.Equals):
-            return False
+            return refused
         arbitrary = context.arbitrary_constants
+        reasons: List[str] = []
         for c, d in ((step_equality.left, step_equality.right), (step_equality.right, step_equality.left)):
-            if not (isinstance(c, tl.ConstantTerm) and isinstance(d, tl.ConstantTerm)) or c.name == d.name:
-                continue
             instance = fl.substitute_in_formula(existence.body, existence.var, c)
             if not _alpha_eq(step.antecedent, instance):
                 continue
-            # c must really be arbitrary (see the class docstring, 2-4).
+            # From here the lines have the right form for this reading of c
+            # and d; what is left are the conditions of the class docstring.
+            if not (isinstance(c, tl.ConstantTerm) and isinstance(d, tl.ConstantTerm)) or c.name == d.name:
+                reasons.append(f"condition 1: the conditional must equate two different constants, "
+                               f"but it equates {c} and {d}")
+                continue
+            failed: List[str] = []
             if _term_occurs_in_formula(c, existence):
-                continue
+                failed.append(f"condition 2: {c} occurs in the existence line, so it is a parameter "
+                              f"of the property, not an arbitrary object")
             if c.name not in arbitrary:
-                continue
-            if any(_term_occurs_in_formula(c, hypothesis) for hypothesis in context.hypotheses):
-                continue
-            return True
-        return False
+                failed.append(f"condition 3: {c} is not an arbitrary constant of this proof "
+                              f"(one introduced by a plain declaration such as `Let {c} be any set.` "
+                              f"or by a Fresh Variable subproof; a witness, a constant the proof "
+                              f"started with, a name a rule declared, and a name some declaration's "
+                              f"structure refers to are not)")
+            offending = next((h for h in context.hypotheses if _term_occurs_in_formula(c, h)), None)
+            if offending is not None:
+                failed.append(f"condition 4: {c} occurs in a hypothesis in force, {offending!r}, "
+                              f"so the conditional may depend on it")
+            if not failed:
+                return True, []
+            reasons.extend(failed)
+        return False, reasons
 
 
 # ==========================================================================
@@ -3139,15 +3259,20 @@ class ProofValidator:
         # `_assumption_stack` holds the assumption of every subproof still
         # open; `_arbitrary_names` holds the constants a plain declaration
         # introduced, as long as they are in scope. The last two shrink when
-        # a subproof closes (`_validate_block`).
+        # a subproof closes (`_validate_block`). `_constrained_names` holds
+        # the names that some declaration's structure metadata refers to; it
+        # only grows, since what a closed subproof's declaration said about a
+        # name was still used to derive lines that may be visible afterwards.
         self._given_lines: list = []
         self._assumption_stack: list = []
         self._arbitrary_names: list = []
+        self._constrained_names: set = set()
 
     def validate(self, entries: list) -> Tuple[bool, Optional[ValidationError], Optional[SubproofRecord]]:
         self._given_lines = []
         self._assumption_stack = []
         self._arbitrary_names = []
+        self._constrained_names = _metadata_names(self.initial_declarations)
         seen: list = []
         labels = LabelScope()
         declarations = DeclarationScope(initial=self.initial_declarations)
@@ -3268,6 +3393,7 @@ class ProofValidator:
         err = self._register_declarations(explicit_declarations, declarations, label, sidx, block_label)
         if err:
             return err
+        self._constrained_names |= _metadata_names(explicit_declarations)
 
         if tag == 'declare':
             if phi is None:
@@ -3399,6 +3525,15 @@ class ProofValidator:
             return err
 
         if tag in ('premise', 'axiom'):
+            self._given_lines.append(phi)
+        elif tag == 'rule' and explicit_declarations:
+            # A rule line that declares constants names an object *and* says
+            # what it satisfies (the direct Pairing witness: `There is a set
+            # Y = {a, b}` declares Y and states Y's defining property, in
+            # terms of a and b). Nothing derives that statement -- the rule
+            # chose an object for the existential -- so it is the witness
+            # assumption of an existential elimination, exactly like the
+            # bundle `Existence from L` makes, and constrains a and b.
             self._given_lines.append(phi)
         elif tag == 'assume':
             self._assumption_stack.append(phi)
@@ -3656,8 +3791,10 @@ class ProofValidator:
             return _mk_error(label, block_label, sidx, CATEGORY_ARITY_MISMATCH,
                              f"'{rule.name}' requires {arity} candidate premise(s), but the cited line(s) and subproofs provide only {len(available)}")
 
+        tried = []
         for candidate_indices in itertools.combinations(range(len(available)), arity):
             candidates = [available[i] for i in candidate_indices]
+            tried.append(candidates)
             try:
                 if self._applies(rule, candidates, phi):
                     return None
@@ -3666,7 +3803,8 @@ class ProofValidator:
                                  f"'{rule.name}' raised an exception while checking this line: {raised}")
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
-                         f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices} and attached subproofs")
+                         f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices} and attached subproofs"
+                         + self._why_not(rule, tried, phi))
 
     def _validate_rule_below(self, phi: fl.Formula, justification: tuple, nested_subproof: Optional[list],
                               label: Optional[str], sidx: int, block_label: Optional[str],
@@ -3691,7 +3829,9 @@ class ProofValidator:
         if not self._rule_is_registered(rule):
             return _mk_error(label, block_label, sidx, CATEGORY_UNRECOGNIZED_RULE, f"rule '{rule.name}' is not one of the rules this proof allows")
         if not self._applies(rule, [sp_rec], phi):
-            return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH, f"'{rule.name}' does not justify {phi!r} from the subproof immediately below this line")
+            return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                             f"'{rule.name}' does not justify {phi!r} from the subproof immediately below this line"
+                             + self._why_not(rule, [[sp_rec]], phi))
         return None
 
     def _validate_rule(self, phi: fl.Formula, justification: tuple, label: Optional[str],
@@ -3755,9 +3895,11 @@ class ProofValidator:
                                  f"'{rule.name}' requires exactly {arity} candidate premise(s), but the cited line(s) provide only {len(available)}")
             arities = [arity]
 
+        tried = []
         for arity_to_try in arities:
             for candidate_indices in itertools.combinations(range(len(available)), arity_to_try):
                 candidates = [available[i] for i in candidate_indices]
+                tried.append(candidates)
                 try:
                     if self._applies(rule, candidates, phi):
                         return None
@@ -3766,7 +3908,8 @@ class ProofValidator:
                                      f"'{rule.name}' raised an exception while checking this line: {raised}")
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
-                         f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}")
+                         f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
+                         + self._why_not(rule, tried, phi))
 
     def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula) -> bool:
         """Ask `rule` whether it justifies `phi` from `candidates`, giving
@@ -3777,7 +3920,27 @@ class ProofValidator:
         if in_context is None:
             return rule.applies(candidates, phi)
         return in_context(candidates, phi, RuleContext(
-            self._given_lines, self._assumption_stack, self._arbitrary_names))
+            self._given_lines, self._assumption_stack, self._arbitrary_names,
+            self._constrained_names))
+
+    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula) -> str:
+        """`": <reason>"` to append to a refusal, when `rule` can say why it
+        refused one of the `tried` candidate groups; otherwise the empty
+        string. Never raises: an explanation is a courtesy, and a rule that
+        cannot give one must not turn a refusal into a crash."""
+        explain = getattr(rule, 'explain_in_context', None)
+        if explain is None:
+            return ""
+        context = RuleContext(self._given_lines, self._assumption_stack, self._arbitrary_names,
+                              self._constrained_names)
+        for candidates in tried:
+            try:
+                reason = explain(candidates, phi, context)
+            except Exception:
+                reason = None
+            if reason:
+                return f": {reason}"
+        return ""
 
     def _rule_is_registered(self, rule: InferenceRule) -> bool:
         """Is `rule` an instance of one of the rule *types* this `Proof`
