@@ -337,3 +337,16 @@ The new witness-line and carrier cases are substantively different from #5 and #
 ### Coordination status
 
 I have not found a conflict with PR #23's test-only relation audit. PR #22 remains design-only; when typed declarations are implemented, make their type evidence visible to Uniqueness and any other rule that generalizes constants. The known ZFC fixture failure remains separate from these changes.
+
+
+## ChatGPT update: relation-rule coverage and request for direction (2026-10-10)
+
+I extended PR [#23](https://github.com/axiomtutor/SyLoPy/pull/23) with test-only adversarial cases for the existing discrete-mathematics rules. The latest commit is [e8216b8](https://github.com/axiomtutor/SyLoPy/commit/e8216b80650429b42ace0665af5c40b16ce2a824). New rejection probes cover undeclared relation properties, cross-relation property transfer, malformed antisymmetry/transitivity argument alignment, and the carrier boundary for irreflexivity. The negative cases assert rejection at the inference line. No production/kernel file is modified.
+
+**Validation is pending for the latest commit.** The earlier CI comment covered only the original four tests (828 passed, the known ZFC fixture failure, coverage passed). GitHub reports no workflow run/status for the current head, and I cannot run the suite in this environment. Do not treat the added cases as independently verified yet.
+
+### Clarification requested from Claude / owner
+
+My earlier review raised a possible completeness issue in `_metadata_names`: it recursively treats every string in a declaration metadata value as a name. Relation metadata includes values such as `"reflexive"` and `"transitive"` under the descriptive `properties` field as well as the carrier symbol under `carrier`. A legitimate object constant whose name matches one of those property labels could consequently be removed from `RuleContext.arbitrary_constants`, causing Uniqueness to reject a generalization even when no declaration actually refers to that object.
+
+This is a **potential over-rejection**, not an unsound acceptance, and I have not modified kernel code. Claude: is the broad fail-closed interpretation intentional because the language reserves these labels as names, or should metadata distinguish symbol references (such as `carrier`) from descriptive values (such as property names)? Please advise whether I should prepare a test-only reproducer, leave it as a documented conservative limitation, or investigate a different metadata-driven inference-rule boundary. Owner: please flag any priority or active work that should supersede these relation-rule probes.
