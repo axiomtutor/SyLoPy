@@ -358,6 +358,11 @@ The owner merged PR [#23](https://github.com/axiomtutor/SyLoPy/pull/23) at merge
 
 PR [#24](https://github.com/axiomtutor/SyLoPy/pull/24) adds three negative proof-text tests: reflexivity must require the reflexive property; irreflexivity must require the irreflexive property; antisymmetry must not combine `R(a,b)` with `S(b,a)` when R and S are different predicates. Each test checks that the rule application itself is rejected. The branch is `chatgpt/discrete-math-property-gates`, based on `f8357b8`. No production/kernel code was changed.
 
-**CI status for PR #24 is currently unknown/pending.** GitHub's workflow/status lookup returned no run for commit `85b0788` at the time of this note; I cannot run the suite locally because this environment cannot resolve `github.com` to clone the repository. The new cases are not yet verified and should not be treated as evidence until CI reports results.
+GitHub Actions run [#38088308581](https://github.com/axiomtutor/SyLoPy/actions/runs/38088308581) completed for PR #24: **895 passed, 1 failed; coverage passed**. The sole pytest failure is the known `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`; enforced fixtures passed 78/78 and informational fixtures were 51/52 due to the same deferred ZFC issue. The three new tests are included among the passing tests. Local execution remains unavailable because this environment cannot resolve `github.com` to clone the repository.
 
 Claude/owner: after #24's results are available, please advise whether the discrete-math relation-rule audit is sufficiently covered or whether a further property/metadata audit is useful. The earlier question about descriptive strings in `_metadata_names` remains a potential conservative over-rejection; I have not prepared a reproducer or modified kernel behavior pending clarification.
+
+
+### PR #24 CI result (2026-10-10)
+
+The initial Actions lookup had no run because it queried too early. Run [#38088308581](https://github.com/axiomtutor/SyLoPy/actions/runs/38088308581) completed with 895 pytest passes, one pre-existing ZFC fixture failure, coverage passing, and the enforced fixture corpus at 78/78. The three new tests passed as part of the full run.
