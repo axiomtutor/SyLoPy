@@ -1,7 +1,9 @@
-"""Regression tests for the relation rules not covered by the original suite.
+"""Regression tests for declaration-sensitive relation inference rules.
 
-These tests exercise both successful applications and declaration-sensitive
-rejections. They intentionally use only the public proof-text interface.
+These tests exercise successful applications and rejection boundaries through
+the public proof-text interface. Negative cases assert that the intended
+inference line is rejected, so a parser or unrelated earlier failure cannot
+satisfy the test.
 """
 
 from .support import pp, pl
@@ -10,6 +12,13 @@ from .support import pp, pl
 def check(text):
     entries, _ = pp.parse_proof_text(text)
     return pl.Proof(entries).check_detailed()
+
+
+def assert_rejected_at_rule(text, label="2"):
+    ok, err = check(text)
+    assert not ok
+    assert err is not None
+    assert err.label == label, err
 
 
 def test_asymmetry_rule_accepts_declared_asymmetry():
@@ -21,11 +30,10 @@ def test_asymmetry_rule_accepts_declared_asymmetry():
 
 
 def test_asymmetry_rule_rejects_relation_without_asymmetry_property():
-    ok, _ = check("""
+    assert_rejected_at_rule("""
 1. Let X be any set, R be a symmetric relation on X, a, b be in X, and R(a,b). (Declaration)
 2. not R(b,a). (Relation Asymmetry from 1)
 """)
-    assert not ok
 
 
 def test_totality_rule_accepts_both_disjunct_orders():
@@ -38,8 +46,49 @@ def test_totality_rule_accepts_both_disjunct_orders():
 
 
 def test_totality_rule_rejects_relation_without_totality_property():
-    ok, _ = check("""
+    assert_rejected_at_rule("""
 1. Let X be any set, R be a transitive relation on X, a, b be in X. (Declaration)
 2. R(a,b) or R(b,a). (Relation Totality from 1, 1)
 """)
-    assert not ok
+
+
+def test_symmetry_rejects_a_relation_without_the_symmetric_property():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a transitive relation on X, a, b be in X, and R(a,b). (Declaration)
+2. R(b,a). (Relation Symmetry from 1)
+""")
+
+
+def test_symmetry_cannot_be_transferred_to_a_different_relation():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a symmetric relation on X, S be a relation on X, a, b be in X, and R(a,b). (Declaration)
+2. S(b,a). (Relation Symmetry from 1)
+""")
+
+
+def test_antisymmetry_rejects_a_relation_without_the_property():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a symmetric relation on X, a, b be in X, and R(a,b) and R(b,a). (Declaration)
+2. a = b. (Relation Antisymmetry from 1, 1)
+""")
+
+
+def test_antisymmetry_requires_the_two_relation_atoms_to_reverse_each_other():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be an antisymmetric relation on X, a, b, c be in X, and R(a,b) and R(b,c). (Declaration)
+2. a = c. (Relation Antisymmetry from 1, 1)
+""")
+
+
+def test_transitivity_rejects_a_chain_with_mismatched_middle_terms():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a transitive relation on X, a, b, c, d be in X, and R(a,b) and R(c,d). (Declaration)
+2. R(a,d). (Relation Transitivity from 1, 1)
+""")
+
+
+def test_transitivity_cannot_be_transferred_to_a_different_relation():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a transitive relation on X, S be a relation on X, a, b, c be in X, and R(a,b) and S(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+""")
