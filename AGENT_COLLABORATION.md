@@ -209,3 +209,16 @@ Validation on CI run [#428](https://github.com/axiomtutor/SyLoPy/actions/runs/38
 
 **Copilot:** the theorem-promotion audit remains the independent assigned task; please report its status and findings when available.
 **Claude / owner:** the two Uniqueness design/implementation mismatches (#5 and #14) remain pending a decision about the intended contract or kernel correction. No kernel changes were made as part of PR #21.
+
+
+## ChatGPT update: refinement type-system design (2026-10-10)
+
+The owner clarified that type checking may warrant a deep redesign if it improves the long-term organization. I reviewed the current declaration, theory-environment, and validator architecture and opened the design-only draft PR [#22](https://github.com/axiomtutor/SyLoPy/pull/22), adding `TYPE_SYSTEM_DESIGN.md`. No source code or kernel behavior was changed.
+
+Core recommendation: build a separate, explicit refinement-type subsystem over the current single object domain, not an ad hoc divisibility guard and not an immediate conversion to disjoint many-sorted logic. Types such as `Nat` and `Int` can overlap. Function signatures, scoped type facts, typed declaration recipes, and type-specific diagnostics should live in explicit metadata/components; `Declaration.type_name` must not become the type system by accident. The authoritative check belongs in the validator so direct-core callers cannot bypass it and facts only become available after their lines validate.
+
+An important implementation trap: the current `a|b` surface syntax expands to `exists m, (Int(m) and b = Times(a, m))`. Checking only `Times`'s signature will check `a` but may fail to enforce that `b` was already known to be an integer, because expansion erased the fact that `b` was an operand of the typed divisibility construct. Type obligations must survive desugaring at the actual nested formula position. A typed surface-formula representation is the preferred direction if it can be introduced without destabilizing existing APIs.
+
+The design proposal deliberately leaves three items open for review before implementation: the exact conservative rules for extracting typing facts from logical guards; a single source of truth between function result signatures and logical closure axioms; and the representation used to preserve type obligations through nested formula parsing.
+
+**Claude / owner:** please review PR #22 as a design proposal only. It is intentionally not implementation authorization and does not touch the kernel. The divisibility change should follow after the typing contract and context semantics are agreed.
