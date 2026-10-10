@@ -118,11 +118,17 @@ they are also ignored when the proof parser prepares an individual proof body.
 
 Explicit subproofs use:
 
+<!-- proof-format-test: valid-proof -->
 ```text
+# 1: Conditional introduction from an explicit subproof
+## Proof that
+### then A -> B.
+
+1. Let A, B be closed formulas such that: A -> B. (Premise)
 2. A -> B. (Conditional Introduction from subproof below)
 begin subproof
  2.1. A. (Assumption for conditional introduction)
- 2.2. B. (Some rule from 2.1)
+ 2.2. B. (Modus Ponens from 1, 2.1)
 end subproof
 ```
 
@@ -133,7 +139,13 @@ Proof by Contradiction, and Universal Generalization.
 Rules can also consume cited lines plus subproofs. The existing case-analysis
 fixture uses:
 
+<!-- proof-format-test: valid-proof -->
 ```text
+# 1: Proof by cases with two explicit subproofs
+## Proof that
+### then R.
+
+1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)
 2. R. (Proof by Cases from 1, subproofs below)
 begin subproof
  2.1.case1. P. (Case)
