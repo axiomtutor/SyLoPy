@@ -177,8 +177,7 @@ CI run #421 reports 824 Python tests passed and one failure: the same documented
 The owner instructed ChatGPT to write all five candidates. They are now implemented as proof fixtures on PR [#21](https://github.com/axiomtutor/SyLoPy/pull/21); the list below is retained as a description of the intended proof coverage.
 
 1. **Natural numbers: successor has no fixed points.** Prove forall n, (Nat(n) -> not (Succ(n) = n)) by induction. The hard step is using successor injectivity with closure and the induction hypothesis to rule out Succ(Succ(n)) = Succ(n).
-2. **Set theory: extensionality as a reusable theorem.** From two sets having the same membership condition, prove the sets equal via two subset proofs and SetEquality. The hard step is keeping the two membership characterizations straight through the nested subproofs.
-3. **Set theory: Separation produces a subset.** From forall u, (In(u, S) iff (In(u, X) and P(u))), prove S subseteq X. The hard step is extracting the In(u, X) conjunct by instantiating the defining biconditional, while maintaining the intended schema instance.
+2. **Set theory: extensionality as a reusable theorem.** From two sets having the same membership condition, prove the sets equal via two subset proofs and SetEquality. The hard step is keeping the two membership characterizations straight through the nested subproofs.3. **Set theory: Separation produces a subset.** From forall u, (In(u, S) iff (In(u, X) and P(u))), prove S subseteq X. The hard step is extracting the In(u, X) conjunct by instantiating the defining biconditional, while maintaining the intended schema instance.
 4. **Number theory: divisibility is closed under multiplication on the right.** From a|b and Int(c), prove a | Times(b,c). The hard step is unpacking the existential witness for a|b, proving the product witness is integer, and using associativity to put the result in the defining a * witness shape.
 5. **Discrete mathematics: transitive and irreflexive implies asymmetric.** Prove that R(a,b) and R(b,a) lead to a contradiction for a transitive, irreflexive relation. The hard step is deriving R(a,a) from transitivity and applying irreflexivity without confusing the relation declarations or citations.
 
@@ -251,3 +250,32 @@ I could not run the test suite in this environment; the PR explicitly leaves val
 ## ChatGPT test follow-up (PR #23)
 
 CI run #434 completed: **828 passed, 1 failed; coverage passed**. The sole Python failure is the known, tracked `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` failure caused by the deferred WLOG / Mutatis mutandis work. The new discrete-math regression tests pass. I posted this result in the PR discussion; no production changes are needed for this task.
+
+## ChatGPT assessment and recommendations (2026-10-10)
+
+After reviewing the recent merged audits, textbook-proof fixtures, refinement-type proposal, and current collaboration state, my assessment is that SyLoPy is making the right transition: the central challenge is increasingly trustworthy semantics and maintainable extension, rather than simply adding proof-checking features.
+
+### Assessment of recent direction
+
+- The adversarial work on Uniqueness, scope/freshness, number-theory rules, and induction is high-value. A proof checker must demonstrate that invalid inferences are rejected for the intended reason, not merely that valid examples pass.
+- The parser/elaborator/kernel boundary is an important architectural asset. Keep `ProofContext` as the elaboration-time environment and the kernel's `LabelScope` / `DeclarationScope` as independent validation-time structures. Remaining duplicated reachable parser/elaboration paths should be identified before adding more complexity.
+- The five textbook-style proofs are useful end-to-end checks of mathematical expressiveness. Keep formal hypotheses faithful to the actual theory: in particular, divisibility alone does not establish `Int(a)`, so do not omit the required integer hypothesis without proving it from the theory.
+- The refinement-type system should not become an ad hoc guard or a second checker that the kernel can bypass. Agree on typing judgments, scoped facts, preservation of obligations through desugaring, and validator ownership before broad implementation.
+- The known ZFC fixture failure is an intentionally deferred dependency on WLOG and `Mutatis mutandis`, not a reason to implement those rules hastily or mask the failure. Keep this distinct from any newly introduced failure and report test counts consistently.
+
+### Recommended priorities
+
+1. Review and close the existing adversarial audits, including whether the Uniqueness mismatches #5 and #14 are resolved in code or through an explicit owner-approved change to the written contract.
+2. Expand `parse_oracle/` and create a formal surface-language specification. Treat parser/oracle disagreement as a specification question to resolve, not a test to weaken automatically.
+3. Finish identifying duplicated reachable parsing/elaboration paths and clarify the theory-extension interfaces.
+4. Review and settle the refinement-type design before implementation, especially the representation and validation of typing obligations that would otherwise be lost during surface-syntax desugaring.
+5. Return to WLOG, `Mutatis mutandis`, and deferred ZFC work only under the existing owner-approval rule and after their validation semantics are sufficiently precise.
+
+These priorities are guidance, not authorization to change kernel or deferred set-theory code. Any soundness defect takes precedence over documentation work.
+
+### Requests to Claude Code and Copilot
+
+- **Claude / owner:** please report the decision on Uniqueness cases #5 and #14, and review the refinement-type proposal as design only. Please also flag any active work that conflicts with the priorities above.
+- **Copilot:** please continue the independent theorem-promotion audit already assigned in this file, report findings with rejection reasons and CI results, and avoid overlapping active production/kernel work.
+- **All agents:** please flag active work on the parser oracle or surface-language specification before starting a parallel effort. Prefer a coordinated, bounded task and update this record with decisions and test evidence.
+
