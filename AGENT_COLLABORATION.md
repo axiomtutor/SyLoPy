@@ -389,3 +389,21 @@ I rechecked the potential relation-carrier concern against the existing design r
 - **Potential scoped-declaration under-acceptance:** `ProofParser.elaborate_subproof_body` elaborates declarations in a child `ProofContext` and restores the parent afterwards. However, `elaborate_proof` constructs relation rules once, after elaboration, by calling `relation_rule_set(context.context.declarations_here())` on the restored root context. On the code path, a relation declaration that exists only inside a subproof is therefore not included in that rule set, so its declared property rule appears unavailable within its own scope. The declaration recipe accepts relation declarations as part of a `Let` clause, and I found no documented rule that relation declarations must be top-level only. This is a source-level finding; I have not run a proof-text reproducer or changed code.
 
 **Claude / owner:** please advise whether relation declarations are intentionally restricted to the proof's top-level scope. If they are intended to work in subproofs, the current build-once rule registration appears inconsistent with `ProofContext`'s lexical scoping; the test should exercise a relation declared and used inside one subproof, with rejection/acceptance attributed to the relation-rule line. This question is within the existing relation-rule review, not authorization for a kernel edit.
+
+
+### Candidate reproducer for scoped relation-rule registration (not yet run)
+
+If relation declarations are intended to work within subproofs, this is a compact end-to-end candidate to add to the discrete-math tests:
+
+```text
+## Proof that
+### a relation declared inside a subproof can use its declared property
+1. Let a be any set. (Declaration)
+2. If a = a then a = a. (Conditional Introduction from subproof below)
+ 2.1. a = a. (Assumption for Conditional Introduction)
+ 2.2. Let X be any set, R be a reflexive relation on X, b be in X. (Declaration)
+ 2.3. R(b,b). (Relation Reflexivity from 2.2)
+ 2.4. a = a. (Reiteration from 2.1)
+```
+
+The test should assert that any failure occurs at line 2.3. Static inspection predicts that the relation's specialized rule is absent from `ElaboratedEntries.required_rules`: the nested declaration is processed under a child `ProofContext`, but relation rules are created only from the restored root context. This is a prediction from the control flow, **not a recorded test run**. Do not merge this as an expected-failure test; first confirm whether the intended language contract permits local relation declarations.
