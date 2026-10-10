@@ -63,14 +63,37 @@ A conservative first version need not use a general theorem prover to discover t
 
 ## 5. Logical guards and quantified formulas
 
-Because this is a refinement system over ordinary first-order logic, the type checker must understand the standard encodings used by the theory. In particular:
+Version 1 should use a deliberately conservative, syntax-directed analysis. It is not a theorem prover. Its judgments concern what types are available at each formula occurrence, not whether the whole formula is true.
 
-- In `if Int(a) then P(a)`, the consequent is checked with `Int(a)` available.
-- In `forall a, (Int(a) -> P(a))`, `a` is known to be an integer while checking `P(a)`.
-- In a guarded existential such as `exists m, (Int(m) and P(m))`, the occurrence of `m` in `P(m)` is checked under the integer guard.
+### Facts guaranteed by a formula
 
-The rules must be explicit and order-independent. In particular, a type fact may be promoted out of a disjunction only if every branch guarantees it; it is not safe to treat one disjunct's type fact as a fact about the whole disjunction. Negation and other connectives need equally precise rules. When the type checker cannot establish a required type under those rules, it rejects conservatively.
+Define a pure function `guaranteed_type_facts(phi)` over a normalized core formula. It returns only positive type-predicate facts that must hold whenever `phi` holds:
 
+- A registered type atom such as `Int(a)` guarantees `a : Int`.
+- A conjunction guarantees the union of facts guaranteed by every conjunct.
+- A disjunction guarantees only the intersection of facts guaranteed by every branch. Thus `(Int(a) and P(a)) or (Int(a) and Q(a))` guarantees `Int(a)`, but `Int(a) or P(a)` does not.
+- An implication, negation, or biconditional contributes no unconditional positive facts in version 1.
+- A quantified formula does not export facts about its bound variable. In particular, facts about an existential witness never escape the existential's body.
+- Facts about bound variables are represented with binder-aware identity, not by blindly matching variable-name strings.
+
+The type checker should recognize a type predicate only when it is registered in the active `TypeSystem`; a similarly named arbitrary predicate is not a type.
+
+### Contexts for checking subformulas
+
+The checker traverses formula trees and constructs a local context for each occurrence:
+
+- **Implication** `A -> B`: check `A` under the incoming context, then check `B` under the incoming context extended by `guaranteed_type_facts(A)`. The antecedent itself must be well-typed before its facts are used.
+- **Conjunction**: every conjunct is checked with the facts guaranteed by the other conjuncts added to the incoming context. This is symmetric in the conjuncts, so the order of `Int(m)` and `P(m)` does not affect whether `P(m)` is well-typed.
+- **Disjunction**: check each branch independently under the incoming context. Do not import facts from one branch into another.
+- **Negation**: check its child under the incoming context; do not infer positive facts from the negated formula.
+- **Universal and existential quantification**: introduce a fresh logical variable identity for the binder, check the body under the incoming context, and do not export facts about that binder. Guards inside the body work through the implication/conjunction rules above.
+- **Biconditional**: check both sides under the incoming context; version 1 does not use either side as a typing guard for the other.
+
+For example, in `forall a, (Int(a) -> P(a))`, the consequent is checked with `a : Int`. In `exists m, (Int(m) and P(m))`, the occurrence of `m` in `P(m)` is checked with `m : Int`, but the witness fact is not exported. In `(Int(a) and P(a)) or (Int(a) and Q(a))`, both branches are checked independently, and the whole disjunction may guarantee `a : Int` to an enclosing implication.
+
+At top level, facts are committed to the validation context only from premises whose formulas passed type checking and from proof lines after their justifications validate. Open assumptions have child contexts and disappear on discharge. The checker must never use a failed line or a sibling subproof's facts.
+
+This policy is intentionally incomplete: it may reject a well-typed expression if its typing cannot be established by these rules. It must not accept an expression by guessing or by proving arbitrary first-order consequences. Additional guard forms should be added only with explicit semantic justification and tests.
 ## 6. Why divisibility is a useful first case
 
 The current surface syntax `a|b` is expanded immediately into
@@ -125,10 +148,12 @@ The initial implementation is complete only when tests demonstrate all of these:
 - The same invariant holds for hand-built core proofs wherever their core representation retains the relevant operation/signature obligations; there is no public entry point that bypasses checks for registered typed symbols.
 - Existing untyped propositional and set-theoretic proofs retain their current behavior unless they use a newly registered typed symbol incorrectly.
 
-## 10. Open decisions to resolve before implementation
+## 10. Recommended resolutions of the design questions
 
-1. Which exact logical patterns are recognized as type guards in version 1, especially conjunction and negation? The first version should define a sound conservative rule set instead of inferring types from arbitrary formulas.
-2. How signatures and logical closure axioms share one source of truth, so the type checker cannot assume a result type the theory does not actually guarantee.
-3. How a typed surface formula or its annotations travel through nested formula parsing without making every theory-specific parser invent its own side channel.
+These are proposed decisions to make the first implementation reviewable and bounded.
 
-These questions should be resolved in design and tests before touching kernel validation code. The first implementation PR should be narrow and separately reviewable; the architecture should make it possible to add later types and signatures without adding more special cases to `ProofLogic.py`.
+1. **Guard analysis:** implement the conservative syntax-directed rules in section 5. In particular, conjunction uses facts guaranteed by all conjuncts; disjunction exports only facts guaranteed by every branch; implication guards its consequent; negation and biconditional do not add positive facts in version 1. Do not attempt general theorem proving.
+2. **One source of truth for signatures and closure:** keep term-typing judgments separate from ordinary logical facts. A function signature can establish that a term is well-typed with a result type for checking later operations, but it must not silently add an ordinary formula such as `Int(Times(a,b))` to the proof's citable facts. If mathematical proofs need that formula, the theory must provide its closure axiom/theorem in the usual logical way. For a declared subtype relationship such as `Nat <: Int`, require an explicit corresponding inclusion formula (e.g. `forall x, (Nat(x) -> Int(x))`) in the theory package; type metadata may index that declared relationship but must not manufacture a new mathematical theorem. Registry construction should reject a subtype/signature declaration that has no corresponding registered predicate or symbol.
+3. **Preserving surface obligations:** represent typed surface constructs with a small typed-syntax node or source-mapped obligation that survives formula parsing, nesting, and desugaring. Check the obligation in the logical context of that exact occurrence, then lower to ordinary core logic. Prefer an explicit representation over reconstructing a lost construct from the expanded formula's shape. If the existing parser cannot carry nodes end-to-end in one step, begin with a structured obligation list attached to elaborated entries; do not reduce it to a global list, because that would lose nested scope information.
+
+These resolutions should be reviewed before kernel implementation. The first implementation PR should be narrow and separately reviewable; the architecture should make it possible to add later types and signatures without adding more special cases to `ProofLogic.py`.
