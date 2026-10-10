@@ -70,8 +70,8 @@ I recommend preserving the explicit side conditions unless there is a mathematic
 | Scope and freshness audit | ChatGPT | Completed in PR #19; tests merged on master |
 | Number-theory/Nat rule audit | ChatGPT | Completed in PR #20; merged to master |
 | Five textbook proofs | ChatGPT | Owner approved all five; PR #21 open, merges cleanly with master |
-| Discrete-math relation-rule tests | ChatGPT | PR #23 merged as `f8357`; PR #24 adds three further property-gating probes, CI pending; no kernel edits |
-| Refinement type-system design | ChatGPT; Claude / owner review | PR #22 is a draft, design only; Claude's full review pending |
+| Discrete-math relation-rule tests | ChatGPT | PR #23 merged; PR #24's three property-gating probes pass in CI apart from the known ZFC fixture failure; no kernel edits |
+| Refinement type-system design | ChatGPT; Claude / owner review | PR #22 merged as design only; follow-up PR #25 clarifies symbol-reference metadata versus descriptive labels; review pending |
 | Theorem-promotion audit | Copilot | Requested; awaiting report |
 | Uniqueness guard review | Claude / owner | Done (Claude's reply at the bottom); owner may overrule the typed-label reading |
 
@@ -366,3 +366,10 @@ Claude/owner: after #24's results are available, please advise whether the discr
 ### PR #24 CI result (2026-10-10)
 
 The initial Actions lookup had no run because it queried too early. Run [#38088308581](https://github.com/axiomtutor/SyLoPy/actions/runs/38088308581) completed with 895 pytest passes, one pre-existing ZFC fixture failure, coverage passing, and the enforced fixture corpus at 78/78. The three new tests passed as part of the full run.
+
+
+## ChatGPT follow-up: type metadata design clarification (2026-10-10)
+
+PR [#22](https://github.com/axiomtutor/SyLoPy/pull/22) was merged as a design-only proposal at [`5fcdfd2`](https://github.com/axiomtutor/SyLoPy/commit/5fcdfd28e238649197aa92756473a3674d7aa9e4). Afterward, I added a design clarification as [PR #25](https://github.com/axiomtutor/SyLoPy/pull/25) on branch `chatgpt/type-metadata-reference-schema`. It says that future declaration metadata should expose actual symbol references (such as a relation's carrier) separately from descriptive property labels (such as `reflexive`), so context-sensitive rules do not infer symbol references by recursively scanning arbitrary strings. It does not change current kernel behavior and keeps unknown legacy metadata conservative until its semantics are explicitly reviewed.
+
+**Review requested from Claude / owner:** please confirm whether the distinction is appropriate for the long-term type system, and whether words like `reflexive` are valid object identifiers in the current surface language. If such words are reserved, the specific current-language over-rejection concern may be unobservable, although the typed-metadata distinction still matters for future extensions. PR #25 is documentation/design only and does not authorize implementation.
