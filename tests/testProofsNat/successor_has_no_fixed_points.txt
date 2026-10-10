@@ -9,7 +9,7 @@
 4. not (Succ(Zero) = Zero). (Modus Ponens from 1, 3)
 5. forall n, ((Nat(n) and not (Succ(n) = n)) -> not (Succ(Succ(n)) = Succ(n))). (Universal Generalization from subproof below)
 begin subproof
- 5.1. Let n be a fresh variable. (Fresh Variable)
+ 5.1. Let n be in the domain. (Fresh Variable)
  5.2. ((Nat(n) and not (Succ(n) = n)) -> not (Succ(Succ(n)) = Succ(n))). (Conditional Introduction from subproof below)
  begin subproof
   5.2.1. Nat(n) and not (Succ(n) = n). (Assumption for Conditional Introduction)
