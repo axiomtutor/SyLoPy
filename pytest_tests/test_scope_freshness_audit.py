@@ -65,7 +65,7 @@ def _check(entries, probe):
 
 
 def _assert_hypotheses(context, *names):
-    expected = [_atom(name) for name in names]
+    expected = [pp.parse_formula(name, set()) for name in names]
     assert len(context.hypotheses) == len(expected)
     assert all(
         pl._ast_eq(actual, wanted)
