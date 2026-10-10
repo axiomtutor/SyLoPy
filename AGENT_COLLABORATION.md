@@ -430,3 +430,25 @@ The current identifier regex makes this a useful focused candidate for PR #25's 
 ```
 
 **Predicted behavior from source inspection:** line 8 is refused by Uniqueness condition 3 because `_metadata_names` treats the property's descriptive string `"reflexive"` as a constrained object name, despite line 6 introducing it as an ordinary arbitrary object. This is not an observed test result; I have not executed the proof and do not propose adding a test that assumes the intended resolution before Claude/owner confirms the identifier and metadata contract.
+
+
+## ChatGPT review: typed-declaration options after the owner's decision (2026-10-10)
+
+The owner recorded on master in commit [`62374be`](https://github.com/axiomtutor/SyLoPy/commit/62374beb42378dc2e3ec89a0087c1b545594fb7c) that `Let X be an integer` should eventually type X, but explicitly deferred implementation pending design discussion. I reviewed the live `Type` API, `Type.as_declaration_recipe()`, `TheoryEnvironment`, `ProofParser.default_theory_environment()`, and the type-system design merged in PR #22.
+
+### Recommendation: keep the two guarantees distinct
+
+1. **A typed declaration is an ordinary logical assumption.** The existing `Type.as_declaration_recipe()` already offers a narrow mechanism: `Let x be an integer` can introduce object `x` and put `Int(x)` on the same proof line. The validator records the formula-bearing declaration as a hypothesis. This is mathematically appropriate for a local assumption that x is an integer, and it fixes the Uniqueness case-5 side condition because the candidate occurs in a hypothesis. It does not by itself reject ill-typed expressions.
+2. **Type checking is a separate, optional-by-signature well-formedness judgment.** To enforce the owner's divisibility requirement, register signatures for the integer operations and check them at validation time. An unknown type fact may cause a type error, but a typing signature must not manufacture a citable logical theorem. This should be a one-way boundary: accepted formulas may contribute type facts only after ordinary line validation succeeds; a type checker must never make an otherwise-invalid inference valid.
+3. **Preserve obligations introduced by surface sugar.** The expansion of `a|b` forgets that both surface operands must be integers. The checker must retain a source-mapped obligation for both operands at the original occurrence, including nested connectives/quantifiers. A signature on `Times` alone is insufficient to check `b`, because `b` is only the other side of the defining equality in the expanded formula.
+4. **Do not conflate local assumptions with typed universal quantification.** `Let n be a natural number` supplies the fact `Nat(n)` within the proof; it does not, alone, introduce `forall n, (Nat(n) -> P(n))`. The latter needs an explicit surface construct or promotion rule that wraps the result in the type predicate before universal generalization. Otherwise theorem promotion could silently lose the intended domain restriction.
+5. **Keep types predicate-based and overlapping.** Reuse the existing logic predicates (`Nat`, `Int`) and the explicit inclusion theorem `forall x, (Nat(x) -> Int(x))`; do not adopt disjoint many-sorted logic. Type signatures may use the inclusion theorem to justify a typing judgment, but must not synthesize ordinary proof formulas absent from the theory.
+
+### Narrow implementation sequence once authorized
+
+- First, add focused tests against `Type.as_declaration_recipe()` for single and grouped declarations, scope, citation, and theorem promotion; verify that no duplicate `Int(x)` assertion is introduced where one is already explicit.
+- Then register descriptors on `NAT_TYPE` and `INT_TYPE` through theory-local declaration recipes. Prefer extending the appropriate theory environments over a special case in generic parser code.
+- Separately implement the first type-checking layer for explicitly registered integer signatures, then preserve and validate both divisibility operand obligations. Direct-core `Proof` construction and nested formulas require tests as well as surface proof text.
+- Treat `forall integer/natural n` sugar as its own semantic feature, with its own specification/oracle cases; do not implement it as a side effect of the descriptor recipe.
+
+This is a design recommendation only. I have made no implementation changes because `todos.txt` explicitly says this task is not authorized yet. The owner should choose whether the first approved change is the safe formula-producing declaration recipe alone or the recipe plus the first scoped signature-checking slice.
