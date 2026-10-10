@@ -217,10 +217,10 @@ def test_existence_witness_name_does_not_escape_closed_subproof():
 4. Y = Y. (Reflexivity)
 """
     entries, _ = pp.parse_proof_text(text)
-    # Disable programmatic auto-declaration so the kernel must respect the
-    # witness declaration's lexical scope rather than infer Y globally from
-    # its later use.
-    ok, error = pl.Proof(entries, auto_declare=False).check_detailed()
+    # Exercise the normal parser-to-validator path. The witness declaration
+    # is local to line 3's subproof and must not authorize a later top-level
+    # use of Y.
+    ok, error = pl.Proof(entries).check_detailed()
     assert not ok
     assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL
     assert error.label == "4"
