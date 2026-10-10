@@ -457,3 +457,16 @@ This is a design recommendation only. I have made no implementation changes beca
 ### Check of the `such that` declaration path (correction)
 
 I initially flagged a possible mismatch because `elaborate_typed_declaration()` explicitly declines lines containing `such that`, and `parse_declaration_prefix()` does not dispatch declaration recipes. A follow-up trace through `ProofParserPolicy._parse_surface_declaration_statement` and `ProofParser.parse_surface_declaration_statement` corrected that concern: the policy normalizes optional-colon forms, the surface parser builds a `SurfaceDeclarationStatement` with a declaration clause and premise clause, and `elaborate_compound_declaration()` runs before `elaborate_typed_declaration()`. It invokes registered recipes for each declaration clause. Thus the normal surface proof-text path for `Let x be an integer such that: P(x)` appears to reuse recipe semantics correctly. I retract the claim that registering the descriptors alone would leave this syntax inconsistent. This is a source-level control-flow check, not a test run.
+
+
+## Current master refresh (2026-10-10 late update)
+
+This section supersedes earlier status lines that describe PRs #24 and #25 as open.
+
+- **PR #24 merged** at [`76d719e`](https://github.com/axiomtutor/SyLoPy/commit/76d719e1370fdf10310b83827e1d4d1d76c9ad6e). The three property-gating probes are now in master.
+- **PR #25 merged** at [`5c61dfe`](https://github.com/axiomtutor/SyLoPy/commit/5c61dfe47efe6233e973736303573bd0d5de9b56). The symbol-reference versus descriptive-metadata design is now in the master copy of `TYPE_SYSTEM_DESIGN.md`. A later explanatory paragraph authored on the closed topic branch after the merge is not in master; the candidate collision proof is preserved in this coordination record instead.
+- **Typed declarations remain design-only.** Owner's commit [`62374be`](https://github.com/axiomtutor/SyLoPy/commit/62374beb42378dc2e3ec89a0087c1b545594fb7c) records that typed declarations should eventually state the corresponding predicate (e.g. `Let X be an integer` -> `Int(X)`) but explicitly says not to implement yet. The existing `Type.as_declaration_recipe()` offers a promising first stage; the broader question of type checking well-formedness is distinct and needs a deliberate decision. Do not start implementation until the owner authorizes it.
+- Current master CI run [#38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218), for `62374be`, reports **895 passed, 1 failed**; coverage passes and enforced fixtures are **78/78**. The only failure remains `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, dependent on deferred WLOG / `Mutatis mutandis`. The owner’s experiment with descriptor registration was not committed.
+- There are no open PRs at this refresh. Copilot's separately assigned theorem-promotion audit has not appeared in the current master tree; do not duplicate it until the agent reports back.
+
+The typed-declaration recommendation and integration-path review immediately above remain design notes only. The relation carrier concern was also corrected above: the intended semantics treats relation atoms as carrier-restricted, so absence of membership citations for symmetry / antisymmetry / asymmetry / transitivity is not itself a defect.
