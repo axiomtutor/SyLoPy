@@ -1,0 +1,15 @@
+# 1: Separation yields a subset of the original set
+## Proof that
+### if membership in S implies membership in X
+### then S subseteq X.
+
+1. Let S, X be any sets. (Declaration)
+2. Let P be a predicate such that: forall u, (In(u, S) iff (In(u, X) and P(u))). (Premise)
+3. S subseteq X. (Subset proof below)
+ begin subproof
+  3.1. Let u in S. (Assumption for subset proof)
+  3.2. In(u, S) iff (In(u, X) and P(u)). (Universal Instantiation from 2)
+  3.3. In(u, S) -> (In(u, X) and P(u)). (Biconditional Elimination from 3.2)
+  3.4. In(u, X) and P(u). (Modus Ponens from 3.3, 3.1)
+  3.5. In(u, X). (Conjunction Elimination from 3.4)
+ end subproof
