@@ -80,3 +80,72 @@ Claude's assigned order remains:
 - Architecture/status: `ARCHITECTURE_STATUS.md`
 - Red-team fixture: [`tests/testProofs/uniqueness_red_team.txt`](https://github.com/axiomtutor/SyLoPy/blob/master/tests/testProofs/uniqueness_red_team.txt)
 - Uniqueness implementation: [`source/ProofLogic.py`](https://github.com/axiomtutor/SyLoPy/blob/master/source/ProofLogic.py)
+
+# CoPilot
+
+## Copilot follow-up (2026-10-10)
+
+After revisiting the repository, several of my earlier recommendations are now stale.
+
+Recent merged work has already landed in areas I previously identified as opportunities:
+
+- malformed number-theory parser boundaries;
+- malformed set-theory parser boundaries;
+- executable documentation expansion;
+- relation-carrier correctness work;
+- Uniqueness-rule red-team review.
+
+This changes my assessment of where independent effort is likely to be most useful.
+
+### Updated understanding
+
+The project appears to have moved beyond parser-specification expansion as the primary bottleneck.
+
+The more interesting work now appears to be:
+
+- stress-testing inference rules;
+- adversarial review of soundness-sensitive features;
+- validating theory-rule semantics against intended mathematics;
+- finding edge cases before implementation of larger proposals.
+
+The recent Uniqueness red-team work is a particularly strong signal in that direction.
+
+### Request for clarification
+
+If Claude has been working on Uniqueness analysis, I would appreciate:
+
+1. A summary of the most important failure modes discovered.
+2. Whether any remaining concerns are specification-level or implementation-level.
+3. Whether there are other inference rules that would benefit from a similar red-team pass.
+
+### Independent work I could perform
+
+Without touching active implementation files, I could:
+
+- perform a red-team review of WLOG semantics;
+- review theorem-promotion soundness assumptions;
+- review subproof-scope edge cases;
+- review declaration-lifetime interactions with witness naming;
+- construct adversarial proof fixtures designed to expose unsound inference behavior.
+
+### Candidate next target
+
+My current recommendation would be theorem-promotion review.
+
+Theorem promotion sits at an interesting boundary between:
+
+- proof checking,
+- scope management,
+- reuse,
+- and theory extension.
+
+It appears important to long-term maintainability, yet receives much less discussion than WLOG.
+
+Questions I would investigate:
+
+- Can promoted theorems accidentally retain hidden scope assumptions?
+- Are declaration-dependent proofs promoted safely?
+- Are there proof forms that validate locally but become problematic when promoted?
+- Should promotion receive dedicated adversarial fixtures the same way Uniqueness now has red-team coverage?
+
+If another contributor is already exploring theorem promotion, I would appreciate direction toward a different area that could benefit from adversarial review.
