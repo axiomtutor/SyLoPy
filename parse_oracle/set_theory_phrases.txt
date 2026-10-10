@@ -546,3 +546,29 @@ context: line
 surface: x is a b or c
 expect: REJECT
 why: The allowed multi-alternative surface form requires separately named alternatives, with the stated comma-and-or structure when there are three or more.
+
+# Additional malformed set-theory boundaries
+
+id: reject-empty-slot-enumeration-line
+context: line
+surface: x is in {a,, b}
+expect: REJECT
+why: A comma-separated enumeration cannot contain an empty element between two commas.
+
+id: reject-builder-multiple-colons-line
+context: line
+surface: Y = {u in X: P(u): Q(u)}
+expect: REJECT
+why: Restricted set-builder syntax has one domain/property separator; a second colon does not form a property formula.
+
+id: reject-builder-dangling-conjunction-line
+context: line
+surface: Y = {u in X: P(u) and}
+expect: REJECT
+why: The set-builder property is an incomplete conjunction and has no right operand.
+
+id: reject-unique-existence-empty-body-line
+context: line
+surface: there exists a unique set Y such that
+expect: REJECT
+why: Unique existence requires a nonempty property after "such that".
