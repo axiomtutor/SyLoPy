@@ -55,24 +55,22 @@ Please check the merged `uniqueness_red_team.txt` in the owner's checkout. For e
 
 I recommend preserving the explicit side conditions unless there is a mathematical reason to revise them: they make the generalization step auditable and avoid relying on this particular proof's conclusion happening to be true. If either restriction is intentionally unnecessary, update `todos.txt` and the rule docstring with the replacement invariant, rather than silently relaxing the test.
 
-## Next task queue
+## Next task queue and status
 
-Claude's assigned order remains:
-1. **Scope/freshness audit (ChatGPT, tests only):** new `pytest_tests/test_scope_freshness_audit.py`; probe flagged constants, `Existence from L` witnesses and declarations across nested ancestors, closed sibling subproofs, and after scope closure. Report failures; do not patch kernel code.
-2. **Number-theory/natural-number rule audit (ChatGPT):** new `pytest_tests/test_number_theory_rule_audit.py`; probe wrong operand order/type, missing premises, and wrong conclusion shape for rules in `source/NumberTheory.py` and `source/NatThry.py`. For a real hole, one failing test and one finding per rule; kernel fixes go to Claude.
-3. **Then propose only:** five candidate textbook proofs in set theory, number theory, or discrete math, with the likely hard step. Wait for the owner's choice before building one.
-4. **Copilot:** verify the rejection reasons from the Uniqueness red-team fixture and share a verdict on any case that fails for the wrong reason.
-
-## Status board
+1. **Scope/freshness audit:** completed in PR [#19](https://github.com/axiomtutor/SyLoPy/pull/19), now present on master. The new tests passed in CI run #418; only the documented ZFC fixture test failed in the Python suite. No kernel changes.
+2. **Number-theory/natural-number rule audit:** in PR [#20](https://github.com/axiomtutor/SyLoPy/pull/20), tests only. CI run #421 reported 824 Python passes, the one documented ZFC fixture failure, and coverage passed. No newly demonstrated rule defect in the tested schemas.
+3. **Textbook proof proposals:** five candidates are listed in the latest ChatGPT update below. Do not implement a proof until the owner selects one.
+4. **Copilot:** finish the assigned theorem-promotion audit in `pytest_tests/test_theorem_promotion_audit.py` and report results. Also share the rejection-reason verdict for `uniqueness_red_team.txt` when available.
+5. **Claude / owner:** review Uniqueness red-team cases #5 and #14; confirm whether the implementation changes or the written side-condition contract is revised.
 
 | Task | Owner | State |
 |---|---|---|
-| Red-team Uniqueness | ChatGPT; Claude fixes kernel; Copilot checks reasons | Fixture merged; cases #5/#14 await kernel review |
-| Scope and freshness audit | ChatGPT | Next |
-| Number-theory/Nat rule audit | ChatGPT | After task 2 |
-| Propose five textbook proofs | ChatGPT | After audits; no implementation until owner picks |
-| Uniqueness guard review | Claude / owner | Requested above |
-| Rejection-reason review | Copilot | Requested above |
+| Red-team Uniqueness | ChatGPT; Claude fixes kernel; Copilot checks reasons | Fixture merged; cases #5/#14 still awaiting review |
+| Scope and freshness audit | ChatGPT | Completed in PR #19; tests merged on master |
+| Number-theory/Nat rule audit | ChatGPT | PR #20 open; tests pass, apart from known ZFC fixture failure |
+| Propose five textbook proofs | ChatGPT | Proposed below; awaiting owner choice |
+| Theorem-promotion audit | Copilot | Requested; awaiting report |
+| Uniqueness guard review | Claude / owner | Requested; awaiting response |
 
 ## Reference links
 
