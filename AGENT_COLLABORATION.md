@@ -173,8 +173,8 @@ I opened [PR #20](https://github.com/axiomtutor/SyLoPy/pull/20), adding pytest_t
 
 CI run #421 reports 824 Python tests passed and one failure: the same documented pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass. Coverage passed; the enforced fixture runner still reports the two pre-existing Uniqueness cases (#5 and #14). This audit did not reveal a new mismatch in the tested quotient or induction schemas. No source or kernel code was changed.
 
-### Next proof candidates — proposal only
-These are proposals for the owner to choose from. I will not build any of them until one is selected.
+### Five textbook proofs — owner approved implementation (2026-10-10)
+The owner instructed ChatGPT to write all five candidates. They are now implemented as proof fixtures on PR [#21](https://github.com/axiomtutor/SyLoPy/pull/21); the list below is retained as a description of the intended proof coverage.
 
 1. **Natural numbers: successor has no fixed points.** Prove forall n, (Nat(n) -> not (Succ(n) = n)) by induction. The hard step is using successor injectivity with closure and the induction hypothesis to rule out Succ(Succ(n)) = Succ(n).
 2. **Set theory: extensionality as a reusable theorem.** From two sets having the same membership condition, prove the sets equal via two subset proofs and SetEquality. The hard step is keeping the two membership characterizations straight through the nested subproofs.
@@ -189,3 +189,23 @@ These are proposals for the owner to choose from. I will not build any of them u
 
 **Owner:** please select one of the five proof candidates above, or nominate another. No proof implementation is started pending that choice.
 
+
+
+## ChatGPT update: five textbook proofs implemented (2026-10-10)
+
+The owner approved implementation of all five candidates. PR [#21](https://github.com/axiomtutor/SyLoPy/pull/21) adds only proof fixtures and one focused fixture-validation test; it does not change production or kernel code.
+
+Files added:
+- `tests/testProofsNat/successor_has_no_fixed_points.txt`: proves `forall n, (Nat(n) -> not (Succ(n) = n))` using the successor-zero axiom, injectivity, and induction.
+- `tests/testSetTheory/membership-equivalence-implies-set-equality.txt`: proves equality from identical membership conditions by two subset proofs and Set Equality.
+- `tests/testSetTheory/separation-produces-subset.txt`: extracts `In(u, X)` from the Separation membership biconditional and proves `S subseteq X`.
+- `tests/testNumberTheory/divisibility_closed_under_right_multiplication.txt`: unpacks the divisor witness, establishes integer closure, and uses associativity to show `a|Times(b,c)`.
+- `tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt`: proves asymmetry for a strict partial order by contradiction.
+- `pytest_tests/test_textbook_proofs.py`: independently validates each new fixture and gives an explicit failing fixture path.
+
+One necessary refinement to the originally phrased number-theory candidate: `Int(a)` is included as a hypothesis. The repository's formal `a|b` definition only asserts an integer witness and `b = Times(a,m)`; it does not assert `Int(a)`. The currently implemented associativity axiom requires integer status for each factor, so the conclusion from only `a|b` and `Int(c)` would not follow from the present formal theory without further assumptions/theorems.
+
+Validation on CI run [#428](https://github.com/axiomtutor/SyLoPy/actions/runs/38022209617): 825 Python tests passed; the only Python failure is the previously tracked `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, which still depends on unimplemented WLOG and `Mutatis mutandis`. Coverage passed. All five new proof fixtures validate individually. Fixture counts: Set Theory 8/8, Nat 6/6, Number Theory 6/6, Discrete Math 12/12. The fixture corpus continues to report the two known Uniqueness red-team mismatches (#5 and #14); this PR did not add any new unexpected fixture results.
+
+**Copilot:** the theorem-promotion audit remains the independent assigned task; please report its status and findings when available.
+**Claude / owner:** the two Uniqueness design/implementation mismatches (#5 and #14) remain pending a decision about the intended contract or kernel correction. No kernel changes were made as part of PR #21.
