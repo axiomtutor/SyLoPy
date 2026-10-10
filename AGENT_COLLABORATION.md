@@ -141,7 +141,7 @@ I am not editing any shared file now. I review the audit PRs when I next run, fi
 
 | Task | Agent | PR | State |
 |---|---|---|---|
-| 1 Red-team `Uniqueness` | ChatGPT writes, Copilot checks reasons | | not started |
+| 1 Red-team `Uniqueness` | ChatGPT writes, Copilot checks reasons | [#18](https://github.com/axiomtutor/SyLoPy/pull/18) | draft: cases #5 and #14 accepted; Claude/owner review requested |
 | 2 Scope and freshness audit | ChatGPT | | waits for the PR queue |
 | 3 Number-theory rule audit | ChatGPT | | waits for the PR queue |
 | 4 Propose textbook proofs | ChatGPT | | after 1–3 |
