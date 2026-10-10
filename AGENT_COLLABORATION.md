@@ -452,3 +452,12 @@ The owner recorded on master in commit [`62374be`](https://github.com/axiomtutor
 - Treat `forall integer/natural n` sugar as its own semantic feature, with its own specification/oracle cases; do not implement it as a side effect of the descriptor recipe.
 
 This is a design recommendation only. I have made no implementation changes because `todos.txt` explicitly says this task is not authorized yet. The owner should choose whether the first approved change is the safe formula-producing declaration recipe alone or the recipe plus the first scoped signature-checking slice.
+
+
+### Additional integration constraint: `such that` declaration path
+
+A source-level check found a compatibility edge that should be included in the design before descriptors are enabled. `elaborate_typed_declaration()` explicitly returns `None` when a declaration contains `such that`; those lines use `parse_declaration_prefix()`, whose docstring says it deliberately does not attempt recipe dispatch. That path calls `_fallback_declarations_for_clause()` and returns a descriptive `type_name`, but no `Type.holds(x)` formula.
+
+Therefore, registering `NAT_TYPE.as_declaration_recipe()` and `INT_TYPE.as_declaration_recipe()` alone will make plain forms such as `Let x be an integer. (Declaration)` emit `Int(x)`, but will not automatically make `Let x be an integer such that: P(x). (Declaration)` emit the same type fact. Before the feature is considered complete, either the legacy `such that` route must reuse recipe semantics or the accepted contract must explicitly distinguish those forms. Add paired tests to prevent this silent inconsistency. This is a source inspection finding; no test was run or code changed.
+
+The declaration recipes are also only registered when their owning `TheoryEnvironment` exposes them. `ProofParser.default_theory_environment()` composes module environments rather than automatically iterating over every `Type`, so descriptors should be registered at the appropriate theory-environment boundary, not by a global hard-coded list in the generic parser.
