@@ -165,3 +165,29 @@ For each candidate, make the intended defect explicit and ensure a failure happe
 
 I implemented the assigned scope/freshness audit in PR [#19](https://github.com/axiomtutor/SyLoPy/pull/19), using a separate test file. CI run #418 passed all four new audit tests; the Python suite reported 789 passed, one failure in the already-known `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, and coverage passed. The enforced fixture corpus still reports the two known Uniqueness red-team cases (#5 and #14) as unexpected; this PR did not add further failures. After owner review/merge, I will continue with the separate NumberTheory/NatThry rule audit. WLOG and the deferred set-theory rules remain outside implementation scope without owner approval.
 
+## ChatGPT update: completed audits and next handoff (2026-10-10)
+
+### Scope/freshness audit
+The scope/freshness audit is now present on master in pytest_tests/test_scope_freshness_audit.py. Its CI run #418 passed the audit tests; the full Python run had 789 passes and only the known ZFC fixture failure, and coverage passed.
+
+### Number-theory and induction audit
+I opened [PR #20](https://github.com/axiomtutor/SyLoPy/pull/20), adding pytest_tests/test_number_theory_rule_audit.py only. It adversarially tests QuotientDefiningPropertyRule, QuotientUniquenessRule, and the Nat InductionRule for operand alignment/order, missing or extra premises, incorrect side conditions, wrong base/step forms, and malformed conclusions. The validator-level negative case confirms a malformed induction application is rejected at its inference line rather than during parsing.
+
+CI run #421 reports 824 Python tests passed and one failure: the same documented pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass. Coverage passed; the enforced fixture runner still reports the two pre-existing Uniqueness cases (#5 and #14). This audit did not reveal a new mismatch in the tested quotient or induction schemas. No source or kernel code was changed.
+
+### Next proof candidates — proposal only
+These are proposals for the owner to choose from. I will not build any of them until one is selected.
+
+1. **Natural numbers: successor has no fixed points.** Prove forall n, (Nat(n) -> not (Succ(n) = n)) by induction. The hard step is using successor injectivity with closure and the induction hypothesis to rule out Succ(Succ(n)) = Succ(n).
+2. **Set theory: extensionality as a reusable theorem.** From two sets having the same membership condition, prove the sets equal via two subset proofs and SetEquality. The hard step is keeping the two membership characterizations straight through the nested subproofs.
+3. **Set theory: Separation produces a subset.** From forall u, (In(u, S) iff (In(u, X) and P(u))), prove S subseteq X. The hard step is extracting the In(u, X) conjunct by instantiating the defining biconditional, while maintaining the intended schema instance.
+4. **Number theory: divisibility is closed under multiplication on the right.** From a|b and Int(c), prove a | Times(b,c). The hard step is unpacking the existential witness for a|b, proving the product witness is integer, and using associativity to put the result in the defining a * witness shape.
+5. **Discrete mathematics: transitive and irreflexive implies asymmetric.** Prove that R(a,b) and R(b,a) lead to a contradiction for a transitive, irreflexive relation. The hard step is deriving R(a,a) from transitivity and applying irreflexivity without confusing the relation declarations or citations.
+
+### Messages to other agents
+**Copilot:** please report the status and any findings from the assigned theorem-promotion audit in pytest_tests/test_theorem_promotion_audit.py. Keep it separate from PR #20; that PR is only number-theory and induction rule tests. If you have not started, proceed with the listed promotion cases and report the exact rejection boundaries/CI result.
+
+**Claude / owner:** the Uniqueness findings remain outstanding in this coordination record. Cases #5 and #14 are still documented mismatches with the current side-condition contract; please record whether the implementation will be corrected or the design ledger intentionally revised. I have not patched kernel code.
+
+**Owner:** please select one of the five proof candidates above, or nominate another. No proof implementation is started pending that choice.
+
