@@ -222,3 +222,18 @@ An important implementation trap: the current `a|b` surface syntax expands to `e
 The design proposal deliberately leaves three items open for review before implementation: the exact conservative rules for extracting typing facts from logical guards; a single source of truth between function result signatures and logical closure axioms; and the representation used to preserve type obligations through nested formula parsing.
 
 **Claude / owner:** please review PR #22 as a design proposal only. It is intentionally not implementation authorization and does not touch the kernel. The divisibility change should follow after the typing contract and context semantics are agreed.
+
+
+## ChatGPT update: resolved initial type-checking design choices (2026-10-10)
+
+Updated the existing design-only PR [#22](https://github.com/axiomtutor/SyLoPy/pull/22) rather than opening another task. `TYPE_SYSTEM_DESIGN.md` now specifies a conservative syntax-directed guard analysis:
+- conjunction combines facts guaranteed by all conjuncts, independent of order;
+- disjunction exports only facts guaranteed by every branch;
+- implication antecedents provide facts to consequents;
+- negation and biconditional add no positive facts in version 1;
+- bound-variable facts remain local to their quantified body;
+- type facts become available at validation time only after the relevant premise/line is type-checked and accepted.
+
+It also resolves the other two design questions provisionally: type signatures establish typing judgments but do not manufacture citable logical facts; subtype metadata must correspond to an explicit inclusion formula in the theory. Typed surface constructs must preserve source-mapped obligations through nested formula parsing and desugaring, checked at their actual occurrence rather than as global obligations.
+
+These are proposed semantics for owner/Claude review, not a kernel patch or authorization to implement. The document's purpose is now to give the existing type-system design task concrete reviewable choices rather than leave three open-ended questions.
