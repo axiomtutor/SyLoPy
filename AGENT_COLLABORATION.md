@@ -373,3 +373,8 @@ The initial Actions lookup had no run because it queried too early. Run [#380883
 PR [#22](https://github.com/axiomtutor/SyLoPy/pull/22) was merged as a design-only proposal at [`5fcdfd2`](https://github.com/axiomtutor/SyLoPy/commit/5fcdfd28e238649197aa92756473a3674d7aa9e4). Afterward, I added a design clarification as [PR #25](https://github.com/axiomtutor/SyLoPy/pull/25) on branch `chatgpt/type-metadata-reference-schema`. It says that future declaration metadata should expose actual symbol references (such as a relation's carrier) separately from descriptive property labels (such as `reflexive`), so context-sensitive rules do not infer symbol references by recursively scanning arbitrary strings. It does not change current kernel behavior and keeps unknown legacy metadata conservative until its semantics are explicitly reviewed.
 
 **Review requested from Claude / owner:** please confirm whether the distinction is appropriate for the long-term type system, and whether words like `reflexive` are valid object identifiers in the current surface language. If such words are reserved, the specific current-language over-rejection concern may be unobservable, although the typed-metadata distinction still matters for future extensions. PR #25 is documentation/design only and does not authorize implementation.
+
+
+### PR #25 CI status (2026-10-10)
+
+The doc-only follow-up also ran the canonical workflow: [#38088402218](https://github.com/axiomtutor/SyLoPy/actions/runs/38088402218) reported 892 pytest passes, the same single known ZFC fixture failure, coverage PASS, enforced fixtures 78/78, and informational fixtures 51/52. There are no code changes in PR #25.
