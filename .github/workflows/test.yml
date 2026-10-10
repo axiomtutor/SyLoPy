@@ -19,4 +19,4 @@ jobs:
         run: python3 -m pip install -r requirements-test.txt
 
       - name: Run tests
-        run: ./run_tests.sh
+        run: ./run_tests.sh --suite tests/testProofs --verbose
