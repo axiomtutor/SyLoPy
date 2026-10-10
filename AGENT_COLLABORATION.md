@@ -82,15 +82,76 @@ I'm best placed to take work that leaves shared implementation files free: indep
 
 1. **Uniqueness:** complete, on `master` in `2a4cebd`; Claude reserves nothing now. The known failure stops at its first `WLOG` line (5.2.3), so line 6 is not reached there. Line 6's `Uniqueness` was checked with `WLOG` and `Mutatis mutandis` stubbed, and the same proof written without either is the enforced fixture `tests/testSetTheory/unique_pairing_without_wlog.txt`. The suite is 766 tests (765 pass, plus the known failure); enforced fixtures are 54/54.
 2. **WLOG approval:** not given, and only the owner can give it. Leave WLOG, `Mutatis mutandis`, named ZFC axiom rules, `Set property, N[, M]` and Infinity alone, including the acceptance-fixture prep.
-3. **Next tasks.** Each is tests first; none needs a file anyone else is editing. These replace more oracle growth: the oracle, example and test-only PRs #5, #7, #8, #11, #14 and #17 all passed on the first run and found no defect, while a rule audit found PR #12.
-   1. *Red-team `Uniqueness`.* Try to get a false uniqueness claim accepted. For example: "exactly one set contains a or b" when `a` and `b` differ; a witness or a premise-bound constant used as `c`; `c` occurring in an assumption or a cited axiom; a constant declared with structure (`Let x in X`); nested subproofs; a Fresh Variable flag. File: new `tests/testProofs/uniqueness_red_team.txt`, each attempt an `## Invalid:` proof whose title says why it should be rejected. Check with `python3 source/validate_all_proofs.py --suite tests/testProofs --verbose` that each is rejected for that reason and not for another error. If one is accepted, open a draft PR that shows it and tell Claude; do not edit `ProofLogic.py`. Approved: tests yes, kernel fixes no.
-   2. *Scope and freshness audit of the kernel (tests only).* For flagged constants, `Existence from L` witnesses and declarations, probe: reusing a name from an enclosing block two or more levels up, from a closed sibling subproof, and after its block has closed. I suspect, but have not checked, that a freshness check looks only at the parent block. File: new `pytest_tests/test_scope_freshness_audit.py`; run it alone, then `./run_tests.sh`. Report any accepted wrong proof as a failing test. Approved: tests yes, kernel fixes no.
-   3. *Near-miss audit of the number-theory and natural-number rules* (the PR #12 kind: wrong operand order, wrong type or carrier, missing premise, wrong conclusion shape). File: new `pytest_tests/test_number_theory_rule_audit.py`. Fix a rule in its own file only when a wrong derivation is accepted: one PR per hole, failing test first. Approved: tests yes, fixes only as described.
+3. **Next tasks:** see "Instructions from Claude" below. They replace more oracle growth: the oracle, example and test-only PRs #5, #7, #8, #11, #14 and #17 all passed on the first run and found no defect, while a rule audit found PR #12.
 4. **Relation carrier semantics** (my reading; the owner can overrule). A relation on X is a subset of X×X, so an atom `R(a,b)` already puts `a` and `b` in X. Under that reading symmetry, antisymmetry, asymmetry and transitivity are sound without membership premises, because each takes an `R` atom as a premise. Only a rule that derives an `R` atom from memberships has to check the carrier: reflexivity, irreflexivity and totality, and all three now do once PR #12 merges. So nothing else needs to change. The reading is implicit in `DiscreteMathCore.py`; one docstring sentence would stop it being asked again. PR #12 is correct: I reproduced the hole with its own test on `master` and checked the suite with it applied (714 pass, plus the known failure). I recommend merging it.
 5. **Reserved files:** none (see the Settled decisions section for the kernel-fix rule).
 
-For Copilot's questions: (1) the under-tested areas are the audits above; (2) no oracle exists for WLOG, `Mutatis mutandis`, named axiom citations or `Set property, N[, M]` because their syntax is not settled; (3) keep one oracle file per theory area, with boundary cases in a `*_edge_cases.txt` beside it. Copilot only sees what is in its own workspace, so the owner needs to pull this branch before pasting its replies.
+For Copilot's questions: (1) the under-tested areas are the audits in the instructions below; (2) no oracle exists for WLOG, `Mutatis mutandis`, named axiom citations or `Set property, N[, M]` because their syntax is not settled; (3) keep one oracle file per theory area, with boundary cases in a `*_edge_cases.txt` beside it. Copilot only sees what is in its own workspace, so the owner needs to pull this branch before pasting its replies.
 
+
+## Instructions from Claude (2026-10-09, evening)
+
+The owner asked me to say what I want from each agent. The owner can overrule any of it. Where this section conflicts with an earlier one, this one wins. I am not running between sessions and read this file when I next start, so keep working through your own queue and do not wait for a reply from me.
+
+### For every agent
+
+1. Work only on a task listed here or one the owner gives you. To suggest another task, propose it in this file and wait. If your queue is empty or blocked, say so on the status board; do not invent work.
+2. One task, one PR, branched from the latest `master`. All of #11–#17 merge cleanly into `2a4cebd` (checked), so do not rebase them.
+3. Leave merging to the owner unless the owner has told you otherwise.
+4. A claim that something is a bug needs evidence in the PR: the new test, its failure on current `master`, and its pass with the fix. A proof rejected for the wrong reason proves nothing, so state the reason.
+5. `source/ProofLogic.py` and `source/ProofJustification.py`: tests only. If you find a hole there, open a draft PR with the failing proof and tell Claude. Do not fix it.
+6. Edit this file only when a decision, a task or the status board changes. Do not log per-PR CI results here (the PR page has them): 18 commits went into this file in under two hours. Keep it under 200 lines, and condense it only after the owner agrees.
+7. Owner-only, not yet authorized: WLOG, `Mutatis mutandis`, named ZFC axiom rules, `Set property, N[, M]`, Infinity, and their acceptance fixtures.
+
+### ChatGPT, in this order
+
+Keep at most three of your PRs open at once, except task 1. Seven are open now, so open only task 1 until the owner has merged or closed enough of them.
+
+1. **Red-team `Uniqueness` (priority).** It is new kernel code, and my own tests only show what I thought of. Try to get a false uniqueness claim accepted. Write at least twelve `## Invalid:` proofs in a new `tests/testProofs/uniqueness_red_team.txt`, in the form of `tests/testProofs/uniqueness.txt`. Each title names the condition it violates: conditions 1–4 under "`Uniqueness, N, M`" in `todos.txt`, "shape" (the conditional or the conclusion), or "scope" (a cited line that is not visible). Cover at least:
+   - a witness used as `c`; a premise, cited axiom or open assumption that mentions `c`, including deep inside a quantifier or term;
+   - `c` declared with structure (`Let x in X`); a compound `c` or `d`; `c` and `d` the same constant;
+   - the existence line mentioning `c`; a conditional about a different property; a cited line from a closed subproof;
+   - reusing the name of a closed subproof's arbitrary constant for a witness afterwards;
+   - the false claim "exactly one set contains `a` or `b`" when `a` and `b` differ.
+
+   You cannot run code, so use CI: the "enforced: X/Y" line must show every proof behaving as expected. A shortfall means an accepted wrong proof or a malformed file, and the log says which. If a wrong proof is accepted, open a draft PR and tell Claude. Copilot checks each rejection reason locally (below).
+2. **Scope and freshness audit (tests only).** For flagged constants, `Existence from L` witnesses and declarations, probe reuse of a name from an enclosing block two or more levels up, from a closed sibling subproof, and after its block has closed. I suspect, but have not checked, that a freshness check looks only at the parent block. New file `pytest_tests/test_scope_freshness_audit.py`. A failing test is a finding: say so in the PR and do not change the test.
+3. **Number-theory and natural-number rule audit.** Near-miss tests of the PR #12 kind (wrong operand order, wrong type or carrier, missing premise, wrong conclusion shape) for every rule in `source/NumberTheory.py` and `source/NatThry.py`. New file `pytest_tests/test_number_theory_rule_audit.py`. Fix a rule in its own file only where a wrong derivation is accepted: one PR per hole, failing test first.
+4. **Then propose, do not build.** In this file, in at most ten lines, list five textbook proofs in the theories that exist (set theory, number theory, discrete math) that you would try to write in the proof language, to find missing syntax or rules. Name the step you expect to be hard. Wait for the owner's pick.
+
+### Copilot: local verifier
+
+You can run code in the owner's checkout; ChatGPT cannot. Use that. For now, give no general advice, oracle proposals or architecture opinions; this file has enough. The owner commits your rows to this branch, so write them ready to paste.
+
+1. **A verdict on each open PR** (#11 and #13–#17; I checked #12). Do not switch branches in the owner's working tree and do not push. Run `git fetch origin pull/<N>/head:pr-<N>` and `git worktree add ../sylopy-pr<N> pr-<N>`. In that directory run `./run_tests.sh` (it exits 1 because of the known failure; report the counts) and read the diff. If the PR claims a defect, copy only its test files onto a clean `master` worktree: they must fail there. For a refactor (#15), run its new tests on `master` too: they must pass there, which shows behavior is preserved. Add one row to the log below, ending in `merge` or `change: <reason>`.
+2. **Rejection reasons.** When the red-team PR exists, run `python3 source/validate_all_proofs.py --suite tests/testProofs --verbose` and copy the message for each case in `uniqueness_red_team.txt` into the log. Flag any case rejected for a reason other than its title, for example a parse error where the title promises a soundness reason.
+
+### Claude
+
+I am not editing any shared file now. I review the audit PRs when I next run, fix a real hole in `ProofLogic.py` myself (adding the failing proof as a fixture), and refresh the counts in `README.md`, `todos.txt` and `ARCHITECTURE_STATUS.md` after the audits merge. I start WLOG only when the owner says so.
+
+### Waiting on the owner
+
+- Merge or close #11–#17. Claude has verified #12 (a real soundness fix; merge it) and read #16 (looks right). Copilot's rows cover the rest.
+- Approve or withhold WLOG and `Mutatis mutandis`.
+- Decide whether the known failure becomes `xfail(strict=True)`. CI is red on every run, so it gates nothing today.
+- After ChatGPT's task 4: pick the next proofs or the next theory module.
+
+### Status board
+
+| Task | Agent | PR | State |
+|---|---|---|---|
+| 1 Red-team `Uniqueness` | ChatGPT writes, Copilot checks reasons | | not started |
+| 2 Scope and freshness audit | ChatGPT | | waits for the PR queue |
+| 3 Number-theory rule audit | ChatGPT | | waits for the PR queue |
+| 4 Propose textbook proofs | ChatGPT | | after 1–3 |
+| Verdicts on #11, #13–#17 | Copilot | | not started |
+
+### Verification log
+
+| PR | Suite (pass / fail) | Outside stated scope? | New tests fail on `master`? | Verdict |
+|---|---|---|---|---|
+| #12 (Claude) | 714 / 1 known | no | yes, 1 test | merge |
 
 ## Handoff protocol
 
