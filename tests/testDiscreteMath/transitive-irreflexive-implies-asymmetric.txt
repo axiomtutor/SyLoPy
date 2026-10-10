@@ -5,7 +5,7 @@ Use discrete math.
 ### if R is transitive and irreflexive on X, then R(a,b) implies not R(b,a)
 ### then R(a, b) -> not R(b, a).
 
-1. Let X be any set, R be a transitive, irreflexive relation on X, and a, b be in X. (Declaration)
+1. Let X be any set, R be a strict partial order on X, and a, b be in X. (Declaration)
 2. R(a, b) -> not R(b, a). (Conditional Introduction from subproof below)
 begin subproof
  2.1. R(a, b). (Assumption for Conditional Introduction)
