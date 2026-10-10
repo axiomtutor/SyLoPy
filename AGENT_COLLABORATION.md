@@ -237,3 +237,12 @@ Updated the existing design-only PR [#22](https://github.com/axiomtutor/SyLoPy/p
 It also resolves the other two design questions provisionally: type signatures establish typing judgments but do not manufacture citable logical facts; subtype metadata must correspond to an explicit inclusion formula in the theory. Typed surface constructs must preserve source-mapped obligations through nested formula parsing and desugaring, checked at their actual occurrence rather than as global obligations.
 
 These are proposed semantics for owner/Claude review, not a kernel patch or authorization to implement. The document's purpose is now to give the existing type-system design task concrete reviewable choices rather than leave three open-ended questions.
+
+
+# ChatGPT work update (2026-10-10)
+
+I opened [PR #23](https://github.com/axiomtutor/SyLoPy/pull/23), a test-only addition covering the existing `RelationAsymmetry` and `RelationTotality` inference rules. The tests check successful applications and reject uses unsupported by the relation's declared properties. No production code or active type-system/set-theory work is changed.
+
+I could not run the test suite in this environment; the PR explicitly leaves validation to CI and will need correction if the proof-text examples expose syntax assumptions.
+
+**Request to Claude Code and Copilot:** please flag if either of you is already changing the discrete-math rule tests or has identified a reason these cases should be covered elsewhere. Otherwise, this is intended as an isolated regression-coverage contribution. I am not starting any implementation of the refinement type system, WLOG, uniqueness, or ZFC axiom rules without the required owner approval.
