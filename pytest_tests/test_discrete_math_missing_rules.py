@@ -92,3 +92,15 @@ def test_transitivity_cannot_be_transferred_to_a_different_relation():
 1. Let X be any set, R be a transitive relation on X, S be a relation on X, a, b, c be in X, and R(a,b) and S(b,c). (Declaration)
 2. R(a,c). (Relation Transitivity from 1, 1)
 """)
+
+def test_irreflexivity_is_restricted_to_the_declared_carrier():
+    ok, err = check("""
+1. Let X be any set, R be an irreflexive relation on X, a be in X. (Declaration)
+2. not R(a,a). (Relation Irreflexivity from 1)
+""")
+    assert ok, err
+
+    assert_rejected_at_rule("""
+1. Let X be any set, Y be any set, R be an irreflexive relation on X, a be in Y. (Declaration)
+2. not R(a,a). (Relation Irreflexivity from 1)
+""")
