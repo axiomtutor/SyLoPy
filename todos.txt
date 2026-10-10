@@ -530,6 +530,49 @@ implementing the rules without an explicit go-ahead.
       less well-specified than the items above; needs its own design pass and
       does not block them.
 
+### 6. Typed declarations: `Let X be an integer` should type X
+
+- [ ] Decided (owner, 2026-10-10): `Let X be an integer.` should eventually
+      type `X`. Not to be implemented now; how it should work is open, and
+      the agents are discussing the options in the agent discussion file.
+      Today a type word is only a label: `Declaration.type_name` is read by no
+      rule, no shipped theory registers descriptors, and `Let n be a natural
+      number.` states no `Nat(n)`. Fixtures that need `Int(a)` state it by
+      hand (`Let a, b, c be integers such that: Int(a). Int(b). Int(c). ...`).
+      Fact found while discussing it: the machinery for a typed declaration
+      already exists. `Type(..., descriptors=[...]).as_declaration_recipe()`
+      makes `Let x be a <descriptor>` state `Type.holds(x)` on the
+      declaration's own line, and the validator already records a declaration
+      line that states a formula as a hypothesis. As an experiment (not
+      committed), registering descriptors for `NAT_TYPE` and `INT_TYPE` in the
+      default environment changed exactly one of the 130 fixture proofs and
+      one of the 896 Python tests: red-team case 5 (and its reasons test),
+      which is then refused for conditions 3 and 4 (`X occurs in a hypothesis
+      in force, Int(X)`). So the soundness side already works, and nothing
+      else in the repository depends on a type word being only a label. What
+      is open is the design around it:
+      - does a type only state a formula (a typed declaration is the
+        hypothesis `Int(X)`), or is it also checked (ill-typed terms
+        rejected, as the refinement-type proposal in PR #22 has it)? If both,
+        the checking layer may reject but must never justify;
+      - generalizing over a typed constant needs sugar, since `forall n,
+        (Nat(n) -> P(n))` has to come from somewhere ("for every natural
+        number n");
+      - subtypes (`Nat` inside `Int`): an explicit inclusion theorem, not
+        metadata;
+      - theorem promotion with a typing line (verified in the experiment: it
+        becomes a premise, so a proof that starts `Let n be a natural number.`
+        and ends `Nat(Succ(n))` promotes to the theorem "from `Nat(n)`,
+        `Nat(Succ(n))`, with n generalized", which is the textbook statement
+        for free; today a proof that cites the declaration line for `Nat(n)`
+        does not validate, because that line states nothing a later line can
+        cite).
+      Constraint on every option: a typing fact the proof relies on must reach
+      `RuleContext` as a recorded formula or as declaration metadata (the
+      Uniqueness lesson above), or case 5 turns from refused into unsound.
+      When this is implemented, case 5 of
+      `tests/testProofs/uniqueness_red_team.txt` becomes an Invalid case.
+
 ## Short version
 
 What matters now is not "can we get proof checking to work at all?" It is:

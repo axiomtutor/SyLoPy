@@ -74,8 +74,11 @@
 ### Accepted by design: "an integer" is a label, not a hypothesis. `Let X be an
 ### integer` states no formula and records no structure that any rule reads, so
 ### X is as arbitrary as after `Let X be any set` (case 1 of uniqueness.txt is
-### this proof with "any set"). When types start to carry meaning, this case
-### is the one to revisit.
+### this proof with "any set"). The owner has decided that `Let X be an integer`
+### should eventually type X. When it does, X occurs in the hypothesis Int(X),
+### this case is refused for conditions 3 and 4, and it becomes an Invalid
+### case. (Registering descriptors for Int and Nat changes this case and no
+### other proof in the corpus.)
 
 1. Let a be any set. (Declaration)
 2. a = a. (Reflexivity)
