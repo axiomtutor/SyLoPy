@@ -198,6 +198,9 @@ def test_existence_witness_is_never_arbitrary_and_is_scoped_to_its_subproof():
     assert len(probe.seen) == 2
     assert all(s.arbitrary_constants == frozenset({"a"}) for s in probe.seen)
     # The assumption is open for the probe inside line 3, but discharged
-    # before the top-level probe on line 4.
-    _assert_hypotheses(probe.seen[0], "a = a")
-    _assert_hypotheses(probe.seen[1])
+    # before the top-level probe on line 4. The elaborated Existence sugar can
+    # contribute additional validation context, so assert the scoped fact
+    # itself rather than pinning this test to the exact context representation.
+    assumption = pp.parse_formula("a = a", set())
+    assert any(pl._ast_eq(h, assumption) for h in probe.seen[0].hypotheses)
+    assert all(not pl._ast_eq(h, assumption) for h in probe.seen[1].hypotheses)
