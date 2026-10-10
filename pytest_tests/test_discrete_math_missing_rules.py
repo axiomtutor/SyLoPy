@@ -104,3 +104,23 @@ def test_irreflexivity_is_restricted_to_the_declared_carrier():
 1. Let X be any set, Y be any set, R be an irreflexive relation on X, a be in Y. (Declaration)
 2. not R(a,a). (Relation Irreflexivity from 1)
 """)
+
+def test_reflexivity_requires_the_declared_reflexive_property():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a symmetric relation on X, a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+""")
+
+
+def test_irreflexivity_requires_the_declared_irreflexive_property():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be a transitive relation on X, a be in X. (Declaration)
+2. not R(a,a). (Relation Irreflexivity from 1)
+""")
+
+
+def test_antisymmetry_does_not_combine_different_relations():
+    assert_rejected_at_rule("""
+1. Let X be any set, R be an antisymmetric relation on X, S be an antisymmetric relation on X, a, b be in X, and R(a,b) and S(b,a). (Declaration)
+2. a = b. (Relation Antisymmetry from 1, 1)
+""")
