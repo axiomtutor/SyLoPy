@@ -5,6 +5,8 @@ checks the validator's live scoping behavior directly, rather than inferring it
 only from whether a particular inference rule happens to accept a proof.
 """
 
+import pytest
+
 from SyLoPy.source import FormulaLogic as fl
 from SyLoPy.source import ProofLogic as pl
 from SyLoPy.source import TermLogic as tl
