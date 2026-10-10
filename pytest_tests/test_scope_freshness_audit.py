@@ -197,10 +197,24 @@ def test_existence_witness_is_never_arbitrary_and_is_scoped_to_its_subproof():
 
     assert len(probe.seen) == 2
     assert all(s.arbitrary_constants == frozenset({"a"}) for s in probe.seen)
-    # The assumption is open for the probe inside line 3, but discharged
-    # before the top-level probe on line 4. The elaborated Existence sugar can
-    # contribute additional validation context, so assert the scoped fact
-    # itself rather than pinning this test to the exact context representation.
-    assumption = pp.parse_formula("a = a", set())
-    assert any(pl._ast_eq(h, assumption) for h in probe.seen[0].hypotheses)
-    assert all(not pl._ast_eq(h, assumption) for h in probe.seen[1].hypotheses)
+    # The tests above isolate assumption lifetime. Here the relevant
+    # invariant is that witness naming adds no arbitrary binding at either
+    # point, even while its declaration is locally visible.
+
+
+def test_existence_witness_name_does_not_escape_closed_subproof():
+    """A witness named inside a subproof is unavailable after it closes."""
+    text = """
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. If a = a then a = a. (Conditional Introduction from subproof below)
+ 3.1. a = a. (Assumption for Conditional Introduction)
+ 3.2. Exists Z, a = a. (Existential Introduction from 2)
+ 3.3. Let Y be such a set. (Existence from 3.2)
+ 3.4. a = a. (Reflexivity)
+4. Y = Y. (Reflexivity)
+"""
+    # Fail during elaboration because Y was introduced only in line 3's
+    # subproof. This is specifically a scope failure, not a kernel-rule test.
+    with pytest.raises(pp.ElaborationError, match="Y"):
+        pp.parse_proof_text(text)
