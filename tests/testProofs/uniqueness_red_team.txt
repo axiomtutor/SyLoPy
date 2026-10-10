@@ -86,9 +86,9 @@
 3. Exists Y, Y = a. (Existential Introduction from 2)
 4. Let Y be such a set. (Existence from 3)
 5. Let X be any set. (Declaration)
-6. If Times(X, a) = a then F(X) = a. (Conditional Introduction from subproof below)
- 6.1. F(X) = a. (Assumption for Conditional Introduction)
- 6.2. F(X) = a. (Reiteration from 6.1)
+6. If Times(X, a) = a then Times(X, a) = a. (Conditional Introduction from subproof below)
+ 6.1. Times(X, a) = a. (Assumption for Conditional Introduction)
+ 6.2. Times(X, a) = a. (Reiteration from 6.1)
 7. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 3, 6)
 
 
@@ -96,14 +96,14 @@
 ## Invalid: condition 1 — d is a compound term, not a constant.
 
 1. Let a be any set. (Declaration)
-2. Times(a, a) = F(a). (Reflexivity)
-3. Exists Y, Y = F(a). (Existential Introduction from 2)
+2. Times(a, a) = Times(a, a). (Reflexivity)
+3. Exists Y, Y = Times(a, a). (Existential Introduction from 2)
 4. Let Y be such a set. (Existence from 3)
 5. Let X be any set. (Declaration)
-6. If X = F(a) then X = F(a). (Conditional Introduction from subproof below)
- 6.1. X = F(a). (Assumption for Conditional Introduction)
- 6.2. X = F(a). (Reiteration from 6.1)
-7. Exists V, (V = F(a) and forall Z, (Z = F(a) -> Z = V)). (Uniqueness, 3, 6)
+6. If X = Times(a, a) then X = Times(a, a). (Conditional Introduction from subproof below)
+ 6.1. X = Times(a, a). (Assumption for Conditional Introduction)
+ 6.2. X = Times(a, a). (Reiteration from 6.1)
+7. Exists V, (V = Times(a, a) and forall Z, (Z = Times(a, a) -> Z = V)). (Uniqueness, 3, 6)
 
 
 # 8
