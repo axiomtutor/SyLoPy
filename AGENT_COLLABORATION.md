@@ -1,90 +1,175 @@
-# Guidance for Coding Agents
+# SyLoPy Agent Collaboration — Current Handoff
 
-This file contains **stable collaboration and architecture rules**, not a running task log. For current agent assignments, findings, open questions, and recent CI status, see the [live collaboration handoff](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/AGENT_COLLABORATION.md). Do not append agent transcripts here; record settled outcomes and links in the handoff, and keep the detailed design ledger in todos.txt.
+This branch is the live coordination record for the owner, Claude, ChatGPT, and Copilot. It is intentionally separate from master/AGENT_COLLABORATION.md, which contains stable agent guidance. The owner has final authority over design and task priorities.
 
-The owner has final authority over design and task priorities.
+This file is a **current summary, not a chronological diary**. Keep durable decisions, verified findings, active questions, owners, and links here. Put implementation detail and discussion in the relevant PR or design document; when a question is resolved, replace the open question with the decision rather than appending another transcript.
 
-## Before changing code
+## 1. Working rules
 
-Read README.md, todos.txt, and ARCHITECTURE_STATUS.md first. Inspect current master and relevant branches or open pull requests before starting work. An earlier conversation or handoff may be stale.
+- Before work, inspect current master, README.md, todos.txt, ARCHITECTURE_STATUS.md, relevant branches, and open PRs. Old summaries can be stale.
+- Coordinate around active files and tasks. Prefer one bounded task per branch/PR. Do not rewrite or rebase another agent's branch.
+- Distinguish **settled decisions**, **design proposals**, **unverified source-level suspicions**, and **observed test results**.
+- The canonical test command is ./run_tests.sh. Report Python tests, coverage, enforced fixtures, and informational fixtures separately. Identify known pre-existing failures explicitly.
+- For a negative proof test, ensure the proof reaches the intended rule and is rejected for the condition the test claims; parser errors or unrelated scope failures are not evidence that the rule guard works.
+- ChatGPT and Copilot may add test-only probes for source/ProofLogic.py and source/ProofJustification.py, but must not patch those files. Send kernel findings, with a minimal reproducer and precise failing condition, to Claude/owner.
+- Do not implement features that todos.txt explicitly defers pending owner approval.
 
-Treat todos.txt as the living design record. Distinguish decisions marked done, proposals explicitly awaiting approval, and genuinely open questions. A requirement for explicit owner approval is a coordination boundary, not a suggestion.
-
-## Preserve the architecture
+## 2. Architecture and settled semantics
 
 The intended pipeline is:
 
-    surface proof text
-        -> parsing / surface AST
-        -> elaboration
-        -> core proof entries
-        -> ProofLogic validation
+    surface proof text -> parsing / surface AST -> elaboration
+                      -> core proof entries -> ProofLogic validation
 
-Keep theory-specific syntax and interpretation in the appropriate theory environment and declaration recipes. Avoid adding special cases to generic elaboration just to make one example work.
+- **Elaboration scope:** ProofContext is the lexical environment for source declarations, labels, assumptions, and arbitrary/fresh bindings.
+- **Kernel scope:** ProofLogic.py independently validates elaborated entries using LabelScope and DeclarationScope. This is a deliberate trust boundary, not accidental duplication. Preserve the separation and test overlapping scope behavior.
+- **Parser oracle:** parse_oracle/ specifies intended surface-to-core readings independently of parser implementation. Resolve oracle/parser disagreements; do not automatically weaken oracle cases.
+- **Theory extensions:** prefer theory-local parsing, declaration recipes, and elaboration sugar that reduces to existing logic. Add kernel/AST primitives only for genuinely new logical constructs.
+- **Relation properties:** the intended semantics treats relation atoms as carrier-restricted. Symmetry, antisymmetry, asymmetry, and transitivity need no separate membership citations when their premises already contain relation atoms. Rules deriving relation atoms from membership, including reflexivity, irreflexivity, and totality, must check the declared carrier.
+- **Uniqueness:** the rule concludes ordinary logic, exists W, (B(W) and forall V, (B(V) -> V = W)). A candidate must be an appropriate arbitrary constant and must not be constrained by the existence line, hypotheses, witness declarations, rule-introduced declarations, or relevant declaration metadata. See the red-team fixture and the reason-checking test below.
+- **Witness naming:** “Let Y be such a set. (Existence from L)” is elaboration sugar over an ordinary existential citation and a scoped declaration. The axiom citation does not itself name a witness. The older direct Pairing-witness form remains on master for compatibility but is not the design to extend to other axioms.
+- **Deferred set theory:** no implementation of WLOG, Mutatis mutandis, named ZFC axiom-citation rules, Set property, or Infinity without explicit owner approval. The recorded WLOG model is a proof-region replay followed by ordinary revalidation, with citation remapping; it must not become an unchecked symmetry assertion.
+- **Types:** types remain predicate-based and may overlap (Nat and Int); do not silently introduce disjoint many-sorted logic. Type checking is distinct from ordinary proof inference.
 
-Most applied mathematical notation should be sugar over existing core logic. Do not add an AST or kernel primitive for a convenience construct unless the design explicitly calls for a genuinely new logical primitive.
+## 3. Current repository and regression status
 
-ProofContext is the authoritative lexical environment during elaboration. The kernel deliberately retains its own validation-time LabelScope and DeclarationScope structures. Do not reunify them just to remove similar code: their separation is an intentional trust boundary.
+**Current master snapshot:** commit [5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f), checked by [CI run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219).
 
-## Coordinate before modifying active work
+- Python tests: **907 total, 906 passed, 1 failed**.
+- Coverage: passed.
+- Enforced proof fixtures: **79/79 passed**.
+- Informational fixtures: **51/52 passed**.
+- The sole failure remains pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass, which reaches the deliberately deferred WLOG / Mutatis mutandis work. Do not mask it with an xfail absent owner approval. Treat any new failure separately.
 
-The repository is developed concurrently by multiple agents. Before nontrivial implementation:
+The test count and fixture counts are snapshots, not invariants. Record the exact CI run for later changes.
 
-1. Check whether another branch or PR is already changing the same subsystem.
-2. Prefer a small, isolated branch and commit when work is independent.
-3. Do not rewrite, rebase, force-push, or clean up another agent's branch.
-4. State the relevant design assumptions in the PR or commit description; do not silently absorb another agent's proposal into code.
-5. If the design is ambiguous, record the question in the design discussion or TODO rather than choosing a hidden interpretation.
+The same result was confirmed on [live-handoff CI #38113360718](https://github.com/axiomtutor/SyLoPy/actions/runs/38113360718) and [documentation PR #28 CI #38113583789](https://github.com/axiomtutor/SyLoPy/actions/runs/38113583789): **906 passed, the same 1 deferred-fixture failure**, coverage passed, enforced 79/79, informational 51/52. No new failure was introduced by those documentation changes.
 
-Avoid sharing files, not merely ideas. If another agent is working in ProofParser.py, ProofLogic.py, or a theory module, prefer independent tests, documentation, parser-oracle cases, or another subsystem until the boundary is clear.
+### Merged audit and proof work
 
-## Parser oracle
+- [PR #18](https://github.com/axiomtutor/SyLoPy/pull/18): Uniqueness red-team cases, expanded to 19 cases with explicit refusal-reason checks.
+- [PR #19](https://github.com/axiomtutor/SyLoPy/pull/19): scope/freshness audit.
+- [PR #20](https://github.com/axiomtutor/SyLoPy/pull/20): number-theory quotient/divisibility and natural-number induction audit.
+- [PR #21](https://github.com/axiomtutor/SyLoPy/pull/21): five textbook-style proof fixtures across Nat, set theory, number theory, and discrete math.
+- [PR #22](https://github.com/axiomtutor/SyLoPy/pull/22): design-only refinement type-system proposal; no implementation authorization.
+- [PR #23](https://github.com/axiomtutor/SyLoPy/pull/23) and [PR #24](https://github.com/axiomtutor/SyLoPy/pull/24): relation-rule coverage and property-gating tests.
+- [PR #25](https://github.com/axiomtutor/SyLoPy/pull/25): design clarification separating symbol references in declaration metadata from descriptive labels.
 
-parse_oracle/ describes the intended language independently of its implementation. New surface-syntax cases should specify the intended plain-logic reading, not reproduce implementation details.
+Claude's Uniqueness review found and fixed real problems in witness-line hypothesis tracking and declaration metadata. Cases #5 and #14 were accepted by design under the currently shipped semantics: a typed descriptor like integer is inert until type descriptors are implemented, and a general Pairing schema instance is a theorem, not a witness assumption. Cases #16–19 exercise the actual witness/metadata constraints. See [Claude's fix commit](https://github.com/axiomtutor/SyLoPy/commit/6094678d6b8ec0eb6bb1bf51c6827600a8e68ee9) and pytest_tests/test_uniqueness_red_team_reasons.py. Claude's later [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f) adds case 20 for the opposite issue: a sound proof that was falsely rejected because a property label was treated as a symbol reference. That over-rejection is now fixed with targeted regression coverage.
 
-When the oracle disagrees with the parser, investigate whether the parser is wrong or the intended reading is wrong. Do not automatically weaken the oracle to make a test pass.
+### Documentation PRs
 
-## Set-theory work and owner decisions
+- [PR #26 — Refresh regression status in project docs](https://github.com/axiomtutor/SyLoPy/pull/26) merged at [commit b23d959](https://github.com/axiomtutor/SyLoPy/commit/b23d959e0b5a741a4e782314d6ce0df4c8d29abc). It refreshed test counts/links and fixed README numbering.
+- [PR #27 — Separate stable agent guidance from collaboration history](https://github.com/axiomtutor/SyLoPy/pull/27) merged at [commit 71e0515](https://github.com/axiomtutor/SyLoPy/commit/71e051514e41fa83ebd438e953bfc800e1821524). It made the master copy stable policy and points readers to this live handoff.
+- [PR #28 — Refresh regression counts after Uniqueness fix](https://github.com/axiomtutor/SyLoPy/pull/28) is open and documentation-only. Its [CI run #38113583789](https://github.com/axiomtutor/SyLoPy/actions/runs/38113583789) confirms 906 passed, the same one deferred ZFC/WLOG fixture failure, coverage passed, enforced 79/79, informational 51/52. This records current numbers in `README.md` and `todos.txt`.
 
-The design backlog in todos.txt may intentionally run ahead of implementation so proof fixtures can expose missing features without forcing immediate implementation.
+The sole CI failure remains the established WLOG / Mutatis mutandis fixture; the fixture itself remains deferred. In PR #28, ChatGPT asked Claude for the next bounded non-overlapping task and for Copilot's theorem-promotion audit status; no response is recorded yet.
 
-The following decisions override older agent proposals:
+## 4. Coordination hygiene
 
-- **WLOG region:** a WLOG line is an ordinary assertion citing a disjunction. Its region is that line and everything after it to the end of the current proof block; no separate surface syntax delimits a WLOG subproof. Implementation requires explicit owner approval. The intended design is proof-region replay and ordinary revalidation, with citation remapping—not an unchecked symmetry assertion.
-- **Witness naming:** “Let Y be such a set. (Existence from L)” is surface sugar over an ordinary existential citation and a scoped declaration. The axiom citation itself does not introduce its witness. Do not extend the old direct Pairing-witness syntax to Union, Power Set, or Infinity.
-- **Deferred set-theory features:** do not implement WLOG, Mutatis mutandis, named ZFC axiom-citation rules, Set property, or Infinity without explicit owner approval. Follow the implementation order and open design questions in todos.txt.
-- **Next task selection:** todos.txt and the owner's explicit direction take precedence over feature orderings suggested in agent discussions.
+Use one source of truth for each kind of information:
 
-## Tests and regressions
+- `AGENT_COLLABORATION.md` on this live branch: current assignments, active questions, verified findings, and links to work. It is a handoff, not a transcript.
+- `todos.txt`: the backlog and explicit status of design decisions (approved, deferred, proposed, or awaiting owner decision).
+- The relevant design document: full semantics, algorithms, tradeoffs, and examples.
+- PRs and CI runs: implementation discussion, review history, and test evidence.
 
-Use ./run_tests.sh as the canonical full test command.
+For every active task, keep the record to: owner, scope, status, files/subsystem, evidence/tests, and next action. When resolved, replace the active entry with the conclusion and a link, or remove it from the active section if the historical detail is not needed. Never keep an old status/count just because it appeared in a previous handoff.
 
-Preserve the enforced proof corpus as the minimum correctness gate. Informational fixtures are useful examples and may intentionally expose features that are not implemented yet.
+Before starting work, check open PRs and active branches for overlap. After merges, inventory branches and remove only those verified to be fully merged and no longer needed; preserve the live handoff branch and do not delete uncertain branches merely because they look old. Prefer one bounded PR per task and avoid parallel agents editing the same files.
 
-When a change affects a feature with an existing oracle or focused regression suite, extend that coverage rather than relying only on a broad end-to-end test. If a specification change requires changing a test, update the design documentation and test together; do not hide the change in test-specific logic.
+Use explicit evidence labels:
+- **Observed/reproduced** — a focused test or trace demonstrates the behavior.
+- **Source-level suspicion** — plausible from inspection, not yet reproduced.
+- **Design question** — requires a language or architecture decision.
+- **Deferred/unauthorized** — do not implement until the owner approves.
 
-For negative proof tests, verify that the case reaches the intended inference rule and is rejected for the intended reason. A parse error, undeclared symbol, or unrelated scope error does not demonstrate that a rule's guard works.
+Do not expand the active backlog by promoting every suspicion to a task. First decide whether the behavior is in scope, reproduce it, and close it if it is not a bug.
 
-Report known pre-existing failures explicitly. A change that leaves an established failure unchanged is different from one that introduces a regression. Report Python tests, coverage, enforced fixtures, informational fixtures, and the exact CI run separately.
+### Branch inventory audit
 
-## Communicating a substantial change
+Fresh comparisons against current master found **37 non-master branches**: **28 have no commits ahead of master** (their tips are ancestors of master and are cleanup candidates after checking for other use); **9 have branch-only commits**. No branch was deleted, and there were no open PRs before PR #28 was opened.
 
-Include:
+Keep:
+- `chatgpt-agent-guidance` — live handoff branch; preserve.
+- `chatgpt/refresh-regression-status-after-uniqueness-fix` — PR #28; keep until reviewed/merged.
 
-- the architectural or language decision the implementation assumes;
-- the changed files and subsystems;
-- what was deliberately left untouched because another agent may be working there;
-- relevant tests and exact results;
-- unresolved design questions or follow-up work.
+Seven branches need patch-level review before cleanup:
+- `chatgpt/discrete-math-rule-coverage` — 1 branch-only commit touching `pytest_tests/test_discrete_math_missing_rules.py`; compare against merged PR #24.
+- `chatgpt/refinement-type-system-design` — 1 branch-only `TYPE_SYSTEM_DESIGN.md` commit; compare against merged PR #22.
+- `chatgpt/type-metadata-reference-schema` — 1 branch-only `TYPE_SYSTEM_DESIGN.md` commit; compare against merged PR #25.
+- `chatgpt-context-docs` — 3 branch-only documentation commits touching `ARCHITECTURE_STATUS.md`, `README.md`, and `todos.txt`; inspect before deciding whether their content is superseded.
+- `chatgpt/uniqueness-metadata-label-probe` — 1 branch-only commit touching `pytest_tests/test_uniqueness_rule.py`.
+- `chatgpt-uniqueness-metadata-label-probe` — 2 branch-only commits touching the same test file. Both are diagnostic branches from before Claude's fix; compare their probes with the new master regressions before archiving.
+- `phase-2-proof-context` — 9 branch-only commits, including a test file, a separate `source/ProofElaborationContext.py`, and TODO changes. This is an architectural divergence, not an automatic delete candidate; determine whether any still-unmerged behavior is useful before cleanup.
 
-If an implementation conflicts with the existing design, stop and describe the mismatch rather than changing the design implicitly through code.
+The 28 zero-ahead branches include old merged PR branches and other historical branches. Do not delete automatically. After the seven reviews, remove only refs confirmed unused, and keep the live handoff branch. This is an ancestry audit, not evidence that branch content is still semantically relevant or that a deleted branch has no external consumer.
 
-## Branch hygiene
+## 5. Active work and design recommendations
 
-Start new agent branches from current master. Do not modify or delete another agent's branch. After the owner merges work, delete branches that are no longer needed, following the repository's normal workflow.
+### A. Theorem-promotion audit — Copilot
 
-The chatgpt-agent-guidance branch is deliberately not merged: it is the live coordination channel. The old phase-2-proof-context branch (tip a11ec09) and refactor_validator branch (tip 59bd9e5) were abandoned; those approaches are unnecessary or rejected. Do not revive them without a new explicit reason.
+Copilot was asked to work independently in pytest_tests/test_theorem_promotion_audit.py, without touching kernel code or existing promotion tests. The audit should determine:
 
-## Guiding principle
+1. What formulas/premises become part of a promoted TheoremRule, and whether any required premise is dropped.
+2. Whether only eligible top-level object declarations are generalized; nested declarations, Fresh Variable flags, and Existence from L witnesses should not accidentally become arbitrary generalized constants.
+3. Whether local validation can succeed while an undischarged assumption or non-surviving declaration leaks across the promotion boundary.
+4. Whether promoted rules work on fresh instances and reject wrong shapes or missing premises.
 
-The goal is not for every agent to make independent progress as quickly as possible. The goal is for their changes to compose without losing the project's accumulated design decisions.
+Each negative case must reach the promotion/citation boundary for the intended reason. **No audit report is recorded in this handoff yet.** Check with Copilot before duplicating this task.
+
+### B. Relation-rule scope — unverified candidate
+
+Source inspection suggests a possible mismatch: relation rules appear to be constructed once from context.context.declarations_here() after subproof elaboration has restored the root context. A relation declaration introduced only inside a child ProofContext may therefore fail to register its specialized rule even when used in that subproof.
+
+This is **not yet an observed bug**. First decide whether relation declarations are intended to be legal inside subproofs. If yes, write a minimal proof where a reflexive relation is declared and used inside one subproof; assert that the test reaches the relation-rule line. Do not add a test that assumes the answer before checking the language contract.
+
+### C. Descriptive metadata collision — fixed by Claude; regression closed
+
+The over-rejection was reproduced by ChatGPT's test-only probe against master commit `62374be`: a constant named `reflexive` was rejected as non-arbitrary solely because the same string appeared as a relation's property label. A relation's `carrier="X"`, however, is a genuine symbol reference and must still constrain `X`.
+
+Claude fixed this on master in [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f):
+
+- `source/ProofLogic.py` now defines `DESCRIPTIVE_METADATA_KEYS = frozenset({"properties"})`. `_metadata_names` skips values under this explicitly audited descriptive key but remains conservative for values under every unlisted key.
+- The sound proof is added as red-team case 20 and accepted. The refusal-reason test now checks all 20 cases.
+- Regression tests check that a property-label collision is accepted, a carrier remains restricted even when its spelling is `reflexive`, `symmetric`, `properties`, or `carrier`, nested metadata is traversed, unknown metadata keys remain conservative, and the proof-validator path also accepts the sound case.
+- The commit reports 51 mutation checks caught, including four mutants for this change.
+
+**CI evidence:** [run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219) on master reports **906 passed, 1 failed**, coverage passed, enforced fixtures **79/79**, informational fixtures **51/52**. The only failure is the known deferred `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`; no new failure is reported. The metadata regression is therefore considered fixed, not active work.
+
+Do not reopen this fix or duplicate Claude's kernel change absent a counterexample. The longer-term `Declaration.symbol_references` schema remains a design possibility associated with the type-system work; Claude deliberately deferred that broader change rather than expanding kernel scope. The existing carrier-reference counter-tests must stay in place.
+
+### D. Refinement types — design-only
+
+The owner's latest direction is that “Let X be an integer” should eventually establish the ordinary predicate Int(X), but implementation is explicitly deferred pending approval. PR #22 lays out a separate type-checking judgment and source-mapped typing obligations.
+
+Important hazards to test/design before implementation:
+
+- A type fact introduced within a subproof must have an intentional scope lifetime; premise-tagged lines may be recorded in a global hypothesis list, so do not assume the ordinary premise mechanism is sufficient for local type facts.
+- Surface divisibility a|b requires type obligations for **both operands**. Its current expansion exists m, (Int(m) and b = Times(a,m)) loses the source-level fact that b was an operand; checking only the Times signature is insufficient.
+- Type.as_declaration_recipe() appears to distinguish typed-function targets but not tuple targets. If the grammar accepts “(a, b) be an integer”, the generic recipe may interpret the tuple members as separate integer declarations. Test tuple targets and preserve intended grouped-name behavior before enabling descriptors broadly.
+- A local type assumption is not by itself typed universal quantification. A construct such as “forall integer n, P(n)” needs its own explicit semantics if desired.
+- Source tracing corrected an earlier suspicion about “such that”: compound declarations appear to dispatch through declaration recipes in the normal surface syntax path. This was a code-path inspection, not an end-to-end test.
+
+Do not begin implementation until the owner chooses a scope and explicitly authorizes it. A sensible initial slice would be tests and a formula-producing declaration recipe, but it must address scope first; full signature checking and divisibility obligations are distinct work.
+
+## 6. Recommended order of work
+
+1. Get Copilot's theorem-promotion audit report and resolve any soundness or specification issues it exposes.
+2. Ask the owner to confirm the contract for relation declarations inside subproofs; if allowed, verify the candidate with a focused test.
+3. The metadata-label over-rejection is fixed by Claude's [master commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f). Keep carrier-reference refusals and the new property-label acceptance regressions. Treat `Declaration.symbol_references` as a future design option, not an active kernel task.
+4. Get an explicit owner decision on the initial type-system implementation scope. Before implementing it, test local type-fact scope and tuple-target handling.
+5. Keep parser-oracle expansion and public language-reference documentation as useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
+6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, and other explicitly deferred set-theory work untouched until the owner authorizes implementation.
+
+## 7. Requests for the next handoff
+
+**Owner:** please confirm whether relation declarations are intended to work in subproofs, and whether the next type-system milestone should be (a) formula-producing typed declaration recipes only, or (b) that plus a tightly bounded first signature-checking slice. Neither is authorized yet.
+
+**Copilot:** please post the theorem-promotion audit status, exact findings, and CI results. If it is not underway, confirm that before anyone duplicates it.
+
+**Claude:** the descriptive-property-label false rejection is fixed in master by commit [5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f). I asked in [PR #28](https://github.com/axiomtutor/SyLoPy/pull/28) which bounded task would best help without overlapping your active implementation. Please identify the files/subsystem and any contract constraints; also confirm whether relation declarations inside subproofs are intended to work and flag overlap with typing work.
+
+**Copilot:** please post the status and findings of the theorem-promotion audit in `pytest_tests/test_theorem_promotion_audit.py`, including exact CI results. If work has not started, confirm that before we reassign or duplicate it.
+
+**All agents:** the metadata over-rejection is closed; preserve both property-label acceptance and carrier-reference refusal tests. Until Claude/Copilot respond, ChatGPT's active bounded work is regression-documentation synchronization and branch hygiene; do not start the known overlapping kernel audit or deferred type-system/set-theory work.
