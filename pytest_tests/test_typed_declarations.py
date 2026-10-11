@@ -4,6 +4,8 @@ These declarations state ordinary predicate formulas. They do not enable the
 separate refinement type checker proposed in TYPE_SYSTEM_DESIGN.md.
 """
 
+import pytest
+
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.ProofParser as pp
 
@@ -41,3 +43,46 @@ def test_plural_typed_declarations_state_predicate_for_each_object():
             f"{predicate}(a)", f"{predicate}(b)"
         ]
         assert pl.Proof(entries).check()[0]
+
+
+def test_typed_declaration_formula_can_be_cited_later():
+    entries, _ = pp.parse_proof_text("""
+1. Let n be an integer. (Declaration)
+2. Int(n). (Reiteration from 1)
+""")
+    ok, err = pl.Proof(entries).check_detailed()
+    assert ok, err
+
+
+def test_typed_declaration_formula_is_citable_inside_its_subproof():
+    entries, _ = pp.parse_proof_text("""
+1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. Let n be an integer. (Declaration)
+ 2.3. Int(n). (Reiteration from 2.2)
+ 2.4. P. (Reiteration from 2.1)
+end subproof
+""")
+    ok, err = pl.Proof(entries).check_detailed()
+    assert ok, err
+
+
+def test_typed_declaration_does_not_declare_its_constant_after_scope_closes():
+    text = """
+1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. Let n be an integer. (Declaration)
+ 2.3. Int(n). (Reiteration from 2.2)
+ 2.4. P. (Reiteration from 2.1)
+end subproof
+3. Int(n). (Premise)
+"""
+    with pytest.raises(
+        pp.ElaborationError,
+        match=r"constant 'n' is used but has not been declared",
+    ):
+        pp.parse_proof_text(text)
