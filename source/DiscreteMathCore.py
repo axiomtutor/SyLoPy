@@ -109,6 +109,46 @@ class _RelationRule(pl.InferenceRule):
         info = self.relation_properties.get(relation)
         return info is not None and info.get("carrier") == carrier
 
+    def applies_in_context(self, candidates, phi, context):
+        """Resolve relation properties from the declaration visible at this line."""
+        names = set()
+
+        def visit(formula):
+            relation = _relation_terms(formula)
+            if relation is not None:
+                names.add(relation[0])
+                return
+            for attribute in ("sub", "body", "antecedent", "consequent", "left", "right"):
+                child = getattr(formula, attribute, None)
+                if child is not None and isinstance(child, fl.Formula):
+                    visit(child)
+            for attribute in ("conjuncts", "disjuncts"):
+                for child in getattr(formula, attribute, ()):
+                    if isinstance(child, fl.Formula):
+                        visit(child)
+
+        for candidate in candidates:
+            if isinstance(candidate, fl.Formula):
+                visit(candidate)
+        visit(phi)
+
+        visible_properties = {}
+        for name in names:
+            declaration = context.declaration(name)
+            if declaration is not None:
+                if (declaration.kind == pl.DeclarationKind.PREDICATE
+                        and declaration.arity == 2):
+                    metadata = dict(declaration.metadata)
+                    visible_properties[name] = {
+                        "carrier": metadata.get("carrier"),
+                        "properties": set(metadata.get("properties", ())),
+                    }
+                continue
+            if name in self.relation_properties:
+                visible_properties[name] = self.relation_properties[name]
+
+        return type(self)(visible_properties).applies(candidates, phi)
+
 
 class RelationReflexivityRule(_RelationRule):
     """From x in X and R reflexive on X, infer R(x,x)."""
@@ -287,6 +327,7 @@ def relation_rule_set(declarations: Iterable[pl.Declaration]) -> List[pl.Inferen
 
 DISCRETE_MATH_ENVIRONMENT = TheoryEnvironment(
     name="discrete mathematics",
+    rules=relation_rule_set([]),
 )
 
 
