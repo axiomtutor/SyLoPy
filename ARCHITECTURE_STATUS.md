@@ -40,6 +40,39 @@ A theory should provide, as appropriate:
 Adding a structure should therefore normally mean adding a recipe and core
 rules to a theory module rather than modifying generic elaboration logic.
 
+## Surface sugar versus inference implementation
+
+"Prefer sugar" is a design principle, not a claim that every mathematical
+inference currently expands into primitive logical steps. Keep two questions
+separate:
+
+1. **Surface lowering:** what formula, term, declaration, or core proof entries
+   does the user's notation become?
+2. **Inference checking:** does the validator use ordinary logical rules and
+   formulas, or a theory-specific `InferenceRule` / axiom implementation?
+
+Examples from the current code:
+
+| Feature | Surface/elaboration behavior | Inference implementation |
+| --- | --- | --- |
+| Divisibility, `a\|n` | Expands at parse time to `exists m, (Int(m) and n = a * m)`. | Ordinary existential introduction/elimination are used; there is no separate divisibility rule. |
+| `Subset proof below` | Elaborates into universal generalization and conditional introduction, concluding `forall x, (In(x,S) -> In(x,T))`. | The generated core proof is validated using existing proof rules. |
+| Relation declarations | `RelationDeclarationRecipe` creates predicate declarations carrying the relation's carrier and property metadata. | `DiscreteMathCore.py` provides specialized rules such as relation symmetry, transitivity, and reflexivity; they check the declared property and, where needed, the carrier. |
+| Set equality | The conclusion is the ordinary formula `X = Y`. | `SetEqualityRule` directly checks for subset formulas in opposite directions; the current implementation does not expand this citation into a subproof of more primitive steps. |
+| Uniqueness | The conclusion is ordinary first-order logic: `exists W, (B(W) and forall V, (B(V) -> V = W))`. | `UniquenessRule` is a specialized, context-sensitive rule because soundness depends on whether the candidate constant is genuinely arbitrary. It is not a new `ExistsUnique` connective. |
+| Quotient notation, `n/a` | Parses as the term `Quotient(n, a)`. | Its mathematical behavior is governed by the theory's quotient defining-property and uniqueness axioms; the term itself is not expanded away into a formula. |
+
+Thus, a feature can use surface sugar and still rely on a specialized theory
+rule or axiom. Conversely, a specialized rule can conclude an ordinary core
+formula without creating a new formula-AST connective.
+
+When adding mathematical syntax or inference, document these points separately:
+(a) its surface-to-core lowering, (b) the checking mechanism and side conditions,
+and (c) whether its mathematical force is definitional, derived by existing
+rules, or axiomatic. Prefer formula/proof-entry expansion when it remains clear
+and efficient, but do not describe a specialized rule as "desugared to logic"
+unless the implementation actually constructs and validates that derivation.
+
 ## Rules that look at the proof around them
 
 A rule normally sees only the lines it cites. A rule that is sound only
