@@ -121,3 +121,58 @@ def test_relation_declaration_requires_an_explicit_carrier():
         pp.parse_proof_text(
             "1. Let X be any set, R be a reflexive relation. (Declaration)\n"
         )
+
+
+
+def test_relation_property_rule_works_for_a_relation_declared_inside_a_subproof():
+    ok, err = check("""
+1. Let X be any set, a be in X, P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. Let R be a reflexive relation on X. (Declaration)
+ 2.3. R(a,a). (Relation Reflexivity from 1)
+ 2.4. P. (Reiteration from 2.1)
+end subproof
+""")
+    assert ok, err
+
+
+def test_sibling_relation_declarations_do_not_share_properties():
+    ok, err = check("""
+1. Let X be any set, a be in X, P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. Let R be a reflexive relation on X. (Declaration)
+ 2.3. R(a,a). (Relation Reflexivity from 1)
+ 2.4. P. (Reiteration from 2.1)
+end subproof
+3. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. P. (Assumption)
+ 3.2. Let R be a symmetric relation on X. (Declaration)
+ 3.3. R(a,a). (Relation Reflexivity from 1)
+ 3.4. P. (Reiteration from 3.1)
+end subproof
+""")
+    assert not ok
+    assert err.label == "3.3"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+
+
+def test_relation_declared_in_a_subproof_is_undeclared_after_it_closes():
+    ok, err = check("""
+1. Let X be any set, a be in X, P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. Let R be a reflexive relation on X. (Declaration)
+ 2.3. R(a,a). (Relation Reflexivity from 1)
+ 2.4. P. (Reiteration from 2.1)
+end subproof
+3. R(a,a). (Premise)
+""")
+    assert not ok
+    assert err.label == "3"
+    assert err.category == pl.CATEGORY_UNDECLARED_SYMBOL
