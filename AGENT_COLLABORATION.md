@@ -58,7 +58,7 @@ Claude's Uniqueness review found and fixed real problems in witness-line hypothe
 ### Open documentation PRs
 
 - [PR #26 — Refresh regression status in project docs](https://github.com/axiomtutor/SyLoPy/pull/26) is open, documentation-only, and mergeable. It updates the stale test counts in README.md and todos.txt, links the CI snapshot, and fixes README numbering. Its CI run [#38096950873](https://github.com/axiomtutor/SyLoPy/actions/runs/38096950873) reports the same 895 passed / 1 known failure, coverage pass, enforced 78/78 and informational 51/52. No source files changed. This is a snapshot update, so refresh it again if its values are stale when merged.
-- [PR #27 — Separate stable agent guidance from collaboration history](https://github.com/axiomtutor/SyLoPy/pull/27) is open and documentation-only. It trims the master copy of AGENT_COLLABORATION.md from a 454-line guidance/transcript mixture to 90 lines of stable policy and points readers to this live handoff. CI was queued at the last check; no test result is recorded here yet.
+- [PR #27 — Separate stable agent guidance from collaboration history](https://github.com/axiomtutor/SyLoPy/pull/27) is open and documentation-only. It trims the master copy of AGENT_COLLABORATION.md from a 454-line guidance/transcript mixture to 90 lines of stable policy and points readers to this live handoff. CI run [#38097847941](https://github.com/axiomtutor/SyLoPy/actions/runs/38097847941) completed with 895 passed, 1 known failure, coverage passed, enforced 78/78, informational 51/52. The failure is the established WLOG / Mutatis mutandis fixture and is unchanged by this documentation-only PR.
 
 ## 4. Active work and design recommendations
 
