@@ -89,3 +89,19 @@ end subproof
     assert err.label == "3"
     assert err.category == pl.CATEGORY_UNDECLARED_SYMBOL
     assert "constant 'n' is used but has not been declared" in err.detail
+
+
+def test_comma_grouped_and_tuple_target_typed_declarations_type_each_name():
+    # Both syntactic groupings declare each named object individually; the
+    # parenthesized form is a tuple-shaped declaration target, not one object.
+    for phrase in (
+        "Let a, b be integers.",
+        "Let (a, b) be an integer.",
+    ):
+        entries, _ = pp.parse_proof_text(f"1. {phrase} (Declaration)\\n")
+        assert len(entries) == 1
+        assert [repr(formula) for formula in entries[0][1]] == [
+            "Int(a)", "Int(b)"
+        ]
+        ok, err = pl.Proof(entries).check_detailed()
+        assert ok, err
