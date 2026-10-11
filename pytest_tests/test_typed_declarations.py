@@ -98,7 +98,7 @@ def test_comma_grouped_and_tuple_target_typed_declarations_type_each_name():
         "Let a, b be integers.",
         "Let (a, b) be an integer.",
     ):
-        entries, _ = pp.parse_proof_text(f"1. {phrase} (Declaration)\\n")
+        entries, _ = pp.parse_proof_text(f"1. {phrase} (Declaration)\n")
         assert len(entries) == 1
         assert [repr(formula) for formula in entries[0][1]] == [
             "Int(a)", "Int(b)"
