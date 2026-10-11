@@ -64,3 +64,21 @@ end subproof
     assert err.label == expected_label
     assert err.category == pl.CATEGORY_RULE_MISMATCH
     assert "'RelationReflexivity' does not justify" in err.detail
+
+
+def test_root_relation_property_remains_available_two_subproof_levels_down():
+    ok, err = check("""
+1. Let X be any set, R be a reflexive relation on X, a be in X, P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption)
+ 2.2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+  2.2.1. P. (Assumption)
+  2.2.2. R(a,a). (Relation Reflexivity from 1)
+  2.2.3. P. (Reiteration from 2.2.1)
+end subproof
+ 2.3. P. (Reiteration from 2.1)
+end subproof
+""")
+    assert ok, err
