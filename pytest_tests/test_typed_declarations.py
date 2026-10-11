@@ -4,10 +4,8 @@ These declarations state ordinary predicate formulas. They do not enable the
 separate refinement type checker proposed in TYPE_SYSTEM_DESIGN.md.
 """
 
-import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.ProofParser as pp
-import SyLoPy.source.TermLogic as tl
 
 
 def _declaration_formula(text):
