@@ -725,13 +725,23 @@ class RuleContext:
     many rules that never look at it -- and it is only good for the call it
     was made for: a rule reads it while deciding and does not keep it.
     """
-    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained")
+    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained", "_declarations")
 
-    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=()):
+    def __init__(
+        self, given=(), assumptions=(), arbitrary_constants=(),
+        constrained_names=(), declarations=None,
+    ):
         self._given = given
         self._assumptions = assumptions
         self._arbitrary = arbitrary_constants
         self._constrained = constrained_names
+        self._declarations = declarations
+
+    def declaration(self, name: str) -> Optional[Declaration]:
+        """Return the declaration visible at the proof line being checked."""
+        if self._declarations is None:
+            return None
+        return self._declarations.lookup(name)
 
     @property
     def hypotheses(self) -> Tuple[Any, ...]:
@@ -3538,7 +3548,7 @@ class ProofValidator:
             err = self._validate_rule_hybrid(phi, justification, nested_subproof, label, sidx,
                                              block_label, labels, declarations, seen)
         elif tag == 'rule':
-            err = self._validate_rule(phi, justification, label, sidx, block_label, labels)
+            err = self._validate_rule(phi, justification, label, sidx, block_label, labels, declarations)
         else:
             err = _mk_error(label, block_label, sidx, CATEGORY_UNKNOWN_TAG,
                             f"unknown justification tag '{tag}'")
@@ -3826,7 +3836,7 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices} and attached subproofs"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
     def _validate_rule_below(self, phi: fl.Formula, justification: tuple, nested_subproof: Optional[list],
                               label: Optional[str], sidx: int, block_label: Optional[str],
@@ -3857,7 +3867,8 @@ class ProofValidator:
         return None
 
     def _validate_rule(self, phi: fl.Formula, justification: tuple, label: Optional[str],
-                       sidx: int, block_label: Optional[str], labels: LabelScope) -> Optional[ValidationError]:
+                       sidx: int, block_label: Optional[str], labels: LabelScope,
+                       declarations: DeclarationScope) -> Optional[ValidationError]:
         """Validate a rule citation, including labels that denote bundled premises."""
         if len(justification) not in (3, 4):
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
@@ -3923,7 +3934,7 @@ class ProofValidator:
                 candidates = [available[i] for i in candidate_indices]
                 tried.append(candidates)
                 try:
-                    if self._applies(rule, candidates, phi):
+                    if self._applies(rule, candidates, phi, declarations):
                         return None
                 except Exception as raised:
                     return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3933,19 +3944,22 @@ class ProofValidator:
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
                          + self._why_not(rule, tried, phi))
 
-    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula) -> bool:
-        """Ask `rule` whether it justifies `phi` from `candidates`, giving
-        it the `RuleContext` of this point in the proof if it wants one
-        (`applies_in_context`). The one place the validator calls a rule, so
-        a context-aware rule sees the same context however it was cited."""
+    def _applies(
+        self, rule: InferenceRule, candidates: list, phi: fl.Formula,
+        declarations: Optional[DeclarationScope] = None,
+    ) -> bool:
+        """Ask a rule whether it justifies a line, exposing its current scope."""
         in_context = getattr(rule, 'applies_in_context', None)
         if in_context is None:
             return rule.applies(candidates, phi)
         return in_context(candidates, phi, RuleContext(
             self._given_lines, self._assumption_stack, self._arbitrary_names,
-            self._constrained_names))
+            self._constrained_names, declarations))
 
-    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula) -> str:
+    def _why_not(
+        self, rule: InferenceRule, tried: list, phi: fl.Formula,
+        declarations: Optional[DeclarationScope] = None,
+    ) -> str:
         """`": <reason>"` to append to a refusal, when `rule` can say why it
         refused one of the `tried` candidate groups; otherwise the empty
         string. Never raises: an explanation is a courtesy, and a rule that
@@ -3954,7 +3968,7 @@ class ProofValidator:
         if explain is None:
             return ""
         context = RuleContext(self._given_lines, self._assumption_stack, self._arbitrary_names,
-                              self._constrained_names)
+                              self._constrained_names, declarations)
         for candidates in tried:
             try:
                 reason = explain(candidates, phi, context)
