@@ -3942,7 +3942,7 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
     def _applies(
         self, rule: InferenceRule, candidates: list, phi: fl.Formula,
