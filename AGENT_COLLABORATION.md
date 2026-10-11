@@ -33,7 +33,7 @@ The intended pipeline is:
 
 ## 3. Current repository and regression status
 
-**Current master snapshot:** commit [5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f), checked by [CI run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219).
+**Current master snapshot:** commit [5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f), checked by [CI run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219).
 
 - Python tests: **907 total, 906 passed, 1 failed**.
 - Coverage: passed.
@@ -57,7 +57,7 @@ The same result was reconfirmed on [live-handoff CI #38113828673](https://github
 - [PR #23](https://github.com/axiomtutor/SyLoPy/pull/23) and [PR #24](https://github.com/axiomtutor/SyLoPy/pull/24): relation-rule coverage and property-gating tests.
 - [PR #25](https://github.com/axiomtutor/SyLoPy/pull/25): design clarification separating symbol references in declaration metadata from descriptive labels.
 
-Claude's Uniqueness review found and fixed real problems in witness-line hypothesis tracking and declaration metadata. Cases #5 and #14 were accepted by design under the currently shipped semantics: a typed descriptor like integer is inert until type descriptors are implemented, and a general Pairing schema instance is a theorem, not a witness assumption. Cases #16–19 exercise the actual witness/metadata constraints. See [Claude's fix commit](https://github.com/axiomtutor/SyLoPy/commit/6094678d6b8ec0eb6bb1bf51c6827600a8e68ee9) and pytest_tests/test_uniqueness_red_team_reasons.py. Claude's later [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f) adds case 20 for the opposite issue: a sound proof that was falsely rejected because a property label was treated as a symbol reference. That over-rejection is now fixed with targeted regression coverage.
+Claude's Uniqueness review found and fixed real problems in witness-line hypothesis tracking and declaration metadata. Cases #5 and #14 were accepted by design under the currently shipped semantics: a typed descriptor like integer is inert until type descriptors are implemented, and a general Pairing schema instance is a theorem, not a witness assumption. Cases #16–19 exercise the actual witness/metadata constraints. See [Claude's fix commit](https://github.com/axiomtutor/SyLoPy/commit/6094678d6b8ec0eb6bb1bf51c6827600a8e68ee9) and pytest_tests/test_uniqueness_red_team_reasons.py. Claude's later [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f) adds case 20 for the opposite issue: a sound proof that was falsely rejected because a property label was treated as a symbol reference. That over-rejection is now fixed with targeted regression coverage.
 
 ### Documentation PRs
 
@@ -67,7 +67,11 @@ Claude's Uniqueness review found and fixed real problems in witness-line hypothe
 - [PR #29 — Clarify surface sugar versus specialized inference rules](https://github.com/axiomtutor/SyLoPy/pull/29) is open and documentation-only. Its [CI run #38113906840](https://github.com/axiomtutor/SyLoPy/actions/runs/38113906840) reports the same single known failure, with 906 passed, coverage passed, enforced 79/79, informational 51/52. It documents the distinction between parsing/elaboration sugar and specialized theory-rule checkers.
 - [PR #30 — Test the combined proof-text checking API](https://github.com/axiomtutor/SyLoPy/pull/30) is open and test-only. It checks that custom environment declarations/axioms reach kernel validation through `check_proof_text()`, and that a rule mismatch returns a structured error mapped to the surface label. [CI run #38114301838](https://github.com/axiomtutor/SyLoPy/actions/runs/38114301838) reports 908 passed, 1 known failure; both added tests pass.
 
-The sole CI failure remains the established WLOG / Mutatis mutandis fixture; the fixture itself remains deferred. In PR #28, ChatGPT asked Claude for the next bounded non-overlapping task and for Copilot's theorem-promotion audit status; no response is recorded yet.
+The sole CI failure remains the established WLOG / Mutatis mutandis fixture; the fixture itself remains deferred.
+
+Master is now [`00462c6`](https://github.com/axiomtutor/SyLoPy/commit/00462c6a16289f513d1ddd7c949339507cccc3a5), a documentation-only commit that adds `todos.txt` item 7 (relation scope, §5.B). [CI run #38139410205](https://github.com/axiomtutor/SyLoPy/actions/runs/38139410205) on it ended `failure`; a local `./run_tests.sh` there gives the same single failure (907 total, 906 passed; enforced 79/79; informational 51/52). Claude's sandbox cannot read CI logs, so those counts are local until a CI summary confirms them.
+
+Claude read PRs #28–#30. #30 is fine. #29 is accurate: its table matches the code (it writes the divisibility term as `a * m`, which is shorthand for `Times(a, __div_witness)`). #28 has dead commit links; see §7.
 
 ## 4. Coordination hygiene
 
@@ -148,6 +152,9 @@ The seven other ahead branches have been inspected at file level:
 - `phase-2-proof-context` — a historical architecture fork. Its five context adapter tests are substantially covered by current `pytest_tests/test_proof_context.py` and `pytest_tests/test_elaboration.py`; no unique behavior was identified. Candidate for cleanup only after confirming no one still needs the branch.
 
 No branch deletion has been performed. Delete only zero-ahead branches covered by the owner's instruction, and review the ahead branches separately; do not use force-push or rewrite history as a substitute for deleting a branch ref.
+
+**Claude's check (2026-10-11, live `ls-remote` tips against master `00462c6`):** ChatGPT's 28 zero-ahead branches are exactly right. Three of the "ahead" branches are patch-identical to master (`git cherry` finds nothing new): `chatgpt-context-docs`, `chatgpt/refinement-type-system-design` and `chatgpt/discrete-math-rule-coverage`. The other four carry commits of their own that are superseded: `phase-2-proof-context`; the two `*uniqueness-metadata-label-probe` branches (the probe proof is now red-team case 20 and passes); and `chatgpt/type-metadata-reference-schema` (its added paragraph is stale). So **35 branches can go**; the live handoff and the three PR branches stay, and those three can go once #28–#30 merge. Claude's sandbox cannot delete them either: a push that deletes a ref gets HTTP 403 from the environment's proxy (a policy block, not a Git error), so the owner has to run the deletion. Claude has given the owner a script that deletes each branch only if its tip is unchanged since this check.
+
 ## 5. Active work and design recommendations
 
 ### A. Theorem-promotion audit — Copilot
@@ -159,19 +166,19 @@ Copilot was asked to work independently in pytest_tests/test_theorem_promotion_a
 3. Whether local validation can succeed while an undischarged assumption or non-surviving declaration leaks across the promotion boundary.
 4. Whether promoted rules work on fresh instances and reject wrong shapes or missing premises.
 
-Each negative case must reach the promotion/citation boundary for the intended reason. **No audit report is recorded in this handoff yet.** Check with Copilot before duplicating this task.
+Each negative case must reach the promotion/citation boundary for the intended reason. **No audit report is recorded in this handoff yet.** None of the 30 pull requests so far came from a Copilot branch, there is no Copilot branch on the remote, and `pytest_tests/test_theorem_promotion_audit.py` exists nowhere, so treat the audit as unclaimed. If Copilot has not replied by the next handoff, Claude does it (it is a kernel feature, and the four questions above stay the specification).
 
-### B. Relation-rule scope — unverified candidate
+### B. Relation declarations inside a subproof — reproduced gap, design written
 
-Source inspection suggests a possible mismatch: relation rules appear to be constructed once from context.context.declarations_here() after subproof elaboration has restored the root context. A relation declaration introduced only inside a child ProofContext may therefore fail to register its specialized rule even when used in that subproof.
+**Observed (Claude reproduced the candidate):** with `2.2. Let X be any set, R be a reflexive relation on X, b be in X.` inside a subproof, `2.3. R(b, b). (Relation Reflexivity from 2.2)` is refused (`'RelationReflexivity' does not justify R(b, b) from the cited line(s) ['2.2']`). The cause is the suspected one: `elaborate_proof` builds the relation rules once, from the restored root context, so a subproof's declarations never reach them. Also checked: a relation declared at the top of a proof is usable inside a subproof, and two sibling subproofs may each declare their own `R`.
 
-This is **not yet an observed bug**. First decide whether relation declarations are intended to be legal inside subproofs. If yes, write a minimal proof where a reflexive relation is declared and used inside one subproof; assert that the test reaches the relation-rule line. Do not add a test that assumes the answer before checking the language contract.
+This is a gap in the safe direction (an acceptance that is missing), not a soundness hole, and nothing in the design record says it was meant as a restriction. The proposed fix, its contract, and why a flat table of all declarations keyed by relation name would be **unsound** (a later sibling would inherit a property only an earlier sibling declared) are in `todos.txt` item 7. Nothing is implemented until the owner confirms the contract (§7). ChatGPT's part is in §7.
 
 ### C. Descriptive metadata collision — fixed by Claude; regression closed
 
 The over-rejection was reproduced by ChatGPT's test-only probe against master commit `62374be`: a constant named `reflexive` was rejected as non-arbitrary solely because the same string appeared as a relation's property label. A relation's `carrier="X"`, however, is a genuine symbol reference and must still constrain `X`.
 
-Claude fixed this on master in [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f):
+Claude fixed this on master in [commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f):
 
 - `source/ProofLogic.py` now defines `DESCRIPTIVE_METADATA_KEYS = frozenset({"properties"})`. `_metadata_names` skips values under this explicitly audited descriptive key but remains conservative for values under every unlisted key.
 - The sound proof is added as red-team case 20 and accepted. The refusal-reason test now checks all 20 cases.
@@ -182,37 +189,65 @@ Claude fixed this on master in [commit 5df7d5d](https://github.com/axiomtutor/Sy
 
 Do not reopen this fix or duplicate Claude's kernel change absent a counterexample. The longer-term `Declaration.symbol_references` schema remains a design possibility associated with the type-system work; Claude deliberately deferred that broader change rather than expanding kernel scope. The existing carrier-reference counter-tests must stay in place.
 
-### D. Refinement types — design-only
+### D. Typed declarations (`Let X be an integer`) — decided in principle, not authorized
 
-The owner's latest direction is that “Let X be an integer” should eventually establish the ordinary predicate Int(X), but implementation is explicitly deferred pending approval. PR #22 lays out a separate type-checking judgment and source-mapped typing obligations.
+The owner's decision (2026-10-10): `Let X be an integer` should eventually type `X`. Nothing is implemented. The shipped default environment registers no type descriptors, so today a type word is only a label.
 
-Important hazards to test/design before implementation:
+**Observed (Claude, test-local experiments; nothing committed):**
 
-- A type fact introduced within a subproof must have an intentional scope lifetime; premise-tagged lines may be recorded in a global hypothesis list, so do not assume the ordinary premise mechanism is sufficient for local type facts.
-- Surface divisibility a|b requires type obligations for **both operands**. Its current expansion exists m, (Int(m) and b = Times(a,m)) loses the source-level fact that b was an operand; checking only the Times signature is insufficient.
-- Type.as_declaration_recipe() appears to distinguish typed-function targets but not tuple targets. If the grammar accepts “(a, b) be an integer”, the generic recipe may interpret the tuple members as separate integer declarations. Test tuple targets and preserve intended grouped-name behavior before enabling descriptors broadly.
-- A local type assumption is not by itself typed universal quantification. A construct such as “forall integer n, P(n)” needs its own explicit semantics if desired.
-- Source tracing corrected an earlier suspicion about “such that”: compound declarations appear to dispatch through declaration recipes in the normal surface syntax path. This was a code-path inspection, not an end-to-end test.
+- The machinery exists. `Type(..., descriptors=[...]).as_declaration_recipe()` makes `Let x be an integer` elaborate to a premise-tagged line that declares `x` and states `Int(x)`; a later line can cite it.
+- Registering descriptors for `Nat` and `Int` in the default environment changed exactly one fixture proof and one Python test on current master: red-team case 5 (`Let X be an integer` as a Uniqueness candidate), which is then refused for conditions 3 and 4 (`X occurs in a hypothesis in force, Int(X)`), the right reason. Nothing else depends on a type word being only a label. The other failure in that run is the known deferred ZFC fixture.
+- Hazards from the earlier list, checked in a test-local environment: `Let a, b be integers` and `Let (a, b) be an integer` both type each name separately, which is exactly what the untyped recipe declares today (no regression); a typing line inside a subproof is citable there and refused after the subproof closes (`constant 'n' is used but has not been declared`); a promoted proof that starts `Let n be a natural number.` takes `Nat(n)` as a premise. "For every integer n" is not parsed today.
 
-Do not begin implementation until the owner chooses a scope and explicitly authorizes it. A sensible initial slice would be tests and a formula-producing declaration recipe, but it must address scope first; full signature checking and divisibility obligations are distinct work.
+**Options.**
+
+- **A. The declaration states the predicate** (what the experiment did). Virtues: no kernel change; types stay ordinary predicates, so `Nat` inside `Int` is a theorem and overlapping types just work; it reads the way a textbook does (n is introduced, and "n is a natural number" is a fact one can cite); the hidden-hypothesis rule holds because the typing is a recorded formula. Vices: nothing is rejected for being ill-typed; each typed `Let` adds a line; quantifying over a type needs sugar.
+- **B. The type stays declaration metadata (`type_name`) that rules read.** Virtues: no extra lines. Vices: a hidden hypothesis (a rule would rely on something no line states, the hole behind Uniqueness case 18), and subtyping becomes metadata instead of a theorem. Not recommended.
+- **C. Many-sorted logic.** Virtues: a type error is a syntax error. Vices: disjoint sorts fight overlapping types, and it is a large kernel change. Not recommended.
+- **D. A plus a type-checking layer** (PR #22). Virtues: rejects nonsense with good messages. Vices: a second system to keep in step with the first; it needs source-mapped obligations (`a | b` needs both operands typed). It may only reject and never justify a line; the moment it justifies one it is B.
+- **E. A plus relativized-quantifier sugar:** "for every integer n, P(n)" to `forall n, (Int(n) -> P(n))`, and "there is an integer n such that P(n)" to `exists n, (Int(n) and P(n))`. Virtues: all sugar, and it reads like mathematics. Vices: it needs care with negation, nested quantifiers and plurals.
+
+**Claude's lean:** A first (small: one environment change plus tests, and case 5 becomes an Invalid fixture), E next, D later and only as reject-only, never B or C. PR #22 and PR #25 already agree with A: §4 of `TYPE_SYSTEM_DESIGN.md` says a typed declaration also exposes the ordinary predicate (`Int(a)`), following `Type.as_declaration_recipe()`, and §8 step 4 adds the integer recipe. §10.2 (typing derived from a signature, such as `Int(Times(a,b))`, must not become a citable fact) is about the checker's derived judgments, which is a different thing from a typing declaration the user states; one sentence there saying so would prevent a misreading.
+
+Do not begin implementation until the owner authorizes a scope (§7). Test-local tests of the behavior above are welcome now; they change nothing shipped.
 
 ## 6. Recommended order of work
 
-1. Get Copilot's theorem-promotion audit report and resolve any soundness or specification issues it exposes.
-2. Ask the owner to confirm the contract for relation declarations inside subproofs; if allowed, verify the candidate with a focused test.
-3. The metadata-label over-rejection is fixed by Claude's [master commit 5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f). Keep carrier-reference refusals and the new property-label acceptance regressions. Treat `Declaration.symbol_references` as a future design option, not an active kernel task.
-4. Get an explicit owner decision on the initial type-system implementation scope. Before implementing it, test local type-fact scope and tuple-target handling.
-5. Keep parser-oracle expansion and public language-reference documentation as useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
-6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, and other explicitly deferred set-theory work untouched until the owner authorizes implementation.
+1. Owner answers (§7): typed declarations option A, the relation-scope contract, and the branch deletion.
+2. ChatGPT's four bounded tasks (§7). They are test-only or docs-only and do not wait on the owner.
+3. Theorem-promotion audit (§5.A): Copilot if it replies, otherwise Claude.
+4. With the owner's go-ahead, Claude: typed declarations (option A) and the relation-scope fix. Each lands tests first; kernel and elaboration changes are Claude's.
+5. Parser-oracle expansion and public language-reference documentation remain useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
+6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, `Set property` and Infinity untouched until the owner authorizes implementation.
 
 ## 7. Requests for the next handoff
 
-**Owner:** please confirm whether relation declarations are intended to work in subproofs, and whether the next type-system milestone should be (a) formula-producing typed declaration recipes only, or (b) that plus a tightly bounded first signature-checking slice. Neither is authorized yet.
+**Owner** (three decisions; none is urgent):
 
-**Copilot:** please post the theorem-promotion audit status, exact findings, and CI results. If it is not underway, confirm that before anyone duplicates it.
+1. Typed declarations (§5.D): authorize option A, the small next step (descriptors on for `Nat` and `Int`, so `Let n be an integer` states `Int(n)`, and red-team case 5 becomes an Invalid case), or keep waiting?
+2. Relation declarations in subproofs (§5.B): confirm the contract, "a relation declared in a subproof carries its carrier and properties inside that subproof only".
+3. Stale branches: neither Claude's sandbox nor ChatGPT's tools can delete a ref (§4). The 35 branches there can be deleted with one script, run from a clone that can push; Claude has given it to the owner.
 
-**Claude:** the descriptive-property-label false rejection is fixed in master by commit [5df7d5d](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f). I asked in [PR #28](https://github.com/axiomtutor/SyLoPy/pull/28) which bounded task would best help without overlapping your active implementation. Please identify the files/subsystem and any contract constraints; also confirm whether relation declarations inside subproofs are intended to work and flag overlap with typing work.
+**ChatGPT:** thank you for the PRs. Here is bounded work that does not overlap Claude's, in this order. None of it touches `source/`.
 
-**Copilot:** please post the status and findings of the theorem-promotion audit in `pytest_tests/test_theorem_promotion_audit.py`, including exact CI results. If work has not started, confirm that before we reassign or duplicate it.
+1. PR #28: the commit link for `5df7d5d` is dead (the hash lost two characters, and GitHub answers "No commit found"). The full hash is `5df7d5d7d04f81b5a8aa7febcb73786a4274000f`. Fix `README.md` and `todos.txt` on your branch; Claude fixed the five copies in this file.
+2. `pytest_tests/test_relation_scope_guards.py`: two guard tests that pass today and must keep passing after the §5.B fix. (a) A relation declared at the top of a proof is usable inside a subproof: line 1 is `Let X be any set, R be a reflexive relation on X, b be in X.`, and inside a subproof `R(b, b)` follows by `Relation Reflexivity from 1`. (b) Two sibling subproofs each declare an `R`, one reflexive and one only symmetric, and the rule is used only in the symmetric one: `Relation Reflexivity` must be refused there, and the failure must name `'RelationReflexivity' does not justify`, so the test reaches the rule. Run (b) with both orders of the siblings; a flat name-keyed table fails one of them. Do not write the "nested declaration is usable" test until the owner confirms the contract (§7.2).
+3. `pytest_tests/test_typed_declaration_environment.py`, test-local only (the shipped environment stays untouched):
 
-**All agents:** the metadata over-rejection is closed; preserve both property-label acceptance and carrier-reference refusal tests. Until Claude/Copilot respond, ChatGPT's active bounded work is regression-documentation synchronization and branch hygiene; do not start the known overlapping kernel audit or deferred type-system/set-theory work.
+   ```python
+   from SyLoPy.source.ProofElaboration import TheoryEnvironment
+
+   INT = pl.Type("Int", "Int", [], [], descriptors=["integer", "integers"])
+   env = pp.default_theory_environment().extended(
+       TheoryEnvironment(declaration_recipes=[INT.as_declaration_recipe()]))
+   ok, err = pp.check_proof_text(text, environment=env)
+   ```
+
+   Cases, each checked by hand by Claude, so these pin current behavior: the typing line states `Int(a)` and a later line cites it; `Let a, b be integers` and `Let (a, b) be an integer` type each name separately; a typing line inside a subproof is citable there and refused after it closes (`constant 'n' is used but has not been declared`); a constant declared `Let X be an integer` is refused as a Uniqueness candidate with conditions 3 and 4 (use the proof of red-team case 5), and the same proof with `Let X be any set` is accepted (control). Each negative case must name its reason.
+4. Design only, in `TYPE_SYSTEM_DESIGN.md`: one sentence in §10.2 saying it concerns derived typing (signature closure) and not a typing declaration the user states (§4), and a short subsection sketching option E's quantifier sugar with the negation and plural cases it must handle. Propose only; do not implement.
+
+**Copilot:** please say whether the audit in §5.A is under way. If there is no reply by the next handoff, Claude does it.
+
+**Claude:** once the owner answers §7.1 and §7.2, option A (§5.D) and the relation-scope fix (§5.B, `todos.txt` item 7). Each is a kernel or elaboration change and gets its own go-ahead and tests first. In the meantime, the promotion audit if Copilot does not take it.
+
+**All agents:** the metadata over-rejection is closed; keep both the property-label acceptance tests and the carrier-refusal tests. WLOG, Mutatis mutandis, named ZFC axiom rules, `Set property`, Infinity and typed declarations stay unimplemented until the owner authorizes them.
