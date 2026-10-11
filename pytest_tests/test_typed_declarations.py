@@ -126,11 +126,38 @@ end subproof
     assert theorem.generalized_names == ["n"]
     assert repr(theorem.conclusion) == "(Int(n) → Int(n))"
 
-    use_entries, _ = pp.parse_proof_text("""
-1. Let m be an integer. (Declaration)
-2. Int(m) -> Int(m). (Integer premise implication from 1)
-""")
+    use_entries, _ = pp.parse_proof_text(
+        "1. Let m be an integer. (Declaration)\\n"
+    )
+    use_entries.append(
+        (
+            "2",
+            pp.parse_formula("Int(m) -> Int(m)"),
+            ("rule", theorem, ["1"]),
+        )
+    )
     use_ok, use_err = pl.Proof(
         use_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
     assert use_ok, use_err
+
+    # The theorem's conclusion shape alone is insufficient: without an
+    # Int(m) premise, it must not be usable merely because m is declared.
+    bad_entries, _ = pp.parse_proof_text("""
+1. Let m be any set. (Declaration)
+2. Let P be a closed formula such that: P. (Premise)
+""")
+    bad_entries.append(
+        (
+            "3",
+            pp.parse_formula("Int(m) -> Int(m)"),
+            ("rule", theorem, ["2"]),
+        )
+    )
+    bad_ok, bad_err = pl.Proof(
+        bad_entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+    assert not bad_ok
+    assert bad_err is not None
+    assert bad_err.label == "3"
+    assert bad_err.category == pl.CATEGORY_RULE_MISMATCH
