@@ -10,14 +10,17 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-At the time of writing, the project is in a stable state, with one known,
-tracked exception.
+The latest recorded full run is
+[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
+from 2026-10-10. It has one known, tracked exception (see `todos.txt`).
 
-- 896 Python tests; 895 pass, 1 known failure (a stale fixture test,
-  tracked in `todos.txt`).
-- All enforced proof fixtures pass.
-- All but one informational proof fixture pass (the same known issue: a
-  fixture written ahead of an agreed-but-unimplemented feature).
+- 896 Python tests; 895 passed and 1 known failure.
+- Enforced proof fixture corpus: 78/78 passed.
+- Informational proof fixtures: 51/52 passed; the failure is the same deferred
+  ZFC fixture.
+
+These numbers describe that specific run and will change as tests and fixtures
+are added.
 
 This is the key fact to keep in mind for planning: the core parser,
 elaboration pipeline, and kernel rule set are working as a coherent system.
@@ -141,7 +144,7 @@ make it easier to extend and maintain.
    - Keep the parser and proof-checking entry points clear and documented.
    - Document canonical usage patterns and expected outputs for users.
 
-3. Expand theory modules and surface syntax.
+2. Expand theory modules and surface syntax.
    - Add richer algebraic and order-theoretic features without destabilizing the
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
@@ -150,7 +153,7 @@ make it easier to extend and maintain.
      rules, a checked WLOG rule, and more) — see `todos.txt` for the full,
      current design.
 
-4. Continue proof-corpus growth.
+3. Continue proof-corpus growth.
    - Add more examples and end-to-end fixtures for edge cases, not just the core
      rules already covered.
    - Keep the existing enforced proof corpus as the regression floor.

@@ -2,15 +2,19 @@
 
 ## Project status
 
-The project is functionally green, with one known, tracked exception. The
-core proof-language pipeline has been validated against the repository's
-full regression suite:
+The latest recorded full run is
+[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
+at commit [`62374be`](https://github.com/axiomtutor/SyLoPy/commit/62374beb42378dc2e3ec89a0087c1b545594fb7c),
+on 2026-10-10. The canonical `./run_tests.sh` run reported:
 
-- 766 Python tests; 765 pass, 1 known failure (see "Known issues" below).
-  That includes the 159-case parser oracle in `parse_oracle/`.
-- all enforced proof fixture suites pass (54/54)
-- informational proof fixtures: 51/52 pass (the one failure is the same
-  known issue)
+- 896 Python tests; 895 passed and 1 known failure (see "Known issues" below).
+  This includes the 159-case parser oracle in `parse_oracle/`.
+- enforced proof fixture corpus: 78/78 passed.
+- informational proof fixtures: 51/52 passed; the one failure is the same
+  known ZFC fixture issue.
+
+These figures are a snapshot of that run, not a promise that counts will stay
+fixed as tests and fixtures are added.
 
 The current work is no longer about making the basics work. The remaining work
 is about making the system cleaner, easier to extend, and easier to use.
