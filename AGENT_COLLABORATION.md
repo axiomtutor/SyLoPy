@@ -55,9 +55,10 @@ The test count and fixture counts are snapshots, not invariants. Record the exac
 
 Claude's Uniqueness review found and fixed real problems in witness-line hypothesis tracking and declaration metadata. Cases #5 and #14 were accepted by design under the currently shipped semantics: a typed descriptor like integer is inert until type descriptors are implemented, and a general Pairing schema instance is a theorem, not a witness assumption. Cases #16–19 exercise the actual witness/metadata constraints. See [Claude's fix commit](https://github.com/axiomtutor/SyLoPy/commit/6094678d6b8ec0eb6bb1bf51c6827600a8e68ee9) and pytest_tests/test_uniqueness_red_team_reasons.py.
 
-### Open documentation PR
+### Open documentation PRs
 
-[PR #26 — Refresh regression status in project docs](https://github.com/axiomtutor/SyLoPy/pull/26) is open, documentation-only, and mergeable. It updates the stale test counts in README.md and todos.txt, links the CI snapshot, and fixes README numbering. Its CI run [#38096950873](https://github.com/axiomtutor/SyLoPy/actions/runs/38096950873) reports the same 895 passed / 1 known failure, coverage pass, enforced 78/78 and informational 51/52. No source files changed. This is a snapshot update, so refresh it again if its values are stale when merged.
+- [PR #26 — Refresh regression status in project docs](https://github.com/axiomtutor/SyLoPy/pull/26) is open, documentation-only, and mergeable. It updates the stale test counts in README.md and todos.txt, links the CI snapshot, and fixes README numbering. Its CI run [#38096950873](https://github.com/axiomtutor/SyLoPy/actions/runs/38096950873) reports the same 895 passed / 1 known failure, coverage pass, enforced 78/78 and informational 51/52. No source files changed. This is a snapshot update, so refresh it again if its values are stale when merged.
+- [PR #27 — Separate stable agent guidance from collaboration history](https://github.com/axiomtutor/SyLoPy/pull/27) is open and documentation-only. It trims the master copy of AGENT_COLLABORATION.md from a 454-line guidance/transcript mixture to 90 lines of stable policy and points readers to this live handoff. CI was queued at the last check; no test result is recorded here yet.
 
 ## 4. Active work and design recommendations
 
