@@ -13,7 +13,7 @@ It should soon develop features for more mathematical subjects.
 The latest recorded full run is
 [GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
 from 2026-10-11 at commit
-[`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d04f81b5a8aa7febcb73786a4274000f).
+[`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f).
 It has one known, tracked exception (see `todos.txt`).
 
 - 907 Python tests; 906 passed and 1 known failure.
