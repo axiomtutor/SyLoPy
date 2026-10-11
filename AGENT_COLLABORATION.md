@@ -60,7 +60,28 @@ Claude's Uniqueness review found and fixed real problems in witness-line hypothe
 - [PR #26 — Refresh regression status in project docs](https://github.com/axiomtutor/SyLoPy/pull/26) is open, documentation-only, and mergeable. It updates the stale test counts in README.md and todos.txt, links the CI snapshot, and fixes README numbering. Its CI run [#38096950873](https://github.com/axiomtutor/SyLoPy/actions/runs/38096950873) reports the same 895 passed / 1 known failure, coverage pass, enforced 78/78 and informational 51/52. No source files changed. This is a snapshot update, so refresh it again if its values are stale when merged.
 - [PR #27 — Separate stable agent guidance from collaboration history](https://github.com/axiomtutor/SyLoPy/pull/27) is open and documentation-only. It trims the master copy of AGENT_COLLABORATION.md from a 454-line guidance/transcript mixture to 90 lines of stable policy and points readers to this live handoff. CI run [#38097847941](https://github.com/axiomtutor/SyLoPy/actions/runs/38097847941) completed with 895 passed, 1 known failure, coverage passed, enforced 78/78, informational 51/52. The failure is the established WLOG / Mutatis mutandis fixture and is unchanged by this documentation-only PR.
 
-## 4. Active work and design recommendations
+## 4. Coordination hygiene
+
+Use one source of truth for each kind of information:
+
+- `AGENT_COLLABORATION.md` on this live branch: current assignments, active questions, verified findings, and links to work. It is a handoff, not a transcript.
+- `todos.txt`: the backlog and explicit status of design decisions (approved, deferred, proposed, or awaiting owner decision).
+- The relevant design document: full semantics, algorithms, tradeoffs, and examples.
+- PRs and CI runs: implementation discussion, review history, and test evidence.
+
+For every active task, keep the record to: owner, scope, status, files/subsystem, evidence/tests, and next action. When resolved, replace the active entry with the conclusion and a link, or remove it from the active section if the historical detail is not needed. Never keep an old status/count just because it appeared in a previous handoff.
+
+Before starting work, check open PRs and active branches for overlap. After merges, inventory branches and remove only those verified to be fully merged and no longer needed; preserve the live handoff branch and do not delete uncertain branches merely because they look old. Prefer one bounded PR per task and avoid parallel agents editing the same files.
+
+Use explicit evidence labels:
+- **Observed/reproduced** — a focused test or trace demonstrates the behavior.
+- **Source-level suspicion** — plausible from inspection, not yet reproduced.
+- **Design question** — requires a language or architecture decision.
+- **Deferred/unauthorized** — do not implement until the owner approves.
+
+Do not expand the active backlog by promoting every suspicion to a task. First decide whether the behavior is in scope, reproduce it, and close it if it is not a bug.
+
+## 5. Active work and design recommendations
 
 ### A. Theorem-promotion audit — Copilot
 
@@ -99,7 +120,7 @@ Important hazards to test/design before implementation:
 
 Do not begin implementation until the owner chooses a scope and explicitly authorizes it. A sensible initial slice would be tests and a formula-producing declaration recipe, but it must address scope first; full signature checking and divisibility obligations are distinct work.
 
-## 5. Recommended order of work
+## 6. Recommended order of work
 
 1. Get Copilot's theorem-promotion audit report and resolve any soundness or specification issues it exposes.
 2. Ask the owner to confirm the contract for relation declarations inside subproofs; if allowed, verify the candidate with a focused test.
@@ -108,7 +129,7 @@ Do not begin implementation until the owner chooses a scope and explicitly autho
 5. Keep parser-oracle expansion and public language-reference documentation as useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
 6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, and other explicitly deferred set-theory work untouched until the owner authorizes implementation.
 
-## 6. Requests for the next handoff
+## 7. Requests for the next handoff
 
 **Owner:** please confirm whether relation declarations are intended to work in subproofs, and whether the next type-system milestone should be (a) formula-producing typed declaration recipes only, or (b) that plus a tightly bounded first signature-checking slice. Neither is authorized yet.
 
