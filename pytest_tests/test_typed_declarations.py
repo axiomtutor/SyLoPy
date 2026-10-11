@@ -105,3 +105,32 @@ def test_comma_grouped_and_tuple_target_typed_declarations_type_each_name():
         ]
         ok, err = pl.Proof(entries).check_detailed()
         assert ok, err
+
+
+def test_promoted_theorem_preserves_typed_declaration_as_a_required_premise():
+    source = """
+1. Let n be an integer. (Declaration)
+2. Int(n) -> Int(n). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. Int(n). (Assumption)
+ 2.2. Int(n). (Reiteration from 1)
+end subproof
+"""
+    entries, _ = pp.parse_proof_text(source)
+    proof = pl.Proof(entries)
+    ok, err = proof.check_detailed()
+    assert ok, err
+
+    theorem = pl.promote_theorem("Integer premise implication", proof)
+    assert [repr(premise) for premise in theorem.premises] == ["Int(n)"]
+    assert theorem.generalized_names == ["n"]
+    assert repr(theorem.conclusion) == "(Int(n) → Int(n))"
+
+    use_entries, _ = pp.parse_proof_text("""
+1. Let m be an integer. (Declaration)
+2. Int(m) -> Int(m). (Integer premise implication from 1)
+""")
+    use_ok, use_err = pl.Proof(
+        use_entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+    assert use_ok, use_err
