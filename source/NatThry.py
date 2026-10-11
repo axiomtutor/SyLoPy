@@ -119,6 +119,7 @@ NAT_TYPE = pl.Type(
     axioms=NAT_AXIOMS,
     schema_rules=[pl.InductionRule(type_predicate="Nat", zero_term=Zero, succ_symbol=SUCC)],
     declarations=NAT_DECLARATIONS,
+    descriptors=["natural number", "natural numbers"],
 )
 
 
