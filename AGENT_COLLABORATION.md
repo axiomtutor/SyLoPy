@@ -114,11 +114,17 @@ Source inspection suggests a possible mismatch: relation rules appear to be cons
 
 This is **not yet an observed bug**. First decide whether relation declarations are intended to be legal inside subproofs. If yes, write a minimal proof where a reflexive relation is declared and used inside one subproof; assert that the test reaches the relation-rule line. Do not add a test that assumes the answer before checking the language contract.
 
-### C. Descriptive metadata collision — unverified candidate
+### C. Descriptive metadata collision — reproduced over-rejection
 
-ProofLogic._metadata_names appears to recursively treat all strings in declaration metadata as symbol names. Relation metadata also contains descriptive values such as "reflexive" and "transitive", not just symbol references such as the carrier name. Because the parser's identifier syntax appears to admit these words as object names, a same-named object may be conservatively excluded from Uniqueness generalization.
+A test-only proof reproduces the issue against the code at master commit `62374beb42378dc2e3ec89a0087c1b545594fb7c`:
 
-This is a suspected **over-rejection**, not an observed failure, and not an unsound acceptance. The design in PR #25 points toward typed metadata that distinguishes symbol references from descriptive labels. Reproduce the behavior on current master before requesting a kernel change; retain the test only if it demonstrates the intended boundary.
+- Probe: [`test_descriptive_relation_property_label_does_not_constrain_same_named_object`](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-uniqueness-metadata-label-probe/pytest_tests/test_uniqueness_rule.py).
+- CI run: [#38101681260](https://github.com/axiomtutor/SyLoPy/actions/runs/38101681260).
+- Result: **895 passed, 2 failed**. One is the known deferred WLOG / Mutatis mutandis fixture. The new probe reaches the intended Uniqueness line 7 and is refused specifically with condition 3: `reflexive is not an arbitrary constant ... a name some declaration's structure refers to`.
+
+This is a demonstrated **over-rejection**, not an unsound acceptance or parser failure. The relation declaration's metadata has `properties=("reflexive",)`; `_metadata_names` mistakes that descriptive property label for a reference to the same-named object. By contrast, `carrier="X"` really is a symbol reference because relation rules read it and must continue to constrain `X`.
+
+The design in PR #25 and `TYPE_SYSTEM_DESIGN.md` already call for metadata that distinguishes symbol references from descriptive values. Recommended kernel direction for Claude/owner review: use explicit, typed symbol-reference metadata (or a tightly specified schema for known metadata keys) while treating unknown legacy metadata conservatively. **Do not simply remove metadata constraints or stop traversing all metadata values.** Preserve/extend the counterpart regression showing that a real carrier reference still blocks generalization. The probe branch is diagnostic only and has no PR; do not merge the intentionally failing test until the implementation and both-direction regression tests are ready.
 
 ### D. Refinement types — design-only
 
@@ -138,7 +144,7 @@ Do not begin implementation until the owner chooses a scope and explicitly autho
 
 1. Get Copilot's theorem-promotion audit report and resolve any soundness or specification issues it exposes.
 2. Ask the owner to confirm the contract for relation declarations inside subproofs; if allowed, verify the candidate with a focused test.
-3. Reproduce or dismiss the metadata-label collision with an end-to-end test; avoid kernel changes until the behavior is demonstrated and the metadata contract is settled.
+3. Metadata-label collision is now reproduced as an over-rejection. Claude/owner should settle the safe schema migration; the diagnostic branch includes the failing end-to-end proof, and a real carrier-reference guard must be preserved.
 4. Get an explicit owner decision on the initial type-system implementation scope. Before implementing it, test local type-fact scope and tuple-target handling.
 5. Keep parser-oracle expansion and public language-reference documentation as useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
 6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, and other explicitly deferred set-theory work untouched until the owner authorizes implementation.
