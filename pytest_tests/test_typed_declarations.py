@@ -81,8 +81,11 @@ begin subproof
 end subproof
 3. Int(n). (Premise)
 """
-    with pytest.raises(
-        pp.ElaborationError,
-        match=r"constant 'n' is used but has not been declared",
-    ):
-        pp.parse_proof_text(text)
+    entries, _ = pp.parse_proof_text(text)
+    ok, err = pl.Proof(entries).check_detailed()
+
+    assert not ok
+    assert err is not None
+    assert err.label == "3"
+    assert err.category == pl.CATEGORY_UNDECLARED_SYMBOL
+    assert "constant 'n' is used but has not been declared" in err.detail
