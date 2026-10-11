@@ -408,17 +408,18 @@ end subproof
 # Through the validator: declarations that are not plain
 # --------------------------------------------------------------------
 
-def _entries(introduce_x):
-    """Hand-built entries: `introduce_x` is line 4, the line that brings X
-    in; line 5 is `X = a -> X = a` and line 6 the Uniqueness step."""
+def _entries(introduce_x, name="X"):
+    """Hand-built entries: `introduce_x` is line 4, the line that brings the
+    constant `name` (X unless a test says otherwise) in; line 5 is
+    `X = a -> X = a` and line 6 the Uniqueness step."""
     return [
         ("1", None, ("declare", [pl.Declaration("a", pl.DeclarationKind.OBJECT)])),
         ("2", formula("a = a"), ("rule", pl.ReflexivityRule(), [])),
         ("3", formula("exists Y, Y = a"), ("rule", pl.ExistentialIntroductionRule(), ["2"])),
         introduce_x,
-        ("5", formula("X = a -> X = a"), ("rule_below", pl.ConditionalIntroductionRule()), [
-            ("5.1", formula("X = a"), ("assume",)),
-            ("5.2", formula("X = a"), ("rule", pl.ReiterationRule(), ["5.1"])),
+        ("5", formula(f"{name} = a -> {name} = a"), ("rule_below", pl.ConditionalIntroductionRule()), [
+            ("5.1", formula(f"{name} = a"), ("assume",)),
+            ("5.2", formula(f"{name} = a"), ("rule", pl.ReiterationRule(), ["5.1"])),
         ]),
         ("6", formula("exists W, (W = a and forall V, (V = a -> V = W))"),
          ("rule", pl.UniquenessRule(), ["3", "5"])),
@@ -695,6 +696,43 @@ def test_the_carrier_is_refused_when_the_relation_comes_on_a_later_line():
     assert_rejected_by_uniqueness(_CARRIER_NAMED_LATER, 6)
 
 
+# `reflexive` is one of R's property labels. The label describes R; it is not a
+# name R refers to, so a constant that happens to be spelled `reflexive` is an
+# ordinary constant, and is arbitrary.
+_LABEL_SPELLED_CONSTANT = """Use discrete math.
+1. Let X be any set, R be a reflexive relation on X. (Declaration)
+2. Let a be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. Let reflexive be any set. (Declaration)
+6. If reflexive = a then reflexive = a. (Conditional Introduction from subproof below)
+ 6.1. reflexive = a. (Assumption for Conditional Introduction)
+ 6.2. reflexive = a. (Reiteration from 6.1)
+7. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 4, 6)
+"""
+
+# The same spelling as a carrier is a name R refers to, and is refused.
+_CARRIER_SPELLED_LIKE_A_LABEL = """Use discrete math.
+1. Let reflexive be any set, R be a reflexive relation on reflexive. (Declaration)
+2. Let a be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. If reflexive = a then reflexive = a. (Conditional Introduction from subproof below)
+ 5.1. reflexive = a. (Assumption for Conditional Introduction)
+ 5.2. reflexive = a. (Reiteration from 5.1)
+6. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 4, 5)
+"""
+
+
+def test_a_constant_spelled_like_a_property_label_is_arbitrary():
+    ok, message = check(_LABEL_SPELLED_CONSTANT)
+    assert ok, message
+
+
+def test_a_carrier_spelled_like_a_property_label_is_still_refused():
+    assert_rejected_by_uniqueness(_CARRIER_SPELLED_LIKE_A_LABEL, 6)
+
+
 # --------------------------------------------------------------------
 # Saying why: the reason in the refusal
 # --------------------------------------------------------------------
@@ -824,13 +862,39 @@ def _relation_on(carrier, name="R"):
                           metadata=(("carrier", carrier), ("properties", ("reflexive", "symmetric"))))
 
 
-def test_metadata_names_are_the_strings_in_the_values():
-    names = pl._metadata_names([_relation_on("X")])
-    assert names == {"X", "reflexive", "symmetric"}
+def test_a_relations_metadata_names_only_its_carrier():
+    # The property labels describe R; they are not symbols of the proof.
+    assert pl._metadata_names([_relation_on("X")]) == {"X"}
 
 
 def test_metadata_keys_are_not_names():
     assert "carrier" not in pl._metadata_names([_relation_on("X")])
+
+
+def test_the_strings_in_the_values_of_an_unlisted_key_are_names():
+    # A kind of metadata the kernel has not been told about is read as naming
+    # whatever it contains: safe by default.
+    declaration = pl.Declaration("S", _OBJECT, metadata=(("carrier", "X"), ("mystery", ("reflexive", "Y"))))
+    assert pl._metadata_names([declaration]) == {"X", "reflexive", "Y"}
+
+
+def test_everything_under_a_descriptive_key_is_skipped_however_deep():
+    declaration = pl.Declaration("S", _OBJECT, metadata=(("properties", ("X", ("Y", ["Z"]))), ("carrier", "W")))
+    assert pl._metadata_names([declaration]) == {"W"}
+
+
+@pytest.mark.parametrize("carrier", ["reflexive", "symmetric", "properties", "carrier"])
+def test_a_carrier_spelled_like_a_label_or_a_key_is_still_a_name(carrier):
+    # Only the value under `properties` is skipped. A carrier is read
+    # whatever it is spelled like, so it is not mistaken for a label.
+    assert pl._metadata_names([_relation_on(carrier)]) == {carrier}
+
+
+def test_the_descriptive_keys_are_the_audited_ones():
+    # A key listed here stops its values counting as names, which is a
+    # soundness decision. Before adding one, check that nothing under it can
+    # be a name a proof also uses for a constant, and say so in the commit.
+    assert pl.DESCRIPTIVE_METADATA_KEYS == frozenset({"properties"})
 
 
 def test_metadata_names_are_found_in_nested_values():
@@ -866,6 +930,16 @@ def test_a_carrier_named_by_a_declaration_the_proof_was_handed_is_not_arbitrary(
 
 def test_control_without_that_relation_the_same_proof_is_accepted():
     ok, err = pl.Proof(_entries(_PLAIN_X_FOR_CARRIER)).check_detailed()
+    assert ok, str(err)
+
+
+def test_a_constant_spelled_like_a_property_label_of_a_handed_relation_is_arbitrary():
+    # `_relation_on` is reflexive and symmetric, so `reflexive` is one of its
+    # labels. Handing the proof that relation does not constrain a constant
+    # that is merely spelled the same.
+    spelled_like_a_label = ("4", None, ("declare", [pl.Declaration("reflexive", _OBJECT)]))
+    proof = pl.Proof(_entries(spelled_like_a_label, "reflexive"), declarations=[_relation_on("X")])
+    ok, err = proof.check_detailed()
     assert ok, str(err)
 
 

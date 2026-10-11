@@ -52,9 +52,9 @@ VALID = [r for r in RESULTS if r[1]]
 
 
 def test_the_file_is_read_whole():
-    # Nineteen cases, none lost to a parse error (which would show as a
+    # Twenty cases, none lost to a parse error (which would show as a
     # refusal for the wrong reason).
-    assert [r[0] for r in RESULTS] == [str(n) for n in range(1, 20)]
+    assert [r[0] for r in RESULTS] == [str(n) for n in range(1, 21)]
     assert not [r for r in RESULTS if r[3] and r[3].startswith(("parse error", "parse/check error"))]
 
 

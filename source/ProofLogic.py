@@ -269,13 +269,32 @@ def _dedupe_declarations(declarations: List[Declaration]) -> List[Declaration]:
     return result
 
 
+# Metadata keys whose values only *describe* a declaration -- a relation's
+# property labels -- and are not symbols of the proof. A constant spelled like
+# a label (`Let reflexive be any set`) is not something the relation says
+# anything about, so refusing to generalize it would be a false rejection.
+#
+# Adding a key here is a soundness decision: nothing under it may ever be a
+# name a proof can also use for a constant. Until a key is listed, its values
+# are read as names (see `_metadata_names`). The cleaner long-term design is
+# for a declaration to say which of its metadata are symbol references, rather
+# than the kernel keeping a list of descriptive keys; that belongs with the
+# type system (TYPE_SYSTEM_DESIGN.md).
+DESCRIPTIVE_METADATA_KEYS = frozenset({"properties"})
+
+
 def _metadata_names(declarations: Iterable[Declaration]) -> set:
-    """Every string anywhere in the values of the declarations' structure
-    metadata (`(("carrier", "X"), ("properties", ("reflexive",)))` gives
-    `{"X", "reflexive"}`). The kernel cannot read metadata, but it can tell
-    that a name appears in it: `X` is then something a declaration says
-    something about. Over-approximate on purpose -- a string that is not a
-    name does no harm, and a name that is missed would be a hole."""
+    """The names the declarations' structure metadata refers to
+    (`(("carrier", "X"), ("properties", ("reflexive",)))` gives `{"X"}`).
+    The kernel cannot read what metadata means, but it can tell that a name
+    appears in it: `X` is then something a declaration says something about,
+    and no line of the proof need mention it.
+
+    Every string in a value counts as a name, except in the value of a key in
+    `DESCRIPTIVE_METADATA_KEYS`. That is over-approximate on purpose, so a
+    kind of metadata the kernel has not been told about is safe by default:
+    at worst it refuses a proof it need not have, and it cannot accept one it
+    should not. The keys themselves are never names."""
     names: set = set()
 
     def walk(value: Any) -> None:
@@ -292,7 +311,10 @@ def _metadata_names(declarations: Iterable[Declaration]) -> set:
         for entry in getattr(declaration, 'metadata', None) or ():
             # (key, value) pairs; anything else is walked whole.
             if isinstance(entry, tuple) and len(entry) == 2:
-                walk(entry[1])
+                key, value = entry
+                if isinstance(key, str) and key in DESCRIPTIVE_METADATA_KEYS:
+                    continue
+                walk(value)
             else:
                 walk(entry)
     return names

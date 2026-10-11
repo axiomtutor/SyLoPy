@@ -5,8 +5,9 @@
 # Cases 5 and 14 were first written as Invalid. They are accepted by design and
 # now say so: their titles give the reason. Cases 16-19 were added after the
 # first run of this file, for gaps the first fifteen did not reach (see the
-# notes on each). pytest_tests/test_uniqueness_rule.py checks the reason each
-# invalid case is rejected for.
+# notes on each). Case 20 is the opposite kind of gap: a sound proof the rule
+# refused. pytest_tests/test_uniqueness_rule.py checks the reason each invalid
+# case is rejected for.
 
 # 1
 ## Invalid: condition 3 — the candidate c is an existential witness, not arbitrary.
@@ -322,3 +323,25 @@
  5.1. X = a. (Assumption for Conditional Introduction)
  5.2. X = a. (Reiteration from 5.1)
 6. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 4, 5)
+
+
+# 20
+## Proof that
+### A constant spelled like a property label is an ordinary constant. Here
+### `reflexive` is one of R's property labels and also a set the proof names.
+### The label describes R and is not a name R refers to, so the set is
+### arbitrary. The rule once refused this proof because it read every string in
+### R's metadata as a name; case 18's carrier X, which R does refer to, is
+### still refused.
+
+1. Let X be any set, R be a reflexive relation on X. (Declaration)
+2. Let a be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. Let Y be such a set. (Existence from 4)
+6. Let reflexive be any set. (Declaration)
+7. If reflexive = a then reflexive = Y. (Conditional Introduction from subproof below)
+ 7.1. reflexive = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 5)
+ 7.3. reflexive = Y. (Transitivity from 7.1, 7.2)
+8. Exists V, (V = a and forall Z, (Z = a -> Z = V)). (Uniqueness, 4, 7)

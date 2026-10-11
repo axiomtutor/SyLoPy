@@ -386,7 +386,15 @@ implementing the rules without an explicit go-ahead.
          declares (the direct Pairing witness form), an object declared with
          structure metadata, and any name that a declaration's metadata
          refers to (`X` in `Let R be a reflexive relation on X`: the relation
-         rules read the carrier, and no line says so). A type descriptor
+         rules read the carrier, and no line says so). The property labels
+         are not names: `reflexive` there describes R, so a constant that is
+         merely spelled `reflexive` is still arbitrary. The kernel lists the
+         descriptive metadata keys (`DESCRIPTIVE_METADATA_KEYS`, now just
+         `properties`); strings under any other key are read as names, which
+         is safe by default. Listing a key is a soundness decision, and the
+         tidier design -- a declaration saying which of its metadata are
+         symbol references (ChatGPT's `Declaration.symbol_references`) --
+         belongs with the type system. A type descriptor
          (`Let X be an integer.`) is only a label: no rule reads it and it
          states no formula, so it changes nothing here. A Type that wants
          more must state a formula (`Nat(x)`, then condition 4 applies) or
@@ -412,11 +420,11 @@ implementing the rules without an explicit go-ahead.
       conditional may depend on it". Tests: `pytest_tests/test_uniqueness_rule.py`;
       fixtures `tests/testProofs/uniqueness.txt` (two valid, three invalid),
       `tests/testSetTheory/unique_pairing_without_wlog.txt`, and the red-team
-      file below. As a check, 47 deliberate bugs, introduced one at a time
+      file below. As a check, 51 deliberate bugs, introduced one at a time
       into the rule, the validator's bookkeeping and the explanations, each
       made at least one test fail.
       Red team (ChatGPT, PR #18, then Claude's follow-up):
-      `tests/testProofs/uniqueness_red_team.txt` has 19 cases and
+      `tests/testProofs/uniqueness_red_team.txt` has 20 cases and
       `pytest_tests/test_uniqueness_red_team_reasons.py` checks that each
       invalid one is refused for the condition its title names. Cases 5
       (`Let X be an integer`) and 14 (a Pairing instance that mentions c) were
@@ -426,11 +434,14 @@ implementing the rules without an explicit go-ahead.
       property of Y in terms of a and b that nothing derives, and it was not
       counted as a hypothesis; and the carrier of a relation declaration is
       constrained by metadata the relation rules read. A false "exactly one"
-      statement could be proved through each. Lesson for any rule that
-      generalizes a constant (`WLOG` and `Mutatis mutandis` will probably need
-      a similar view of the proof around them; that design is not written
-      yet): list everything the proof relies on, not only the lines that
-      mention the constant.
+      statement could be proved through each. Case 20 is the opposite kind
+      of gap, found in review: the rule once read every string in a
+      relation's metadata as a name, property labels included, so it refused
+      a sound proof whose constant was merely spelled `reflexive`. Lesson for
+      any rule that generalizes a constant (`WLOG` and `Mutatis mutandis`
+      will probably need a similar view of the proof around them; that
+      design is not written yet): list everything the proof relies on, not
+      only the lines that mention the constant.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
