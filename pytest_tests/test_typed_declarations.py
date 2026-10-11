@@ -127,7 +127,7 @@ end subproof
     assert repr(theorem.conclusion) == "(Int(n) → Int(n))"
 
     use_entries, _ = pp.parse_proof_text(
-        "1. Let m be an integer. (Declaration)\\n"
+        "1. Let m be an integer. (Declaration)\n"
     )
     use_entries.append(
         (
