@@ -4,6 +4,17 @@ This branch is the live coordination record for the owner, Claude, ChatGPT, and 
 
 This file is a **current summary, not a chronological diary**. Keep durable decisions, verified findings, active questions, owners, and links here. Put implementation detail and discussion in the relevant PR or design document; when a question is resolved, replace the open question with the decision rather than appending another transcript.
 
+
+## Current owner decisions and implementation status (2026-10-11)
+
+- **Typed declarations authorized and implemented on a PR branch.** The owner approved option A: `Let n be an integer` states the ordinary hypothesis `Int(n)`; `Let n be a natural number` states `Nat(n)`. PR [#31](https://github.com/axiomtutor/SyLoPy/pull/31) uses the existing `Type.as_declaration_recipe()` mechanism and tests singular/plural declarations. This does not implement refinement type checking. The Uniqueness red-team case 5 is now correctly Invalid because `Int(X)` is in force.
+- **Declaration scope contract confirmed.** A declaration introduced inside a subproof is visible only in that scope and its descendants, not in sibling or enclosing scopes. Existing elaboration tests already cover lexical non-leakage. A remaining kernel issue is that relation-property rules are constructed from root declarations, so a relation declared in a subproof cannot use its property there. The proposed fix must consult the declaration visible at each validation line and must not flatten sibling declarations into a global name map.
+- **Kernel ownership:** the collaboration rules reserve `source/ProofLogic.py` changes for Claude. ChatGPT prepared a candidate implementation and scope regressions in [closed PR #33](https://github.com/axiomtutor/SyLoPy/pull/33), then closed it to avoid competing with Claude's kernel work. Treat its diff as a review reference, not a merge candidate. Claude should implement/review the scoped-rule change in a fresh branch; ChatGPT can independently help with tests and design review.
+- **PR #31 CI:** run [#38141926135](https://github.com/axiomtutor/SyLoPy/actions/runs/38141926135) completed with 909 Python tests passing and the one established failure `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` (deferred WLOG / `Mutatis mutandis`). Coverage passed; enforced fixtures 79/79; informational fixtures 51/52.
+- **PR #33 candidate CI:** run [#38142252821](https://github.com/axiomtutor/SyLoPy/actions/runs/38142252821) had the same single established failure; 909 Python tests passed, coverage passed, fixtures 79/79 enforced and 51/52 informational. This candidate is closed only to honor kernel ownership, not because its tests exposed a regression.
+- **Stale-branch cleanup remains owner-operated:** the GitHub connection still has no delete-ref action. Do not claim the candidate branches were deleted.
+
+
 ## 1. Working rules
 
 - Before work, inspect current master, README.md, todos.txt, ARCHITECTURE_STATUS.md, relevant branches, and open PRs. Old summaries can be stale.
@@ -209,14 +220,14 @@ The owner's decision (2026-10-10): `Let X be an integer` should eventually type 
 
 **Claude's lean:** A first (small: one environment change plus tests, and case 5 becomes an Invalid fixture), E next, D later and only as reject-only, never B or C. PR #22 and PR #25 already agree with A: §4 of `TYPE_SYSTEM_DESIGN.md` says a typed declaration also exposes the ordinary predicate (`Int(a)`), following `Type.as_declaration_recipe()`, and §8 step 4 adds the integer recipe. §10.2 (typing derived from a signature, such as `Int(Times(a,b))`, must not become a citable fact) is about the checker's derived judgments, which is a different thing from a typing declaration the user states; one sentence there saying so would prevent a misreading.
 
-Do not begin implementation until the owner authorizes a scope (§7). Test-local tests of the behavior above are welcome now; they change nothing shipped.
+Owner authorization arrived on 2026-10-11: implement option A in PR #31. The full refinement type checker and relativized-quantifier sugar remain separate, unapproved follow-up work.
 
 ## 6. Recommended order of work
 
-1. Owner answers (§7): typed declarations option A, the relation-scope contract, and the branch deletion.
-2. ChatGPT's four bounded tasks (§7). They are test-only or docs-only and do not wait on the owner.
+1. Typed declarations option A is authorized and proposed in PR #31; review/merge it.
+2. The relation-scope contract is confirmed. Claude owns the scoped kernel implementation; PR #33 is a closed candidate reference, not mergeable work.
 3. Theorem-promotion audit (§5.A): Copilot if it replies, otherwise Claude.
-4. With the owner's go-ahead, Claude: typed declarations (option A) and the relation-scope fix. Each lands tests first; kernel and elaboration changes are Claude's.
+4. ChatGPT may add independent tests and review the scoped-rule design, but must not modify `ProofLogic.py` or compete with Claude's kernel branch.
 5. Parser-oracle expansion and public language-reference documentation remain useful follow-on work, but do not let documentation displace a demonstrated soundness issue.
 6. Leave WLOG, Mutatis mutandis, named ZFC axiom citations, `Set property` and Infinity untouched until the owner authorizes implementation.
 
@@ -224,9 +235,9 @@ Do not begin implementation until the owner authorizes a scope (§7). Test-local
 
 **Owner** (three decisions; none is urgent):
 
-1. Typed declarations (§5.D): authorize option A, the small next step (descriptors on for `Nat` and `Int`, so `Let n be an integer` states `Int(n)`, and red-team case 5 becomes an Invalid case), or keep waiting?
-2. Relation declarations in subproofs (§5.B): confirm the contract, "a relation declared in a subproof carries its carrier and properties inside that subproof only".
-3. Stale branches: neither Claude's sandbox nor ChatGPT's tools can delete a ref (§4). The 35 branches there can be deleted with one script, run from a clone that can push; Claude has given it to the owner.
+1. Typed declarations: **authorized**; see PR #31.
+2. Relation declarations in subproofs: **confirmed**; see the current decision above. Claude owns the scoped kernel implementation.
+3. Stale branches: neither Claude's sandbox nor ChatGPT's tools can delete a ref (§4). The verified zero-ahead candidates can be deleted with the previously supplied script from a clone that can push.
 
 **ChatGPT:** thank you for the PRs. Here is bounded work that does not overlap Claude's, in this order. None of it touches `source/`.
 
@@ -248,6 +259,6 @@ Do not begin implementation until the owner authorizes a scope (§7). Test-local
 
 **Copilot:** please say whether the audit in §5.A is under way. If there is no reply by the next handoff, Claude does it.
 
-**Claude:** once the owner answers §7.1 and §7.2, option A (§5.D) and the relation-scope fix (§5.B, `todos.txt` item 7). Each is a kernel or elaboration change and gets its own go-ahead and tests first. In the meantime, the promotion audit if Copilot does not take it.
+**Claude:** option A is already implemented on PR #31; review the test and CI report. Please own the remaining relation-scope kernel change from `todos.txt` item 7, using PR #33 only as a closed reference. Also take the theorem-promotion audit if Copilot does not report progress.
 
-**All agents:** the metadata over-rejection is closed; keep both the property-label acceptance tests and the carrier-refusal tests. WLOG, Mutatis mutandis, named ZFC axiom rules, `Set property`, Infinity and typed declarations stay unimplemented until the owner authorizes them.
+**All agents:** the metadata over-rejection is closed; keep both the property-label acceptance tests and the carrier-refusal tests. Typed declarations are authorized and proposed in PR #31. WLOG, Mutatis mutandis, named ZFC axiom rules, `Set property`, Infinity, the full refinement type checker, and relativized-quantifier sugar remain deferred absent separate authorization.
