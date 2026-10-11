@@ -301,7 +301,18 @@ def divides_formula(a: tl.Term, n: tl.Term, witness_name: str = "__div_witness")
     """`a | n` ("a divides n"), expanded to its defining existential:
     `exists m, (Int(m) and n = a * m)`. Definitional sugar, not a
     primitive -- see the module docstring.
+
+    The generated witness must be fresh for the input terms. Otherwise, if
+    the default name already occurs as a variable in `a` or `n`, the new
+    existential would capture that occurrence and change the formula's
+    meaning (for example, under `forall __div_witness, ...`).
     """
+    used_names = fl.term_names(a) | fl.term_names(n)
+    base_name = witness_name
+    suffix = 1
+    while witness_name in used_names:
+        witness_name = f"{base_name}_{suffix}"
+        suffix += 1
     witness = tl.VariableTerm(witness_name)
     return fl.Exists(witness_name, fl.And(_Int(witness), fl.Equals(n, _Times(a, witness))))
 

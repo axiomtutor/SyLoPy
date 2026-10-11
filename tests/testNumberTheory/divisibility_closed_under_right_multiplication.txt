@@ -1,0 +1,32 @@
+# 1: Divisibility is closed under multiplication on the right
+## Proof that
+### if a is an integer, a divides b, and c is an integer
+### then a divides Times(b, c).
+
+1. Let a, b, c be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(c). (Premise)
+4. a|b. (Premise)
+5. forall x, forall y, ((Int(x) and Int(y)) -> Int(Times(x, y))). (Axiom)
+6. forall x, forall y, forall z, (((Int(x) and Int(y)) and Int(z)) -> Times(Times(x, y), z) = Times(x, Times(y, z))). (Axiom)
+7. Let m be an object. (Declare)
+8. a|Times(b, c). (Existential Elimination from 4, subproof below)
+begin subproof
+ 8.1. Int(m) and b = Times(a, m). (Assumption for Existential Elimination)
+ 8.2. Int(m). (Conjunction Elimination from 8.1)
+ 8.3. b = Times(a, m). (Conjunction Elimination from 8.1)
+ 8.4. Times(b, c) = Times(Times(a, m), c). (Algebra from 8.3)
+ 8.5. forall y, forall z, (((Int(a) and Int(y)) and Int(z)) -> Times(Times(a, y), z) = Times(a, Times(y, z))). (Universal Instantiation from 6)
+ 8.6. forall z, (((Int(a) and Int(m)) and Int(z)) -> Times(Times(a, m), z) = Times(a, Times(m, z))). (Universal Instantiation from 8.5)
+ 8.7. ((Int(a) and Int(m)) and Int(c)) -> Times(Times(a, m), c) = Times(a, Times(m, c)). (Universal Instantiation from 8.6)
+ 8.8. Int(a) and Int(m). (Conjunction Introduction from 2, 8.2)
+ 8.9. (Int(a) and Int(m)) and Int(c). (Conjunction Introduction from 8.8, 3)
+ 8.10. Times(Times(a, m), c) = Times(a, Times(m, c)). (Modus Ponens from 8.7, 8.9)
+ 8.11. Times(b, c) = Times(a, Times(m, c)). (Transitivity from 8.4, 8.10)
+ 8.12. forall y, ((Int(m) and Int(y)) -> Int(Times(m, y))). (Universal Instantiation from 5)
+ 8.13. (Int(m) and Int(c)) -> Int(Times(m, c)). (Universal Instantiation from 8.12)
+ 8.14. Int(m) and Int(c). (Conjunction Introduction from 8.2, 3)
+ 8.15. Int(Times(m, c)). (Modus Ponens from 8.13, 8.14)
+ 8.16. Int(Times(m, c)) and Times(b, c) = Times(a, Times(m, c)). (Conjunction Introduction from 8.15, 8.11)
+ 8.17. a|Times(b, c). (Existential Introduction from 8.16)
+end subproof

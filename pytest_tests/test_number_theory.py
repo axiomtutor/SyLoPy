@@ -26,6 +26,15 @@ def test_divides_formula_is_the_defining_existential():
     assert repr(formula) == "(∃m. (Int(m) ∧ n = Times(a, m)))"
 
 
+def test_divisibility_sugar_does_not_capture_a_bound_divisor_variable():
+    actual = pp.parse_formula("forall __div_witness, __div_witness divides n")
+    expected = pp.parse_formula(
+        "forall __div_witness, exists m, "
+        "(Int(m) and n = Times(__div_witness, m))"
+    )
+    assert pl._alpha_eq(actual, expected)
+
+
 def test_quotient_defining_property_rule_accepts_and_rejects():
     rule = numt.QuotientDefiningPropertyRule()
     n, a = c("n"), c("a")

@@ -255,7 +255,7 @@ class RelationTotalityRule(_RelationRule):
             return False
         x, carrier_x = memberships[0]
         y, carrier_y = memberships[1]
-        if carrier_x != carrier_y:
+        if carrier_x != carrier_y or not self._carrier_matches(r1, carrier_x):
             return False
         return ((_ast_eq(a, x) and _ast_eq(b, y) and _ast_eq(c, y) and _ast_eq(d, x)) or
                 (_ast_eq(a, y) and _ast_eq(b, x) and _ast_eq(c, x) and _ast_eq(d, y)))

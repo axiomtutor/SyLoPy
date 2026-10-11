@@ -1,0 +1,20 @@
+Use discrete math.
+
+# 1: Transitive and irreflexive relations are asymmetric
+## Proof that
+### if R is transitive and irreflexive on X, then R(a,b) implies not R(b,a)
+### then R(a, b) -> not R(b, a).
+
+1. Let X be any set, R be a strict partial order on X, and a, b be in X. (Declaration)
+2. R(a, b) -> not R(b, a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a, b). (Assumption for Conditional Introduction)
+ 2.2. not R(b, a). (Proof by Contradiction from subproof below)
+ begin subproof
+  2.2.1. not (not R(b, a)). (Assumption for Contradiction)
+  2.2.2. R(b, a). (Double Negation from 2.2.1)
+  2.2.3. R(a, a). (Relation Transitivity from 2.1, 2.2.2)
+  2.2.4. not R(a, a). (Relation Irreflexivity from 1)
+  2.2.5. R(a, a) and not R(a, a). (Conjunction Introduction from 2.2.3, 2.2.4)
+ end subproof
+end subproof

@@ -1,0 +1,59 @@
+# Unique pairing, proved with Uniqueness and without WLOG.
+#
+# tests/setTheoryProofs/zfc_remaining_axioms.txt proves the same statement
+# with WLOG, which does not exist yet. Here each "x is a or b" case is written
+# out by hand with Proof by Cases, so this proof runs today. Uniqueness is the
+# last step: line 5 says "any X with the pairing property equals Y", X is
+# introduced by a plain declaration (so it is arbitrary), and Y is the witness
+# named on line 3.
+
+
+# 1
+## Proof that
+### If a and b are sets,
+### then there exists a unique set Y such that forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. a and b are sets. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. Let X be any set. (Declaration)
+5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
+ 5.1. Forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
+ 5.2. X subseteq Y. (Subset proof below)
+  5.2.1. Let x in X. (Assumption for subset proof)
+  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
+  5.2.3. In(x, Y). (Proof by Cases from 5.2.2, subproofs below)
+  begin subproof
+   5.2.3.1. x = a. (Case)
+   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
+   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
+   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
+   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
+  end subproof
+  begin subproof
+   5.2.3.1. x = b. (Case)
+   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
+   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
+   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
+   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
+  end subproof
+ 5.3. Y subseteq X. (Subset proof below)
+  5.3.1. Let y in Y. (Assumption for subset proof)
+  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
+  5.3.3. In(y, X). (Proof by Cases from 5.3.2, subproofs below)
+  begin subproof
+   5.3.3.1. y = a. (Case)
+   5.3.3.2. In(y, X) iff (y = a or y = b). (Universal Instantiation from 5.1)
+   5.3.3.3. (y = a or y = b) -> In(y, X). (Biconditional Elimination from 5.3.3.2)
+   5.3.3.4. y = a or y = b. (Disjunction Introduction from 5.3.3.1)
+   5.3.3.5. In(y, X). (Modus Ponens from 5.3.3.4, 5.3.3.3)
+  end subproof
+  begin subproof
+   5.3.3.1. y = b. (Case)
+   5.3.3.2. In(y, X) iff (y = a or y = b). (Universal Instantiation from 5.1)
+   5.3.3.3. (y = a or y = b) -> In(y, X). (Biconditional Elimination from 5.3.3.2)
+   5.3.3.4. y = a or y = b. (Disjunction Introduction from 5.3.3.1)
+   5.3.3.5. In(y, X). (Modus Ponens from 5.3.3.4, 5.3.3.3)
+  end subproof
+ 5.4. X = Y. (Set equality, 5.2, 5.3)
+6. Exists Y, (forall u, (In(u, Y) iff (u = a or u = b))) and (forall X, (forall z, (In(z, X) iff (z = a or z = b))) -> X = Y). (Uniqueness, 2, 5)

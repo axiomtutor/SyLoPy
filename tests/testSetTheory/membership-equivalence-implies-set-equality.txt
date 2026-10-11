@@ -1,0 +1,22 @@
+# 1: Extensionality from identical membership conditions
+## Proof that
+### sets with the same members are equal
+### then X = Y.
+
+1. Let X, Y be any sets. (Declaration)
+2. forall u, (In(u, X) iff In(u, Y)). (Premise)
+3. X subseteq Y. (Subset proof below)
+ begin subproof
+  3.1. Let a in X. (Assumption for subset proof)
+  3.2. In(a, X) iff In(a, Y). (Universal Instantiation from 2)
+  3.3. In(a, X) -> In(a, Y). (Biconditional Elimination from 3.2)
+  3.4. In(a, Y). (Modus Ponens from 3.3, 3.1)
+ end subproof
+4. Y subseteq X. (Subset proof below)
+ begin subproof
+  4.1. Let a in Y. (Assumption for subset proof)
+  4.2. In(a, X) iff In(a, Y). (Universal Instantiation from 2)
+  4.3. In(a, Y) -> In(a, X). (Biconditional Elimination from 4.2)
+  4.4. In(a, X). (Modus Ponens from 4.3, 4.1)
+ end subproof
+5. X = Y. (Set Equality from 3, 4)

@@ -6,11 +6,10 @@ The project is functionally green, with one known, tracked exception. The
 core proof-language pipeline has been validated against the repository's
 full regression suite:
 
-- 531 Python tests; 529 pass, 1 skipped, 1 known failure (see "Known issues"
-  below). The skip is the parser-oracle test, which has nothing to check until
-  `parse_oracle/` is merged (see item 4).
-- all enforced proof fixture suites pass (48/48)
-- informational proof fixtures: 48/49 pass (the one failure is the same
+- 766 Python tests; 765 pass, 1 known failure (see "Known issues" below).
+  That includes the 159-case parser oracle in `parse_oracle/`.
+- all enforced proof fixture suites pass (54/54)
+- informational proof fixtures: 51/52 pass (the one failure is the same
   known issue)
 
 The current work is no longer about making the basics work. The remaining work
@@ -29,10 +28,15 @@ is about making the system cleaner, easier to extend, and easier to use.
       such a set. (Existence from 2)` and `Let X be any set. (Declaration)`,
       the same way pairing proof 5 does) and now fails only at validation, at
       line 5.2.3, because `WLOG` is not a registered rule. `Mutatis mutandis`
-      (line 5.3) and `Uniqueness` (line 6) are the other two rules it needs
-      that don't exist yet. Update the test once "ZFC axiom citations and
-      derived rules" (below) lands -- not before; the fixture is deliberately
-      ahead of the implementation right now.
+      (line 5.3) is the other rule it needs that doesn't exist yet.
+      `Uniqueness` (line 6) now exists; the proof stops at its first missing
+      rule, so line 6 is not reached here. Its last step was checked by
+      replacing `WLOG` and `Mutatis mutandis` with stand-ins, and the same
+      proof written without either is the enforced fixture
+      `tests/testSetTheory/unique_pairing_without_wlog.txt`. Update the test
+      once "ZFC axiom citations and derived rules" (below) lands -- not
+      before; the fixture is deliberately ahead of the implementation right
+      now.
 
 ## Design principles
 
@@ -41,7 +45,7 @@ is about making the system cleaner, easier to extend, and easier to use.
   formulas, rules, subproof shapes -- over adding new kernel/AST primitives.
   Reserve real kernel changes for genuinely new logical primitives, not
   convenience notation around an existing idea. "Exists unique" is the first
-  applied case: planned as sugar expanding to the ordinary
+  applied case: the `Uniqueness` rule concludes the ordinary
   `exists Y, (P(Y) and forall X, (P(X) -> X = Y))` form (see "Uniqueness,
   N, M" below), not a new `ExistsUnique` AST node.
 
@@ -58,15 +62,19 @@ proof text
 ```
 
 The parser/elaboration stack remains the main public entry point, and
-`ProofContext` is now the authoritative lexical-scoping layer for declarations,
-labels, assumptions, and arbitrary/fresh bindings.
+`ProofContext` is now the authoritative lexical-scoping layer during elaboration
+for declarations, labels, assumptions, and arbitrary/fresh bindings.
 
-The context migration is done on the elaboration side; the one remaining
-item is a decision about the kernel's separate scope classes. See item 1 below.
+Kernel validation deliberately uses its own `LabelScope` and `DeclarationScope`.
+These are not a second elaboration environment: they operate after elaboration
+on already-constructed proof entries and are the validation-time authority for
+reference and declaration visibility. Their overlapping scope semantics are
+kept equivalent by regression tests rather than by making the kernel depend on
+`ProofContext`.
 
 ## High-priority work
 
-### 1. Finish the context consolidation pass (one decision left)
+### 1. Context consolidation
 
 - [x] Make `ProofContext` the explicit lexical scope for elaboration.
 - [x] Register declarations, labels, assumptions, and arbitrary bindings through
@@ -77,12 +85,12 @@ item is a decision about the kernel's separate scope classes. See item 1 below.
       used to dual-write is gone; sibling-subproof labels no longer leak).
 - [x] Delete the write-only `_ElaborationContext.formula_by_label` map
       (`origin_by_label` is a legitimate flat map and stays).
-- [ ] Decide whether the kernel's own `LabelScope` / `DeclarationScope`
-      (`ProofLogic.py`) should be expressed in terms of `ProofContext`, or
-      stay as the independent validation-time authority. Today the two agree
-      on semantics (including label-shadowing rejection) but are separate
-      implementations; if they stay separate, say so in the docs and keep
-      the equivalence tests.
+- [x] Keep the kernel's `LabelScope` / `DeclarationScope`
+      (`ProofLogic.py`) as independent validation-time scope structures rather
+      than expressing them in terms of `ProofContext`. `ProofContext` belongs
+      to elaboration and carries source/elaboration state; the kernel operates
+      on already-elaborated entries. Their overlapping lexical semantics are
+      the same and are covered by equivalence/regression tests.
 
 ### 2. Harden the public API and docs
 
@@ -113,11 +121,9 @@ item is a decision about the kernel's separate scope classes. See item 1 below.
       malformed input), and `pytest_tests/test_parse_oracle.py` checks the
       parser against every file there, up to the names of bound variables
       (set `SYLOPY_ORACLE_DIR` to check another directory). The first file,
-      `set_theory_phrases.txt` (85 cases), was written by ChatGPT on branch
-      `chatgpt-parse-oracle`, from the intended readings and not from the
-      code; all 85 agree with the parser (it found two real gaps, both fixed).
-- [ ] Merge `chatgpt-parse-oracle` (one new file) so the oracle test has
-      cases to run on master.
+      `set_theory_phrases.txt` (85 cases), was written by ChatGPT (PR #3),
+      from the intended readings and not from the code; all 85 agree with the
+      parser (it found two real gaps, both fixed).
 
 ### 5. ZFC axiom citations and derived rules for set theory
 
@@ -154,36 +160,181 @@ implementing the rules without an explicit go-ahead.
       `PowerSetAxiomRule`, `InfinityAxiomRule`), following the shape-checking
       pattern already used by `SeparationSchemaRule` / `ReplacementSchemaRule`.
       Each is cited by name -- `(Axiom of pairing)`, etc. -- against a
-      specific instance shape, never a restated formula. Each should also
-      bundle its own fresh-witness check (the way `ExistentialEliminationRule`
-      checks freshness), since the proof style names the new set directly off
-      the axiom citation (`There is a set Y = {a, b} ... (Axiom of pairing)`)
-      rather than citing existence and then doing a separate Existential
-      Elimination.
-      Decided (scope): the new set is an ordinary declaration at the nesting
-      level of the citing line. It stays in scope for the rest of that level,
-      including nested subproofs below it, and is invisible outside the
-      subproof it was introduced in -- the same rule `ProofContext` already
-      applies to declarations, so no special scoping is needed.
-      Decided (what the citation records): the line does not have to restate
-      the instance formula. It introduces the set together with its defining
-      property (for pairing, membership iff equal to a or to b), and
-      `Set property` (below) is what later retrieves that property. The rule
-      itself only checks that the stated set has the shape the axiom allows.
+      specific instance shape, never a restated formula. The citation stays an
+      ordinary existential formula, and the rule only checks that the cited
+      formula has the shape the axiom allows. Naming the set the axiom
+      provides is the witness-naming sugar above (`Let Y be such a set.
+      (Existence from L)`), not part of the citation: the named rules check
+      shapes and introduce nothing. Scope is the sugar's -- the named set
+      stays in scope for the rest of its nesting level, including nested
+      subproofs below it, and is invisible outside the subproof it was
+      introduced in (the rule `ProofContext` already applies to
+      declarations). `Set property` (below) is what later retrieves a set's
+      defining property.
+      Decided (owner, 2026-10-08): ignore ChatGPT's direct-witness approach,
+      where the axiom line itself introduces the set. PR #2 added that form
+      for Pairing only (`There is a set Y = {a, b}. (Axiom of pairing)`, via
+      `PairingAxiomRule(witness_name=...)` and rule-introduced declarations).
+      It stays on master for now but is not the design, and it is not to be
+      extended to Union, Power Set or Infinity.
 
-- [ ] WLOG as a subproof-copying rule.
-      Confirmed design: `(WLOG)` closes a subproof, the way
-      `ExistentialEliminationRule` / `DisjunctionEliminationRule` do, rather
-      than standing alone as a one-line citation. On a WLOG citation, the
-      checker copies the cited subproof, substitutes the untaken disjunct's
-      term for the taken one throughout (reusing
-      `_substitute_constants_in_formula`), re-applies the identical rule
-      citations line by line, and validates each exactly as usual
-      (`applies()`) against the substituted formulas. Decided (behavior): the
-      author proves one chosen disjunct; the checker confirms the same proof
-      works for each of the other disjuncts. Still needs a concrete
-      surface syntax for delimiting the WLOG subproof before implementation
-      starts.
+- [ ] WLOG as a proof-region replay rule.
+      Surface form: WLOG is not a special subproof. It is an ordinary
+      asserted formula whose justification is a WLOG citation, e.g.
+      `a = x. (WLOG from 1)`. The cited line must be a disjunction, and the
+      asserted formula must be exactly one of its disjuncts. The WLOG region
+      begins at that line and runs to the end of the current proof block
+      (ending at the enclosing subproof's boundary, if any).
+      Decided (owner, 2026-10-08): the region is the WLOG line and everything
+      after it in that block, so WLOG needs no surface syntax of its own to
+      delimit a subproof. Implementation still waits for an explicit
+      go-ahead.
+
+      WLOG is therefore a validator-level structural construct rather than a
+      normal backward-only `InferenceRule`: its justification depends on the
+      suffix of the current proof block. When the validator reaches WLOG, it
+      should take control of the remainder of that block: validate the
+      author's chosen case normally, then replay the same region once for each
+      other disjunct and require every replayed line to validate.
+      
+      Current implementation target: equality cases such as
+      `a = x or a = y or a = z`. Derive a constant-term substitution by
+      comparing the chosen disjunct with each alternative; for the first
+      implementation require that the two equalities differ in exactly one
+      constant term, e.g. `x -> y`. Use
+      `_substitute_constants_in_formula` for formulas and add corresponding
+      substitution for declarations/structured declaration metadata. Only the
+      WLOG region is transformed. Lines before WLOG are not mutated.
+      
+      Citation remapping is part of the replay, not a post-processing step.
+      Maintain a map from every original region label already replayed to the
+      corresponding replay value. If a replayed line cites an earlier line
+      inside the WLOG region, use that replayed counterpart. If it cites a
+      line outside the region, transform the cited line's *formula* with the
+      current substitution and search the visible pre-WLOG proof state for an
+      already-established line with that transformed value. The original outer
+      line is never changed. This is what turns, for example, a citation of
+      `P(x)) into a citation of an existing `P(y)) when the latter is
+      available. Search only lines visible at the corresponding point in the
+      original proof; never use a future line or a line from a closed sibling
+      scope. When several matching lines exist, choose the earliest visible
+      match deterministically. If no matching line exists, the WLOG replay
+      fails.
+      
+      The replay should preserve dependency structure: transform a line's
+      formula and declarations, resolve its transformed citations, then call
+      the same rule's `applies()` on the transformed candidate values.
+      Replayed nested subproofs are transformed recursively; a citation to an
+      outer subproof requires an already-validated corresponding outer
+      subproof with the transformed assumption/conclusion, rather than
+      retroactively transforming the old subproof.
+      
+      Suggested implementation skeleton:
+      
+      ```python
+      @dataclass(frozen=True)
+      class WLOGReplayRef:
+          source_label: str
+          value: Union[fl.Formula, SubproofRecord]
+          origin: str                 # "replay" or "outer"
+      
+      
+      def _wlog_substitution(chosen: fl.Formula,
+                             alternative: fl.Formula) -> Dict[str, tl.Term]:
+          """Derive the equality-case substitution x -> y."""
+          if not isinstance(chosen, fl.Equals) or not isinstance(alternative, fl.Equals):
+              raise WLOGError("current WLOG form requires equality disjuncts")
+      
+          differences = []
+          for left, right in (
+              (chosen.left, alternative.left),
+              (chosen.right, alternative.right),
+          ):
+              if not _ast_eq(left, right):
+                  differences.append((left, right))
+      
+          if len(differences) != 1:
+              raise WLOGError("WLOG alternatives must differ in exactly one term")
+          source, target = differences[0]
+          if not isinstance(source, tl.ConstantTerm):
+              raise WLOGError("the changing WLOG term must be a constant")
+          return {source.name: target}
+      
+      
+      def _resolve_wlog_citation(
+          label: str,
+          *,
+          region_labels: set[str],
+          replayed: Dict[str, WLOGReplayRef],
+          outer_visible: Iterable[Tuple[str, Any]],
+          substitution: Dict[str, tl.Term],
+      ) -> WLOGReplayRef:
+          # References into the replay region follow the replayed dependency
+          # graph exactly.
+          if label in region_labels:
+              return replayed[label]
+      
+          # References outside the region are not transformed in place. Find
+          # an already-visible fact that is the transformed counterpart.
+          original = lookup_visible_outer(label)
+          expected = _substitute_wlog_value(original, substitution)
+          for visible_label, value in outer_visible:
+              if _wlog_value_matches(value, expected):
+                  return WLOGReplayRef(visible_label, value, "outer")
+          raise WLOGError(
+              f"no visible counterpart for {label!r} after WLOG substitution"
+          )
+      
+      
+      def _replay_wlog_region(block, wlog_index, visible_before, disjunction,
+                              selected):
+          """Validate the chosen suffix normally, then replay it for every
+          other disjunct.
+      
+          The actual validator should call this when it encounters a WLOG
+          line, because the line's justification depends on the suffix of the
+          current block.
+          """
+          alternatives = list(disjunction.disjuncts)
+          for alternative in alternatives:
+              substitution = _wlog_substitution(selected, alternative)
+              replayed = {}
+              # The WLOG line itself is the seed of the replay.
+              replayed[block[wlog_index].label] = WLOGReplayRef(
+                  block[wlog_index].label,
+                  alternative,
+                  "replay",
+              )
+              for entry in block[wlog_index + 1:]:
+                  transformed = _transform_wlog_entry(entry, substitution)
+                  candidates = [
+                      _resolve_wlog_citation(
+                          ref, region_labels=..., replayed=replayed,
+                          outer_visible=..., substitution=substitution,
+                      ).value
+                      for ref in transformed.cited_labels
+                  ]
+                  _validate_transformed_entry(transformed, candidates)
+                  replayed[transformed.label] = WLOGReplayRef(
+                      transformed.label, transformed.value, "replay"
+                  )
+      ```
+      
+      The skeleton is deliberately split into substitution, citation
+      resolution, and rule validation so that line correspondence is explicit
+      rather than hidden inside formula matching.
+      
+      Acceptance tests should cover: two and three disjuncts; a correct WLOG
+      proof and an incorrect symmetric case; remapping a citation from
+      `P(x)` to an already-visible `P(y)`; failure when that counterpart is
+      absent; substitution of declarations; nested subproofs; prevention of
+      future-line/cross-sibling references; and preservation of the original
+      proof when the WLOG region is not replayed.
+      
+      Future generalization: replace equality-specific substitution with a
+      theory-independent transformation between arbitrary WLOG properties
+      `phi` and `psi`. Equality cases such as `a = x` / `a = y` then
+      become one particular transformation mechanism.
 
 - [x] (Partly done.) General `Set property` -- `SetPropertyRule`, cited as
       `Set property from N, M` or `Set property, N, M` (bare `Set property`
@@ -213,11 +364,69 @@ implementing the rules without an explicit go-ahead.
       checks. For a set with no stated property (e.g. "Let X be any set"),
       the property is symbolic, i.e. just its own membership predicate.
 
-- [ ] `Uniqueness, N, M` as sugar.
-      Expands to the ordinary `exists Y, (P(Y) and forall X, (P(X) -> X = Y))`
-      form, reusing `ExistentialIntroductionRule`'s witness-to-bound-variable
-      generalization technique, rather than becoming a new `ExistsUnique`
-      core connective. First applied case of the sugar principle above.
+- [x] `Uniqueness, N, M`. Implemented as `UniquenessRule` in `ProofLogic.py`.
+      It concludes the ordinary `exists W, (B(W) and forall V, (B(V) -> V = W))`
+      form, not a new `ExistsUnique` core connective (first applied case of
+      the sugar principle above). From an existence line `exists Y, B(Y)`
+      (line N) and a conditional `B(c) -> c = d` (line M), cited in either
+      order, it infers that exactly one Y has B. The bound names of the
+      conclusion may differ from the cited lines.
+      The rule is only sound if `c` stands for any object with B, so it
+      checks that `c` is arbitrary. It applies only when all of these hold:
+      1. `c` and `d` are distinct constants;
+      2. `c` does not occur in the existence line (so not in the conclusion);
+      3. `c` is a constant the proof introduced as arbitrary: by a plain
+         declaration line (`Let X be any set. (Declaration)`) or as the flag
+         of a Fresh Variable subproof. Not arbitrary: the constants the proof
+         starts with, a witness from `Existence from L`, a constant a rule
+         declares (the direct Pairing witness form), an object declared with
+         structure metadata, and any name that a declaration's metadata
+         refers to (`X` in `Let R be a reflexive relation on X`: the relation
+         rules read the carrier, and no line says so). A type descriptor
+         (`Let X be an integer.`) is only a label: no rule reads it and it
+         states no formula, so it changes nothing here. A Type that wants
+         more must state a formula (`Nat(x)`, then condition 4 applies) or
+         record metadata;
+      4. `c` occurs in no hypothesis in force: premises, `(Axiom)` lines,
+         declarations that state a formula (`Let x in X` states `x in X`),
+         witness lines (the bundle `Existence from L` makes, and the direct
+         Pairing witness line, which states a property of the witness in
+         terms of other constants), and the open assumptions. Premises and
+         cited axioms stay in force for the rest of the proof, which is
+         conservative. Not hypotheses: lines a rule derives from nothing --
+         an instance of an axiom schema such as `(Axiom of pairing)`, or
+         `a = a` -- which hold of every object.
+      Mechanism: `InferenceRule.applies_in_context(candidates, phi, context)`
+      is a new opt-in hook (the default forwards to `applies`, so no other
+      rule changes). The validator builds a `RuleContext` (`hypotheses`,
+      `arbitrary_constants`, minus the names metadata refers to) before each
+      rule check. A rule asked without a context never applies. A second
+      opt-in hook, `explain_in_context`, lets a rule say why it refused:
+      Uniqueness reports which of conditions 1-4 failed (or that the lines
+      lack the form), and the validator appends that to its message, e.g.
+      "... condition 4: X occurs in a hypothesis in force, In(X, W), so the
+      conditional may depend on it". Tests: `pytest_tests/test_uniqueness_rule.py`;
+      fixtures `tests/testProofs/uniqueness.txt` (two valid, three invalid),
+      `tests/testSetTheory/unique_pairing_without_wlog.txt`, and the red-team
+      file below. As a check, 47 deliberate bugs, introduced one at a time
+      into the rule, the validator's bookkeeping and the explanations, each
+      made at least one test fail.
+      Red team (ChatGPT, PR #18, then Claude's follow-up):
+      `tests/testProofs/uniqueness_red_team.txt` has 19 cases and
+      `pytest_tests/test_uniqueness_red_team_reasons.py` checks that each
+      invalid one is refused for the condition its title names. Cases 5
+      (`Let X be an integer`) and 14 (a Pairing instance that mentions c) were
+      first written as invalid; they are accepted by design and say why in
+      their titles. The exercise did find two real holes, now cases 16-19:
+      the direct Pairing witness line (`There is a set Y = {a, b}`) states a
+      property of Y in terms of a and b that nothing derives, and it was not
+      counted as a hypothesis; and the carrier of a relation declaration is
+      constrained by metadata the relation rules read. A false "exactly one"
+      statement could be proved through each. Lesson for any rule that
+      generalizes a constant (`WLOG` and `Mutatis mutandis` will probably need
+      a similar view of the proof around them; that design is not written
+      yet): list everything the proof relies on, not only the lines that
+      mention the constant.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
@@ -245,8 +454,8 @@ implementing the rules without an explicit go-ahead.
         not already in use; the braces in "a unique set {a, b} that ..." only label the witness;
       - citations written `Rule, 3, 3.2.1` and `Rule, 3.1 to 3.2` (a range
         gives its two endpoints) beside `Rule from 3, 3.2.1`; the names of
-        planned rules (`Uniqueness`, `WLOG`, `Mutatis mutandis`) resolve to
-        named placeholders;
+        planned rules (`WLOG`, `Mutatis mutandis`) resolve to named
+        placeholders (`Uniqueness` is now a real rule);
       - a fixture's stated conclusion (`### then ...`) is compared with what
         the proof derived up to the names of bound variables
         (`ProofLogic._alpha_eq`).
@@ -267,18 +476,20 @@ implementing the rules without an explicit go-ahead.
       " a ..." (`Let X be any set, a in X` gives X a garbage `type_name`), and
       the `type_name` wording differs between declaration paths.
 
-- [ ] Bounded quantifiers (proposed; not started). Found by checking the nine
+- [x] Bounded quantifiers (ChatGPT, PR #4). Found by checking the nine
       axiom statements at the top of `zfc_remaining_axioms.txt`: Axiom 1 says
-      "for all a in X we have a in Y", and no bounded form parses today
-      (`forall a in X, ...`, `exists a in X such that ...`). They are sugar,
-      and could live in set theory, since they use `In`: `forall a in S, P`
-      is `forall a, (a in S -> P)` and `exists a in S, P` is
-      `exists a, (a in S and P)`, with the English spellings "for all a in S
-      we have P" and "there exists a in S such that P". Open: which spellings
-      to accept, and whether a `### then` clause wrapped over two lines (as in
-      that Axiom 1) should be joined -- today, in a numbered proof, only its
-      first line is read, so the stated-conclusion check is skipped with a
-      warning. The nine `# Axiom N` statements themselves are comments (the
+      "for all a in X we have a in Y". They are sugar and live in set theory
+      (`SetTheory.py`, through the existing phrase-parser hook), since they
+      use `In`: `forall a in S, P` is `forall a, (a in S -> P)` and
+      `exists a in S, P` is `exists a, (a in S and P)`, with the English
+      spellings "for all a in S we have P" and "there exists a in S such
+      that P". Nothing was added to the kernel. Not accepted yet (refused
+      with an error, not misparsed): a set display or a compound term as the
+      bound, e.g. `forall x in {a, b}, ...`. Still open: whether a `### then`
+      clause wrapped over two lines (as in that Axiom 1) should be joined --
+      today, in a numbered proof, only its first line is read, so the
+      stated-conclusion check is skipped with a warning. The nine
+      `# Axiom N` statements themselves are comments (the
       runner reads only numbered `# N:` blocks). Most are informal ("P is a
       property with parameter p", "choice function"), and Axiom 4's
       `{u in U: U in X}` leaves U free, so it cannot stand for the union as
@@ -319,11 +530,55 @@ implementing the rules without an explicit go-ahead.
       less well-specified than the items above; needs its own design pass and
       does not block them.
 
+### 6. Typed declarations: `Let X be an integer` should type X
+
+- [ ] Decided (owner, 2026-10-10): `Let X be an integer.` should eventually
+      type `X`. Not to be implemented now; how it should work is open, and
+      the agents are discussing the options in the agent discussion file.
+      Today a type word is only a label: `Declaration.type_name` is read by no
+      rule, no shipped theory registers descriptors, and `Let n be a natural
+      number.` states no `Nat(n)`. Fixtures that need `Int(a)` state it by
+      hand (`Let a, b, c be integers such that: Int(a). Int(b). Int(c). ...`).
+      Fact found while discussing it: the machinery for a typed declaration
+      already exists. `Type(..., descriptors=[...]).as_declaration_recipe()`
+      makes `Let x be a <descriptor>` state `Type.holds(x)` on the
+      declaration's own line, and the validator already records a declaration
+      line that states a formula as a hypothesis. As an experiment (not
+      committed), registering descriptors for `NAT_TYPE` and `INT_TYPE` in the
+      default environment changed exactly one of the 130 fixture proofs and
+      one of the 896 Python tests: red-team case 5 (and its reasons test),
+      which is then refused for conditions 3 and 4 (`X occurs in a hypothesis
+      in force, Int(X)`). So the soundness side already works, and nothing
+      else in the repository depends on a type word being only a label. What
+      is open is the design around it:
+      - does a type only state a formula (a typed declaration is the
+        hypothesis `Int(X)`), or is it also checked (ill-typed terms
+        rejected, as the refinement-type proposal in PR #22 has it)? If both,
+        the checking layer may reject but must never justify;
+      - generalizing over a typed constant needs sugar, since `forall n,
+        (Nat(n) -> P(n))` has to come from somewhere ("for every natural
+        number n");
+      - subtypes (`Nat` inside `Int`): an explicit inclusion theorem, not
+        metadata;
+      - theorem promotion with a typing line (verified in the experiment: it
+        becomes a premise, so a proof that starts `Let n be a natural number.`
+        and ends `Nat(Succ(n))` promotes to the theorem "from `Nat(n)`,
+        `Nat(Succ(n))`, with n generalized", which is the textbook statement
+        for free; today a proof that cites the declaration line for `Nat(n)`
+        does not validate, because that line states nothing a later line can
+        cite).
+      Constraint on every option: a typing fact the proof relies on must reach
+      `RuleContext` as a recorded formula or as declaration metadata (the
+      Uniqueness lesson above), or case 5 turns from refused into unsound.
+      When this is implemented, case 5 of
+      `tests/testProofs/uniqueness_red_team.txt` becomes an Invalid case.
+
 ## Short version
 
 What matters now is not "can we get proof checking to work at all?" It is:
 
-- decide how the kernel's scope classes relate to `ProofContext` (item 1);
+- preserve the established boundary between elaboration-time `ProofContext`
+  and validation-time kernel scopes;
 - keep the proof corpus green (see "Known issues" for the one current
   exception) while improving maintainability;
 - extend the theory surface in a disciplined way, preferring sugar over
@@ -343,3 +598,7 @@ What matters now is not "can we get proof checking to work at all?" It is:
 - New rules and syntax get a written design in this file before implementation
   starts -- see "Design principles" and the open design items under
   "High-priority work".
+
+## Collaboration note
+
+This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.

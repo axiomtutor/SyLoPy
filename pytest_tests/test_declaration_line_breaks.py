@@ -51,3 +51,31 @@ def test_same_line_declaration_syntax_remains_supported():
     )
     declarations = entries[0][2][1]
     assert {d.name for d in declarations} == {"X", "R", "a"}
+
+def test_line_broken_declaration_accepts_and_on_a_continuation_line():
+    text = """
+1. Let X be any set,
+   and R be a reflexive relation on X,
+   a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+"""
+    ok, err = check(text)
+    assert ok, err
+
+def test_comments_in_line_broken_declaration_preserve_physical_source_span():
+    text = """
+(* file comment
+   continued *)
+1. Let X be any set, (* relation declaration follows
+   on the next physical line *)
+   R be a reflexive relation on X, a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+"""
+    surface = pp.parse_surface_proof(text)
+    declaration = surface.entries[0]
+    assert declaration.span.start_line == 4
+    assert declaration.span.end_line == 6
+
+    ok, err = check(text)
+    assert ok, err
+

@@ -40,6 +40,29 @@ A theory should provide, as appropriate:
 Adding a structure should therefore normally mean adding a recipe and core
 rules to a theory module rather than modifying generic elaboration logic.
 
+## Rules that look at the proof around them
+
+A rule normally sees only the lines it cites. A rule that is sound only
+relative to the rest of the proof can implement
+`InferenceRule.applies_in_context(candidates, phi, context)` instead. The
+validator passes a `RuleContext`: `hypotheses` (what the proof takes for
+granted: premises, `(Axiom)` lines, declarations that state a formula,
+witness lines such as `Existence from L` and the direct Pairing witness, and
+the open assumptions) and `arbitrary_constants` (constants introduced by a
+plain declaration or as the flag of a Fresh Variable subproof, minus any name
+that a declaration's metadata refers to, such as a relation's carrier). Rules
+that do not opt in are unchanged. A rule that refuses can also implement
+`explain_in_context`, and the validator appends its reason to the message.
+`Uniqueness` is the first user; a rule asked without a context never applies.
+
+The invariant for such a rule: whatever the proof relies on that says
+something about a constant must reach the context, as a recorded formula or as
+declaration metadata. A fact a rule reads from somewhere else (a new kind of
+declaration with hidden structure, a recipe that registers a rule about a
+declared constant) must be made visible the same way, or the rule is unsound
+for that constant. The two holes found so far -- the direct witness line and
+the relation carrier -- are in `tests/testProofs/uniqueness_red_team.txt`.
+
 ## Remaining consolidation work
 
 The main remaining architectural work is to identify and remove any duplicated
@@ -49,9 +72,14 @@ The same pattern should be used for future order-theory and algebraic syntax.
 
 `ProofContext` is the lexical scope for declarations, assumptions, labels and
 arbitrary bindings during elaboration; the elaborator no longer keeps a
-parallel declaration scope. Open item: the kernel's own `LabelScope` /
-`DeclarationScope` in `ProofLogic.py` are still separate implementations that
-merely agree with `ProofContext` on semantics (see `todos.txt`, item 1).
+parallel declaration scope.
+
+The kernel's `LabelScope` and `DeclarationScope` in `ProofLogic.py` deliberately
+remain separate validation-time scope structures. This preserves the compiler
+boundary between elaboration and kernel validation: `ProofContext` manages
+source-level bindings, while the kernel scopes operate only on elaborated
+entries. Their overlapping lexical semantics are maintained by regression
+tests.
 
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available

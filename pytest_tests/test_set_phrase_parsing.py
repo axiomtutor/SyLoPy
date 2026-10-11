@@ -81,7 +81,6 @@ def test_ranges_mix_with_single_labels():
 
 
 @pytest.mark.parametrize("text,name", [
-    ("Uniqueness, 2, 3", "Uniqueness"),
     ("WLOG, 3.2.2", "WLOG"),
     ("Without loss of generality, 3.2.2", "WLOG"),
     ("Mutatis mutandis, 3.1 to 3.2", "MutatisMutandis"),
@@ -93,6 +92,13 @@ def test_planned_rule_names_resolve_to_named_placeholders(text, name):
     assert kind == "rule"
     assert isinstance(rule, pl.NamedRulePlaceholder)
     assert rule.name == name
+
+
+def test_uniqueness_is_a_real_rule_cited_either_way():
+    for text in ("Uniqueness, 2, 3", "Uniqueness from 2, 3"):
+        kind, rule, refs = _cite(text)
+        assert (kind, refs) == ("rule", ["2", "3"])
+        assert isinstance(rule, pl.UniquenessRule)
 
 
 def test_set_property_with_citations_is_the_general_rule():
@@ -274,6 +280,44 @@ def test_subset_inside_a_conjunction():
         "((forall v, (In(v, X) -> In(v, Y))) and (forall v, (In(v, Y) -> In(v, X)))) -> X = Y",
     )
 
+
+# --------------------------------------------------------------------
+# Bounded quantifiers
+# --------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,plain", [
+    ("forall a in X, P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("for all a in X, P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("for all a in X we have P(a)", "forall a, (In(a, X) -> P(a))"),
+    ("exists a in X, P(a)", "exists a, (In(a, X) and P(a))"),
+    ("there exists a in X such that P(a)", "exists a, (In(a, X) and P(a))"),
+])
+def test_bounded_quantifiers_desugar_to_membership_restricted_quantifiers(text, plain):
+    reads_as(text, plain)
+
+
+def test_bounded_quantifier_body_can_contain_connectives():
+    reads_as(
+        "forall a in X, P(a) and Q(a)",
+        "forall a, (In(a, X) -> (P(a) and Q(a)))",
+    )
+
+
+def test_bounded_quantifier_can_appear_after_a_connective():
+    reads_as(
+        "P and forall a in X, Q(a) and R(a)",
+        "P and (forall a, (In(a, X) -> (Q(a) and R(a))))",
+    )
+
+
+@pytest.mark.parametrize("text", [
+    "forall a in X",
+    "exists a in X",
+    "forall a in X,",
+    "exists a in X such that",
+])
+def test_malformed_bounded_quantifiers_are_refused(text):
+    is_refused(text)
 
 # --------------------------------------------------------------------
 # Natural-language existentials

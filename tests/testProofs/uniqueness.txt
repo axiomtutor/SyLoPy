@@ -1,0 +1,89 @@
+# The Uniqueness rule: from "some Y has property B" and "any c with property B
+# is d" (for a constant c that is arbitrary), infer "exactly one Y has B",
+# written out as ordinary quantifiers. Each proof stands alone.
+
+
+# 1
+## Proof that
+### If a is a set,
+### then there exists a unique set Y such that Y = a.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. a = Y. (Symmetry from 4)
+ 6.3. X = Y. (Transitivity from 6.1, 6.2)
+7. Exists Y, (Y = a and forall X, (X = a -> X = Y)). (Uniqueness, 3, 6)
+
+
+# 2
+## Proof that
+### The same, citing the two lines in the other order, with the
+### bound variables of the conclusion named differently.
+
+1. Let a be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 6.1. X = a. (Assumption for Conditional Introduction)
+ 6.2. a = Y. (Symmetry from 4)
+ 6.3. X = Y. (Transitivity from 6.1, 6.2)
+7. Exists W, (W = a and forall V, (V = a -> V = W)). (Uniqueness, 6, 3)
+
+
+# 3
+## Invalid: the constant being generalized is constrained by a premise.
+### Premise 5 says X is in W, so the conditional is about one particular X,
+### and Uniqueness may not generalize it.
+
+1. Let a, W be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let X be any set. (Declaration)
+5. In(X, W). (Premise)
+6. Let Y be such a set. (Existence from 3)
+7. If X = a then X = Y. (Conditional Introduction from subproof below)
+ 7.1. X = a. (Assumption for Conditional Introduction)
+ 7.2. a = Y. (Symmetry from 6)
+ 7.3. X = Y. (Transitivity from 7.1, 7.2)
+8. Exists Y, (Y = a and forall X, (X = a -> X = Y)). (Uniqueness, 3, 7)
+
+
+# 4
+## Invalid: the conditional does not say what the existence line is about.
+### The property in the conditional is X = b, not X = a.
+
+1. Let a, b be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. Exists Y, Y = a. (Existential Introduction from 2)
+4. Let Y be such a set. (Existence from 3)
+5. Let X be any set. (Declaration)
+6. If X = b then X = X. (Conditional Introduction from subproof below)
+ 6.1. X = b. (Assumption for Conditional Introduction)
+ 6.2. X = X. (Reflexivity)
+7. Exists Y, (Y = a and forall X, (X = a -> X = Y)). (Uniqueness, 3, 6)
+
+
+# 5
+## Invalid: the constant is a witness, not an arbitrary object.
+### Both a and b satisfy "Y = a or Y = b", so "exactly one" is false. Line 6
+### pins the witness Y down to a, which makes "if Y = a or Y = b then Y = a"
+### provable; but Y is a particular object, named on line 5 from the
+### existential on line 4, so Uniqueness may not generalize it.
+
+1. Let a, b be any set. (Declaration)
+2. a = a. (Reflexivity)
+3. a = a or a = b. (Disjunction Introduction from 2)
+4. Exists Y, (Y = a or Y = b). (Existential Introduction from 3)
+5. Let Y be such a set. (Existence from 4)
+6. Y = a. (Premise)
+7. If (Y = a or Y = b) then Y = a. (Conditional Introduction from subproof below)
+ 7.1. Y = a or Y = b. (Assumption for Conditional Introduction)
+ 7.2. Y = a. (Reiteration from 6)
+8. Exists Y, ((Y = a or Y = b) and forall X, ((X = a or X = b) -> X = Y)). (Uniqueness, 4, 7)

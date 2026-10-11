@@ -453,20 +453,25 @@ def main(argv=None):
         return _print_selected_suite(rel_dir, run([rel_dir]), category == "enforced", args.verbose)
 
     enforced_fails = 0
+    enforced_results = []
+    informational_results = []
+
     print("=== Enforced fixture corpus ===")
     for directory in ENFORCED_DIRS:
-        enforced_fails += _print_suite_summary(directory, run([directory]), True)
+        suite_results = run([directory])
+        enforced_results.extend(suite_results)
+        enforced_fails += _print_suite_summary(directory, suite_results, True)
 
     print("\n=== Informational fixture corpus ===")
     for directory in INFORMATIONAL_DIRS:
-        _print_suite_summary(directory, run([directory]), False)
+        suite_results = run([directory])
+        informational_results.extend(suite_results)
+        _print_suite_summary(directory, suite_results, False)
 
-    enforced = run(ENFORCED_DIRS)
-    informational = run(INFORMATIONAL_DIRS)
     print(
-        f"\nTotal proofs checked: {len(enforced) + len(informational)} "
-        f"(enforced: {sum(r.passed for r in enforced)}/{len(enforced)}, "
-        f"informational: {sum(r.passed for r in informational)}/{len(informational)})"
+        f"\nTotal proofs checked: {len(enforced_results) + len(informational_results)} "
+        f"(enforced: {sum(r.passed for r in enforced_results)}/{len(enforced_results)}, "
+        f"informational: {sum(r.passed for r in informational_results)}/{len(informational_results)})"
     )
     if enforced_fails:
         print(f"\n{enforced_fails} unexpected result(s) in the enforced fixture corpus.")

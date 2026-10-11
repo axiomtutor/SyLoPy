@@ -1,0 +1,34 @@
+# 1: Successor has no fixed points
+## Proof that
+### every natural number differs from its successor
+### then forall n, (Nat(n) -> not (Succ(n) = n)).
+
+1. Nat(Zero). (Axiom)
+2. forall x, (Nat(x) -> not (Succ(x) = Zero)). (Axiom)
+3. Nat(Zero) -> not (Succ(Zero) = Zero). (Universal Instantiation from 2)
+4. not (Succ(Zero) = Zero). (Modus Ponens from 1, 3)
+5. forall n, ((Nat(n) and not (Succ(n) = n)) -> not (Succ(Succ(n)) = Succ(n))). (Universal Generalization from subproof below)
+begin subproof
+ 5.1. Let n be in the domain. (Fresh Variable)
+ 5.2. ((Nat(n) and not (Succ(n) = n)) -> not (Succ(Succ(n)) = Succ(n))). (Conditional Introduction from subproof below)
+ begin subproof
+  5.2.1. Nat(n) and not (Succ(n) = n). (Assumption for Conditional Introduction)
+  5.2.2. Nat(n). (Conjunction Elimination from 5.2.1)
+  5.2.3. not (Succ(n) = n). (Conjunction Elimination from 5.2.1)
+  5.2.4. forall x, (Nat(x) -> Nat(Succ(x))). (Axiom)
+  5.2.5. Nat(n) -> Nat(Succ(n)). (Universal Instantiation from 5.2.4)
+  5.2.6. Nat(Succ(n)). (Modus Ponens from 5.2.2, 5.2.5)
+  5.2.7. forall x, forall y, (((Nat(x) and Nat(y)) and Succ(x) = Succ(y)) -> x = y). (Axiom)
+  5.2.8. forall y, (((Nat(Succ(n)) and Nat(y)) and Succ(Succ(n)) = Succ(y)) -> Succ(n) = y). (Universal Instantiation from 5.2.7)
+  5.2.9. ((Nat(Succ(n)) and Nat(n)) and Succ(Succ(n)) = Succ(n)) -> Succ(n) = n. (Universal Instantiation from 5.2.8)
+  5.2.10. Succ(Succ(n)) = Succ(n) -> Succ(n) = n. (Conditional Introduction from subproof below)
+  begin subproof
+   5.2.10.1. Succ(Succ(n)) = Succ(n). (Assumption for Conditional Introduction)
+   5.2.10.2. Nat(Succ(n)) and Nat(n). (Conjunction Introduction from 5.2.6, 5.2.2)
+   5.2.10.3. (Nat(Succ(n)) and Nat(n)) and Succ(Succ(n)) = Succ(n). (Conjunction Introduction from 5.2.10.2, 5.2.10.1)
+   5.2.10.4. Succ(n) = n. (Modus Ponens from 5.2.9, 5.2.10.3)
+  end subproof
+  5.2.11. not (Succ(Succ(n)) = Succ(n)). (Modus Tollens from 5.2.10, 5.2.3)
+ end subproof
+end subproof
+6. forall x, (Nat(x) -> not (Succ(x) = x)). (Induction from 4, 5)
