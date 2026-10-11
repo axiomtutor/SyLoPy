@@ -294,6 +294,7 @@ INT_TYPE = pl.Type(
     axioms=INT_AXIOMS,
     schema_rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()],
     declarations=INT_DECLARATIONS,
+    descriptors=["integer", "integers"],
 )
 
 
