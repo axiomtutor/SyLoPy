@@ -1915,11 +1915,8 @@ def elaborate_proof(
     environment = environment or default_theory_environment()
     context = _ElaborationContext(environment)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
-    try:
-        import SyLoPy.source.DiscreteMath as dm
-        context.extra_rules.extend(dm.relation_rule_set(context.context.declarations_here()))
-    except ImportError:
-        pass
+    # Relation-property rules are registered by DiscreteMathCore and consult
+    # the declaration visible at each proof line through RuleContext.
     return ElaboratedEntries(
         entries,
         origin_by_label=context.origin_by_label,
