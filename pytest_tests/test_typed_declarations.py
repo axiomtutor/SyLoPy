@@ -38,8 +38,8 @@ def test_plural_typed_declarations_state_predicate_for_each_object():
         ("Let a and b be natural numbers.", "Nat"),
     ]:
         entries, _ = pp.parse_proof_text(f"1. {phrase} (Declaration)\n")
-        assert len(entries) == 2
-        assert [repr(entry[1]) for entry in entries] == [
+        assert len(entries) == 1
+        assert [repr(formula) for formula in entries[0][1]] == [
             f"{predicate}(a)", f"{predicate}(b)"
         ]
         assert pl.Proof(entries).check()[0]
