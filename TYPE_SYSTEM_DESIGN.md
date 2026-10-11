@@ -162,7 +162,42 @@ The initial implementation is complete only when tests demonstrate all of these:
 These are proposed decisions to make the first implementation reviewable and bounded.
 
 1. **Guard analysis:** implement the conservative syntax-directed rules in section 5. In particular, conjunction uses facts guaranteed by all conjuncts; disjunction exports only facts guaranteed by every branch; implication guards its consequent; negation and biconditional do not add positive facts in version 1. Do not attempt general theorem proving.
-2. **One source of truth for signatures and closure:** keep term-typing judgments separate from ordinary logical facts. A function signature can establish that a term is well-typed with a result type for checking later operations, but it must not silently add an ordinary formula such as `Int(Times(a,b))` to the proof's citable facts. If mathematical proofs need that formula, the theory must provide its closure axiom/theorem in the usual logical way. For a declared subtype relationship such as `Nat <: Int`, require an explicit corresponding inclusion formula (e.g. `forall x, (Nat(x) -> Int(x))`) in the theory package; type metadata may index that declared relationship but must not manufacture a new mathematical theorem. Registry construction should reject a subtype/signature declaration that has no corresponding registered predicate or symbol.
+2. **One source of truth for signatures and closure:** keep term-typing judgments separate from ordinary logical facts. A function signature can establish that a term is well-typed with a result type for checking later operations, but it must not silently add an ordinary formula such as `Int(Times(a,b))` to the proof's citable facts. If mathematical proofs need that formula, the theory must provide its closure axiom/theorem in the usual logical way. For a declared subtype relationship such as `Nat <: Int`, require an explicit corresponding inclusion formula (e.g. `forall x, (Nat(x) -> Int(x))`) in the theory package; type metadata may index that declared relationship but must not manufacture a new mathematical theorem. Registry construction should reject a subtype/signature declaration that has no corresponding registered predicate or symbol. This resolution concerns typing derived from signatures and their closure facts; it does not alter the separate, settled behavior in §4 that an explicitly typed declaration such as `Let a be an integer` asserts the ordinary, citable formula `Int(a)`.
 3. **Preserving surface obligations:** represent typed surface constructs with a small typed-syntax node or source-mapped obligation that survives formula parsing, nesting, and desugaring. Check the obligation in the logical context of that exact occurrence, then lower to ordinary core logic. Prefer an explicit representation over reconstructing a lost construct from the expanded formula's shape. If the existing parser cannot carry nodes end-to-end in one step, begin with a structured obligation list attached to elaborated entries; do not reduce it to a global list, because that would lose nested scope information.
+
+### Optional typed-quantifier sugar (proposal only; not implemented)
+
+A separate surface-sugar option is to express restricted quantification directly in
+mathematical prose. It must lower to ordinary first-order formulas and remain
+distinct from a declaration line such as `Let n be an integer`.
+
+- `for every integer n, P(n)` means
+  `forall n, (Int(n) -> P(n))`.
+- `there exists an integer n such that P(n)` means
+  `exists n, (Int(n) and P(n))`.
+- The plural forms must bind each named variable and constrain each one:
+  `for all integers m and n, Q(m,n)` means
+  `forall m, forall n, ((Int(m) and Int(n)) -> Q(m,n))`;
+  `there exist integers m and n such that Q(m,n)` means
+  `exists m, exists n, (Int(m) and Int(n) and Q(m,n))`.
+  The same schema can use `Nat` for natural numbers.
+
+Negation is a required part of this design, not a post-processing detail:
+
+- `there is no integer n such that P(n)` means
+  `not (exists n, (Int(n) and P(n)))`.
+- `not every integer n satisfies P(n)` means
+  `not (forall n, (Int(n) -> P(n)))`.
+- `for every integer n, not P(n)` means
+  `forall n, (Int(n) -> not P(n))`.
+
+The last two formulas are not equivalent: the first says some integer fails
+`P`, while the second says every integer fails it. The parser must preserve the
+scope of negation instead of moving `not` under or outside a quantifier
+implicitly. Plural binders likewise need unambiguous grouping, fresh bound
+variables, correct nesting, and alpha-equivalent core output. Tests should cover
+singular and plural forms, nested quantifiers, each negation placement, and
+natural-number aliases. This section records a proposal only; it does not
+authorize parser or kernel implementation.
 
 These resolutions should be reviewed before kernel implementation. The first implementation PR should be narrow and separately reviewable; the architecture should make it possible to add later types and signatures without adding more special cases to `ProofLogic.py`.
