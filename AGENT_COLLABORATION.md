@@ -81,6 +81,20 @@ Use explicit evidence labels:
 
 Do not expand the active backlog by promoting every suspicion to a task. First decide whether the behavior is in scope, reproduce it, and close it if it is not a bug.
 
+### Branch inventory audit
+
+A read-only comparison of all 31 `chatgpt`-named branches against `master` found 24 with `ahead_by=0`: their commits are ancestors of `master`, so they are candidates for cleanup after confirming no open PR or other reason to retain them. Do not delete automatically. Seven branches need individual review because they contain commits not in master by ancestry or are deliberately active:
+
+- `chatgpt-agent-guidance` — preserve; this is the live handoff branch.
+- `chatgpt/docs-regression-status-refresh` — PR #26; keep until reviewed/merged and its snapshot refreshed if stale.
+- `chatgpt/consolidate-agent-collaboration-guidance` — PR #27; keep until reviewed/merged.
+- `chatgpt/discrete-math-rule-coverage` — has one branch-only commit touching `pytest_tests/test_discrete_math_missing_rules.py`; compare its actual patch with merged PR #24 before cleanup.
+- `chatgpt/refinement-type-system-design` — has a branch-only design-doc commit; compare with merged PR #22 before cleanup.
+- `chatgpt/type-metadata-reference-schema` — has a branch-only design-doc commit; compare with merged PR #25 before cleanup.
+- `chatgpt-context-docs` — has three branch-only commits touching `ARCHITECTURE_STATUS.md`, `README.md`, and `todos.txt`; inspect the actual diff before deciding whether it is superseded.
+
+The branch comparison is ancestry evidence, not proof that a branch is unneeded. No branch was deleted. Repeat this audit after PR merges, and remove only verified stale branches.
+
 ## 5. Active work and design recommendations
 
 ### A. Theorem-promotion audit — Copilot
