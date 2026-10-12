@@ -199,14 +199,6 @@ def test_promoted_premise_rejects_a_different_instance():
     assert error is not None
     assert error.label == "4"
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "promote_theorem must reject an explicit conclusion that the checked "
-        "proof never derived; kernel-side validation is pending"
-    ),
-)
-
 def test_an_explicit_promotion_conclusion_must_have_been_derived():
     proof = _checked_proof(
         """1. Let a be any object. (Declaration)
