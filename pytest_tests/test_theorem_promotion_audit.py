@@ -223,3 +223,41 @@ def test_an_explicit_promotion_conclusion_must_have_been_derived():
             conclusion=unproved_conclusion,
         )
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "promotion must not let explicit generalized_names include a fixed "
+        "constant whose properties were proved only for that constant"
+    ),
+)
+def test_explicit_generalized_names_cannot_generalize_the_empty_set():
+    proof = _checked_proof(
+        """1. Let x be any object. (Declaration)
+2. x is not in the empty set. (Set property)
+"""
+    )
+
+    # The empty-set property is valid for EmptySet specifically. Passing
+    # "EmptySet" as an extra generalized name currently turns the proof into
+    # a zero-premise rule for every set, which would assert that no set has
+    # any elements.
+    theorem = pl.promote_theorem(
+        "No element belongs to any set audit",
+        proof,
+        generalized_names=["x", "EmptySet"],
+    )
+    entries, _ = pp.parse_proof_text(
+        """1. Let y be any object. (Declaration)
+2. Let Y be any set. (Declaration)
+3. y is not in Y. (Reiteration from 1)
+"""
+    )
+    _replace_rule(entries, "3", theorem, [])
+    ok, error = pl.Proof(
+        entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+    assert not ok, (
+        "promotion generalized the fixed EmptySet constant and derived "
+        "that an arbitrary object is not in an arbitrary set"
+    )
+
