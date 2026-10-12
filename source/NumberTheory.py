@@ -386,6 +386,10 @@ NUMBER_THEORY_ENVIRONMENT = TheoryEnvironment(
     rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()] + list(nt.NAT_TYPE.schema_rules),
     axioms=list(INT_AXIOMS) + list(nt.NAT_AXIOMS),
     declarations=list(INT_DECLARATIONS) + list(nt.NAT_DECLARATIONS),
+    declaration_recipes=[
+        nt.NAT_TYPE.as_declaration_recipe(),
+        INT_TYPE.as_declaration_recipe(),
+    ],
 ).extended(st.SET_THEORY_ENVIRONMENT)
 
 

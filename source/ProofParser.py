@@ -80,7 +80,7 @@ Two things worth knowing before writing new proof text
 
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
@@ -1564,6 +1564,25 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     return (entry.label, formula, ('premise', declarations))
 
 
+_BASE_LINE_ELABORATORS = (
+    elaborate_compound_declaration,
+    elaborate_typed_declaration,
+    try_elaborate_existence,
+)
+
+
+def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
+    """Add base proof syntax to an explicitly selected theory without mutation."""
+    return replace(
+        environment,
+        line_elaborators=[
+            *_BASE_LINE_ELABORATORS,
+            *(item for item in environment.line_elaborators
+              if item not in _BASE_LINE_ELABORATORS),
+        ],
+    )
+
+
 def default_theory_environment() -> TheoryEnvironment:
     """The default surface language: base logic plus every theory module
     that happens to be importable, currently set theory and number theory.
@@ -1578,8 +1597,10 @@ def default_theory_environment() -> TheoryEnvironment:
     theory reachable through more than one path is just a harmless no-op
     the second time.
     """
-    environment = TheoryEnvironment(line_elaborators=[elaborate_compound_declaration, elaborate_typed_declaration, try_elaborate_existence],
-                                     rules=[pl.AlgebraRule()])
+    environment = TheoryEnvironment(
+        line_elaborators=list(_BASE_LINE_ELABORATORS),
+        rules=[pl.AlgebraRule()],
+    )
     try:
         import SyLoPy.source.SetTheory as st
         environment = environment.extended(st.SET_THEORY_ENVIRONMENT)
@@ -1588,13 +1609,6 @@ def default_theory_environment() -> TheoryEnvironment:
     try:
         import SyLoPy.source.NumberTheory as numt
         environment = environment.extended(numt.NUMBER_THEORY_ENVIRONMENT)
-        # A typed declaration states the corresponding ordinary predicate
-        # as a hypothesis on that declaration line. This uses the existing
-        # Type/DeclarationRecipe mechanism; it does not add type checking.
-        environment.declaration_recipes.extend([
-            numt.nt.NAT_TYPE.as_declaration_recipe(),
-            numt.INT_TYPE.as_declaration_recipe(),
-        ])
     except ImportError:
         pass
     try:
@@ -1914,7 +1928,10 @@ def elaborate_proof(
     environment: Optional[TheoryEnvironment] = None,
 ) -> ElaboratedEntries:
     """Lower a SurfaceProof to the strict ProofLogic entry language."""
-    environment = environment or default_theory_environment()
+    if environment is None:
+        environment = default_theory_environment()
+    else:
+        environment = _with_base_line_elaborators(environment)
     context = _ElaborationContext(environment)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
     return ElaboratedEntries(
