@@ -11,11 +11,13 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 The latest recorded full run is
-[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
-from 2026-10-10. It has one known, tracked exception (see `todos.txt`).
+[GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
+from 2026-10-11 at commit
+[`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f).
+It has one known, tracked exception (see `todos.txt`).
 
-- 896 Python tests; 895 passed and 1 known failure.
-- Enforced proof fixture corpus: 78/78 passed.
+- 907 Python tests; 906 passed and 1 known failure.
+- Enforced proof fixture corpus: 79/79 passed.
 - Informational proof fixtures: 51/52 passed; the failure is the same deferred
   ZFC fixture.
 

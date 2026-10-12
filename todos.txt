@@ -3,13 +3,13 @@
 ## Project status
 
 The latest recorded full run is
-[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
-at commit [`62374be`](https://github.com/axiomtutor/SyLoPy/commit/62374beb42378dc2e3ec89a0087c1b545594fb7c),
-on 2026-10-10. The canonical `./run_tests.sh` run reported:
+[GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
+at commit [`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f),
+on 2026-10-11. The canonical `./run_tests.sh` run reported:
 
-- 896 Python tests; 895 passed and 1 known failure (see "Known issues" below).
+- 907 Python tests; 906 passed and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
-- enforced proof fixture corpus: 78/78 passed.
+- enforced proof fixture corpus: 79/79 passed.
 - informational proof fixtures: 51/52 passed; the one failure is the same
   known ZFC fixture issue.
 
