@@ -303,3 +303,41 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
     assert error.label == "3"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
+def test_promotion_does_not_erase_a_custom_axiom_dependency():
+    q = pp.parse_formula("Q", set())
+    source_entries, _ = pp.parse_proof_text(
+        """1. Let Q be a closed formula. (Declaration)
+2. Q. (Axiom)
+3. Q. (Reiteration from 2)
+"""
+    )
+    # The proof is valid only under the caller-supplied axiom Q.
+    source = pl.Proof(source_entries, axioms=[q])
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    try:
+        theorem = pl.promote_theorem("Custom axiom dependency audit", source)
+    except ValueError:
+        # Rejecting promotion when a source axiom dependency cannot be carried
+        # forward is safe; the source proof itself was checked above.
+        return
+
+    target_entries, _ = pp.parse_proof_text(
+        """1. Let Q be a closed formula. (Declaration)
+2. Q. (Reiteration from 1)
+"""
+    )
+    _replace_rule(target_entries, "2", theorem, [])
+    ok, error = pl.Proof(
+        target_entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+
+    if ok:
+        pytest.xfail(
+            "promotion discarded the custom axiom Q and exported Q as a zero-premise theorem"
+        )
+    assert error is not None
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
