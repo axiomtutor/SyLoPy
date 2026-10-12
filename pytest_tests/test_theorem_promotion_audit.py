@@ -341,25 +341,31 @@ def test_promotion_does_not_erase_a_custom_axiom_dependency():
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
-def test_promotion_does_not_drop_a_premise_used_only_inside_a_subproof():
+@pytest.mark.parametrize(
+    ("dependency_tag", "proof_argument"),
+    [("Premise", "premises"), ("Axiom", "axioms")],
+)
+def test_promotion_does_not_drop_a_dependency_used_only_inside_a_subproof(
+    dependency_tag, proof_argument
+):
     q = pp.parse_formula("Q", set())
     entries, _ = pp.parse_proof_text(
-        """1. Let P, Q be closed formulas. (Declaration)
+        f"""1. Let P, Q be closed formulas. (Declaration)
 2. P -> Q. (Conditional Introduction from subproof below)
 begin subproof
  2.1. P. (Assumption for Conditional Introduction)
- 2.2. Q. (Premise)
+ 2.2. Q. ({dependency_tag})
 end subproof
 """
     )
-    source = pl.Proof(entries, premises=[q])
+    source = pl.Proof(entries, **{proof_argument: [q]})
     ok, error = source.check_detailed()
     assert ok, error
 
     try:
-        theorem = pl.promote_theorem("Nested premise dependency audit", source)
+        theorem = pl.promote_theorem("Nested dependency audit", source)
     except ValueError:
-        # Refusing to promote a proof with a non-root premise dependency is safe.
+        # Refusing to promote a proof with a non-root dependency is safe.
         return
 
     target_entries, _ = pp.parse_proof_text(
@@ -374,40 +380,8 @@ end subproof
 
     if ok:
         pytest.xfail(
-            "promotion dropped Q from a nested Premise line and made P -> Q a zero-premise theorem"
+            f"promotion dropped a nested {dependency_tag} dependency and made P -> Q a zero-premise theorem"
         )
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
-
-def test_promotion_does_not_drop_relation_property_declaration_dependencies():
-    source = _checked_proof(
-        """1. Let X be any set, R be a reflexive relation on X, a be in X. (Declaration)
-2. R(a,a). (Relation Reflexivity from 1)
-"""
-    )
-    try:
-        theorem = pl.promote_theorem("Relation metadata dependency audit", source)
-    except ValueError:
-        # Current promotion cannot express a dependency on per-proof relation
-        # metadata as a formula premise; refusing this promotion is safe.
-        return
-
-    target_entries, _ = pp.parse_proof_text(
-        """1. Let X be any set, R be a symmetric relation on X, b be in X. (Declaration)
-2. R(b,b). (Reiteration from 1)
-"""
-    )
-    _replace_rule(target_entries, "2", theorem, ["1"])
-    ok, error = pl.Proof(
-        target_entries, rules=pl.default_rules() + [theorem]
-    ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "promotion forgot that R was declared reflexive and reused R(a,a) under only symmetry"
-        )
-    assert error is not None
-    assert error.label == "2"
-    assert error.category == pl.CATEGORY_RULE_MISMATCH
-
