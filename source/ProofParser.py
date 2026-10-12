@@ -1564,6 +1564,15 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     return (entry.label, formula, ('premise', declarations))
 
 
+# Surface-language handlers that are part of the base proof language,
+# independent of which optional theory environment a caller selects.
+_BASE_LINE_ELABORATORS = (
+    elaborate_compound_declaration,
+    elaborate_typed_declaration,
+    try_elaborate_existence,
+)
+
+
 def default_theory_environment() -> TheoryEnvironment:
     """The default surface language: base logic plus every theory module
     that happens to be importable, currently set theory and number theory.
@@ -1578,8 +1587,7 @@ def default_theory_environment() -> TheoryEnvironment:
     theory reachable through more than one path is just a harmless no-op
     the second time.
     """
-    environment = TheoryEnvironment(line_elaborators=[elaborate_compound_declaration, elaborate_typed_declaration, try_elaborate_existence],
-                                     rules=[pl.AlgebraRule()])
+    environment = TheoryEnvironment(rules=[pl.AlgebraRule()])
     try:
         import SyLoPy.source.SetTheory as st
         environment = environment.extended(st.SET_THEORY_ENVIRONMENT)
@@ -1837,7 +1845,17 @@ class _ElaborationContext:
         if not isinstance(entry, SurfaceLine):
             raise TypeError(f"unknown surface entry: {entry!r}")
 
+        # Base proof-language syntax is always available, even when a caller
+        # deliberately passes a narrow TheoryEnvironment directly. Theory
+        # environments then add only their own line-specific elaborators.
+        for elaborator in _BASE_LINE_ELABORATORS:
+            result = elaborator(entry, self)
+            if result is not None:
+                return result
+
         for elaborator in self.environment.line_elaborators:
+            if elaborator in _BASE_LINE_ELABORATORS:
+                continue
             result = elaborator(entry, self)
             if result is not None:
                 return result
