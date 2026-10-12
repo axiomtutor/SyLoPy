@@ -163,6 +163,7 @@ def test_compound_declaration_supports_comma_coordinated_premises(text, expected
     assert [repr(phi) for phi in entries[0][1]] == expected
     assert pl.Proof(entries).check()[0]
 
+
 def test_membership_characterization_requires_fresh_variable_in_default_environment():
     text = """1. Let a be an object. (Declaration)
 2. Let X be a set such that a is in X iff a =/= a. (Declaration)
