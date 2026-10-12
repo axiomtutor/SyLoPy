@@ -261,3 +261,42 @@ def test_explicit_generalized_names_cannot_generalize_the_empty_set():
         "that an arbitrary object is not in an arbitrary set"
     )
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "promotion must preserve the defining property of a direct Pairing "
+        "witness instead of exporting a theorem with that witness erased"
+    ),
+)
+def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
+    proof = _checked_proof(
+        """1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. There is a set Y = {a, b}. (Axiom of Pairing)
+4. a = a. (Reflexivity)
+5. a = a or a = b. (Disjunction Introduction from 4)
+6. a is in Y. (Set property from 3, 5)
+"""
+    )
+    theorem = pl.promote_theorem("Pairing membership audit", proof)
+
+    # The direct witness line is a rule line with declarations in its fourth
+    # justification slot. If promotion neither preserves its defining formula
+    # as a required premise nor scopes the witness as a genuinely rigid name,
+    # the promoted rule can be reused with a fresh, arbitrary Y and prove that
+    # every object belongs to it.
+    entries, _ = pp.parse_proof_text(
+        """1. Let c be any object. (Declaration)
+2. Let Y be any set. (Declaration)
+3. c is in Y. (Reiteration from 1)
+"""
+    )
+    _replace_rule(entries, "3", theorem, [])
+    ok, error = pl.Proof(
+        entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+    assert not ok, (
+        "promotion exported the Pairing witness's membership consequence "
+        "without preserving the witness's defining property"
+    )
+
