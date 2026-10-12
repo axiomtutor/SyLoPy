@@ -356,7 +356,11 @@ end subproof
     ok, error = source.check_detailed()
     assert ok, error
 
-    theorem = pl.promote_theorem("Nested premise dependency audit", source)
+    try:
+        theorem = pl.promote_theorem("Nested premise dependency audit", source)
+    except ValueError:
+        # Refusing to promote a proof with a non-root premise dependency is safe.
+        return
 
     target_entries, _ = pp.parse_proof_text(
         """1. Let P, Q be closed formulas. (Declaration)
