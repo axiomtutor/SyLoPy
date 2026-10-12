@@ -149,8 +149,8 @@ def test_core_renderer_exposes_desugared_steps_without_reparsing_text():
 # A parallel `pl.DeclarationScope` used to be kept here too (see
 # todos.txt's "ProofContext integration" / "remove duplicated lexical
 # scope bookkeeping" phases), dual-written on every `register_declaration`
-# call. Once every *read* -- including the seeding for
-# `DiscreteMath.relation_rule_set` -- had moved onto `context.context`,
+# call. Once every *read* -- including the seeding of the relation rules
+# that `elaborate_proof` used to do -- had moved onto `context.context`,
 # the parallel structure had no reader of its own left and was removed;
 # these tests now just confirm `context.context` behaves correctly on
 # its own.
