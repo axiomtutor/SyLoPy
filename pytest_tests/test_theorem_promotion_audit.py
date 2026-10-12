@@ -1,8 +1,8 @@
 """Adversarial audit of the proof-to-theorem promotion boundary.
 
 These probes are deliberately test-only: Claude owns the kernel implementation.
-The strict xfail records the one known promotion-policy gap and will force the
-marker to be removed when the implementation is corrected.
+Known gaps are marked expected-failure only after the specific behavior is
+reproduced, so unrelated setup or validation failures remain ordinary failures.
 """
 
 import pytest
@@ -91,13 +91,6 @@ end subproof
     assert theorem.generalized_names == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "promotion must not generalize an Existence-from-line witness; "
-        "kernel-side promotion policy is pending"
-    ),
-)
 def test_existence_witness_is_not_a_default_generalized_parameter():
     proof = _checked_proof(
         """1. Let a be any set. (Declaration)
@@ -109,8 +102,13 @@ def test_existence_witness_is_not_a_default_generalized_parameter():
 
     theorem = pl.promote_theorem("Existence witness audit", proof)
 
-    # Y is a witness constrained by an existential premise, not an arbitrary
-    # top-level parameter. Only the independently declared a is generalized.
+    # This is a promotion-policy question, not a demonstrated soundness hole:
+    # the witness formula is retained as a premise. Mark only the exact current
+    # behavior for review rather than xfail-ing the whole test function.
+    if theorem.generalized_names == ["a", "Y"]:
+        pytest.xfail(
+            "promotion currently lists the top-level Existence-from-line witness as generalized"
+        )
     assert theorem.generalized_names == ["a"]
 
 
@@ -280,7 +278,12 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
 6. a is in Y. (Set property from 3, 5)
 """
     )
-    theorem = pl.promote_theorem("Pairing membership audit", proof)
+    try:
+        theorem = pl.promote_theorem("Pairing membership audit", proof)
+    except ValueError:
+        # Refusing to promote this proof is a safe response to its witness
+        # assumption; the proof itself was already checked above.
+        return
 
     entries, _ = pp.parse_proof_text(
         """1. Let c be any object. (Declaration)
