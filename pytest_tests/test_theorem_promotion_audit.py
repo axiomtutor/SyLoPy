@@ -32,9 +32,10 @@ end subproof
 
     theorem = pl.promote_theorem("Conditional identity audit", proof)
 
-    assert theorem.premises == [pp.parse_formula("P", set())]
+    assert len(theorem.premises) == 1
+    assert pl._ast_eq(theorem.premises[0], pp.parse_formula("P", set()))
     assert theorem.generalized_names == []
-    assert theorem.conclusion == pp.parse_formula("P -> P", set())
+    assert pl._ast_eq(theorem.conclusion, pp.parse_formula("P -> P", set()))
 
 
 def test_promotion_generalizes_only_top_level_object_declarations():
@@ -122,8 +123,9 @@ def test_promoted_premise_is_substituted_and_must_be_supplied():
     theorem = pl.promote_theorem("Identity transport audit", source)
 
     assert theorem.generalized_names == ["a"]
-    assert theorem.premises == [pp.parse_formula("a = a", set())]
-    assert theorem.conclusion == pp.parse_formula("a = a", set())
+    assert len(theorem.premises) == 1
+    assert pl._ast_eq(theorem.premises[0], pp.parse_formula("a = a", set()))
+    assert pl._ast_eq(theorem.conclusion, pp.parse_formula("a = a", set()))
 
     # Validate with the promoted theorem registered for this citation.
     entries, _ = pp.parse_proof_text(
