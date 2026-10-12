@@ -80,7 +80,7 @@ Two things worth knowing before writing new proof text
 
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
@@ -1573,6 +1573,18 @@ _BASE_LINE_ELABORATORS = (
 )
 
 
+def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
+    """Add base proof syntax to an explicitly selected theory without mutation."""
+    return replace(
+        environment,
+        line_elaborators=[
+            *_BASE_LINE_ELABORATORS,
+            *(item for item in environment.line_elaborators
+              if item not in _BASE_LINE_ELABORATORS),
+        ],
+    )
+
+
 def default_theory_environment() -> TheoryEnvironment:
     """The default surface language: base logic plus every theory module
     that happens to be importable, currently set theory and number theory.
@@ -1587,7 +1599,10 @@ def default_theory_environment() -> TheoryEnvironment:
     theory reachable through more than one path is just a harmless no-op
     the second time.
     """
-    environment = TheoryEnvironment(rules=[pl.AlgebraRule()])
+    environment = TheoryEnvironment(
+        line_elaborators=list(_BASE_LINE_ELABORATORS),
+        rules=[pl.AlgebraRule()],
+    )
     try:
         import SyLoPy.source.SetTheory as st
         environment = environment.extended(st.SET_THEORY_ENVIRONMENT)
@@ -1845,17 +1860,7 @@ class _ElaborationContext:
         if not isinstance(entry, SurfaceLine):
             raise TypeError(f"unknown surface entry: {entry!r}")
 
-        # Base proof-language syntax is always available, even when a caller
-        # deliberately passes a narrow TheoryEnvironment directly. Theory
-        # environments then add only their own line-specific elaborators.
-        for elaborator in _BASE_LINE_ELABORATORS:
-            result = elaborator(entry, self)
-            if result is not None:
-                return result
-
         for elaborator in self.environment.line_elaborators:
-            if elaborator in _BASE_LINE_ELABORATORS:
-                continue
             result = elaborator(entry, self)
             if result is not None:
                 return result
@@ -1923,7 +1928,10 @@ def elaborate_proof(
     environment: Optional[TheoryEnvironment] = None,
 ) -> ElaboratedEntries:
     """Lower a SurfaceProof to the strict ProofLogic entry language."""
-    environment = environment or default_theory_environment()
+    if environment is None:
+        environment = default_theory_environment()
+    else:
+        environment = _with_base_line_elaborators(environment)
     context = _ElaborationContext(environment)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
     try:
