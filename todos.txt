@@ -555,8 +555,16 @@ implementing the rules without an explicit go-ahead.
       ill-typed expressions, and it does not infer arbitrary type facts.
       The type predicate remains an ordinary citable logical fact.
       Regression tests cover singular and plural integer/natural-number
-      declarations. Scope-local declarations remain subject to the separate
-      lexical-scope contract below.
+      declarations. The recipes are registered by
+      `NUMBER_THEORY_ENVIRONMENT`, so direct users of that environment get
+      the same declaration behavior as users of the default environment.
+      Scope-local declarations remain subject to the separate lexical-scope
+      contract below.
+
+      Soundness invariant for future typing work: every typing fact a proof
+      relies on must reach `RuleContext` as an ordinary recorded formula or
+      explicit declaration metadata. A separate type-checking layer may reject
+      ill-typed expressions, but must never independently justify a proof step.
 
 
 ### 7. Relation declarations and inference rules respect subproof scope
