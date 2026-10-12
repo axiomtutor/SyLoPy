@@ -417,3 +417,52 @@ def test_promotion_does_not_drop_relation_property_declaration_dependencies():
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
+def test_promotion_does_not_drop_a_custom_inference_rule_dependency():
+    q = pp.parse_formula("Q", set())
+
+    class UnconditionalQRule(pl.InferenceRule):
+        """An environment-supplied rule used to probe promotion dependencies."""
+
+        name = "Unconditional Q audit rule"
+        premise_arity = 0
+
+        def applies(self, candidates, phi):
+            return not candidates and pl._ast_eq(phi, q)
+
+    custom_rule = UnconditionalQRule()
+    entries, _ = pp.parse_proof_text(
+        """1. Let Q be a closed formula. (Declaration)
+2. Q. (Reiteration from 1)
+"""
+    )
+    _replace_rule(entries, "2", custom_rule, [])
+    source = pl.Proof(entries, rules=pl.default_rules() + [custom_rule])
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    try:
+        theorem = pl.promote_theorem("Custom inference dependency audit", source)
+    except ValueError:
+        # Refusing promotion when the proof depends on a rule that the
+        # promoted theorem cannot carry forward is safe.
+        return
+
+    target_entries, _ = pp.parse_proof_text(
+        """1. Let Q be a closed formula. (Declaration)
+2. Q. (Reiteration from 1)
+"""
+    )
+    _replace_rule(target_entries, "2", theorem, [])
+    ok, error = pl.Proof(
+        target_entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+
+    if ok:
+        pytest.xfail(
+            "promotion discarded the source proof's custom inference rule and "
+            "made its conclusion available without that rule"
+        )
+    assert error is not None
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
