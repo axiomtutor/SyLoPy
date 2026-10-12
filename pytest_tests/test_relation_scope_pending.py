@@ -100,7 +100,7 @@ end subproof
     # lacking the reflexivity property. An error at 2.3 exposes a missing
     # local-declaration implementation; an error elsewhere exposes a
     # different failure rather than the sibling-isolation contract.
-    xfail_if_current_scope_bug(ok, err, "2.3")
+    xfail_if_current_scope_bug(ok, err, "2.3", "RelationReflexivity")
     assert not ok
     assert err is not None
     assert err.label == "3.3"
