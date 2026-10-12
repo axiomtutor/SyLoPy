@@ -18,6 +18,26 @@ def _checked_proof(text):
     return proof
 
 
+
+def _replace_rule(entries, label, rule, references):
+    """Inject a registered theorem rule after parsing an otherwise-valid line."""
+    for index, entry in enumerate(entries):
+        if (
+            isinstance(entry, tuple)
+            and len(entry) >= 3
+            and entry[0] == label
+            and entry[1] != "subproof"
+        ):
+            entries[index] = (
+                entry[0],
+                entry[1],
+                ("rule", rule, references),
+                *entry[3:],
+            )
+            return
+    raise AssertionError(f"no ordinary proof line with label {label!r}")
+
+
 def test_promotion_keeps_top_level_premises_but_not_nested_assumptions():
     proof = _checked_proof(
         """1. Let P be a closed formula. (Declaration)
@@ -127,13 +147,16 @@ def test_promoted_premise_is_substituted_and_must_be_supplied():
     assert pl._ast_eq(theorem.premises[0], pp.parse_formula("a = a", set()))
     assert pl._ast_eq(theorem.conclusion, pp.parse_formula("a = a", set()))
 
-    # Validate with the promoted theorem registered for this citation.
+    # The parser does not know a newly created TheoremRule by name. Parse a
+    # known rule shape, then inject the registered theorem directly to test
+    # promotion/validation independently of citation-name resolution.
     entries, _ = pp.parse_proof_text(
         """1. Let b be any object. (Declaration)
 2. b = b. (Premise)
-3. b = b. (Identity transport audit from 2)
+3. b = b. (Reiteration from 2)
 """
     )
+    _replace_rule(entries, "3", theorem, ["2"])
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
@@ -141,16 +164,16 @@ def test_promoted_premise_is_substituted_and_must_be_supplied():
 
     missing_premise_entries, _ = pp.parse_proof_text(
         """1. Let b be any object. (Declaration)
-2. b = b. (Identity transport audit)
+2. b = b. (Reflexivity)
 """
     )
+    _replace_rule(missing_premise_entries, "2", theorem, [])
     ok, error = pl.Proof(
         missing_premise_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
     assert not ok
     assert error is not None
     assert error.label == "2"
-
 
 def test_promoted_premise_rejects_a_different_instance():
     source = _checked_proof(
@@ -164,9 +187,10 @@ def test_promoted_premise_rejects_a_different_instance():
         """1. Let b be any object. (Declaration)
 2. Let c be any object. (Declaration)
 3. b = c. (Premise)
-4. b = b. (Identity transport mismatch audit from 3)
+4. b = b. (Reiteration from 3)
 """
     )
+    _replace_rule(entries, "4", theorem, ["3"])
 
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
