@@ -8,6 +8,7 @@ import pytest
 
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.ProofParser as pp
+from .support import numt
 
 
 def _declaration_formula(text):
@@ -31,6 +32,27 @@ def test_natural_number_declaration_states_nat_predicate():
     assert repr(formula) == "Nat(n)"
     assert pl.Proof(entries).check()[0]
 
+
+
+def test_number_theory_environment_owns_typed_declaration_recipes():
+    # The number-theory environment must be self-contained. Callers using it
+    # directly should not depend on default_theory_environment() to register
+    # Int/Nat declaration behavior.
+    for phrase, expected in [
+        ("Let n be an integer.", "Int(n)"),
+        ("Let n be a natural number.", "Nat(n)"),
+    ]:
+        entries, _ = pp.parse_proof_text(
+            f"1. {phrase} (Declaration)\\n",
+            environment=numt.NUMBER_THEORY_ENVIRONMENT,
+        )
+
+        assert len(entries) == 1
+        assert entries[0][2][0] == "premise"
+        assert repr(entries[0][1]) == expected
+
+        ok, err = pl.Proof(entries).check_detailed()
+        assert ok, err
 
 def test_plural_typed_declarations_state_predicate_for_each_object():
     for phrase, predicate in [
