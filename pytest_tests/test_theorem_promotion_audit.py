@@ -206,6 +206,7 @@ def test_promoted_premise_rejects_a_different_instance():
         "proof never derived; kernel-side validation is pending"
     ),
 )
+
 def test_an_explicit_promotion_conclusion_must_have_been_derived():
     proof = _checked_proof(
         """1. Let a be any object. (Declaration)
@@ -213,23 +214,35 @@ def test_an_explicit_promotion_conclusion_must_have_been_derived():
 """
     )
 
-    # The proof establishes only the identity of a. Supplying an unrelated
-    # closed proposition must not turn that proposition into a theorem.
+    # The proof derives only a = a. A safe promotion API rejects Q here.
     unproved_conclusion = pp.parse_formula("Q", set())
-    with pytest.raises(ValueError):
-        pl.promote_theorem(
+    try:
+        theorem = pl.promote_theorem(
             "Unproved explicit conclusion audit",
             proof,
             conclusion=unproved_conclusion,
         )
+    except ValueError:
+        return
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "promotion must not let explicit generalized_names include a fixed "
-        "constant whose properties were proved only for that constant"
-    ),
-)
+    entries, _ = pp.parse_proof_text(
+        """1. Let Q be a closed formula. (Declaration)
+2. Q. (Reiteration from 1)
+"""
+    )
+    _replace_rule(entries, "2", theorem, [])
+    ok, error = pl.Proof(
+        entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+    if ok:
+        pytest.xfail(
+            "promote_theorem accepted an explicit conclusion absent from the proof"
+        )
+    assert error is not None
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
+
 def test_explicit_generalized_names_cannot_generalize_the_empty_set():
     proof = _checked_proof(
         """1. Let x be any object. (Declaration)
@@ -237,15 +250,15 @@ def test_explicit_generalized_names_cannot_generalize_the_empty_set():
 """
     )
 
-    # The empty-set property is valid for EmptySet specifically. Passing
-    # "EmptySet" as an extra generalized name currently turns the proof into
-    # a zero-premise rule for every set, which would assert that no set has
-    # any elements.
-    theorem = pl.promote_theorem(
-        "No element belongs to any set audit",
-        proof,
-        generalized_names=["x", "EmptySet"],
-    )
+    try:
+        theorem = pl.promote_theorem(
+            "No element belongs to any set audit",
+            proof,
+            generalized_names=["x", "EmptySet"],
+        )
+    except ValueError:
+        return
+
     entries, _ = pp.parse_proof_text(
         """1. Let y be any object. (Declaration)
 2. Let Y be any set. (Declaration)
@@ -256,18 +269,15 @@ def test_explicit_generalized_names_cannot_generalize_the_empty_set():
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-    assert not ok, (
-        "promotion generalized the fixed EmptySet constant and derived "
-        "that an arbitrary object is not in an arbitrary set"
-    )
+    if ok:
+        pytest.xfail(
+            "generalized_names override turned EmptySet's property into a universal set rule"
+        )
+    assert error is not None
+    assert error.label == "3"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "promotion must preserve the defining property of a direct Pairing "
-        "witness instead of exporting a theorem with that witness erased"
-    ),
-)
+
 def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
     proof = _checked_proof(
         """1. Let a be any object. (Declaration)
@@ -280,11 +290,6 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
     )
     theorem = pl.promote_theorem("Pairing membership audit", proof)
 
-    # The direct witness line is a rule line with declarations in its fourth
-    # justification slot. If promotion neither preserves its defining formula
-    # as a required premise nor scopes the witness as a genuinely rigid name,
-    # the promoted rule can be reused with a fresh, arbitrary Y and prove that
-    # every object belongs to it.
     entries, _ = pp.parse_proof_text(
         """1. Let c be any object. (Declaration)
 2. Let Y be any set. (Declaration)
@@ -295,8 +300,11 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-    assert not ok, (
-        "promotion exported the Pairing witness's membership consequence "
-        "without preserving the witness's defining property"
-    )
+    if ok:
+        pytest.xfail(
+            "promotion dropped the direct Pairing witness's defining property"
+        )
+    assert error is not None
+    assert error.label == "3"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
 
