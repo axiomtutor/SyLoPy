@@ -3,12 +3,12 @@
 ## Project status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38191934773](https://github.com/axiomtutor/SyLoPy/actions/runs/38191934773),
-at commit [`5cf4073`](https://github.com/axiomtutor/SyLoPy/commit/5cf40731f9204105a51052429344b6a36293272d),
-on 2026-10-11 (the run's timestamps are in UTC). The canonical `./run_tests.sh`
+[GitHub Actions run #38206384301](https://github.com/axiomtutor/SyLoPy/actions/runs/38206384301),
+at commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f),
+on 2026-10-12 (timestamps are in UTC). The canonical `./run_tests.sh`
 run reported:
 
-- 921 Python tests: 920 passed and 1 known failure (see "Known issues" below).
+- 980 Python tests: 979 passed and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
@@ -571,26 +571,8 @@ implementing the rules without an explicit go-ahead.
 
 ### 7. Relation declarations and inference rules respect subproof scope
 
-- [x] Owner decision (2026-10-11): a relation or any other declaration
-      introduced inside a subproof exists only within that scope. It must
-      not become visible outside the subproof, in a sibling subproof, or
-      after the subproof closes.
-- [ ] Implementation still needed for relation-property rules. The existing
-      lexical declaration scopes already prevent a locally declared predicate
-      from being used outside its scope, and the elaboration regression
-      `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`
-      checks that declarations do not leak. However, `elaborate_proof`
-      currently builds the relation rule set only from root-scope declarations,
-      so a relation declared inside a subproof cannot use its own declared
-      property there. The fix must make property-rule applicability reflect
-      the declaration visible at the proof line being checked. Do not flatten
-      declarations from all nested scopes into one global relation-name map:
-      sibling subproofs may reuse a name, and their declarations must remain
-      distinct and local. The previously proposed design adds a declaration
-      accessor to validation-time `RuleContext` and makes relation-property
-      rules read metadata from the declaration in scope at the line being
-      checked. This requires a scoped kernel change and should be separately
-      reviewed and tested.
+- [x] Implemented in master commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f) (2026-10-12). The seven relation-property rules consult `RuleContext.declaration(name)`, backed by the validator's active `DeclarationScope`, instead of a proof-wide snapshot of relation metadata. The scope is passed explicitly through ordinary, hybrid, and below-subproof rule evaluation, including rejection explanations. Nested declarations are visible in descendants, while closed and sibling scopes do not leak.
+- Regression coverage: `pytest_tests/test_relation_scope_rules.py` and `pytest_tests/test_rule_context_declarations.py` cover property mismatches, carriers, nesting, siblings, shadowing, proof-by-cases branches, fresh-variable subproofs, and every rule-citation path. The current master run reports 979 passed plus the known deferred ZFC fixture failure; enforced fixtures remain 79/79.
 
 ## Short version
 

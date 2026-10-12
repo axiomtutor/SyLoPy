@@ -719,19 +719,44 @@ class RuleContext:
     it neither helps nor hurts. The set is empty unless the validator fills
     it, so a rule asked outside a proof finds nothing arbitrary and says no.
 
+    `declaration(name)` is the declaration that `name` has at the line being
+    justified, or None. A rule that rests on what a declaration says about a
+    symbol -- the relation rules, which read a relation's carrier and the
+    properties it was declared to have from the declaration's metadata --
+    asks here, and never keeps a table of declarations made beforehand: the
+    answer depends on where in the proof the line is. A declaration made in a
+    subproof is visible in that subproof and in the subproofs nested in it,
+    and nowhere else, so two sibling subproofs can each declare their own `R`
+    and neither lends its properties to the other. The scope is the
+    validator's own `DeclarationScope`, the one the kernel checks the proof's
+    symbols against, not anything the elaborator built. Outside a proof there
+    is no scope and no name is declared, so a rule that needs a declaration
+    says no.
+
     The validator builds one of these per rule citation and hands it to
     `InferenceRule.applies_in_context`. It holds references to the
-    validator's own lists, not copies, so creating one costs nothing for the
-    many rules that never look at it -- and it is only good for the call it
-    was made for: a rule reads it while deciding and does not keep it.
+    validator's own lists and scope, not copies, so creating one costs
+    nothing for the many rules that never look at it -- and it is only good
+    for the call it was made for: a rule reads it while deciding and does not
+    keep it.
     """
-    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained")
+    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained", "_declarations")
 
-    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=()):
+    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=(),
+                 declarations: Optional["DeclarationScope"] = None):
         self._given = given
         self._assumptions = assumptions
         self._arbitrary = arbitrary_constants
         self._constrained = constrained_names
+        self._declarations = declarations
+
+    def declaration(self, name: str) -> Optional[Declaration]:
+        """The declaration `name` has at the line being justified: the nearest
+        one in this subproof or an enclosing one, or None if there is none
+        (or there is no proof around the rule at all)."""
+        if self._declarations is None:
+            return None
+        return self._declarations.lookup(name)
 
     @property
     def hypotheses(self) -> Tuple[Any, ...]:
@@ -765,11 +790,13 @@ class InferenceRule:
         before `applies` is ever consulted
       * implement `applies(candidates, phi) -> bool`
 
-    A rule whose soundness also depends on the rest of the proof -- today
-    only `UniquenessRule`, which generalizes a constant and so needs to know
-    the constant is arbitrary (see `RuleContext`) -- overrides
-    `applies_in_context` as well. The validator always calls that one; the
-    default simply forwards to `applies`, so every other rule is unaffected.
+    A rule whose soundness also depends on the rest of the proof -- the
+    `UniquenessRule`, which generalizes a constant and so needs to know the
+    constant is arbitrary, and the discrete-math relation rules, which need
+    the declaration a relation has at that line (see `RuleContext`) --
+    overrides `applies_in_context` as well. The validator always calls that
+    one; the default simply forwards to `applies`, so every other rule is
+    unaffected.
 
     A rule with several independent side conditions can also override
     `explain_in_context`, which the validator asks, after the rule has said
@@ -3538,7 +3565,7 @@ class ProofValidator:
             err = self._validate_rule_hybrid(phi, justification, nested_subproof, label, sidx,
                                              block_label, labels, declarations, seen)
         elif tag == 'rule':
-            err = self._validate_rule(phi, justification, label, sidx, block_label, labels)
+            err = self._validate_rule(phi, justification, label, sidx, block_label, labels, declarations)
         else:
             err = _mk_error(label, block_label, sidx, CATEGORY_UNKNOWN_TAG,
                             f"unknown justification tag '{tag}'")
@@ -3818,7 +3845,7 @@ class ProofValidator:
             candidates = [available[i] for i in candidate_indices]
             tried.append(candidates)
             try:
-                if self._applies(rule, candidates, phi):
+                if self._applies(rule, candidates, phi, declarations):
                     return None
             except Exception as raised:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3826,7 +3853,7 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices} and attached subproofs"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
     def _validate_rule_below(self, phi: fl.Formula, justification: tuple, nested_subproof: Optional[list],
                               label: Optional[str], sidx: int, block_label: Optional[str],
@@ -3850,15 +3877,21 @@ class ProofValidator:
 
         if not self._rule_is_registered(rule):
             return _mk_error(label, block_label, sidx, CATEGORY_UNRECOGNIZED_RULE, f"rule '{rule.name}' is not one of the rules this proof allows")
-        if not self._applies(rule, [sp_rec], phi):
+        if not self._applies(rule, [sp_rec], phi, declarations):
             return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                              f"'{rule.name}' does not justify {phi!r} from the subproof immediately below this line"
-                             + self._why_not(rule, [[sp_rec]], phi))
+                             + self._why_not(rule, [[sp_rec]], phi, declarations))
         return None
 
     def _validate_rule(self, phi: fl.Formula, justification: tuple, label: Optional[str],
-                       sidx: int, block_label: Optional[str], labels: LabelScope) -> Optional[ValidationError]:
-        """Validate a rule citation, including labels that denote bundled premises."""
+                       sidx: int, block_label: Optional[str], labels: LabelScope,
+                       declarations: DeclarationScope) -> Optional[ValidationError]:
+        """Validate a rule citation, including labels that denote bundled premises.
+
+        `declarations` is the scope of the block the line is in, with everything
+        the line itself declared already registered: what the rule is told a
+        symbol was declared to be (`RuleContext.declaration`).
+        """
         if len(justification) not in (3, 4):
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed rule justification (expected a rule and a list of cited lines)")
@@ -3923,7 +3956,7 @@ class ProofValidator:
                 candidates = [available[i] for i in candidate_indices]
                 tried.append(candidates)
                 try:
-                    if self._applies(rule, candidates, phi):
+                    if self._applies(rule, candidates, phi, declarations):
                         return None
                 except Exception as raised:
                     return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3931,21 +3964,29 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
-    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula) -> bool:
+    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula,
+                 declarations: DeclarationScope) -> bool:
         """Ask `rule` whether it justifies `phi` from `candidates`, giving
         it the `RuleContext` of this point in the proof if it wants one
         (`applies_in_context`). The one place the validator calls a rule, so
-        a context-aware rule sees the same context however it was cited."""
+        a context-aware rule sees the same context however it was cited.
+
+        `declarations` is the scope of the line being justified. It is a
+        required argument, not an optional one, so that a call site that
+        forgets it fails loudly instead of quietly telling a rule that no
+        symbol is declared.
+        """
         in_context = getattr(rule, 'applies_in_context', None)
         if in_context is None:
             return rule.applies(candidates, phi)
         return in_context(candidates, phi, RuleContext(
             self._given_lines, self._assumption_stack, self._arbitrary_names,
-            self._constrained_names))
+            self._constrained_names, declarations))
 
-    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula) -> str:
+    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula,
+                 declarations: DeclarationScope) -> str:
         """`": <reason>"` to append to a refusal, when `rule` can say why it
         refused one of the `tried` candidate groups; otherwise the empty
         string. Never raises: an explanation is a courtesy, and a rule that
@@ -3954,7 +3995,7 @@ class ProofValidator:
         if explain is None:
             return ""
         context = RuleContext(self._given_lines, self._assumption_stack, self._arbitrary_names,
-                              self._constrained_names)
+                              self._constrained_names, declarations)
         for candidates in tried:
             try:
                 reason = explain(candidates, phi, context)

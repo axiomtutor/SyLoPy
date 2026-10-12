@@ -1564,8 +1564,6 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     return (entry.label, formula, ('premise', declarations))
 
 
-# Surface-language handlers that are part of the base proof language,
-# independent of which optional theory environment a caller selects.
 _BASE_LINE_ELABORATORS = (
     elaborate_compound_declaration,
     elaborate_typed_declaration,
@@ -1648,10 +1646,12 @@ class _ElaborationContext:
         # parallel `pl.DeclarationScope` used to be kept here too, dual-
         # written on every `register_declaration` call purely so this
         # constructor could lean on its "skip a compatible duplicate"
-        # seeding rule -- once every *read* (including the seeding for
-        # `DiscreteMath.relation_rule_set` in `elaborate_proof`) had moved
+        # seeding rule -- once every *read* (including the seeding of the
+        # relation rules that `elaborate_proof` used to do) had moved
         # onto `self.context`, that parallel structure had no reader of
-        # its own left and was removed. Seeded from
+        # its own left and was removed. (The relation rules have since
+        # stopped reading elaboration state at all: they ask the kernel's
+        # scope for the declaration at the line they justify.) Seeded from
         # `pl._dedupe_declarations(environment.declarations)`, not
         # `environment.declarations` directly, since the latter can
         # contain literal duplicate `Declaration`s (e.g. SetTheory's
@@ -1934,11 +1934,6 @@ def elaborate_proof(
         environment = _with_base_line_elaborators(environment)
     context = _ElaborationContext(environment)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
-    try:
-        import SyLoPy.source.DiscreteMath as dm
-        context.extra_rules.extend(dm.relation_rule_set(context.context.declarations_here()))
-    except ImportError:
-        pass
     return ElaboratedEntries(
         entries,
         origin_by_label=context.origin_by_label,
