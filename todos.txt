@@ -547,89 +547,40 @@ implementing the rules without an explicit go-ahead.
 
 ### 6. Typed declarations: `Let X be an integer` should type X
 
-- [ ] Decided (owner, 2026-10-10): `Let X be an integer.` should eventually
-      type `X`. Not to be implemented now; how it should work is open, and
-      the agents are discussing the options in the agent discussion file.
-      Today a type word is only a label: `Declaration.type_name` is read by no
-      rule, no shipped theory registers descriptors, and `Let n be a natural
-      number.` states no `Nat(n)`. Fixtures that need `Int(a)` state it by
-      hand (`Let a, b, c be integers such that: Int(a). Int(b). Int(c). ...`).
-      Fact found while discussing it: the machinery for a typed declaration
-      already exists. `Type(..., descriptors=[...]).as_declaration_recipe()`
-      makes `Let x be a <descriptor>` state `Type.holds(x)` on the
-      declaration's own line, and the validator already records a declaration
-      line that states a formula as a hypothesis. As an experiment (not
-      committed), registering descriptors for `NAT_TYPE` and `INT_TYPE` in the
-      default environment changed exactly one of the 130 fixture proofs and
-      one of the 896 Python tests: red-team case 5 (and its reasons test),
-      which is then refused for conditions 3 and 4 (`X occurs in a hypothesis
-      in force, Int(X)`). So the soundness side already works, and nothing
-      else in the repository depends on a type word being only a label. What
-      is open is the design around it:
-      - does a type only state a formula (a typed declaration is the
-        hypothesis `Int(X)`), or is it also checked (ill-typed terms
-        rejected, as the refinement-type proposal in PR #22 has it)? If both,
-        the checking layer may reject but must never justify;
-      - generalizing over a typed constant needs sugar, since `forall n,
-        (Nat(n) -> P(n))` has to come from somewhere ("for every natural
-        number n");
-      - subtypes (`Nat` inside `Int`): an explicit inclusion theorem, not
-        metadata;
-      - theorem promotion with a typing line (verified in the experiment: it
-        becomes a premise, so a proof that starts `Let n be a natural number.`
-        and ends `Nat(Succ(n))` promotes to the theorem "from `Nat(n)`,
-        `Nat(Succ(n))`, with n generalized", which is the textbook statement
-        for free; today a proof that cites the declaration line for `Nat(n)`
-        does not validate, because that line states nothing a later line can
-        cite).
-      Constraint on every option: a typing fact the proof relies on must reach
-      `RuleContext` as a recorded formula or as declaration metadata (the
-      Uniqueness lesson above), or case 5 turns from refused into unsound.
-      When this is implemented, case 5 of
-      `tests/testProofs/uniqueness_red_team.txt` becomes an Invalid case.
+- [x] Owner authorized implementation (2026-10-11): declarations such as
+      `Let X be an integer.` and `Let n be a natural number.` now state the
+      corresponding ordinary formulas `Int(X)` and `Nat(n)` on their
+      declaration lines, using the existing `Type.as_declaration_recipe()`
+      mechanism. This is not refinement type checking: it does not reject
+      ill-typed expressions, and it does not infer arbitrary type facts.
+      The type predicate remains an ordinary citable logical fact.
+      Regression tests cover singular and plural integer/natural-number
+      declarations. Scope-local declarations remain subject to the separate
+      lexical-scope contract below.
 
-### 7. Relation declarations inside a subproof get no relation rules
 
-- [ ] Proposed, not implemented; the owner confirms the contract first.
-      Observed (a candidate test from ChatGPT, reproduced): a relation
-      declared inside a subproof cannot use its declared property there.
-      With `2.2. Let X be any set, R be a reflexive relation on X, b be in X.`
-      inside a subproof, `2.3. R(b, b). (Relation Reflexivity from 2.2)` is
-      refused. The refusal is the safe direction (a rule that is missing, not
-      one that is wrong), so this is a gap and not a hole. Cause:
-      `elaborate_proof` builds the seven relation rules once, from
-      `ProofContext.declarations_here()` of the root context after the whole
-      proof is elaborated, and each rule closes over a table keyed by relation
-      name. A subproof's declarations have gone out of scope by then. As far
-      as the design record shows this was never meant as a restriction: the
-      relation rules date from when relations were declared at the top of a
-      proof.
-      Contract to confirm: a relation declared in a subproof carries its
-      carrier and properties inside that subproof and nowhere else, like every
-      other declaration. Sibling subproofs may reuse the name (verified: two
-      siblings can each declare an `R`, one reflexive and one symmetric).
-      Proposed design: the relation rules read the declaration in scope at
-      the line they justify, not a table built beforehand.
-      - `RuleContext` gains an accessor for the declaration a name has at
-        that line (`context.declaration("R")`, or `None`), filled from the
-        validator's own `DeclarationScope`. The validator would keep the
-        current scope next to `_assumption_stack`, which `_validate_block`
-        already pushes and pops per subproof.
-      - The relation rules become a fixed list: they read `carrier` and
-        `properties` from that declaration's metadata through the context.
-        `relation_rule_set(declarations)` and the per-proof `extra_rules` step
-        in `elaborate_proof` go away, so elaboration stops deciding which
-        relations have rules.
-      - Do not use a flat table of every declaration in the proof, keyed by
-        relation name. Sibling scopes may reuse a name with different
-        properties, so such a table would let a later sibling use a property
-        only an earlier one declared: an unsound `R(b, b)`.
-      Tests before the change: the nested reflexive case above is accepted;
-      in one sibling it is accepted and in the other, where `R` is only
-      symmetric, `Relation Reflexivity` is refused; a relation declared at the
-      top of the proof still works inside any subproof; the discrete math
-      fixtures are unchanged. Kernel change (`RuleContext`, the validator), so
-      Claude or the owner only; ChatGPT and Copilot may write the tests.
+### 7. Relation declarations and inference rules respect subproof scope
+
+- [x] Owner decision (2026-10-11): a relation or any other declaration
+      introduced inside a subproof exists only within that scope. It must
+      not become visible outside the subproof, in a sibling subproof, or
+      after the subproof closes.
+- [ ] Implementation still needed for relation-property rules. The existing
+      lexical declaration scopes already prevent a locally declared predicate
+      from being used outside its scope, and the elaboration regression
+      `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`
+      checks that declarations do not leak. However, `elaborate_proof`
+      currently builds the relation rule set only from root-scope declarations,
+      so a relation declared inside a subproof cannot use its own declared
+      property there. The fix must make property-rule applicability reflect
+      the declaration visible at the proof line being checked. Do not flatten
+      declarations from all nested scopes into one global relation-name map:
+      sibling subproofs may reuse a name, and their declarations must remain
+      distinct and local. The previously proposed design adds a declaration
+      accessor to validation-time `RuleContext` and makes relation-property
+      rules read metadata from the declaration in scope at the line being
+      checked. This requires a scoped kernel change and should be separately
+      reviewed and tested.
 
 ## Short version
 

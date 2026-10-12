@@ -1588,6 +1588,13 @@ def default_theory_environment() -> TheoryEnvironment:
     try:
         import SyLoPy.source.NumberTheory as numt
         environment = environment.extended(numt.NUMBER_THEORY_ENVIRONMENT)
+        # A typed declaration states the corresponding ordinary predicate
+        # as a hypothesis on that declaration line. This uses the existing
+        # Type/DeclarationRecipe mechanism; it does not add type checking.
+        environment.declaration_recipes.extend([
+            numt.nt.NAT_TYPE.as_declaration_recipe(),
+            numt.INT_TYPE.as_declaration_recipe(),
+        ])
     except ImportError:
         pass
     try:

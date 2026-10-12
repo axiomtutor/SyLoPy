@@ -82,6 +82,12 @@ def test_each_invalid_case_is_refused_for_the_reason_in_its_title(number, expect
         pytest.fail(f"case {number}'s title names no condition, shape or scope: {title}")
 
 
-def test_a_case_that_names_two_conditions_is_refused_for_both():
-    (case,) = [r for r in INVALID if "condition 3 and condition 4" in r[4]]
-    assert "condition 3:" in case[3] and "condition 4:" in case[3]
+def test_cases_that_name_two_conditions_are_refused_for_both():
+    cases = [r for r in INVALID if "condition 3 and condition 4" in r[4]]
+    assert cases
+    # Case 5 is now invalid because a typed integer declaration contributes
+    # Int(X) as a hypothesis; the original multi-condition adversarial case
+    # remains covered as well.
+    assert any(case[0] == "5" for case in cases)
+    for case in cases:
+        assert "condition 3:" in case[3] and "condition 4:" in case[3]
