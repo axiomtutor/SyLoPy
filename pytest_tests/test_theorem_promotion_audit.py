@@ -125,14 +125,7 @@ def test_promoted_premise_is_substituted_and_must_be_supplied():
     assert theorem.premises == [pp.parse_formula("a = a", set())]
     assert theorem.conclusion == pp.parse_formula("a = a", set())
 
-    good = _checked_proof(
-        """1. Let b be any object. (Declaration)
-2. b = b. (Premise)
-3. b = b. (Identity transport audit from 2)
-"""
-    )
-    # _checked_proof uses the default rules; validate again with the promoted
-    # theorem registered for this citation.
+    # Validate with the promoted theorem registered for this citation.
     entries, _ = pp.parse_proof_text(
         """1. Let b be any object. (Declaration)
 2. b = b. (Premise)
