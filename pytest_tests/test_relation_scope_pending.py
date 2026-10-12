@@ -22,13 +22,14 @@ _SCOPE_FIX_REASON = (
 )
 
 
-def xfail_if_current_scope_bug(ok, err, label):
-    """Xfail only for the known missing-scope rule mismatch, not any failure."""
+def xfail_if_current_scope_bug(ok, err, label, rule_name):
+    """Xfail only when this exact rule fails at the expected in-scope line."""
     if (
         not ok
         and err is not None
         and err.label == label
         and err.category == pl.CATEGORY_RULE_MISMATCH
+        and f"'{rule_name}' does not justify" in err.detail
     ):
         pytest.xfail(_SCOPE_FIX_REASON)
 
@@ -49,7 +50,7 @@ end subproof
     # Currently the local rule application fails because its declaration was
     # omitted from the proof-wide rule metadata. Only that exact mismatch is
     # expected to fail temporarily; after the fix, line 3 should be the error.
-    xfail_if_current_scope_bug(ok, err, "2.3")
+    xfail_if_current_scope_bug(ok, err, "2.3", "RelationReflexivity")
     assert not ok
     assert err is not None
     assert err.label == "3"
@@ -72,7 +73,7 @@ end subproof
  2.4. P. (Reiteration from 2.1)
 end subproof
 """)
-    xfail_if_current_scope_bug(ok, err, "2.3.2")
+    xfail_if_current_scope_bug(ok, err, "2.3.2", "RelationReflexivity")
     assert ok, err
 
 
@@ -120,5 +121,5 @@ begin subproof
  2.6. P. (Reiteration from 2.1)
 end subproof
 """)
-    xfail_if_current_scope_bug(ok, err, "2.5")
+    xfail_if_current_scope_bug(ok, err, "2.5", "RelationTransitivity")
     assert ok, err
