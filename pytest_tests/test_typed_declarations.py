@@ -43,7 +43,7 @@ def test_number_theory_environment_owns_typed_declaration_recipes():
         ("Let n be a natural number.", "Nat(n)"),
     ]:
         entries, _ = pp.parse_proof_text(
-            f"1. {phrase} (Declaration)\\n",
+            f"1. {phrase} (Declaration)\n",
             environment=numt.NUMBER_THEORY_ENVIRONMENT,
         )
 
