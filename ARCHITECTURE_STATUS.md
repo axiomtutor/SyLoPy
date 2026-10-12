@@ -86,7 +86,14 @@ plain declaration or as the flag of a Fresh Variable subproof, minus any name
 that a declaration's metadata refers to, such as a relation's carrier). Rules
 that do not opt in are unchanged. A rule that refuses can also implement
 `explain_in_context`, and the validator appends its reason to the message.
-`Uniqueness` is the first user; a rule asked without a context never applies.
+`Uniqueness`, `UniversalGeneralization` and `ExistentialElimination` use the
+hypotheses to check that the constant they treat as arbitrary occurs in none of
+them -- including a premise stated inside the subproof they consume, which no
+earlier check could see -- and that no declaration's structure names it; the
+relation rules read `declaration(name)`. `Uniqueness` never applies without a
+context; the other two keep their context-free checks when asked directly.
+Theorem promotion takes its premises from the same record the validator keeps
+(`ProofValidator.own_givens`).
 
 The invariant for such a rule: whatever the proof relies on that says
 something about a constant must reach the context, as a recorded formula or as

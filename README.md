@@ -107,6 +107,13 @@ cite earlier results by name without inheriting local proof structure.
 This is deliberate: proof reuse across proofs is explicit and theory-scoped,
 not a shared lexical environment.
 
+A promoted theorem carries every hypothesis its proof took for granted -- premise
+lines at any depth, declarations that state a formula, witness lines -- as
+premises, so it cannot be cited where they are not supplied. Promotion refuses a
+proof that relied on structure recorded in a declaration and stated by no
+formula (a relation declared symmetric); state the property as a premise
+formula instead. See `todos.txt`, item 8.
+
 ### Proof context and lexical scoping
 
 `source/ProofContext.py` is the lexical environment used during elaboration.
