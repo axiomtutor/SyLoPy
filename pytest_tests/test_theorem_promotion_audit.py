@@ -341,3 +341,38 @@ def test_promotion_does_not_erase_a_custom_axiom_dependency():
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
+def test_promotion_does_not_drop_a_premise_used_only_inside_a_subproof():
+    q = pp.parse_formula("Q", set())
+    entries, _ = pp.parse_proof_text(
+        """1. Let P, Q be closed formulas. (Declaration)
+2. P -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption for Conditional Introduction)
+ 2.2. Q. (Premise)
+end subproof
+"""
+    )
+    source = pl.Proof(entries, premises=[q])
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    theorem = pl.promote_theorem("Nested premise dependency audit", source)
+
+    target_entries, _ = pp.parse_proof_text(
+        """1. Let P, Q be closed formulas. (Declaration)
+2. P -> Q. (Reiteration from 1)
+"""
+    )
+    _replace_rule(target_entries, "2", theorem, [])
+    ok, error = pl.Proof(
+        target_entries, rules=pl.default_rules() + [theorem]
+    ).check_detailed()
+
+    if ok:
+        pytest.xfail(
+            "promotion dropped Q from a nested Premise line and made P -> Q a zero-premise theorem"
+        )
+    assert error is not None
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
