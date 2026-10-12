@@ -10,16 +10,18 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-The latest recorded full run is
-[GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
-from 2026-10-11 at commit
-[`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f).
-It has one known, tracked exception (see `todos.txt`).
+The latest recorded full run on `master` is
+[GitHub Actions run #38191934773](https://github.com/axiomtutor/SyLoPy/actions/runs/38191934773),
+at commit [`5cf4073`](https://github.com/axiomtutor/SyLoPy/commit/5cf40731f9204105a51052429344b6a36293272d),
+on 2026-10-11 (the run's timestamps are in UTC). It has one known, tracked
+exception (see `todos.txt`).
 
-- 907 Python tests; 906 passed and 1 known failure.
+- 921 Python tests: 920 passed and 1 known failure in
+  `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
+- Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
-- Informational proof fixtures: 51/52 passed; the failure is the same deferred
-  ZFC fixture.
+- Informational proof fixtures: 51/52 passed; the remaining proof is blocked on
+  the deferred WLOG / Mutatis mutandis implementation.
 
 These numbers describe that specific run and will change as tests and fixtures
 are added.
