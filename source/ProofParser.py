@@ -1564,21 +1564,29 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     return (entry.label, formula, ('premise', declarations))
 
 
-_BASE_LINE_ELABORATORS = (
-    elaborate_compound_declaration,
-    elaborate_typed_declaration,
-    try_elaborate_existence,
-)
+def _base_line_elaborators():
+    """Return active base elaborators, including policy-installed wrappers.
+
+    ProofParserPolicy replaces the compound declaration elaborator after
+    this module is imported. Resolve these names when building environments
+    rather than capturing function objects before the policy overlay loads.
+    """
+    return (
+        elaborate_compound_declaration,
+        elaborate_typed_declaration,
+        try_elaborate_existence,
+    )
 
 
 def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
     """Add base proof syntax to an explicitly selected theory without mutation."""
+    base_elaborators = _base_line_elaborators()
     return replace(
         environment,
         line_elaborators=[
-            *_BASE_LINE_ELABORATORS,
+            *base_elaborators,
             *(item for item in environment.line_elaborators
-              if item not in _BASE_LINE_ELABORATORS),
+              if item not in base_elaborators),
         ],
     )
 
@@ -1598,7 +1606,7 @@ def default_theory_environment() -> TheoryEnvironment:
     the second time.
     """
     environment = TheoryEnvironment(
-        line_elaborators=list(_BASE_LINE_ELABORATORS),
+        line_elaborators=list(_base_line_elaborators()),
         rules=[pl.AlgebraRule()],
     )
     try:
