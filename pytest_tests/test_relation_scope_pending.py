@@ -2,10 +2,9 @@
 
 The kernel task is owned by Claude. These tests specify the accepted semantics
 without patching ProofLogic.py or ProofJustification.py. Until the kernel lookup
-uses the declaration visible at the current proof line, the positive cases are
-expected failures. The strict xfails deliberately become suite failures (XPASS)
-once the behavior works, reminding us to remove the markers and make the cases
-ordinary required regressions.
+uses the declaration visible at the current proof line, each test recognizes
+only the specific, current-scope rule mismatch as an expected failure. Other
+failures (including one at the wrong proof line) remain ordinary test failures.
 """
 
 import pytest
@@ -23,7 +22,17 @@ _SCOPE_FIX_REASON = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason=_SCOPE_FIX_REASON)
+def xfail_if_current_scope_bug(ok, err, label):
+    """Xfail only for the known missing-scope rule mismatch, not any failure."""
+    if (
+        not ok
+        and err is not None
+        and err.label == label
+        and err.category == pl.CATEGORY_RULE_MISMATCH
+    ):
+        pytest.xfail(_SCOPE_FIX_REASON)
+
+
 def test_relation_declared_inside_subproof_works_there_but_does_not_escape():
     ok, err = check("""
 1. Let X be any set, a be in X, P be a closed formula. (Declaration)
@@ -37,15 +46,16 @@ end subproof
 3. R(a,a). (Premise)
 """)
 
-    # The local rule application must succeed; only the later out-of-scope use
-    # should fail. Checking the exact label distinguishes the two behaviors.
+    # Currently the local rule application fails because its declaration was
+    # omitted from the proof-wide rule metadata. Only that exact mismatch is
+    # expected to fail temporarily; after the fix, line 3 should be the error.
+    xfail_if_current_scope_bug(ok, err, "2.3")
     assert not ok
     assert err is not None
     assert err.label == "3"
     assert err.category == pl.CATEGORY_UNDECLARED_SYMBOL
 
 
-@pytest.mark.xfail(strict=True, reason=_SCOPE_FIX_REASON)
 def test_relation_declared_in_parent_subproof_is_visible_in_nested_subproof():
     ok, err = check("""
 1. Let X be any set, a be in X, P be a closed formula. (Declaration)
@@ -62,10 +72,10 @@ end subproof
  2.4. P. (Reiteration from 2.1)
 end subproof
 """)
+    xfail_if_current_scope_bug(ok, err, "2.3.2")
     assert ok, err
 
 
-@pytest.mark.xfail(strict=True, reason=_SCOPE_FIX_REASON)
 def test_sibling_relation_declarations_do_not_transfer_properties():
     ok, err = check("""
 1. Let X be any set, a be in X, P be a closed formula. (Declaration)
@@ -89,6 +99,7 @@ end subproof
     # lacking the reflexivity property. An error at 2.3 exposes a missing
     # local-declaration implementation; an error elsewhere exposes a
     # different failure rather than the sibling-isolation contract.
+    xfail_if_current_scope_bug(ok, err, "2.3")
     assert not ok
     assert err is not None
     assert err.label == "3.3"
@@ -96,7 +107,6 @@ end subproof
     assert "'RelationReflexivity' does not justify" in err.detail
 
 
-@pytest.mark.xfail(strict=True, reason=_SCOPE_FIX_REASON)
 def test_local_transitivity_rule_works_from_two_premises_in_nested_subproof():
     ok, err = check("""
 1. Let X be any set, a, b, c be in X, P be a closed formula. (Declaration)
@@ -110,4 +120,5 @@ begin subproof
  2.6. P. (Reiteration from 2.1)
 end subproof
 """)
+    xfail_if_current_scope_bug(ok, err, "2.5")
     assert ok, err
