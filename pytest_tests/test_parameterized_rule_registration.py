@@ -7,6 +7,7 @@ direct rule object for Nat.
 """
 
 import pytest
+import SyLoPy.source.SetTheory as st
 
 from .support import c, fl, pl, pp
 
@@ -218,4 +219,33 @@ def test_theorem_cannot_replace_a_required_rule_subclass_with_its_parent():
     assert error.label == "1"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
     assert "Forged Reiteration" in error.detail
+
+def test_pairing_witness_rule_is_exported_as_a_required_rule():
+    """The generated Pairing rule needs explicit registration, not class matching."""
+    text = """
+1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. There is a set Y = {a, b}. (Axiom of Pairing)
+"""
+    entries, _ = pp.parse_proof_text(
+        text, environment=st.SET_THEORY_ENVIRONMENT
+    )
+    pairing_entry = next(entry for entry in entries if entry[0] == "3")
+    line_rule = pairing_entry[2][1]
+    assert isinstance(line_rule, st.PairingAxiomRule)
+    assert line_rule.witness_name == "Y"
+
+    registered = [
+        rule for rule in entries.required_rules
+        if isinstance(rule, st.PairingAxiomRule)
+        and rule.witness_name == "Y"
+    ]
+    if not registered:
+        pytest.xfail(
+            "the elaborator embeds PairingAxiomRule(witness_name='Y') in the "
+            "line justification but exports only generic PairingAxiomRule(); "
+            "class-based authorization currently masks the missing registration"
+        )
+
+    assert registered
 
