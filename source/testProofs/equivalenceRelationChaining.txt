@@ -25,7 +25,7 @@ end subproof
 # 2
 ## Proof that
 ### if R is a partial order on X and a, b are in X.
-### then R(a,b) -> (R(b,a) -> a=b).
+### then R(a,b) -> (R(b,a) -> a = b).
 
 1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
 2. R(a,b) -> (R(b,a) -> a = b). (Conditional Introduction from subproof below)
