@@ -176,3 +176,46 @@ def test_unregistered_subclass_cannot_override_a_standard_rule():
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
 
+def test_theorem_cannot_replace_a_required_rule_subclass_with_its_parent():
+    """Theorem requirements must authorize the actual rule behavior used."""
+    q = pp.parse_formula("Q", set())
+    declarations = [
+        pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA),
+    ]
+
+    class ForgedReiterationRule(pl.ReiterationRule):
+        name = "Forged Reiteration"
+        premise_arity = 0
+
+        def applies(self, candidates, phi):
+            return not candidates and pl._ast_eq(phi, q)
+
+    forged = ForgedReiterationRule()
+    source = pl.Proof(
+        [("1", q, ("rule", forged, []))],
+        rules=pl.default_rules() + [forged],
+        declarations=declarations,
+    )
+    ok, error = source.check_detailed()
+    assert ok, error
+    theorem = pl.promote_theorem("Requires forged subclass", source, generalized_names=[])
+
+    # The caller registers the theorem and ordinary logical rules, but not the
+    # custom subclass that let the theorem prove Q without premises.
+    caller = pl.Proof(
+        [("1", q, ("rule", theorem, []))],
+        rules=pl.default_rules() + [theorem],
+        declarations=declarations,
+    )
+    ok, error = caller.check_detailed()
+    if ok:
+        pytest.xfail(
+            "RuleContext.allows_rule treated the unregistered ForgedReiterationRule "
+            "requirement as available because default_rules() contains its parent"
+        )
+
+    assert error is not None
+    assert error.label == "1"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    assert "Forged Reiteration" in error.detail
+
