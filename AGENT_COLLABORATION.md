@@ -41,14 +41,14 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ### PR #42 — Refresh status, document and test Python API, record rule-registration gap
 
-[PR #42](https://github.com/axiomtutor/SyLoPy/pull/42), branch `chatgpt/refresh-status-after-promotion-audit`, head [`296975f`](https://github.com/axiomtutor/SyLoPy/commit/296975ff1bfc48a91a75d9bade14d8f891bd798a). Documentation-only except for one documentation regression test; no production code or kernel semantics change.
+[PR #42](https://github.com/axiomtutor/SyLoPy/pull/42), branch `chatgpt/refresh-status-after-promotion-audit`, head [`d295b17`](https://github.com/axiomtutor/SyLoPy/commit/d295b170f5ebcddac1ff9e23485e0c89aebfdb81). Documentation-only except for one documentation regression test; no production code or kernel semantics change.
 
 - Refreshes README/TODO snapshot to master CI #38341702058 at d8b8d20.
-- Adds the README's “Recommended Python API” section: self-contained examples for surface checking, structured diagnostics and theorem promotion, and core proof construction from a fixed type's resources.
-- Adds `pytest_tests/test_readme_python_api.py`, which executes the three marked README Python examples in CI. The snippets are tested independently, so undefined variables/imports or API behavior changes should fail with a line-numbered diagnostic.
-- Marks the public API usage and theory-boundary documentation items checked off in `todos.txt`.
+- Adds the README's “Recommended Python API” section: self-contained examples for surface checking/subproofs, promoting a theorem about an arbitrary object and citing it in a second proof, and core proof construction from a fixed type's resources.
+- Adds `pytest_tests/test_readme_python_api.py`, which executes the three marked README Python examples in CI. The snippets are tested independently, so undefined variables/imports or API behavior changes fail the suite.
+- Marks the public API usage, theory-boundary documentation, and small end-to-end example TODOs checked off in `todos.txt`; the general goal of expanding informational examples remains open.
 - Records PR #41's registered-rule soundness issue, including parameter mismatch, unregistered theorem instances / subclasses, requirement deduplication, and the Pairing witness authorization compatibility concern.
-- CI [run #38343672850](https://github.com/axiomtutor/SyLoPy/actions/runs/38343672850) completed: 1,071 passed, 3 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. The three README Python-example tests passed; the only ordinary Python failure remains `test_zfc_remaining_axioms_fixture_all_pass`.
+- CI [run #38343876175](https://github.com/axiomtutor/SyLoPy/actions/runs/38343876175) completed: 1,071 passed, 3 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. The three README Python-example tests passed; the only ordinary Python failure remains `test_zfc_remaining_axioms_fixture_all_pass`. The latest head `d295b17` adds only the TODO completion checkbox; fresh CI [run #38343955459](https://github.com/axiomtutor/SyLoPy/actions/runs/38343955459) is in progress.
 
 ## Requests
 
