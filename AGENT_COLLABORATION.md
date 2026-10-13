@@ -48,7 +48,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - Adds `pytest_tests/test_readme_python_api.py`, which executes the three marked README Python examples in CI. The snippets are tested independently, so undefined variables/imports or API behavior changes should fail with a line-numbered diagnostic.
 - Marks the public API usage and theory-boundary documentation items checked off in `todos.txt`.
 - Records PR #41's registered-rule soundness issue, including parameter mismatch, unregistered theorem instances / subclasses, requirement deduplication, and the Pairing witness authorization compatibility concern.
-- CI [run #38343672850](https://github.com/axiomtutor/SyLoPy/actions/runs/38343672850) was the preceding doc PR run; it failed only on the pre-existing deferred ZFC fixture. The current run for head `296975f` is [#38343672850](https://github.com/axiomtutor/SyLoPy/actions/runs/38343672850). Check the latest run for head `296975f` before reporting final status; new Python-snippet tests have just been added.
+- CI [run #38343672850](https://github.com/axiomtutor/SyLoPy/actions/runs/38343672850) completed: 1,071 passed, 3 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. The three README Python-example tests passed; the only ordinary Python failure remains `test_zfc_remaining_axioms_fixture_all_pass`.
 
 ## Requests
 
