@@ -325,9 +325,9 @@ def test_unregistered_subclass_cannot_override_a_hybrid_rule_citation():
     proof = pl.Proof(
         [
             ("1", p, ("premise",)),
-            ("2", q, ("rule_hybrid", forged, ["1"]), [
+            ("2", q, ("rule_hybrid", forged, ["1"]), [[
                 ("2.1", p, ("assume",)),
-            ]),
+            ]]),
         ],
         rules=pl.default_rules(),
         declarations=declarations,
