@@ -29,17 +29,18 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ### PR #41 — Audit registered inference-rule instances
 
-[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), branch `chatgpt/parameterized-rule-registration-audit`, head [`3457261`](https://github.com/axiomtutor/SyLoPy/commit/3457261fb21b71ab5ec1322f86b22104b1ea7db3). Test-only; no kernel implementation changes.
+[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), branch `chatgpt/parameterized-rule-registration-audit`, head [`571af93`](https://github.com/axiomtutor/SyLoPy/commit/571af93289af7d56784c47f0a9a560995519e0c2). Test-only; no kernel implementation changes.
 
 - Probe 1: a direct `InductionRule("Nat", Zero, Succ)` citation is accepted although only `InductionRule("Int", ZeroInt, SuccInt)` is configured.
 - Probe 2: a valid promoted theorem `P -> P` in the allowlist authorizes a different `TheoremRule` instance concluding arbitrary `Q`.
-- Probe 3: an unregistered subclass of `ReiterationRule` overrides `applies` to assert arbitrary `Q` without premises and passes the direct-citation class check.
-- Probe 4: a theorem that depends on the forged Reiteration subclass is accepted when the caller registers only the parent default rule and the theorem itself; this independently targets `RuleContext.allows_rule`.
-- Probe 5: `Proof.__init__` discards one of two required Nat/Int `InductionRule` configs on elaboration metadata because it deduplicates by type/name. The parallel promotion dedup problem in `_promotion_requirements` is already in master test `test_promotion_preserves_each_parameterized_rule_requirement`.
-- Probe 6: direct Pairing elaboration embeds `PairingAxiomRule(witness_name="Y")` in a line but exports only generic `PairingAxiomRule()` in `ElaboratedEntries.required_rules`. The test now requires both configs to be explicitly available, so fixing authorization cannot lose either the generated witness rule or the generic Pairing axiom.
+- Probe 3: an unregistered subclass of `ReiterationRule` overrides `applies` to assert arbitrary `Q` without premises and passes direct-citation class authorization.
+- Probe 4: a theorem that depends on the forged Reiteration subclass is accepted when the caller registers only the parent default rule and the theorem itself; this exposes class-only `RuleContext.allows_rule`.
+- Probes 5–6 cover the separate `rule_below` and `rule_hybrid` validator paths; both accept an unregistered subclass of a parent rule whose overridden `applies` asserts arbitrary Q. This prevents an implementation that tightens only ordinary `rule` citations.
+- Probe 7: `Proof.__init__` discards one of two required Nat/Int `InductionRule` configs on elaboration metadata because it deduplicates by type/name. The analogous promotion dedup bug in `_promotion_requirements` is already represented in master test `test_promotion_preserves_each_parameterized_rule_requirement`.
+- Probe 8: direct Pairing elaboration embeds `PairingAxiomRule(witness_name="Y")` in a line but exports only generic `PairingAxiomRule()` in `ElaboratedEntries.required_rules`. The test requires the witness-specific config to be exported and both generic and witness-specific configurations to survive the final `Proof.rules` merge.
 - Positive control: a distinct Nat induction object with identical `type_predicate`, `zero_term`, and `succ_symbol` parameters remains acceptable.
-- CI [run #38345202328](https://github.com/axiomtutor/SyLoPy/actions/runs/38345202328): 1,069 passed, 9 xfailed, plus the known deferred ZFC fixture failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. The probes reproduce the expected unsafe behaviors; only the known ZFC fixture is an ordinary failure.
-- Implementation needs one consistent authorization/key helper used by `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, plus consistent semantic deduplication in `Proof.__init__` and `_promotion_requirements`. Pairing implementation details are in [PR #41 comment](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137881949); key design suggestion is in [this comment](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137918415).
+- CI [run #38345530284](https://github.com/axiomtutor/SyLoPy/actions/runs/38345530284): 1,069 passed, 11 xfailed, plus the known deferred ZFC fixture failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. All added probes reproduce expected failures; the only ordinary failure is the known ZFC fixture.
+- Implementation needs consistent authorization in `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, plus semantic deduplication in `Proof.__init__` and `_promotion_requirements`. Pairing path and key design are documented in [PR #41 comments](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137881949) and [the key-design suggestion](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137918415).
 
 ### PR #42 — Refresh status, document and test Python API, record rule-registration gap
 
