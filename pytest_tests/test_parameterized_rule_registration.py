@@ -8,7 +8,7 @@ direct rule object for Nat.
 
 import pytest
 
-from .support import c, pl, pp
+from .support import c, fl, pl, pp
 
 
 def _induction_case(type_predicate, zero, successor, extra_declarations=()):
@@ -76,14 +76,28 @@ def test_matching_parameterized_rule_instance_is_usable():
 
 
 def test_direct_citation_cannot_use_an_unregistered_theorem_instance():
-    """Registering one TheoremRule must not authorize every theorem object."""
+    """A validated theorem in the allowlist must not authorize arbitrary theorems."""
     p = pp.parse_formula("P", set())
     q = pp.parse_formula("Q", set())
     declarations = [
         pl.Declaration("P", pl.DeclarationKind.CLOSED_FORMULA),
         pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA),
     ]
-    registered = pl.TheoremRule("Registered theorem", [], p, [])
+    identity_entries = [
+        ("1", None, ("declare", [declarations[0]])),
+        ("2", fl.Implies(p, p), ("rule_below", pl.ConditionalIntroductionRule()), [
+            ("2.1", p, ("assume",)),
+            ("2.2", p, ("rule", pl.ReiterationRule(), ["2.1"])),
+        ]),
+    ]
+    identity_proof = pl.Proof(identity_entries)
+    ok, error = identity_proof.check_detailed()
+    assert ok, error
+    registered = pl.promote_theorem("Identity", identity_proof)
+
+    # This TheoremRule was not promoted from a proof and is not in the rule
+    # allowlist. The kernel should reject it even though registered is a
+    # different TheoremRule instance.
     unregistered = pl.TheoremRule("Unregistered theorem", [], q, [])
     proof = pl.Proof(
         [("1", q, ("rule", unregistered, []))],
@@ -95,9 +109,12 @@ def test_direct_citation_cannot_use_an_unregistered_theorem_instance():
     if ok:
         pytest.xfail(
             "the kernel accepted an unregistered TheoremRule instance because "
-            "another TheoremRule instance of the same Python class was allowed"
+            "another validated TheoremRule instance of the same Python class "
+            "was allowed"
         )
 
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
+
+
