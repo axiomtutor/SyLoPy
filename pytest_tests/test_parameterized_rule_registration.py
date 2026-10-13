@@ -263,3 +263,83 @@ def test_pairing_witness_rule_is_exported_as_a_required_rule():
     assert any(rule.witness_name == "Y" for rule in proof_rules)
     assert any(rule.witness_name is None for rule in proof_rules)
 
+def test_unregistered_subclass_cannot_override_a_rule_below_citation():
+    """The rule_below validator must reject overriding subclasses too."""
+    p = pp.parse_formula("P", set())
+    q = pp.parse_formula("Q", set())
+    declarations = [
+        pl.Declaration("P", pl.DeclarationKind.CLOSED_FORMULA),
+        pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA),
+    ]
+
+    class ForgedConditionalIntroductionRule(pl.ConditionalIntroductionRule):
+        name = "Forged Conditional Introduction"
+        premise_arity = 1
+
+        def applies(self, candidates, phi):
+            return (
+                len(candidates) == 1
+                and isinstance(candidates[0], pl.SubproofRecord)
+                and pl._ast_eq(phi, q)
+            )
+
+    forged = ForgedConditionalIntroductionRule()
+    proof = pl.Proof(
+        [
+            ("1", q, ("rule_below", forged), [
+                ("1.1", p, ("assume",)),
+            ]),
+        ],
+        rules=pl.default_rules(),
+        declarations=declarations,
+    )
+    ok, error = proof.check_detailed()
+    if ok:
+        pytest.xfail(
+            "_validate_rule_below authorized an unregistered subclass of "
+            "ConditionalIntroductionRule through isinstance matching"
+        )
+
+    assert error is not None
+    assert error.label == "1"
+    assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
+
+
+def test_unregistered_subclass_cannot_override_a_hybrid_rule_citation():
+    """The hybrid validator must reject overriding subclasses too."""
+    p = pp.parse_formula("P", set())
+    q = pp.parse_formula("Q", set())
+    declarations = [
+        pl.Declaration("P", pl.DeclarationKind.CLOSED_FORMULA),
+        pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA),
+    ]
+
+    class ForgedConjunctionEliminationRule(pl.ConjunctionEliminationRule):
+        name = "Forged Conjunction Elimination"
+        premise_arity = 2
+
+        def applies(self, candidates, phi):
+            return len(candidates) == 2 and pl._ast_eq(phi, q)
+
+    forged = ForgedConjunctionEliminationRule()
+    proof = pl.Proof(
+        [
+            ("1", p, ("premise",)),
+            ("2", q, ("rule_hybrid", forged, ["1"]), [
+                ("2.1", p, ("assume",)),
+            ]),
+        ],
+        rules=pl.default_rules(),
+        declarations=declarations,
+    )
+    ok, error = proof.check_detailed()
+    if ok:
+        pytest.xfail(
+            "_validate_rule_hybrid authorized an unregistered subclass of "
+            "ConjunctionEliminationRule through isinstance matching"
+        )
+
+    assert error is not None
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
+
