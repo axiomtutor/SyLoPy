@@ -247,5 +247,11 @@ def test_pairing_witness_rule_is_exported_as_a_required_rule():
             "class-based authorization currently masks the missing registration"
         )
 
+    # Keep the ordinary schema rule as well as the generated witness instance.
+    generic_registered = any(
+        isinstance(rule, st.PairingAxiomRule) and rule.witness_name is None
+        for rule in entries.required_rules
+    )
     assert registered
+    assert generic_registered
 
