@@ -17,3 +17,21 @@ reuses the theorem for a different arbitrary object.
 
 1. Let b be any object. (Declaration)
 2. b = b. (Identity of an arbitrary object)
+
+# 3: Symmetry of equality
+## Proof that
+### then a = b -> b = a.
+
+1. Let a and b be any objects. (Declaration)
+2. a = b -> b = a. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. a = b. (Assumption for Conditional Introduction)
+ 2.2. b = a. (Symmetry from 2.1)
+end subproof
+
+# 4: Apply equality symmetry to other objects
+## Proof that
+### then c = d -> d = c.
+
+1. Let c and d be any objects. (Declaration)
+2. c = d -> d = c. (Symmetry of equality)
