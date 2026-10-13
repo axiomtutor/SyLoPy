@@ -44,14 +44,16 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ### PR #42 — Refresh status, document and test Python API, record rule-registration gap
 
-[PR #42](https://github.com/axiomtutor/SyLoPy/pull/42), branch `chatgpt/refresh-status-after-promotion-audit`, head [`ea3049b`](https://github.com/axiomtutor/SyLoPy/commit/ea3049bd7be72b11b35d7f8f5502a1aa237994d9). Documentation, fixtures and tests only; no kernel changes.
+[PR #42](https://github.com/axiomtutor/SyLoPy/pull/42), branch `chatgpt/refresh-status-after-promotion-audit`, head [`824d180`](https://github.com/axiomtutor/SyLoPy/commit/824d1801efd4a712d71020f3ad0b33ba405021bb). Documentation, fixtures and tests only; no kernel changes.
 
-- Adds a “Recommended Python API” README section with standalone examples of surface proof checking, theorem promotion and theorem reuse, and core proof construction from `NAT_TYPE` resources.
-- `pytest_tests/test_readme_python_api.py` executes all three marked README code examples in CI; they pass.
-- `source/testProofs/theoremPromotion.txt` adds four passing proof blocks: identity theorem reuse across arbitrary objects, then equality symmetry via a discharged subproof and subsequent theorem reuse. README links to the fixture.
-- `pytest_tests/test_theorem_surface_citations.py` adds a specific expected-failure test for a premise-carrying title cited as `Title from L`. Source theorem validates; parser fails on unknown title. Claude was notified in [PR #42 comment](https://github.com/axiomtutor/SyLoPy/pull/42#issuecomment-6137953966). Candidate fix: `ProofJustification._cited_rule` should preserve known built-in aliases but return `NamedRulePlaceholder(title)` for an otherwise-unknown title with explicit refs, leaving premise arity checking to the kernel.
-- `todos.txt` now documents the full rule-registration issue: both allowlist checks and both deduplication sites, subclass substitution, and Pairing witness registration.
-- CI [run #38344979754](https://github.com/axiomtutor/SyLoPy/actions/runs/38344979754) for this branch: 1,071 passed, 4 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational fixtures 55/56; `source/testProofs` passes 43/43. Only the known ZFC fixture/informational proof fails.
+- Adds a “Recommended Python API” README section with standalone examples for surface proof checking, theorem promotion plus reuse, and core proof construction from `NAT_TYPE` resources.
+- `pytest_tests/test_readme_python_api.py` executes all three marked README examples in CI; all pass.
+- `source/testProofs/theoremPromotion.txt` adds four passing blocks for reusing a theorem about an arbitrary object, and proving/citing equality symmetry via a discharged subproof.
+- `source/testProofs/quantifierReasoning.txt` demonstrates instantiating universally quantified premises at an arbitrary object, applying modus ponens, and generalizing. README links to both fixture files.
+- `pytest_tests/test_theorem_surface_citations.py` adds an expected-failure regression for the TODO that a premise-carrying theorem cannot be cited as `Title from L`. The first theorem validates; parsing fails on the unknown title. Claude was notified in [PR #42 comment](https://github.com/axiomtutor/SyLoPy/pull/42#issuecomment-6137953966). Suggested fix: `ProofJustification._cited_rule` should preserve known built-in aliases but return `NamedRulePlaceholder(title)` for an otherwise-unknown title with explicit refs, letting the kernel check premise arity. ChatGPT did not edit `ProofJustification.py`.
+- `todos.txt` documents the complete rule-registration issue: both class-only authorization sites, both deduplication sites, subclass substitution, the positive semantic-equivalence control, and Pairing witness-specific registration.
+- Public-API/theory-boundary docs and the small end-to-end-example item are checked off. Broader informational-example growth remains open.
+- CI [run #38345715696](https://github.com/axiomtutor/SyLoPy/actions/runs/38345715696): 1,071 passed, 4 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational 56/57; `source/testProofs` 44/44 including both new files. The only ordinary pytest failure and remaining informational miss are the same WLOG/Mutatis mutandis blocker.
 
 ## Requests
 
