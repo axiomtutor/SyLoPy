@@ -11,17 +11,22 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578),
-at commit [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6),
+[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
+at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
 on 2026-10-13 (timestamps are in UTC). It has one known, tracked exception
 (see `todos.txt`).
 
-- 1,055 Python tests: 1,054 passed and 1 known failure in
+- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure in
   `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
 - Informational proof fixtures: 51/52 passed; the remaining proof is blocked
   on the deferred WLOG / Mutatis mutandis implementation.
+
+The expected failures include two theorem-promotion audit probes that currently
+reproduce unsafe parameterized-rule requirement matching, plus the unresolved
+Existence-witness policy probe. The follow-on direct rule-registration probes
+are under review in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41).
 
 These numbers describe that specific run and will change as tests and fixtures
 are added.
