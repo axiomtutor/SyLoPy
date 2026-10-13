@@ -73,3 +73,31 @@ def test_matching_parameterized_rule_instance_is_usable():
     )
     ok, error = proof.check_detailed()
     assert ok, error
+
+
+def test_direct_citation_cannot_use_an_unregistered_theorem_instance():
+    """Registering one TheoremRule must not authorize every theorem object."""
+    p = pp.parse_formula("P", set())
+    q = pp.parse_formula("Q", set())
+    declarations = [
+        pl.Declaration("P", pl.DeclarationKind.CLOSED_FORMULA),
+        pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA),
+    ]
+    registered = pl.TheoremRule("Registered theorem", [], p, [])
+    unregistered = pl.TheoremRule("Unregistered theorem", [], q, [])
+    proof = pl.Proof(
+        [("1", q, ("rule", unregistered, []))],
+        rules=pl.default_rules() + [registered],
+        declarations=declarations,
+    )
+
+    ok, error = proof.check_detailed()
+    if ok:
+        pytest.xfail(
+            "the kernel accepted an unregistered TheoremRule instance because "
+            "another TheoremRule instance of the same Python class was allowed"
+        )
+
+    assert error is not None
+    assert error.label == "1"
+    assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
