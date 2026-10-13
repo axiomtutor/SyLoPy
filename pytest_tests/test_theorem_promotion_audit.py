@@ -434,12 +434,15 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
 
     nat_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
     source_entries = [
-        ("1", None, ("declare", declarations)),
-        ("2", base, ("premise",)),
-        ("3", step, ("premise",)),
-        ("4", conclusion, ("rule", nat_induction, ["2", "3"])),
+        ("1", base, ("premise",)),
+        ("2", step, ("premise",)),
+        ("3", conclusion, ("rule", nat_induction, ["1", "2"])),
     ]
-    source = pl.Proof(source_entries, rules=pl.default_rules() + [nat_induction])
+    source = pl.Proof(
+        source_entries,
+        rules=pl.default_rules() + [nat_induction],
+        declarations=declarations,
+    )
     ok, error = source.check_detailed()
     assert ok, error
 
@@ -455,13 +458,14 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
     # let the theorem through because both schema instances share a Python type.
     int_induction = pl.InductionRule("Int", c("ZeroInt"), "SuccInt")
     target_entries = [
-        ("1", None, ("declare", declarations)),
-        ("2", base, ("premise",)),
-        ("3", step, ("premise",)),
-        ("4", conclusion, ("rule", theorem, ["2", "3"])),
+        ("1", base, ("premise",)),
+        ("2", step, ("premise",)),
+        ("3", conclusion, ("rule", theorem, ["1", "2"])),
     ]
     ok, error = pl.Proof(
-        target_entries, rules=pl.default_rules() + [theorem, int_induction]
+        target_entries,
+        rules=pl.default_rules() + [theorem, int_induction],
+        declarations=declarations,
     ).check_detailed()
 
     if ok:
@@ -471,7 +475,7 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
             "parameter differences between instances of InductionRule"
         )
     assert error is not None
-    assert error.label == "4"
+    assert error.label == "3"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
 
