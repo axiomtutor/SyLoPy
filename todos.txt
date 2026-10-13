@@ -651,15 +651,26 @@ probes reproduced).
       and rules. A required axiom may not mention a constant the theorem
       generalizes (it would be a hypothesis about it).
 - [ ] Open rule-registration soundness issue, reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41):
-      `ProofValidator._rule_is_registered` matches rule classes rather than
-      authorized rule instances/configurations. A direct core citation can use
-      Nat induction when only Int induction is registered, or cite an
-      unregistered `TheoremRule` with an arbitrary conclusion when a different
-      theorem is registered. The expected-failure probes live in
-      `pytest_tests/test_parameterized_rule_registration.py`. The fix must
-      enforce parameter-sensitive authorization and theorem-instance identity,
-      while preserving legitimate line-specific rules such as
-      `PairingAxiomRule(witness_name=...)` through explicit registration.
+      both `ProofValidator._rule_is_registered` (direct citations) and
+      `RuleContext.allows_rule` (promoted-theorem dependencies) authorize
+      rules by class/subclass rather than semantic configuration. Probes show
+      parameter-mismatched Nat/Int induction accepted; an unregistered
+      `TheoremRule` can assert arbitrary Q when another theorem is registered;
+      an unregistered subclass of `ReiterationRule` can override `applies`
+      and assert Q; and a theorem requiring that subclass is still citable
+      when only the parent rule is registered. Separately, `Proof.__init__`
+      and `_promotion_requirements` deduplicate configured/required rules by
+      type and name, dropping distinct parameterized configurations. The
+      positive control requires a separately constructed but parameter-equal
+      `InductionRule` instance to remain usable. Regression probes are in
+      `pytest_tests/test_parameterized_rule_registration.py`, including the
+      expected-failure behavior on current master. The fix must centralize
+      consistent authorization and semantic deduplication. Preserve the
+      generated `PairingAxiomRule(witness_name=...)`: the elaborator currently
+      embeds it in the line justification but does not register it in
+      `ElaboratedEntries.required_rules`, while the environment registers only
+      generic `PairingAxiomRule()`. Give generated witness-specific rules an
+      explicit authorization path rather than relying on class matching.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
