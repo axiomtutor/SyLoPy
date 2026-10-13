@@ -103,9 +103,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 - [x] Verify the parser/elaboration/kernel pipeline against the full regression
       suite.
 - [x] Provide the canonical test command and proof-corpus workflow in the README.
-- [ ] Document the recommended public APIs and usage patterns more explicitly.
-- [ ] Ensure project documentation explains the intended theory boundaries and
-      extension model.
+- [x] Document the recommended public APIs and usage patterns in the README's “Recommended Python API” section.
+- [x] Explain the surface-proof versus core-entry APIs, selected theory environments,
+      and explicit theory-resource composition in the README.
 
 ### 3. Continue theory expansion
 

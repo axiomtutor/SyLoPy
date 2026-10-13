@@ -206,6 +206,66 @@ make it easier to extend and maintain.
   work whatever the checkout directory is called.
 - `completion/run_tests.bash` — shell completion for the test runner.
 
+## Recommended Python API
+
+For ordinary surface-language proofs, `ProofParser.check_proof_text` is the direct entry point. It parses the proof text, elaborates its notation, validates the resulting proof, and returns `(ok, error)`; `error` is a structured `ValidationError` when checking fails and `None` on success.
+
+```python
+import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.SetTheory as st
+
+proof_text = """1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption for Conditional Introduction)
+ 2.2. P. (Reiteration from 2.1)
+end subproof
+"""
+
+ok, error = pp.check_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+if not ok:
+    print(error)
+```
+
+Pass the theory environment deliberately when you want a specific theory boundary. Examples include `SET_THEORY_ENVIRONMENT`, `NUMBER_THEORY_ENVIRONMENT`, and `DISCRETE_MATH_ENVIRONMENT`. Omitting `environment` selects `ProofParser.default_theory_environment()`, which combines the built-in environments that are available. The chosen environment's axioms, rules, and declarations are carried in `ElaboratedEntries` and merged by `ProofLogic.Proof` during checking.
+
+For source inspection, structured diagnostics, or theorem promotion, use the pipeline stages directly:
+
+```python
+import SyLoPy.source.ProofLogic as pl
+
+entries, raw_lines = pp.parse_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+proof = pl.Proof(entries)
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+
+identity = pl.promote_theorem("Identity", proof)
+```
+
+`parse_proof_text` returns elaborated entries plus the original raw lines. `Proof.check_detailed()` returns the same structured result shape as `check_proof_text`; `Proof.check()` is the compatibility option when a string message is enough. Promotion validates the source proof and creates a reusable `TheoremRule`; its hypotheses and nonstandard rule / axiom requirements are carried with it. Only formulas derived at the top level can be selected as theorem conclusions, and only top-level object declarations can be generalized.
+
+When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
+
+```python
+axioms, schema_rules = pl.combine_types(NAT_TYPE)
+declarations = pl.combine_type_declarations(NAT_TYPE)
+proof = pl.Proof(
+    entries,
+    axioms=axioms,
+    rules=pl.default_rules() + schema_rules,
+    declarations=declarations,
+)
+```
+
+Use the `ElaboratedEntries` path for natural-language proofs and the explicit core-resource path when you are building validator entries yourself.
+
 ## Running the project
 
 ```bash
