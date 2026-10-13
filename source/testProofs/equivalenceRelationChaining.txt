@@ -5,7 +5,7 @@ A small end-to-end example: transitivity followed by symmetry, with both
 assumptions discharged by nested conditional-introduction subproofs.
 *)
 
-# 1: Chaining an equivalence relation
+# 1
 ## Proof that
 ### if R is an equivalence relation on X and a, b, c are in X.
 ### then R(a,b) -> (R(b,c) -> R(c,a)).
