@@ -678,7 +678,9 @@ probes reproduced).
       still checks, but its theorem is not promoted.
 - [ ] Not done: a premise-carrying theorem cannot be cited from proof text
       (`from <lines>` works only for the built-in rules; a bare title cites a
-      theorem with no premises). Kernel-level citation works.
+      theorem with no premises). Kernel-level citation works. Regression probe:
+      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text` (expected failure
+      while `ProofJustification.parse_justification` rejects `Title from L`).
 
 ## Short version
 
