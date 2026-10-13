@@ -52,8 +52,21 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - `source/testProofs/quantifierReasoning.txt` demonstrates instantiating universally quantified premises at an arbitrary object, applying modus ponens, and generalizing. README links to both fixture files.
 - `pytest_tests/test_theorem_surface_citations.py` adds an expected-failure regression for the TODO that a premise-carrying theorem cannot be cited as `Title from L`. The first theorem validates; parsing fails on the unknown title. Claude was notified in [PR #42 comment](https://github.com/axiomtutor/SyLoPy/pull/42#issuecomment-6137953966). Suggested fix: `ProofJustification._cited_rule` should preserve known built-in aliases but return `NamedRulePlaceholder(title)` for an otherwise-unknown title with explicit refs, letting the kernel check premise arity. ChatGPT did not edit `ProofJustification.py`.
 - `todos.txt` documents the complete rule-registration issue: both class-only authorization sites, both deduplication sites, subclass substitution, the positive semantic-equivalence control, and Pairing witness-specific registration.
-- Public-API/theory-boundary docs and the small end-to-end-example item are checked off. Broader informational-example growth remains open.
+- Public-API/theory-boundary docs and the first small end-to-end examples are checked off. PR #43 continues the broader informational-example growth with two additional relation proofs.
 - CI [run #38345715696](https://github.com/axiomtutor/SyLoPy/actions/runs/38345715696): 1,071 passed, 4 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational 56/57; `source/testProofs` 44/44 including both new files. The only ordinary pytest failure and remaining informational miss are the same WLOG/Mutatis mutandis blocker.
+
+### PR #43 — Add informational relation-proof examples
+
+[PR #43](https://github.com/axiomtutor/SyLoPy/pull/43), branch `chatgpt/informational-equivalence-relation-example`, head [`ddfb79c`](https://github.com/axiomtutor/SyLoPy/commit/ddfb79cef382c2ffe2078cc86e7ccb128db161d8). One new informational fixture, `source/testProofs/equivalenceRelationChaining.txt`, contains two proofs:
+
+- For an equivalence relation, assume (R(a,b)) and (R(b,c)), derive (R(a,c)) by transitivity, then (R(c,a)) by symmetry.
+- For a partial order, assume (R(a,b)) and (R(b,a)), then derive (a=b) by antisymmetry.
+
+Both proofs exercise nested Conditional Introduction and relation-property declarations through the public proof-text pipeline. The fixture is deliberately not titled: theorem promotion currently refuses to promote proofs that rely on relation properties present only as declaration metadata, because that metadata would be lost when the theorem is reused. This is an existing limitation recorded under TODO item 8, not a defect introduced by the examples.
+
+- CI [run #38355485055](https://github.com/axiomtutor/SyLoPy/actions/runs/38355485055) for this PR head: 1,068 Python tests passed, 3 xfailed, and the known ZFC/WLOG test failed; coverage passed; enforced fixtures 79/79; informational fixtures 53/54. `source/testProofs` passes 41/41, up from 40/40 on this PR's base.
+- The full run's nonzero result is the known deferred ZFC fixture issue; do not attribute that failure to this PR. The partial-order fixture's stated conclusion initially exposed a spacing typo (`a=b` was not parsed in the header); the committed revision uses `a = b`, and both new proof blocks then pass the corpus validation.
+- The PR is independent of #41's kernel authorization work and #42's documentation/test additions. It changes no kernel or parser code.
 
 ## Requests
 
