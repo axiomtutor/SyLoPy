@@ -423,8 +423,8 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
         pl.Declaration("Nat", pl.DeclarationKind.PREDICATE, arity=1),
         pl.Declaration("Int", pl.DeclarationKind.PREDICATE, arity=1),
         pl.Declaration("P", pl.DeclarationKind.PREDICATE, arity=1),
-        pl.Declaration("Zero", OBJECT),
-        pl.Declaration("ZeroInt", OBJECT),
+        pl.Declaration("Zero", pl.DeclarationKind.OBJECT),
+        pl.Declaration("ZeroInt", pl.DeclarationKind.OBJECT),
         pl.Declaration("Succ", pl.DeclarationKind.FUNCTION, arity=1),
         pl.Declaration("SuccInt", pl.DeclarationKind.FUNCTION, arity=1),
     ]
