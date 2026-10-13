@@ -4,10 +4,9 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline
 
-- **Master:** [`c9e8959`](https://github.com/axiomtutor/SyLoPy/commit/c9e8959ccdd6f576c250ec2b4f3f6a3815b5b80a), which merges PR #37 on 2026-10-12.
-- **Latest master CI:** [run #38262960866](https://github.com/axiomtutor/SyLoPy/actions/runs/38262960866): 980 passed, 1 known Python failure, coverage passed; enforced fixtures 78/79 and informational fixtures 51/52.
+- **Master:** [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6): Claude's theorem-promotion requirements change on top of the owner-merged PR #39 ([`63ca81d`](https://github.com/axiomtutor/SyLoPy/commit/63ca81d)).
+- **Validation:** local `./run_tests.sh` at `866c5e9`: 1054 passed, 1 known Python failure; coverage passed; enforced fixtures **79/79**; informational fixtures 51/52. The known failure keeps every master CI run red, so compare the counts, not the colour. CI for `866c5e9`: [run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578).
 - **Known Python failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, caused by deferred WLOG / Mutatis mutandis support. Do not hide it with an xfail or implement the deferred rules without approval.
-- **Separate fixture regression and fix:** `tests/testSetTheory/membership_characterization_invalid_not_fresh.txt` was accepted because `_BASE_LINE_ELABORATORS` captured the original `elaborate_compound_declaration` function before `ProofParserPolicy.py` replaced it with the membership-characterization freshness-checking wrapper. Both the default environment and explicit-environment helper then used the stale function. Draft/final-review PR [#39](https://github.com/axiomtutor/SyLoPy/pull/39) resolves the active elaborator names when constructing an environment. Its CI [#38270305052](https://github.com/axiomtutor/SyLoPy/actions/runs/38270305052) restores enforced fixtures to 79/79; the fix is not yet merged, so master remains at 78/79 until #39 lands. The original pre-#37 baseline `e00f3cc` rerun [#38269465272](https://github.com/axiomtutor/SyLoPy/actions/runs/38269465272) confirms 79/79.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
 - **File ownership:** Claude owns kernel changes in `source/ProofLogic.py` and `source/ProofJustification.py`. ChatGPT/Copilot may add focused tests against those behaviors, but must not edit those two files. Keep each agent's work isolated by branch/PR.
 
@@ -19,54 +18,44 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - “Let Y be such a set. (Existence from L)” names a scoped existential witness. The axiom/premise does not itself introduce a named witness.
 - Still deferred absent owner approval: WLOG, Mutatis mutandis, named ZFC axiom-citation rules, Set property, Infinity, full refinement checking, and relativized/typed quantifier sugar.
 
-## Active pull requests
+## Landed kernel contracts (Claude; details in `todos.txt` item 8)
 
-### PR #36 — Scoped relation declarations (test-only; superseded)
+- **Hypotheses reach every rule that treats a constant as arbitrary** (`e56c67d`). `Uniqueness`, `UniversalGeneralization` and `ExistentialElimination` refuse a constant that occurs in any hypothesis in force at any depth (a premise, a cited axiom, a formula-stating declaration, a witness line, an enclosing assumption) or that a declaration's structure names, such as a relation's carrier. Tests: `pytest_tests/test_hypotheses_and_promotion.py`.
+- **Promotion carries what the proof assumed** (`e56c67d`). A promoted theorem's premises are every hypothesis the proof took for granted, at any depth. Promotion refuses a proof that relied on declaration structure no formula states (a relation declared symmetric); the multi-proof runner prints “was not promoted”.
+- **A theorem is a theorem of the theory it was proved in** (`866c5e9`). The theory's axioms a proof cited and the rules it used beyond `default_rules()` are recorded as `required_axioms` / `required_rules` (plus what the theorems it cited required) and the theorem is citable only in a proof that lists those axioms and allows those rules. An explicit `conclusion=` must be a formula the proof derived at the top level, `generalized_names=` may name only objects it declared at its top level, and a required axiom may not mention a generalized constant. Inside a multi-proof file nothing changes for proofs written in the file's theories. Tests: `pytest_tests/test_promotion_requirements.py`.
+- Mutation checks for both changes (20 and 29 mutants) are all caught by the tests.
+- **Deferred, owner decision needed:** theorems *about declared relations* (needs generalizing over predicate symbols plus a requirement on the instance's declaration); citing a premise-carrying theorem from proof text; whether a witness named by an `Existence from L` line is generalized by default (today it is, and the theorem stays sound because its defining formula is a premise).
 
-[PR #36](https://github.com/axiomtutor/SyLoPy/pull/36), branch `chatgpt/relation-scope-regressions`, head [`b8788a9`](https://github.com/axiomtutor/SyLoPy/commit/b8788a912f5b8298ad1e795172f835e1d9c949e5). This branch added four narrow probes for relation declarations in subproofs.
+## Active pull request
 
-Claude's relation-scope implementation has since landed directly on `master` in [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f). It adds `pytest_tests/test_relation_scope_rules.py` and `pytest_tests/test_rule_context_declarations.py`, covering the seven relation rules, metadata/carrier checks, nested inheritance, sibling and closed-scope non-leakage, shadowing, proof-by-cases, Fresh Variable subproofs, and all three rule-citation paths. Master CI [#38206384301](https://github.com/axiomtutor/SyLoPy/actions/runs/38206384301) reports 979 passed plus the known deferred ZFC failure and coverage pass.
+### PR #38 — Theorem-promotion soundness audit (test-only, draft)
 
-The four pending probes in PR #36 are superseded by master coverage. ChatGPT commented that the owner should close this stale test-only PR rather than merge it against its pre-fix base. It remains open pending owner action; do not merge it.
+[PR #38](https://github.com/axiomtutor/SyLoPy/pull/38), branch `chatgpt/theorem-promotion-audit`, head [`4aeb4dd`](https://github.com/axiomtutor/SyLoPy/commit/4aeb4dd6efe638baf92c38975a79839e742ff02f), base `e00f3cc`; only `pytest_tests/test_theorem_promotion_audit.py` changes. Its probes found real holes, and Claude ran them against `866c5e9`: **12 pass, 1 xfails, 2 fail.**
 
-### PR #37 — Theory-local typed declarations (merged; regression follow-up)
+| Probe | Result on `866c5e9` |
+| --- | --- |
+| Explicit `conclusion=` never derived | fixed: `ValueError` |
+| `generalized_names` naming `EmptySet` | fixed: `ValueError` |
+| Direct Pairing witness exported as a free constant | refused at the citing line, as `arity_mismatch` (the witness's defining formula is now a premise) — **fails only on its `rule_mismatch` assertion** |
+| Top-level `Axiom`; nested `Axiom` | fixed: recorded as `required_axioms`; a citing proof without that axiom is refused |
+| Nested `Premise` | fixed: carried as a premise; refused as `arity_mismatch` — **fails only on its `rule_mismatch` assertion** |
+| Relation-property declaration dependency | fixed: promotion refused |
+| Custom inference rule | fixed: recorded as `required_rules`; a citing proof without that rule is refused |
+| Existence-witness generalization | still xfail: a policy question for the owner, not a soundness hole (see above) |
 
-[PR #37](https://github.com/axiomtutor/SyLoPy/pull/37) was merged into master at [`c9e8959`](https://github.com/axiomtutor/SyLoPy/commit/c9e8959ccdd6f576c250ec2b4f3f6a3815b5b80a) on 2026-10-12. It registers Int/Nat declaration recipes in `NUMBER_THEORY_ENVIRONMENT`, makes base-language line elaborators available when an explicit theory environment is passed, adds a direct-environment regression, refreshes the README/TODO test snapshot, restores the typing soundness invariant, and marks the relation-scope TODO complete.
+**Requests to ChatGPT for PR #38** (it is your branch; Claude will not touch it): (1) merge current master into it; (2) make the two probes above accept the refusal they actually get: assert that the citing line is refused (label `2` / `3`), and accept `CATEGORY_RULE_MISMATCH` or `CATEGORY_ARITY_MISMATCH`; (3) keep the Existence-witness xfail until the owner decides, or turn it into an assertion of today's behaviour with a comment pointing at `todos.txt` item 8; (4) then mark the PR ready for review. The owner decides whether to merge.
 
-**Regression follow-up:** PR #37's CI [#38208787315](https://github.com/axiomtutor/SyLoPy/actions/runs/38208787315) and merged-master CI [#38262960866](https://github.com/axiomtutor/SyLoPy/actions/runs/38262960866) reported 78/79 enforced fixtures because ProofParser.py cached the old compound-declaration elaborator before ProofParserPolicy.py installed the policy wrapper. PR [#39](https://github.com/axiomtutor/SyLoPy/pull/39) fixes this and passes 79/79 enforced fixtures. The deferred ZFC failure is separate. Refresh README/TODO test snapshots after #39 merges.
+## Requests
 
-### PR #39 — Policy-installed parser elaborator registration
-
-[PR #39](https://github.com/axiomtutor/SyLoPy/pull/39), branch `chatgpt/fix-policy-elaborator-registration`, head [`152df77`](https://github.com/axiomtutor/SyLoPy/commit/152df77fa14ca3f7e06e39ab0e7d905b190f978a), is ready for review. It replaces the import-time base-elaborator tuple with a function that resolves the current elaborator names at environment-construction time. ProofParserPolicy.py monkeypatches `elaborate_compound_declaration` after ProofParser.py is imported; caching the earlier function had bypassed membership-characterization freshness checks in both default and explicit theory environments.
-
-CI [#38270305052](https://github.com/axiomtutor/SyLoPy/actions/runs/38270305052): **982 passed, 1 known failure**, coverage passed, enforced fixtures **79/79**, informational fixtures 51/52. Added focused tests for both environment paths. The only Python failure remains the deferred ZFC fixture. No kernel-owned files changed.
-
-### PR #38 — Theorem-promotion soundness audit (test-only)
-
-[PR #38](https://github.com/axiomtutor/SyLoPy/pull/38), branch `chatgpt/theorem-promotion-audit`, head [`4aeb4dd`](https://github.com/axiomtutor/SyLoPy/commit/4aeb4dd6efe638baf92c38975a79839e742ff02f), base `e00f3cc`. Only `pytest_tests/test_theorem_promotion_audit.py` is changed; Claude's reserved kernel files are untouched. The branch is still draft.
-
-Latest CI [#38266791511](https://github.com/axiomtutor/SyLoPy/actions/runs/38266791511): **986 passed, 9 xfailed, 1 failed**; coverage passed. The only failing test is the known deferred ZFC fixture. Eight of the nine xfails are conditional reproductions of unsafe theorem-promotion behavior (the nested Premise/Axiom test contributes two); the other is the unresolved Existence-witness generalization policy probe.
-
-Seven concrete soundness/dependency-loss categories are covered:
-
-1. An explicit `conclusion=` can name a formula the checked proof never derived.
-2. The public `generalized_names` override can include fixed vocabulary such as `EmptySet`, generalizing a fact beyond the proof's eligible object declarations.
-3. A direct Pairing witness is represented as a `rule` entry with declarations in justification slot 4. Promotion drops the witness's defining membership formula and overlooks its declaration.
-4. A top-level `Axiom` line is recorded by validation as a global hypothesis but omitted from promoted premises.
-5. A plain `Premise` or `Axiom` used only inside a consumed subproof is a global dependency, not the subproof's discharged assumption; the top-level-only collector misses it. Both variants are tested.
-6. A relation-property inference depends on proof-local declaration metadata (e.g. `R` is reflexive), which is not represented in the promoted theorem's formula premises. The same predicate name can be redeclared with weaker properties in a later proof, and the promoted theorem still applies.
-7. A source proof can use a custom inference rule supplied in its rule environment; the new test checks whether promotion allows its conclusion to be used without carrying or requiring that rule. CI currently reproduces the dependency loss.
-
-Tests check the source proof first and xfail only if each attack actually succeeds; safe refusal of promotion is accepted where supported, and unrelated parse/setup errors remain failures. The Existence-from-line witness test remains a policy concern rather than a demonstrated soundness hole: its defining formula is retained as a premise in that case.
-
-The suggested kernel-side approach, already described in PR comments: (a) require an explicit conclusion to match a top-level derived formula, (b) preserve global premise and axiom dependencies, including nested ordinary premise/axiom lines while keeping discharged assumptions and local existential witnesses scoped, (c) handle direct rule-created witnesses, (d) constrain `generalized_names` to eligible declared objects, and (e) encode declaration-metadata and non-global rule requirements or conservatively refuse promotions that depend on dependencies the promoted theorem cannot carry. **Claude owns these kernel changes.** Continue coordinating in PR #38 and do not edit kernel files independently.
+- **ChatGPT, after PR #38:** red-team the requirement mechanism, test-only (kernel files off-limits). Worth trying: citing a theorem from a proof written in a different theory than the one it was proved in; chains of theorems; rules that share a type but differ in parameters (`InductionRule`); a rule used only inside a subproof; a theorem whose required axiom a citing proof lists in a different form. Report each reproduced failure in a PR comment with the smallest proof that shows it. Then refresh the README/TODO test snapshot (1054 passed + 1 known failure; 79/79; 51/52).
+- **Copilot:** unclaimed.
+- **Owner:** review PR #38 when it is green; decide the Existence-witness policy; delete stale branches (see below).
 
 ## Other status and coordination rules
 
-- PRs #28–31, #34, and #35 are merged. PR #33 is closed/unmerged and is reference material only.
+- PRs #28–31, #34, #35, #37, and #39 are merged. PR #36 was closed unmerged (superseded by the relation-scope coverage on master); PR #33 is closed/unmerged and is reference material only.
 - The over-rejection caused by relation-property words colliding with object names was fixed by Claude in [commit `5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f); keep its tests for property-label collisions and real carrier references.
-- Branch cleanup has **not** been performed. Older branch inventories in previous handoffs are snapshots, not current truth; refresh and compare refs with master before deleting anything. Preserve this live handoff branch and all active PR heads. The available connected GitHub operations do not expose branch deletion.
+- Branch cleanup has **not** been performed: agent sessions cannot delete remote branches. Older branch inventories in previous handoffs are snapshots, not current truth; refresh and compare refs with master before deleting anything, and preserve this live handoff branch and PR #38's head.
 - Use `./run_tests.sh` as the canonical validation command. Report Python tests, coverage, enforced fixtures, and informational fixtures separately, and name the known ZFC failure explicitly.
 - Keep `AGENT_COLLABORATION.md` for current assignments/decisions/evidence; `todos.txt` for backlog/deferred status; design documents for full semantics; PRs for detailed implementation discussion. Do not add every suspicion as a new task. Distinguish reproduced behavior from source-level hypotheses.
-- Owner action is still needed for PRs #36, #38, and #39. PR #36 is superseded and should not be merged; PR #37 is merged; PR #39 fixes its fixture regression and is ready for review; PR #38 remains draft because it exposes unresolved soundness boundaries. Do not merge or close PRs without owner approval.
-
+- Do not merge or close PRs without owner approval.
