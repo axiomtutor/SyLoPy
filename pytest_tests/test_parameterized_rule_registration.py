@@ -64,11 +64,14 @@ def test_direct_citation_cannot_use_an_unregistered_parameterized_rule():
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
 
 
-def test_matching_parameterized_rule_instance_is_usable():
-    declarations, nat_induction, entries = _induction_case("Nat", "Zero", "Succ")
+def test_equivalent_parameterized_rule_configuration_is_usable():
+    """A separate object with the same semantic parameters is also authorized."""
+    declarations, cited_induction, entries = _induction_case("Nat", "Zero", "Succ")
+    registered_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
+    assert registered_induction is not cited_induction
     proof = pl.Proof(
         entries,
-        rules=pl.default_rules() + [nat_induction],
+        rules=pl.default_rules() + [registered_induction],
         declarations=declarations,
     )
     ok, error = proof.check_detailed()
