@@ -10,16 +10,18 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-The latest recorded full run is
-[GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
-from 2026-10-11 at commit
-[`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f).
-It has one known, tracked exception (see `todos.txt`).
+The latest recorded full run on `master` is
+[GitHub Actions run #38206384301](https://github.com/axiomtutor/SyLoPy/actions/runs/38206384301),
+at commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f),
+on 2026-10-12 (timestamps are in UTC). It has one known, tracked exception
+(see `todos.txt`).
 
-- 907 Python tests; 906 passed and 1 known failure.
+- 980 Python tests: 979 passed and 1 known failure in
+  `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
+- Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
-- Informational proof fixtures: 51/52 passed; the failure is the same deferred
-  ZFC fixture.
+- Informational proof fixtures: 51/52 passed; the remaining proof is blocked
+  on the deferred WLOG / Mutatis mutandis implementation.
 
 These numbers describe that specific run and will change as tests and fixtures
 are added.
@@ -104,6 +106,18 @@ cite earlier results by name without inheriting local proof structure.
 
 This is deliberate: proof reuse across proofs is explicit and theory-scoped,
 not a shared lexical environment.
+
+A promoted theorem carries every hypothesis its proof took for granted -- premise
+lines at any depth, declarations that state a formula, witness lines -- as
+premises, so it cannot be cited where they are not supplied. It also records
+the axioms its proof cited and the rules it used beyond the standard logical
+ones, and can only be cited in a proof that lists those axioms and allows those
+rules: a theorem is a theorem of the theory it was proved in. An explicit
+conclusion must be a formula the proof derived at the top level, and generalized
+names must be objects the proof declared at its top level. Promotion refuses a
+proof that relied on structure recorded in a declaration and stated by no
+formula (a relation declared symmetric); state the property as a premise
+formula instead. See `todos.txt`, item 8.
 
 ### Proof context and lexical scoping
 

@@ -2,16 +2,18 @@
 
 ## Project status
 
-The latest recorded full run is
-[GitHub Actions run #38112685219](https://github.com/axiomtutor/SyLoPy/actions/runs/38112685219),
-at commit [`5df7d5d`](https://github.com/axiomtutor/SyLoPy/commit/5df7d5d7d04f81b5a8aa7febcb73786a4274000f),
-on 2026-10-11. The canonical `./run_tests.sh` run reported:
+The latest recorded full run on `master` is
+[GitHub Actions run #38206384301](https://github.com/axiomtutor/SyLoPy/actions/runs/38206384301),
+at commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f),
+on 2026-10-12 (timestamps are in UTC). The canonical `./run_tests.sh`
+run reported:
 
-- 907 Python tests; 906 passed and 1 known failure (see "Known issues" below).
+- 980 Python tests: 979 passed and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
-- enforced proof fixture corpus: 79/79 passed.
-- informational proof fixtures: 51/52 passed; the one failure is the same
-  known ZFC fixture issue.
+- Coverage passed.
+- Enforced proof fixture corpus: 79/79 passed.
+- Informational proof fixtures: 51/52 passed; the remaining proof is blocked
+  on the deferred WLOG / Mutatis mutandis implementation.
 
 These figures are a snapshot of that run, not a promise that counts will stay
 fixed as tests and fixtures are added.
@@ -555,32 +557,117 @@ implementing the rules without an explicit go-ahead.
       ill-typed expressions, and it does not infer arbitrary type facts.
       The type predicate remains an ordinary citable logical fact.
       Regression tests cover singular and plural integer/natural-number
-      declarations. Scope-local declarations remain subject to the separate
-      lexical-scope contract below.
+      declarations. The recipes are registered by
+      `NUMBER_THEORY_ENVIRONMENT`, so direct users of that environment get
+      the same declaration behavior as users of the default environment.
+      Scope-local declarations remain subject to the separate lexical-scope
+      contract below.
+
+      Soundness invariant for future typing work: every typing fact a proof
+      relies on must reach `RuleContext` as an ordinary recorded formula or
+      explicit declaration metadata. A separate type-checking layer may reject
+      ill-typed expressions, but must never independently justify a proof step.
+      Item 8 applies the same invariant to `UniversalGeneralization`,
+      `ExistentialElimination` and theorem promotion.
 
 
 ### 7. Relation declarations and inference rules respect subproof scope
 
-- [x] Owner decision (2026-10-11): a relation or any other declaration
-      introduced inside a subproof exists only within that scope. It must
-      not become visible outside the subproof, in a sibling subproof, or
-      after the subproof closes.
-- [ ] Implementation still needed for relation-property rules. The existing
-      lexical declaration scopes already prevent a locally declared predicate
-      from being used outside its scope, and the elaboration regression
-      `test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context`
-      checks that declarations do not leak. However, `elaborate_proof`
-      currently builds the relation rule set only from root-scope declarations,
-      so a relation declared inside a subproof cannot use its own declared
-      property there. The fix must make property-rule applicability reflect
-      the declaration visible at the proof line being checked. Do not flatten
-      declarations from all nested scopes into one global relation-name map:
-      sibling subproofs may reuse a name, and their declarations must remain
-      distinct and local. The previously proposed design adds a declaration
-      accessor to validation-time `RuleContext` and makes relation-property
-      rules read metadata from the declaration in scope at the line being
-      checked. This requires a scoped kernel change and should be separately
-      reviewed and tested.
+- [x] Implemented in master commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f) (2026-10-12). The seven relation-property rules consult `RuleContext.declaration(name)`, backed by the validator's active `DeclarationScope`, instead of a proof-wide snapshot of relation metadata. The scope is passed explicitly through ordinary, hybrid, and below-subproof rule evaluation, including rejection explanations. Nested declarations are visible in descendants, while closed and sibling scopes do not leak.
+- Regression coverage: `pytest_tests/test_relation_scope_rules.py` and `pytest_tests/test_rule_context_declarations.py` cover property mismatches, carriers, nesting, siblings, shadowing, proof-by-cases branches, fresh-variable subproofs, and every rule-citation path. The current master run reports 979 passed plus the known deferred ZFC fixture failure; enforced fixtures remain 79/79.
+
+### 8. Hypotheses reach every rule that treats a constant as arbitrary; promoted theorems carry what the proof assumed
+
+Found by the theorem-promotion audit (AGENT_COLLABORATION.md, section 5.A).
+All of these held before this change, and each is now a test in
+`pytest_tests/test_hypotheses_and_promotion.py` (the first four) or
+`pytest_tests/test_promotion_requirements.py` (the rest, which ChatGPT's PR #38
+probes reproduced).
+
+- [x] Universal generalization and existential elimination looked only at what
+      was visible before their subproof opened. A `(Premise)` stated inside the
+      subproof is a premise of the whole proof, so `forall c, In(c, X)` was
+      accepted from a `Fresh Variable` subproof that merely stated the premise
+      `In(c, X)`, and `exists x, (P(x) and R(x))` from `exists x, P(x)` plus a
+      premise `R(m)` stated inside the elimination subproof. Both rules now also
+      ask the `RuleContext` (`_hypothesis_reasons`): the constant must occur in
+      no hypothesis in force (premises, `(Axiom)` lines, formula-stating
+      declarations, witness lines, enclosing assumptions -- at any depth) and
+      must not be a name some declaration's structure refers to, the same two
+      conditions `Uniqueness` applies. A refusal says which hypothesis blocked
+      it.
+- [x] Structure recorded on a declaration is a hypothesis about the names it
+      refers to. "R is asymmetric and reflexive on X" holds only when X is
+      empty, so generalizing over X proved that any formula follows from `a`
+      being in some set. Covered by the constrained-names condition above
+      (kernel-level test: the surface language cannot declare a relation on the
+      flag of a `Fresh Variable`, only on a set a `Let` introduced).
+- [x] Promotion kept only top-level `(Premise)` lines. A theorem proved from a
+      premise in a subproof, from a `(Declare)` line that states a formula, or
+      from a witness line (a rule line that declares a constant, like the
+      Pairing witness) was promoted as if it had no hypotheses, so a later proof
+      could cite it for anything. `promote_theorem` now takes its premises from
+      the validator (`ProofValidator.own_givens`, recorded where the validator
+      decides what each line rests on), not from a second walk over the
+      entries, so there is one notion of "taken for granted". A theory's own
+      axioms are not premises (see the requirements item below); when a proof
+      was checked without an axiom list, so that any formula was accepted as an
+      axiom, its `(Axiom)` lines are.
+- [x] Promotion refuses a proof whose declarations carry structure no formula
+      states (a relation's carrier and properties; only `membership`, which
+      `Let a be in X` also states as `In(a, X)`, is exempt -- see
+      `FORMULA_BACKED_METADATA_KEYS`). Before, a theorem proved for a symmetric
+      `R` was promoted about the *name* `R` and could be cited for a relation
+      with no properties: proof 2 of
+      `tests/testDiscreteMath/...`-style files proved `R(a,b) -> R(b,a)` for a
+      plain relation. The refusal is a warning in a multi-proof file ("was not
+      promoted"), and its message says to state the property as a premise
+      formula instead (declare a plain `binary predicate` with `such that:
+      forall a, forall b, ...`), which the theorem then carries.
+- [x] An explicit `conclusion=` was never compared with what the proof
+      derived, so `promote_theorem(name, proof, conclusion=Q)` built a
+      zero-premise rule asserting `Q` from a proof that never mentioned it. It
+      must now be a formula the proof derived at the top level (not a premise,
+      not a line inside a subproof).
+- [x] `generalized_names=` was never compared with what the proof declared, so
+      `["x", "EmptySet"]` turned "`x` is not in the empty set" into a rule for
+      every set. It must now name only objects the proof declares at its top
+      level; anything else the theorem mentions stays fixed.
+- [x] A theorem is a theorem of the theory its proof was written in. What the
+      proof used that every proof in that theory has cannot be a premise, so it
+      is a requirement: `TheoremRule.required_axioms` (axioms cited with
+      `(Axiom)` under an axiom list) and `required_rules` (every rule that
+      justified a line except the standard logical ones in `default_rules()`),
+      plus whatever the theorems it cited required (a chain of theorems asks for
+      what the first asked for, not for the first). The theorem is citable only
+      in a proof that lists those axioms and allows those rules
+      (`RuleContext.lists_axiom`, `RuleContext.allows_rule`); a proof given no
+      axiom list does not "have every axiom" for this purpose. Before, a
+      theorem proved from a caller's own axiom, or by a caller's own rule, was
+      promoted as a zero-premise rule, so citing it made that axiom or rule part
+      of every theory. Inside a multi-proof file nothing changes for proofs
+      written in the file's theories: every proof there has the theory's axioms
+      and rules. A required axiom may not mention a constant the theorem
+      generalizes (it would be a hypothesis about it).
+- [ ] Policy, not a soundness question, left as it is: a witness named by an
+      `Existence from L` line is a top-level object declaration, so it is
+      generalized by default (its defining formula is carried as a premise, so
+      the theorem is about any object satisfying it). Not generalizing it would
+      make the theorem citable only where an object literally named the same
+      exists. Owner may prefer otherwise.
+- [ ] Not done, needs an owner decision: promoting theorems *about declared
+      relations* in the useful form -- "for any equivalence relation R on X,
+      ..." cited for a specific relation S that was declared an equivalence
+      relation. That needs two things the kernel does not have: generalizing
+      over a declared predicate symbol (today only objects generalize), and a
+      requirement on the citing line that the instance's declaration has the
+      properties the theorem used (read through `RuleContext.declaration`, with
+      the carrier mapped through the generalization). Until then
+      `tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt`
+      still checks, but its theorem is not promoted.
+- [ ] Not done: a premise-carrying theorem cannot be cited from proof text
+      (`from <lines>` works only for the built-in rules; a bare title cites a
+      theorem with no premises). Kernel-level citation works.
 
 ## Short version
 
