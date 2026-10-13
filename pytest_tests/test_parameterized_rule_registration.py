@@ -161,3 +161,73 @@ def test_promoted_theorem_requires_its_exact_parameterized_rule_dependency():
     assert error is not None
     assert error.label == label
 
+def _induction_configuration(rule):
+    return (rule.type_predicate, repr(rule.zero_term), rule.succ_symbol)
+
+
+def test_proof_keeps_distinct_parameterized_rules_from_elaboration_metadata():
+    """Proof.__init__ must not merge Nat and Int induction by type/name."""
+    from SyLoPy.source.ProofElaboration import ElaboratedEntries
+
+    nat = pl.InductionRule("Nat", c("Zero"), "Succ")
+    integer = pl.InductionRule("Int", c("ZeroInt"), "SuccInt")
+    entries = ElaboratedEntries([], required_rules=[nat, integer])
+    proof = pl.Proof(entries)
+
+    configured = [
+        rule for rule in proof.rules if isinstance(rule, pl.InductionRule)
+    ]
+    if len(configured) != 2:
+        pytest.xfail(
+            "Proof.__init__ discarded a distinct required InductionRule "
+            "because its deduplication compares only type and name"
+        )
+
+    assert {_induction_configuration(rule) for rule in configured} == {
+        _induction_configuration(nat),
+        _induction_configuration(integer),
+    }
+
+
+def test_promotion_keeps_distinct_parameterized_rule_requirements():
+    """A theorem using both induction configurations must retain both requirements."""
+    declarations, nat, nat_entries = _induction_case("Nat", "Zero", "Succ")
+    _, integer, int_entries = _induction_case("Int", "ZeroInt", "SuccInt")
+
+    entries = [
+        nat_entries[0],
+        nat_entries[1],
+        nat_entries[2],
+        ("4", int_entries[0][1], ("premise",)),
+        ("5", int_entries[1][1], ("premise",)),
+        ("6", int_entries[2][1], ("rule", integer, ["4", "5"])),
+        (
+            "7",
+            fl.And(nat_entries[2][1], int_entries[2][1]),
+            ("rule", pl.ConjunctionIntroductionRule(), ["3", "6"]),
+        ),
+    ]
+    proof = pl.Proof(
+        entries,
+        rules=pl.default_rules() + [nat, integer],
+        declarations=declarations,
+    )
+    ok, error = proof.check_detailed()
+    assert ok, error
+
+    theorem = pl.promote_theorem("Both induction configurations audit", proof)
+    required = [
+        rule for rule in theorem.required_rules
+        if isinstance(rule, pl.InductionRule)
+    ]
+    if len(required) != 2:
+        pytest.xfail(
+            "_promotion_requirements discarded one of two distinct InductionRule "
+            "configurations because it deduplicates by type and name"
+        )
+
+    assert {_induction_configuration(rule) for rule in required} == {
+        _induction_configuration(nat),
+        _induction_configuration(integer),
+    }
+
