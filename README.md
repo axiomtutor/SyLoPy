@@ -235,7 +235,9 @@ Pass the theory environment deliberately when you want a specific theory boundar
 For source inspection, structured diagnostics, or theorem promotion, use the pipeline stages directly:
 
 ```python
+import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.SetTheory as st
 
 entries, raw_lines = pp.parse_proof_text(
     proof_text,
@@ -254,14 +256,30 @@ identity = pl.promote_theorem("Identity", proof)
 When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
 
 ```python
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.TermLogic as tl
+from SyLoPy.source.NatThry import NAT_TYPE
+
 axioms, schema_rules = pl.combine_types(NAT_TYPE)
 declarations = pl.combine_type_declarations(NAT_TYPE)
+
+zero_is_nat = fl.AtomicFormula(
+    "Nat", [tl.ConstantTerm("Zero", "Zero")]
+)
+entries = [
+    ("1", zero_is_nat, ("axiom",)),
+    ("2", zero_is_nat, ("rule", pl.ReiterationRule(), ["1"])),
+]
 proof = pl.Proof(
     entries,
     axioms=axioms,
     rules=pl.default_rules() + schema_rules,
     declarations=declarations,
 )
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
 ```
 
 Use the `ElaboratedEntries` path for natural-language proofs and the explicit core-resource path when you are building validator entries yourself.
