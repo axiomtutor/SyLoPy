@@ -93,7 +93,11 @@ earlier check could see -- and that no declaration's structure names it; the
 relation rules read `declaration(name)`. `Uniqueness` never applies without a
 context; the other two keep their context-free checks when asked directly.
 Theorem promotion takes its premises from the same record the validator keeps
-(`ProofValidator.own_givens`).
+(`ProofValidator.own_givens`). What a theorem cannot carry as a premise -- the
+theory's axioms the proof cited and the non-standard rules it used
+(`used_axioms`, `used_rules`) -- becomes the theorem's `required_axioms` and
+`required_rules`, which `TheoremRule` checks at the citation through
+`RuleContext.lists_axiom` and `RuleContext.allows_rule`.
 
 The invariant for such a rule: whatever the proof relies on that says
 something about a constant must reach the context, as a recorded formula or as

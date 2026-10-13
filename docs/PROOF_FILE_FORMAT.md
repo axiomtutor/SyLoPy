@@ -67,7 +67,10 @@ Promotion uses the proof's last top-level derived formula as its conclusion and,
 by default, top-level object declarations as generalized names. Every
 hypothesis the proof took for granted, at any depth, becomes a premise of the
 theorem; a proof that relied on declared relation properties is not promoted
-(a warning says so). See `ProofLogic.promote_theorem()` and `todos.txt`, item 8.
+(a warning says so). The theory's axioms the proof cited and the theory's rules
+it used are not premises but requirements: a later proof in the same file has
+them, so it may cite the theorem. See `ProofLogic.promote_theorem()` and
+`todos.txt`, item 8.
 
 ## 2. Proof lines and labels
 

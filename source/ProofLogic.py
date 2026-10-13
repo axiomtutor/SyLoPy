@@ -734,6 +734,15 @@ class RuleContext:
     is no scope and no name is declared, so a rule that needs a declaration
     says no.
 
+    `lists_axiom(formula)` and `allows_rule(rule)` say what the proof being
+    checked has available: the axioms it was given and the rules it allows. A
+    rule that stands for a proved theorem asks, because a theorem is only a
+    theorem where what its proof used is available (`TheoremRule`). Outside a
+    proof nothing is available, and an empty list of axioms is not "every
+    axiom" here -- the validator accepts any formula as an axiom of a proof
+    that was given none, but a theorem that rests on an axiom is only
+    citable in a proof that names it.
+
     The validator builds one of these per rule citation and hands it to
     `InferenceRule.applies_in_context`. It holds references to the
     validator's own lists and scope, not copies, so creating one costs
@@ -741,15 +750,28 @@ class RuleContext:
     for the call it was made for: a rule reads it while deciding and does not
     keep it.
     """
-    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained", "_declarations")
+    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained", "_declarations",
+                 "_axioms", "_rules")
 
     def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=(),
-                 declarations: Optional["DeclarationScope"] = None):
+                 declarations: Optional["DeclarationScope"] = None, axioms=(), rules=()):
         self._given = given
         self._assumptions = assumptions
         self._arbitrary = arbitrary_constants
         self._constrained = constrained_names
         self._declarations = declarations
+        self._axioms = axioms
+        self._rules = rules
+
+    def lists_axiom(self, formula: fl.Formula) -> bool:
+        """Does the proof being checked list `formula` among its axioms?"""
+        return any(_ast_eq(formula, axiom) for axiom in self._axioms)
+
+    def allows_rule(self, rule: "InferenceRule") -> bool:
+        """Is `rule` one the proof being checked allows -- an instance of one
+        of the rule types it was configured with, the test the validator
+        applies to every citation (`ProofValidator._rule_is_registered`)?"""
+        return any(isinstance(rule, type(allowed)) for allowed in self._rules)
 
     def declaration(self, name: str) -> Optional[Declaration]:
         """The declaration `name` has at the line being justified: the nearest
@@ -800,8 +822,9 @@ class InferenceRule:
 
     A rule whose soundness also depends on the rest of the proof -- the
     `UniquenessRule`, which generalizes a constant and so needs to know the
-    constant is arbitrary, and the discrete-math relation rules, which need
-    the declaration a relation has at that line (see `RuleContext`) --
+    constant is arbitrary, the discrete-math relation rules, which need the
+    declaration a relation has at that line, and a `TheoremRule`, which needs
+    the axioms and rules its proof was written with (see `RuleContext`) --
     overrides `applies_in_context` as well. The validator always calls that
     one; the default simply forwards to `applies`, so every other rule is
     unaffected.
@@ -2865,6 +2888,17 @@ class TheoremRule(AxiomSchemaRule):
         ...
          1.3. The empty set is a subset of X. (The empty set subset theorem)
 
+    A theorem is a theorem of the theory its proof was written in. What the
+    proof used that every proof in that theory has -- the axioms it cited with
+    `(Axiom)`, and the rules beyond the standard logical ones (the set theory
+    rules, a rule a caller supplied) -- cannot be carried as a premise, so
+    `required_axioms` and `required_rules` record it, and the theorem is only
+    citable in a proof that lists those axioms and allows those rules
+    (`RuleContext.lists_axiom`, `RuleContext.allows_rule`). Without that, a
+    theorem proved from an axiom, or by a rule, that one proof supplied for
+    itself would be citable everywhere, which would make that axiom or rule
+    part of every theory.
+
     `promote_theorem` builds the `TheoremRule` for a case like this from
     an already-checked `Proof` plus the name of whichever top-level
     declared objects should generalize.
@@ -2872,11 +2906,14 @@ class TheoremRule(AxiomSchemaRule):
     premise_arity = 0  # overwritten per instance in __init__
 
     def __init__(self, name: str, premises: List[fl.Formula], conclusion: fl.Formula,
-                 generalized_names: List[str]):
+                 generalized_names: List[str], required_axioms: Iterable[fl.Formula] = (),
+                 required_rules: Iterable[InferenceRule] = ()):
         self.name = name
         self.premises = list(premises)
         self.conclusion = conclusion
         self.generalized_names = list(generalized_names)
+        self.required_axioms = list(required_axioms)
+        self.required_rules = list(required_rules)
         self.premise_arity = len(self.premises)
 
     def _expected(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[List[fl.Formula]]:
@@ -2884,6 +2921,32 @@ class TheoremRule(AxiomSchemaRule):
         if not matcher.match_formula(self.conclusion, phi):
             return None
         return [_substitute_constants_in_formula(p, matcher.mapping) for p in self.premises]
+
+    def _unavailable(self, context: "RuleContext") -> List[str]:
+        """What this theorem's proof used that the proof around `context`
+        does not have, one phrase each."""
+        missing = [f"the rule '{rule.name}'" for rule in self.required_rules if not context.allows_rule(rule)]
+        missing += [f"the axiom {axiom!r}" for axiom in self.required_axioms if not context.lists_axiom(axiom)]
+        return missing
+
+    def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        # No proof around the call, so nothing is available: a theorem that
+        # needs an axiom or a rule cannot be cited here.
+        return self.applies_in_context(candidates, phi, RuleContext())
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> bool:
+        if self._unavailable(context):
+            return False
+        return super().applies(candidates, phi)
+
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> Optional[str]:
+        missing = self._unavailable(context)
+        if not missing:
+            return None
+        return (f"the theorem {self.name!r} was proved using {' and '.join(missing)}, "
+                f"which this proof does not have")
 
 
 def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[str]] = None,
@@ -2898,10 +2961,12 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
 
     `conclusion` defaults to the last top-level formula the proof actually
     *derived* (see `validate_all_proofs._top_level_formulas`'s docstring for
-    why "derived", not "premised", is the right notion); pass it
-    explicitly for a proof whose intended theorem isn't simply its final
-    line (e.g. one proving several things and stating the one that matters
-    via a multi-proof file's `### then ...` line).
+    why "derived", not "premised", is the right notion). Pass it explicitly
+    for a proof whose intended theorem isn't simply its final line (e.g. one
+    proving several things and stating the one that matters via a multi-proof
+    file's `### then ...` line) -- but it must be one of the formulas the
+    proof derived at the top level: naming anything else would manufacture a
+    rule from a formula nothing proved.
 
     The theorem's premises are every hypothesis the proof took for granted,
     wherever it stated it: premise lines at any depth (a `(Premise)` inside a
@@ -2911,9 +2976,18 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     The validator records them (`ProofValidator.own_givens`) as it decides
     what each line rests on, so this is the same notion `UniquenessRule` and
     the other rules that generalize a constant use, not a second walk over the
-    entries. A theory's own axioms are not premises: every proof in the theory
-    has them. A theorem proved from a hypothesis therefore cannot be cited
-    where that hypothesis is not supplied.
+    entries. A theorem proved from a hypothesis cannot be cited where that
+    hypothesis is not supplied.
+
+    What the proof used that every proof in its theory has is not a premise
+    but a requirement: the axioms it cited with `(Axiom)` under a list of
+    axioms, and every rule that justified a line other than the standard
+    logical rules (`default_rules`). `required_axioms` and `required_rules`
+    record them -- together with whatever the theorems it cited required -- and
+    the theorem is only citable in a proof that lists those axioms and allows
+    those rules (see `TheoremRule`). A required axiom may not mention a
+    constant the theorem generalizes: the axiom would then be a hypothesis
+    about it, and the constant would not be arbitrary.
 
     Promotion refuses a proof that relied on structure recorded in a
     declaration and stated by no formula -- a relation declared symmetric, a
@@ -2926,17 +3000,26 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     outside of any subproof) -- the natural reading of "any X" in a
     theorem statement. Pass an explicit list to generalize over fewer
     names, or none at all for a theorem that isn't "for any X" but a
-    single fixed fact.
+    single fixed fact. It may only name those objects: anything else the
+    theorem mentions -- `EmptySet`, a predicate, an object declared inside a
+    subproof -- was proved about specifically, and generalizing it would
+    state the theorem for things the proof said nothing about.
     """
     validator, ok, err = proof._validate()
     if not ok:
         raise ValueError(f"cannot promote a proof that does not validate: {err}")
 
+    derived = _top_level_derived_formulas(proof.entries)
     if conclusion is None:
-        derived = _top_level_derived_formulas(proof.entries)
         if not derived:
             raise ValueError("proof derives nothing at the top level to promote as a conclusion")
         conclusion = derived[-1]
+    elif not any(_ast_eq(conclusion, formula) for formula in derived):
+        raise ValueError(
+            f"cannot promote {conclusion!r} as the theorem's conclusion: the proof never derived it "
+            f"at the top level (it derived "
+            + (", ".join(repr(formula) for formula in derived) if derived else "nothing") + ")"
+        )
 
     uncarried = _structure_no_formula_states(validator.own_declarations)
     if uncarried:
@@ -2951,10 +3034,62 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
         if not any(_ast_eq(given, kept) for kept in premises):
             premises.append(given)
 
+    declared_objects = _top_level_object_declarations(proof.entries)
     if generalized_names is None:
-        generalized_names = _top_level_object_declarations(proof.entries)
+        generalized_names = declared_objects
+    else:
+        foreign = [n for n in dict.fromkeys(generalized_names) if n not in declared_objects]
+        if foreign:
+            raise ValueError(
+                f"cannot generalize over {', '.join(map(repr, foreign))}: only an object the proof declares "
+                f"at its top level can be generalized (here: "
+                + (", ".join(map(repr, declared_objects)) if declared_objects else "none") + ")"
+            )
+        generalized_names = list(dict.fromkeys(generalized_names))
 
-    return TheoremRule(name, premises, conclusion, generalized_names)
+    required_axioms, required_rules = _promotion_requirements(validator)
+    for axiom in required_axioms:
+        entangled = next((n for n in generalized_names
+                          if _term_occurs_in_formula(tl.ConstantTerm(n, n), axiom)), None)
+        if entangled is not None:
+            raise ValueError(
+                f"cannot generalize over {entangled!r}: the theorem requires the axiom {axiom!r}, "
+                f"which mentions it, so {entangled!r} is not arbitrary"
+            )
+
+    return TheoremRule(name, premises, conclusion, generalized_names, required_axioms, required_rules)
+
+
+def _promotion_requirements(validator: "ProofValidator") -> Tuple[List[fl.Formula], List[InferenceRule]]:
+    """The axioms and rules a theorem built from the validated proof needs
+    its citing proof to have: what the proof used itself, plus what each
+    theorem it cited required. The standard logical rules (`default_rules`)
+    are not listed -- they are the kernel's own, always sound -- and neither
+    is a cited `TheoremRule`, whose own requirements are listed in its place,
+    so a chain of theorems asks for no more than the first of them did."""
+    standard = {type(rule) for rule in default_rules()}
+    axioms: List[fl.Formula] = []
+    rules: List[InferenceRule] = []
+
+    def need_axiom(axiom: fl.Formula) -> None:
+        if not any(_ast_eq(axiom, kept) for kept in axioms):
+            axioms.append(axiom)
+
+    def need_rule(rule: InferenceRule) -> None:
+        if not any(type(rule) is type(kept) and rule.name == kept.name for kept in rules):
+            rules.append(rule)
+
+    for axiom in validator.used_axioms:
+        need_axiom(axiom)
+    for rule in validator.used_rules:
+        if isinstance(rule, TheoremRule):
+            for axiom in rule.required_axioms:
+                need_axiom(axiom)
+            for required in rule.required_rules:
+                need_rule(required)
+        elif type(rule) not in standard:
+            need_rule(rule)
+    return axioms, rules
 
 
 # Metadata keys whose entries a promoted theorem loses nothing by dropping,
@@ -3462,32 +3597,45 @@ class ProofValidator:
         # only grows, since what a closed subproof's declaration said about a
         # name was still used to derive lines that may be visible afterwards.
         #
-        # Two more lists are read after validation, by `promote_theorem`:
+        # Four more lists are read after validation, by `promote_theorem`, and
+        # describe what a theorem built from this proof would owe:
         # `own_givens` is `_given_lines` without the theory's axioms -- what
         # *this proof* assumed, at any depth, which a theorem built from it
-        # must carry as premises (the theory's own axioms are available to
-        # every proof in it) -- and `own_declarations` is every declaration
+        # must carry as premises; `own_declarations` is every declaration
         # this proof made, at any depth, whose structure metadata a theorem
-        # cannot carry. They live here, next to `_given_lines`, so that what
-        # counts as taken-for-granted is decided in one place.
+        # cannot carry; `used_axioms` is the theory's axioms the proof cited
+        # with `(Axiom)`, and `used_rules` every rule that justified a line.
+        # A theorem cannot carry those as premises -- every proof in the
+        # theory has them -- so it records that it needs them and is only
+        # citable where they are available (`TheoremRule`). They live here,
+        # next to `_given_lines`, so that what counts as taken-for-granted is
+        # decided in one place.
         self._given_lines: list = []
         self._assumption_stack: list = []
         self._arbitrary_names: list = []
         self._constrained_names: set = set()
         self.own_givens: list = []
         self.own_declarations: list = []
+        self.used_axioms: list = []
+        self.used_rules: list = []
 
     def _take_for_granted(self, *formulas: fl.Formula, theory_axiom: bool = False) -> None:
         """Record `formulas` as hypotheses of the rest of the proof.
 
         `theory_axiom` marks a line cited with `(Axiom)` when the proof was
         given a list of axioms to check it against: that line asserts one of
-        the theory's axioms, which every proof in the theory has. Without such
-        a list the validator accepts any formula as an axiom, so the line is
-        only something this proof assumed and is recorded like a premise.
+        the theory's axioms, which every proof in the theory has, so it is
+        recorded as an axiom the proof used rather than as something this
+        proof assumed. Without such a list the validator accepts any formula
+        as an axiom, so the line is only something this proof assumed and is
+        recorded like a premise.
         """
         self._given_lines.extend(formulas)
-        if not theory_axiom:
+        if theory_axiom:
+            for formula in formulas:
+                if not any(_ast_eq(formula, used) for used in self.used_axioms):
+                    self.used_axioms.append(formula)
+        else:
             self.own_givens.extend(formulas)
 
     def validate(self, entries: list) -> Tuple[bool, Optional[ValidationError], Optional[SubproofRecord]]:
@@ -3497,6 +3645,8 @@ class ProofValidator:
         self._constrained_names = _metadata_names(self.initial_declarations)
         self.own_givens = []
         self.own_declarations = []
+        self.used_axioms = []
+        self.used_rules = []
         seen: list = []
         labels = LabelScope()
         declarations = DeclarationScope(initial=self.initial_declarations)
@@ -4156,10 +4306,19 @@ class ProofValidator:
         """
         in_context = getattr(rule, 'applies_in_context', None)
         if in_context is None:
-            return rule.applies(candidates, phi)
-        return in_context(candidates, phi, RuleContext(
+            accepted = rule.applies(candidates, phi)
+        else:
+            accepted = in_context(candidates, phi, self._context(declarations))
+        if accepted and not any(rule is used for used in self.used_rules):
+            self.used_rules.append(rule)
+        return accepted
+
+    def _context(self, declarations: DeclarationScope) -> RuleContext:
+        """The `RuleContext` of the line being justified: the one place the
+        validator builds it, so `_applies` and `_why_not` cannot disagree."""
+        return RuleContext(
             self._given_lines, self._assumption_stack, self._arbitrary_names,
-            self._constrained_names, declarations))
+            self._constrained_names, declarations, self.axioms, self.rules)
 
     def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula,
                  declarations: DeclarationScope) -> str:
@@ -4170,8 +4329,7 @@ class ProofValidator:
         explain = getattr(rule, 'explain_in_context', None)
         if explain is None:
             return ""
-        context = RuleContext(self._given_lines, self._assumption_stack, self._arbitrary_names,
-                              self._constrained_names, declarations)
+        context = self._context(declarations)
         for candidates in tried:
             try:
                 reason = explain(candidates, phi, context)

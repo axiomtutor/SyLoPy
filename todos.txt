@@ -580,7 +580,9 @@ implementing the rules without an explicit go-ahead.
 
 Found by the theorem-promotion audit (AGENT_COLLABORATION.md, section 5.A).
 All of these held before this change, and each is now a test in
-`pytest_tests/test_hypotheses_and_promotion.py`.
+`pytest_tests/test_hypotheses_and_promotion.py` (the first four) or
+`pytest_tests/test_promotion_requirements.py` (the rest, which ChatGPT's PR #38
+probes reproduced).
 
 - [x] Universal generalization and existential elimination looked only at what
       was visible before their subproof opened. A `(Premise)` stated inside the
@@ -608,8 +610,9 @@ All of these held before this change, and each is now a test in
       the validator (`ProofValidator.own_givens`, recorded where the validator
       decides what each line rests on), not from a second walk over the
       entries, so there is one notion of "taken for granted". A theory's own
-      axioms are not premises; when a proof was checked without an axiom list,
-      so that any formula was accepted as an axiom, its `(Axiom)` lines are.
+      axioms are not premises (see the requirements item below); when a proof
+      was checked without an axiom list, so that any formula was accepted as an
+      axiom, its `(Axiom)` lines are.
 - [x] Promotion refuses a proof whose declarations carry structure no formula
       states (a relation's carrier and properties; only `membership`, which
       `Let a be in X` also states as `In(a, X)`, is exempt -- see
@@ -621,6 +624,37 @@ All of these held before this change, and each is now a test in
       promoted"), and its message says to state the property as a premise
       formula instead (declare a plain `binary predicate` with `such that:
       forall a, forall b, ...`), which the theorem then carries.
+- [x] An explicit `conclusion=` was never compared with what the proof
+      derived, so `promote_theorem(name, proof, conclusion=Q)` built a
+      zero-premise rule asserting `Q` from a proof that never mentioned it. It
+      must now be a formula the proof derived at the top level (not a premise,
+      not a line inside a subproof).
+- [x] `generalized_names=` was never compared with what the proof declared, so
+      `["x", "EmptySet"]` turned "`x` is not in the empty set" into a rule for
+      every set. It must now name only objects the proof declares at its top
+      level; anything else the theorem mentions stays fixed.
+- [x] A theorem is a theorem of the theory its proof was written in. What the
+      proof used that every proof in that theory has cannot be a premise, so it
+      is a requirement: `TheoremRule.required_axioms` (axioms cited with
+      `(Axiom)` under an axiom list) and `required_rules` (every rule that
+      justified a line except the standard logical ones in `default_rules()`),
+      plus whatever the theorems it cited required (a chain of theorems asks for
+      what the first asked for, not for the first). The theorem is citable only
+      in a proof that lists those axioms and allows those rules
+      (`RuleContext.lists_axiom`, `RuleContext.allows_rule`); a proof given no
+      axiom list does not "have every axiom" for this purpose. Before, a
+      theorem proved from a caller's own axiom, or by a caller's own rule, was
+      promoted as a zero-premise rule, so citing it made that axiom or rule part
+      of every theory. Inside a multi-proof file nothing changes for proofs
+      written in the file's theories: every proof there has the theory's axioms
+      and rules. A required axiom may not mention a constant the theorem
+      generalizes (it would be a hypothesis about it).
+- [ ] Policy, not a soundness question, left as it is: a witness named by an
+      `Existence from L` line is a top-level object declaration, so it is
+      generalized by default (its defining formula is carried as a premise, so
+      the theorem is about any object satisfying it). Not generalizing it would
+      make the theorem citable only where an object literally named the same
+      exists. Owner may prefer otherwise.
 - [ ] Not done, needs an owner decision: promoting theorems *about declared
       relations* in the useful form -- "for any equivalence relation R on X,
       ..." cited for a specific relation S that was declared an equivalence

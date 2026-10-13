@@ -109,7 +109,12 @@ not a shared lexical environment.
 
 A promoted theorem carries every hypothesis its proof took for granted -- premise
 lines at any depth, declarations that state a formula, witness lines -- as
-premises, so it cannot be cited where they are not supplied. Promotion refuses a
+premises, so it cannot be cited where they are not supplied. It also records
+the axioms its proof cited and the rules it used beyond the standard logical
+ones, and can only be cited in a proof that lists those axioms and allows those
+rules: a theorem is a theorem of the theory it was proved in. An explicit
+conclusion must be a formula the proof derived at the top level, and generalized
+names must be objects the proof declared at its top level. Promotion refuses a
 proof that relied on structure recorded in a declaration and stated by no
 formula (a relation declared symmetric); state the property as a premise
 formula instead. See `todos.txt`, item 8.
