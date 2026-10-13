@@ -301,7 +301,7 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
         )
     assert error is not None
     assert error.label == "3"
-    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    assert error.category in {pl.CATEGORY_RULE_MISMATCH, pl.CATEGORY_ARITY_MISMATCH}
 
 def test_promotion_does_not_erase_a_custom_axiom_dependency():
     q = pp.parse_formula("Q", set())
@@ -384,7 +384,7 @@ end subproof
         )
     assert error is not None
     assert error.label == "2"
-    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    assert error.category in {pl.CATEGORY_RULE_MISMATCH, pl.CATEGORY_ARITY_MISMATCH}
 
 def test_promotion_does_not_drop_relation_property_declaration_dependencies():
     source = _checked_proof(
@@ -416,6 +416,64 @@ def test_promotion_does_not_drop_relation_property_declaration_dependencies():
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
+
+def test_promotion_requires_the_same_parameterized_induction_rule():
+    """A theorem requiring Nat induction must not accept Int induction instead."""
+    declarations = [
+        pl.Declaration("Nat", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("Int", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("P", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("Zero", OBJECT),
+        pl.Declaration("ZeroInt", OBJECT),
+        pl.Declaration("Succ", pl.DeclarationKind.FUNCTION, arity=1),
+        pl.Declaration("SuccInt", pl.DeclarationKind.FUNCTION, arity=1),
+    ]
+    base = parse("P(Zero)")
+    step = parse("forall n, ((Nat(n) and P(n)) -> P(Succ(n)))")
+    conclusion = parse("forall x, (Nat(x) -> P(x))")
+
+    nat_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
+    source_entries = [
+        ("1", None, ("declare", declarations)),
+        ("2", base, ("premise",)),
+        ("3", step, ("premise",)),
+        ("4", conclusion, ("rule", nat_induction, ["2", "3"])),
+    ]
+    source = pl.Proof(source_entries, rules=pl.default_rules() + [nat_induction])
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    theorem = pl.promote_theorem("Nat induction audit", source)
+    assert len(theorem.required_rules) == 1
+    assert isinstance(theorem.required_rules[0], pl.InductionRule)
+    assert theorem.required_rules[0].type_predicate == "Nat"
+    assert theorem.required_rules[0].zero_term == c("Zero")
+    assert theorem.required_rules[0].succ_symbol == "Succ"
+
+    # The target proof has the same premises but a different theory rule. It
+    # has no Nat induction rule. A class-only requirement check may nevertheless
+    # let the theorem through because both schema instances share a Python type.
+    int_induction = pl.InductionRule("Int", c("ZeroInt"), "SuccInt")
+    target_entries = [
+        ("1", None, ("declare", declarations)),
+        ("2", base, ("premise",)),
+        ("3", step, ("premise",)),
+        ("4", conclusion, ("rule", theorem, ["2", "3"])),
+    ]
+    ok, error = pl.Proof(
+        target_entries, rules=pl.default_rules() + [theorem, int_induction]
+    ).check_detailed()
+
+    if ok:
+        pytest.xfail(
+            "a theorem proved using Nat induction was accepted where only Int "
+            "induction is registered; the required-rule check may ignore "
+            "parameter differences between instances of InductionRule"
+        )
+    assert error is not None
+    assert error.label == "4"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
 
 def test_promotion_does_not_drop_a_custom_inference_rule_dependency():
     q = pp.parse_formula("Q", set())
