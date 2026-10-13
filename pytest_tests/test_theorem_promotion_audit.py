@@ -7,7 +7,7 @@ reproduced, so unrelated setup or validation failures remain ordinary failures.
 
 import pytest
 
-from .support import c, pl, pp
+from .support import c, fl, pl, pp
 
 
 def _checked_proof(text):
@@ -476,6 +476,75 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
         )
     assert error is not None
     assert error.label == "3"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+
+
+def test_promotion_preserves_each_parameterized_rule_requirement():
+    """Two induction schemas used by one theorem cannot collapse into one."""
+    declarations = [
+        pl.Declaration("Nat", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("Int", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("P", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("Q", pl.DeclarationKind.PREDICATE, arity=1),
+        pl.Declaration("Zero", pl.DeclarationKind.OBJECT),
+        pl.Declaration("ZeroInt", pl.DeclarationKind.OBJECT),
+        pl.Declaration("Succ", pl.DeclarationKind.FUNCTION, arity=1),
+        pl.Declaration("SuccInt", pl.DeclarationKind.FUNCTION, arity=1),
+    ]
+    nat_base = pp.parse_formula("P(Zero)", set())
+    nat_step = pp.parse_formula("forall n, ((Nat(n) and P(n)) -> P(Succ(n)))", set())
+    nat_result = pp.parse_formula("forall x, (Nat(x) -> P(x))", set())
+    int_base = pp.parse_formula("Q(ZeroInt)", set())
+    int_step = pp.parse_formula("forall n, ((Int(n) and Q(n)) -> Q(SuccInt(n)))", set())
+    int_result = pp.parse_formula("forall y, (Int(y) -> Q(y))", set())
+    combined = fl.And(nat_result, int_result)
+
+    nat_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
+    int_induction = pl.InductionRule("Int", c("ZeroInt"), "SuccInt")
+    source_entries = [
+        ("1", nat_base, ("premise",)),
+        ("2", nat_step, ("premise",)),
+        ("3", nat_result, ("rule", nat_induction, ["1", "2"])),
+        ("4", int_base, ("premise",)),
+        ("5", int_step, ("premise",)),
+        ("6", int_result, ("rule", int_induction, ["4", "5"])),
+        ("7", combined, ("rule", pl.ConjunctionIntroductionRule(), ["3", "6"])),
+    ]
+    source = pl.Proof(
+        source_entries,
+        rules=pl.default_rules() + [nat_induction, int_induction],
+        declarations=declarations,
+    )
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    theorem = pl.promote_theorem("Two induction schemas audit", source)
+    assert len(theorem.required_rules) == 2, (
+        "promotion must preserve both parameterized induction requirements; "
+        f"recorded {[ (r.name, type(r).__name__) for r in theorem.required_rules ]}"
+    )
+    assert {r.type_predicate for r in theorem.required_rules if isinstance(r, pl.InductionRule)} == {"Nat", "Int"}
+
+    target_entries = [
+        ("1", nat_base, ("premise",)),
+        ("2", nat_step, ("premise",)),
+        ("3", int_base, ("premise",)),
+        ("4", int_step, ("premise",)),
+        ("5", combined, ("rule", theorem, ["1", "2", "3", "4"])),
+    ]
+    ok, error = pl.Proof(
+        target_entries,
+        rules=pl.default_rules() + [theorem, nat_induction],
+        declarations=declarations,
+    ).check_detailed()
+
+    if ok:
+        pytest.xfail(
+            "promotion collapsed distinct Nat and Int induction requirements; "
+            "the theorem was accepted where Int induction was not registered"
+        )
+    assert error is not None
+    assert error.label == "5"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
 
 
