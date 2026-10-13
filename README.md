@@ -210,6 +210,7 @@ make it easier to extend and maintain.
 
 For ordinary surface-language proofs, `ProofParser.check_proof_text` is the direct entry point. It parses the proof text, elaborates its notation, validates the resulting proof, and returns `(ok, error)`; `error` is a structured `ValidationError` when checking fails and `None` on success.
 
+<!-- python-api-test: surface-check -->
 ```python
 import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.SetTheory as st
@@ -234,10 +235,19 @@ Pass the theory environment deliberately when you want a specific theory boundar
 
 For source inspection, structured diagnostics, or theorem promotion, use the pipeline stages directly:
 
+<!-- python-api-test: theorem-promotion -->
 ```python
 import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.SetTheory as st
+
+proof_text = """1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption for Conditional Introduction)
+ 2.2. P. (Reiteration from 2.1)
+end subproof
+"""
 
 entries, raw_lines = pp.parse_proof_text(
     proof_text,
@@ -255,6 +265,7 @@ identity = pl.promote_theorem("Identity", proof)
 
 When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
 
+<!-- python-api-test: core-type-resources -->
 ```python
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.ProofLogic as pl
