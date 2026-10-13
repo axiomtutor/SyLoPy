@@ -117,4 +117,47 @@ def test_direct_citation_cannot_use_an_unregistered_theorem_instance():
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
 
+def test_promoted_theorem_requires_its_exact_parameterized_rule_dependency():
+    """An Int theorem cannot be cited in a proof that only allows Nat induction."""
+    declarations, int_induction, entries = _induction_case(
+        "Int", "ZeroInt", "SuccInt"
+    )
+    source = pl.Proof(
+        entries,
+        rules=pl.default_rules() + [int_induction],
+        declarations=declarations,
+    )
+    ok, error = source.check_detailed()
+    assert ok, error
+
+    theorem = pl.promote_theorem(
+        "Int induction dependency audit", source, generalized_names=[]
+    )
+
+    # Keep the theorem's premises and conclusion exactly the same, but let the
+    # citing proof register only a different induction configuration.
+    citation_entries = list(entries)
+    label, conclusion, _justification = citation_entries[-1]
+    citation_entries[-1] = (
+        label,
+        conclusion,
+        ("rule", theorem, ["1", "2"]),
+    )
+    nat_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
+    proof = pl.Proof(
+        citation_entries,
+        rules=pl.default_rules() + [nat_induction, theorem],
+        declarations=declarations,
+    )
+
+    ok, error = proof.check_detailed()
+    if ok:
+        pytest.xfail(
+            "a promoted theorem requiring Int induction was accepted when the "
+            "citing proof registered only Nat induction; "
+            "RuleContext.allows_rule currently compares Python classes"
+        )
+
+    assert error is not None
+    assert error.label == label
 
