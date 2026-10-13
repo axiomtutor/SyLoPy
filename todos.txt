@@ -120,8 +120,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 
 - [x] Maintain the enforced fixture corpus as the minimum correctness gate.
 - [ ] Grow the informational examples to cover more user-facing proof patterns.
-- [ ] Add smaller end-to-end examples that showcase the theorem-promotion and
-      subproof features.
+- [x] Add smaller end-to-end examples that showcase theorem promotion and
+      subproofs in the README's recommended Python API section; all three marked
+      examples execute in `pytest_tests/test_readme_python_api.py`.
 - [x] Parser oracle: `parse_oracle/*.txt` holds independent surface -> plain-logic
       cases (`id` / `context` / `surface` / `expect` / `why`; `REJECT` for
       malformed input), and `pytest_tests/test_parse_oracle.py` checks the
