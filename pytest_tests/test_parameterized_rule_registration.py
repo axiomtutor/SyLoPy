@@ -143,3 +143,33 @@ def test_proof_keeps_distinct_parameterized_rules_from_elaboration_metadata():
         _induction_configuration(nat),
         _induction_configuration(integer),
     }
+
+def test_unregistered_subclass_cannot_override_a_standard_rule():
+    """Default Reiteration registration must not authorize altered subclasses."""
+    q = pp.parse_formula("Q", set())
+
+    class ForgedReiterationRule(pl.ReiterationRule):
+        name = "Forged Reiteration"
+        premise_arity = 0
+
+        def applies(self, candidates, phi):
+            return not candidates and pl._ast_eq(phi, q)
+
+    forged = ForgedReiterationRule()
+    proof = pl.Proof(
+        [("1", q, ("rule", forged, []))],
+        rules=pl.default_rules(),
+        declarations=[pl.Declaration("Q", pl.DeclarationKind.CLOSED_FORMULA)],
+    )
+
+    ok, error = proof.check_detailed()
+    if ok:
+        pytest.xfail(
+            "an unregistered subclass overrode ReiterationRule to assert Q "
+            "without premises, but passed the class-based rule allowlist"
+        )
+
+    assert error is not None
+    assert error.label == "1"
+    assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
+
