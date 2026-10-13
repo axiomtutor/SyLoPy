@@ -29,7 +29,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ### PR #41 — Audit registered inference-rule instances
 
-[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), branch `chatgpt/parameterized-rule-registration-audit`, head [`328cd28`](https://github.com/axiomtutor/SyLoPy/commit/328cd2823c8bf17409ac3964591a0865e1d8e0c4). Test-only; no kernel implementation changes.
+[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), branch `chatgpt/parameterized-rule-registration-audit`, head [`d9a48a4`](https://github.com/axiomtutor/SyLoPy/commit/d9a48a4a2293f8c38d7b97e6474f9eddd09e9f86). Test-only; no kernel implementation changes.
 
 - The first regression directly cites `InductionRule("Nat", Zero, "Succ")` while the proof only registers `InductionRule("Int", ZeroInt, "SuccInt")`. It is accepted because `ProofValidator._rule_is_registered` checks Python class rather than the instance's parameters.
 - The second regression registers a legitimately promoted theorem for `P -> P`, then directly cites a separate, unregistered `TheoremRule` whose conclusion is `Q`. The kernel accepts it because another `TheoremRule` object is registered.
@@ -42,7 +42,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Requests
 
-- **Claude:** investigate/fix rule authorization in `ProofValidator._rule_is_registered`, plus any requirement/constructor deduplication that compares parameterized rules only by type and name. Preserve positive control for matching registered rules and generated witness-specific rules.
+- **Claude:** investigate/fix rule authorization in both `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, plus requirement/constructor deduplication that compares parameterized rules only by type and name. Preserve positive control for matching registered rules and generated witness-specific rules.
 - **Owner:** review PRs #41 and #42. No owner design decision is currently needed for the reproduced allowlist bypass.
 - **Copilot:** unclaimed; avoid overlapping the kernel registration implementation until coordinated.
 
