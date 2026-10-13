@@ -68,3 +68,5 @@ def test_marked_readme_python_example_executes(example_name):
     )
     if example_name == "theorem-promotion":
         assert "identity" in namespace, "the theorem-promotion example must create its theorem"
+        assert "use" in namespace, "the example must cite the promoted theorem in another proof"
+        assert namespace["use"].check_detailed()[0], "the second proof must validate"

@@ -241,12 +241,11 @@ import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.SetTheory as st
 
-proof_text = """1. Let P be a closed formula. (Declaration)
-2. P -> P. (Conditional Introduction from subproof below)
-begin subproof
- 2.1. P. (Assumption for Conditional Introduction)
- 2.2. P. (Reiteration from 2.1)
-end subproof
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.TermLogic as tl
+
+proof_text = """1. Let a be any object. (Declaration)
+2. a = a. (Reflexivity)
 """
 
 entries, raw_lines = pp.parse_proof_text(
@@ -259,6 +258,19 @@ if not ok:
     raise ValueError(str(error))
 
 identity = pl.promote_theorem("Identity", proof)
+
+b = tl.ConstantTerm("b", "b")
+b_equals_b = fl.Equals(b, b)
+use_entries = [
+    ("1", None, ("declare", [
+        pl.Declaration("b", pl.DeclarationKind.OBJECT),
+    ])),
+    ("2", b_equals_b, ("rule", identity, [])),
+]
+use = pl.Proof(use_entries, rules=pl.default_rules() + [identity])
+ok, error = use.check_detailed()
+if not ok:
+    raise ValueError(str(error))
 ```
 
 `parse_proof_text` returns elaborated entries plus the original raw lines. `Proof.check_detailed()` returns the same structured result shape as `check_proof_text`; `Proof.check()` is the compatibility option when a string message is enough. Promotion validates the source proof and creates a reusable `TheoremRule`; its hypotheses and nonstandard rule / axiom requirements are carried with it. Only formulas derived at the top level can be selected as theorem conclusions, and only top-level object declarations can be generalized.
