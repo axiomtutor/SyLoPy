@@ -277,6 +277,8 @@ if not ok:
 
 For surface-language proof reuse across titled proof blocks, see the informational example [`source/testProofs/theoremPromotion.txt`](source/testProofs/theoremPromotion.txt). Its first proof establishes identity for an arbitrary object; the following proof cites that title for a different object.
 
+For a compact quantifier example that instantiates universal premises at an arbitrary object and then generalizes the result, see [`source/testProofs/quantifierReasoning.txt`](source/testProofs/quantifierReasoning.txt).
+
 When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
 
 <!-- python-api-test: core-type-resources -->
