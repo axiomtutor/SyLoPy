@@ -7,7 +7,7 @@ reproduced, so unrelated setup or validation failures remain ordinary failures.
 
 import pytest
 
-from .support import pl, pp
+from .support import c, pl, pp
 
 
 def _checked_proof(text):
@@ -428,9 +428,9 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
         pl.Declaration("Succ", pl.DeclarationKind.FUNCTION, arity=1),
         pl.Declaration("SuccInt", pl.DeclarationKind.FUNCTION, arity=1),
     ]
-    base = parse("P(Zero)")
-    step = parse("forall n, ((Nat(n) and P(n)) -> P(Succ(n)))")
-    conclusion = parse("forall x, (Nat(x) -> P(x))")
+    base = pp.parse_formula("P(Zero)", set())
+    step = pp.parse_formula("forall n, ((Nat(n) and P(n)) -> P(Succ(n)))", set())
+    conclusion = pp.parse_formula("forall x, (Nat(x) -> P(x))", set())
 
     nat_induction = pl.InductionRule("Nat", c("Zero"), "Succ")
     source_entries = [
