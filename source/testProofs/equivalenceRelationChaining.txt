@@ -21,3 +21,19 @@ begin subproof
   2.2.3. R(c,a). (Relation Symmetry from 2.2.2)
  end subproof
 end subproof
+
+# 2
+## Proof that
+### if R is a partial order on X and a, b are in X.
+### then R(a,b) -> (R(b,a) -> a=b).
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. R(a,b) -> (R(b,a) -> a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,a) -> a = b. (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,a). (Assumption for Conditional Introduction)
+  2.2.2. a = b. (Relation Antisymmetry from 2.1, 2.2.1)
+ end subproof
+end subproof
