@@ -11,12 +11,12 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38206384301](https://github.com/axiomtutor/SyLoPy/actions/runs/38206384301),
-at commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f),
-on 2026-10-12 (timestamps are in UTC). It has one known, tracked exception
+[GitHub Actions run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578),
+at commit [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6),
+on 2026-10-13 (timestamps are in UTC). It has one known, tracked exception
 (see `todos.txt`).
 
-- 980 Python tests: 979 passed and 1 known failure in
+- 1,055 Python tests: 1,054 passed and 1 known failure in
   `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
