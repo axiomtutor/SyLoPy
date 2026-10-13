@@ -275,6 +275,8 @@ if not ok:
 
 `parse_proof_text` returns elaborated entries plus the original raw lines. `Proof.check_detailed()` returns the same structured result shape as `check_proof_text`; `Proof.check()` is the compatibility option when a string message is enough. Promotion validates the source proof and creates a reusable `TheoremRule`; its hypotheses and nonstandard rule / axiom requirements are carried with it. Only formulas derived at the top level can be selected as theorem conclusions, and only top-level object declarations can be generalized.
 
+For surface-language proof reuse across titled proof blocks, see the informational example [`source/testProofs/theoremPromotion.txt`](source/testProofs/theoremPromotion.txt). Its first proof establishes identity for an arbitrary object; the following proof cites that title for a different object.
+
 When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
 
 <!-- python-api-test: core-type-resources -->

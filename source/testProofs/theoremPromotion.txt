@@ -1,0 +1,19 @@
+(*
+Demonstrates automatic theorem promotion between titled proof blocks.
+The first proof establishes identity for an arbitrary object; the second
+reuses the theorem for a different arbitrary object.
+*)
+
+# 1: Identity of an arbitrary object
+## Proof that
+### then a = a.
+
+1. Let a be any object. (Declaration)
+2. a = a. (Reflexivity)
+
+# 2: Reuse the identity theorem
+## Proof that
+### then b = b.
+
+1. Let b be any object. (Declaration)
+2. b = b. (Identity of an arbitrary object)
