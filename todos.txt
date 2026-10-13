@@ -3,12 +3,12 @@
 ## Project status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578),
-at commit [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6),
+[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
+at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
 on 2026-10-13 (timestamps are in UTC). The canonical `./run_tests.sh`
 run reported:
 
-- 1,055 Python tests: 1,054 passed and 1 known failure (see "Known issues" below).
+- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
@@ -649,6 +649,16 @@ probes reproduced).
       written in the file's theories: every proof there has the theory's axioms
       and rules. A required axiom may not mention a constant the theorem
       generalizes (it would be a hypothesis about it).
+- [ ] Open rule-registration soundness issue, reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41):
+      `ProofValidator._rule_is_registered` matches rule classes rather than
+      authorized rule instances/configurations. A direct core citation can use
+      Nat induction when only Int induction is registered, or cite an
+      unregistered `TheoremRule` with an arbitrary conclusion when a different
+      theorem is registered. The expected-failure probes live in
+      `pytest_tests/test_parameterized_rule_registration.py`. The fix must
+      enforce parameter-sensitive authorization and theorem-instance identity,
+      while preserving legitimate line-specific rules such as
+      `PairingAxiomRule(witness_name=...)` through explicit registration.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
