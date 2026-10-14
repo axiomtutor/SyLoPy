@@ -11,17 +11,22 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578),
-at commit [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6),
+[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
+at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
 on 2026-10-13 (timestamps are in UTC). It has one known, tracked exception
 (see `todos.txt`).
 
-- 1,055 Python tests: 1,054 passed and 1 known failure in
+- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure in
   `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
 - Informational proof fixtures: 51/52 passed; the remaining proof is blocked
   on the deferred WLOG / Mutatis mutandis implementation.
+
+The expected failures include two theorem-promotion audit probes that currently
+reproduce unsafe parameterized-rule requirement matching, plus the unresolved
+Existence-witness policy probe. The follow-on direct rule-registration probes
+are under review in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41).
 
 These numbers describe that specific run and will change as tests and fixtures
 are added.
@@ -200,6 +205,111 @@ make it easier to extend and maintain.
   `SyLoPy.source...`; `pytest_tests/support.py` and `./run_tests.sh` make that
   work whatever the checkout directory is called.
 - `completion/run_tests.bash` — shell completion for the test runner.
+
+## Recommended Python API
+
+For ordinary surface-language proofs, `ProofParser.check_proof_text` is the direct entry point. It parses the proof text, elaborates its notation, validates the resulting proof, and returns `(ok, error)`; `error` is a structured `ValidationError` when checking fails and `None` on success.
+
+<!-- python-api-test: surface-check -->
+```python
+import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.SetTheory as st
+
+proof_text = """1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption for Conditional Introduction)
+ 2.2. P. (Reiteration from 2.1)
+end subproof
+"""
+
+ok, error = pp.check_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+if not ok:
+    print(error)
+```
+
+Pass the theory environment deliberately when you want a specific theory boundary. Examples include `SET_THEORY_ENVIRONMENT`, `NUMBER_THEORY_ENVIRONMENT`, and `DISCRETE_MATH_ENVIRONMENT`. Omitting `environment` selects `ProofParser.default_theory_environment()`, which combines the built-in environments that are available. The chosen environment's axioms, rules, and declarations are carried in `ElaboratedEntries` and merged by `ProofLogic.Proof` during checking.
+
+For source inspection, structured diagnostics, or theorem promotion, use the pipeline stages directly:
+
+<!-- python-api-test: theorem-promotion -->
+```python
+import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.SetTheory as st
+
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.TermLogic as tl
+
+proof_text = """1. Let a be any object. (Declaration)
+2. a = a. (Reflexivity)
+"""
+
+entries, raw_lines = pp.parse_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+proof = pl.Proof(entries)
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+
+identity = pl.promote_theorem("Identity", proof)
+
+b = tl.ConstantTerm("b", "b")
+b_equals_b = fl.Equals(b, b)
+use_entries = [
+    ("1", None, ("declare", [
+        pl.Declaration("b", pl.DeclarationKind.OBJECT),
+    ])),
+    ("2", b_equals_b, ("rule", identity, [])),
+]
+use = pl.Proof(use_entries, rules=pl.default_rules() + [identity])
+ok, error = use.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+```
+
+`parse_proof_text` returns elaborated entries plus the original raw lines. `Proof.check_detailed()` returns the same structured result shape as `check_proof_text`; `Proof.check()` is the compatibility option when a string message is enough. Promotion validates the source proof and creates a reusable `TheoremRule`; its hypotheses and nonstandard rule / axiom requirements are carried with it. Only formulas derived at the top level can be selected as theorem conclusions, and only top-level object declarations can be generalized.
+
+For surface-language proof reuse across titled proof blocks, see the informational example [`source/testProofs/theoremPromotion.txt`](source/testProofs/theoremPromotion.txt). Its first proof establishes identity for an arbitrary object; the following proof cites that title for a different object.
+
+For a compact quantifier example that instantiates universal premises at an arbitrary object and then generalizes the result, see [`source/testProofs/quantifierReasoning.txt`](source/testProofs/quantifierReasoning.txt).
+
+When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
+
+<!-- python-api-test: core-type-resources -->
+```python
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.TermLogic as tl
+from SyLoPy.source.NatThry import NAT_TYPE
+
+axioms, schema_rules = pl.combine_types(NAT_TYPE)
+declarations = pl.combine_type_declarations(NAT_TYPE)
+
+zero_is_nat = fl.AtomicFormula(
+    "Nat", [tl.ConstantTerm("Zero", "Zero")]
+)
+entries = [
+    ("1", zero_is_nat, ("axiom",)),
+    ("2", zero_is_nat, ("rule", pl.ReiterationRule(), ["1"])),
+]
+proof = pl.Proof(
+    entries,
+    axioms=axioms,
+    rules=pl.default_rules() + schema_rules,
+    declarations=declarations,
+)
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+```
+
+Use the `ElaboratedEntries` path for natural-language proofs and the explicit core-resource path when you are building validator entries yourself.
 
 ## Running the project
 

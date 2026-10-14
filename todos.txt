@@ -3,12 +3,12 @@
 ## Project status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38340370578](https://github.com/axiomtutor/SyLoPy/actions/runs/38340370578),
-at commit [`866c5e9`](https://github.com/axiomtutor/SyLoPy/commit/866c5e9c3528677b95407461d2ccadcbdb00b6e6),
+[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
+at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
 on 2026-10-13 (timestamps are in UTC). The canonical `./run_tests.sh`
 run reported:
 
-- 1,055 Python tests: 1,054 passed and 1 known failure (see "Known issues" below).
+- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
 - Coverage passed.
 - Enforced proof fixture corpus: 79/79 passed.
@@ -115,9 +115,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 - [x] Verify the parser/elaboration/kernel pipeline against the full regression
       suite.
 - [x] Provide the canonical test command and proof-corpus workflow in the README.
-- [ ] Document the recommended public APIs and usage patterns more explicitly.
-- [ ] Ensure project documentation explains the intended theory boundaries and
-      extension model.
+- [x] Document the recommended public APIs and usage patterns in the README's “Recommended Python API” section.
+- [x] Explain the surface-proof versus core-entry APIs, selected theory environments,
+      and explicit theory-resource composition in the README.
 
 ### 3. Continue theory expansion
 
@@ -132,8 +132,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 
 - [x] Maintain the enforced fixture corpus as the minimum correctness gate.
 - [ ] Grow the informational examples to cover more user-facing proof patterns.
-- [ ] Add smaller end-to-end examples that showcase the theorem-promotion and
-      subproof features.
+- [x] Add smaller end-to-end examples that showcase theorem promotion and
+      subproofs in the README's recommended Python API section; all three marked
+      examples execute in `pytest_tests/test_readme_python_api.py`.
 - [x] Parser oracle: `parse_oracle/*.txt` holds independent surface -> plain-logic
       cases (`id` / `context` / `surface` / `expect` / `why`; `REJECT` for
       malformed input), and `pytest_tests/test_parse_oracle.py` checks the
@@ -661,6 +662,27 @@ probes reproduced).
       written in the file's theories: every proof there has the theory's axioms
       and rules. A required axiom may not mention a constant the theorem
       generalizes (it would be a hypothesis about it).
+- [ ] Open rule-registration soundness issue, reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41):
+      both `ProofValidator._rule_is_registered` (direct citations) and
+      `RuleContext.allows_rule` (promoted-theorem dependencies) authorize
+      rules by class/subclass rather than semantic configuration. Probes show
+      parameter-mismatched Nat/Int induction accepted; an unregistered
+      `TheoremRule` can assert arbitrary Q when another theorem is registered;
+      an unregistered subclass of `ReiterationRule` can override `applies`
+      and assert Q; and a theorem requiring that subclass is still citable
+      when only the parent rule is registered. Separately, `Proof.__init__`
+      and `_promotion_requirements` deduplicate configured/required rules by
+      type and name, dropping distinct parameterized configurations. The
+      positive control requires a separately constructed but parameter-equal
+      `InductionRule` instance to remain usable. Regression probes are in
+      `pytest_tests/test_parameterized_rule_registration.py`, including the
+      expected-failure behavior on current master. The fix must centralize
+      consistent authorization and semantic deduplication. Preserve the
+      generated `PairingAxiomRule(witness_name=...)`: the elaborator currently
+      embeds it in the line justification but does not register it in
+      `ElaboratedEntries.required_rules`, while the environment registers only
+      generic `PairingAxiomRule()`. Give generated witness-specific rules an
+      explicit authorization path rather than relying on class matching.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
@@ -679,7 +701,9 @@ probes reproduced).
       still checks, but its theorem is not promoted.
 - [ ] Not done: a premise-carrying theorem cannot be cited from proof text
       (`from <lines>` works only for the built-in rules; a bare title cites a
-      theorem with no premises). Kernel-level citation works.
+      theorem with no premises). Kernel-level citation works. Regression probe:
+      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text` (expected failure
+      while `ProofJustification.parse_justification` rejects `Title from L`).
 
 ## Short version
 
