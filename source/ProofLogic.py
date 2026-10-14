@@ -610,15 +610,40 @@ class FormulaMatcher:
 
     which stops a match from silently reaching past a shadowing inner
     quantifier and binding the wrong (shadowed) `x`.
+
+    Finally, a match is refused when it would *capture* a variable: the term
+    `var_name` stands for may not have a free variable that a quantifier
+    enclosing a matched occurrence (inside the pattern body) binds. So
+    `forall x, exists y, R(x, y)` never instantiates to `exists y, R(y, y)`,
+    which is not a consequence of it, and Existential Introduction never takes
+    `forall y, R(y, y)` to `exists x, forall y, R(x, y)`. This is the usual
+    "the term must be free for the variable" side condition on Universal
+    Instantiation and Existential Introduction; `_is_capture_free` checks it.
     """
-    __slots__ = ("var_name", "mapping")
+    __slots__ = ("var_name", "mapping", "_bound")
 
     def __init__(self, var_name: str):
         self.var_name = var_name
         self.mapping = {}
+        # Names bound by the quantifiers *inside the pattern body* that enclose
+        # the position being matched (the target's spelling of them).
+        self._bound = []
+
+    def _is_capture_free(self, term: tl.Term) -> bool:
+        """True unless a variable free in `term` would be captured by one of
+        the quantifiers the matched position sits under.
+
+        `forall x, exists y, R(x, y)` must not instantiate x := y: the result
+        `exists y, R(y, y)` is not a consequence. Standard side condition on
+        Universal Instantiation / Existential Introduction: the substituted
+        term must be free for the variable.
+        """
+        return not (fl.term_free_variables(term) & set(self._bound))
 
     def match_term(self, pattern: tl.Term, target: tl.Term) -> bool:
         if isinstance(pattern, tl.VariableTerm) and pattern.name == self.var_name:
+            if not self._is_capture_free(target):
+                return False
             if self.var_name not in self.mapping:
                 self.mapping[self.var_name] = target
                 return True
@@ -669,7 +694,11 @@ class FormulaMatcher:
             return self.match_term(pattern.left, target.left) and self.match_term(pattern.right, target.right)
         if isinstance(pattern, (fl.ForAll, fl.Exists)):
             if pattern.var == self.var_name or target.var == self.var_name: return False
-            return self.match_formula(pattern.body, target.body)
+            self._bound.append(target.var)
+            try:
+                return self.match_formula(pattern.body, target.body)
+            finally:
+                self._bound.pop()
 
         return False
 
@@ -2688,7 +2717,13 @@ class InductionRule(AxiomSchemaRule):
     candidate rather than invented by this rule -- `_ast_eq` requires
     literal name equality on `ForAll`, so a proof that names its induction
     variable `n` (or anything else) must be compared against a formula
-    built using that same name, not a name this rule happens to pick.
+    built using that same name, not a name this rule happens to pick. That
+    name must not occur in `P` (bound, or free as a parameter) unless it is
+    the induction variable itself: `substitute_in_formula` does not rename
+    bound variables, so for `P(x) := exists n, R(x, n)` and a step over `n` the
+    "step" it builds is `forall n, ((Nat(n) and exists n, R(n, n)) -> exists n,
+    R(Succ(n), n))`, whose hypothesis no longer mentions the `n` being
+    inducted on. `_expected` refuses such a citation instead of building it.
 
     Scoped deliberately to this single-successor shape: a future
     inductively-defined type with more than one constructor (e.g. a tree
@@ -2721,6 +2756,11 @@ class InductionRule(AxiomSchemaRule):
 
         step_candidate = candidates[1] if len(candidates) > 1 else None
         n_name = step_candidate.var if isinstance(step_candidate, fl.ForAll) else x_name
+        # The step instantiates Q at n and at Succ(n) with a substitution that does not
+        # rename bound variables. If Q binds n (or has n free as a parameter), the
+        # substituted n is captured and the "step" is no longer Q's induction step.
+        if n_name != x_name and n_name in (fl.bound_variable_names(Q) | fl.free_variables(Q)):
+            return None
 
         step = fl.ForAll(n_name, fl.Implies(
             fl.And(fl.AtomicFormula(self.type_predicate, [tl.VariableTerm(n_name)]),
@@ -2748,15 +2788,25 @@ class ConstantGeneralizingMatcher:
     `match_formula`/`match_term` once; on success, `.mapping` holds what
     each generalized name matched to. See `TheoremRule` for how this is
     used to promote a proved theorem into a citable rule.
+
+    As in `FormulaMatcher`, a name is never generalized to a term whose free
+    variable a quantifier enclosing that occurrence would capture: a theorem
+    about `exists y, not (y = a)` for an arbitrary `a` does not become a
+    theorem about `exists y, not (y = y)`.
     """
-    __slots__ = ("names", "mapping")
+    __slots__ = ("names", "mapping", "_bound")
 
     def __init__(self, names):
         self.names = set(names)
         self.mapping: Dict[str, tl.Term] = {}
+        # Names bound by the quantifiers enclosing the position being matched
+        # (the target's spelling of them); see `FormulaMatcher._is_capture_free`.
+        self._bound = []
 
     def match_term(self, pattern: tl.Term, target: tl.Term) -> bool:
         if isinstance(pattern, tl.ConstantTerm) and pattern.name in self.names:
+            if fl.term_free_variables(target) & set(self._bound):
+                return False
             if pattern.name not in self.mapping:
                 self.mapping[pattern.name] = target
                 return True
@@ -2804,7 +2854,11 @@ class ConstantGeneralizingMatcher:
             # case to guard against here; both sides just need the same
             # bound name, exactly as plain _ast_eq requires.
             if pattern.var != target.var: return False
-            return self.match_formula(pattern.body, target.body)
+            self._bound.append(target.var)
+            try:
+                return self.match_formula(pattern.body, target.body)
+            finally:
+                self._bound.pop()
         return False
 
 
