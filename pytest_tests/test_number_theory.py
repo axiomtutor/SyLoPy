@@ -15,6 +15,7 @@ def test_int_axiom_shapes():
     assert "Int(Quotient(n, a))" in repr(quotient_defining)
     assert "n = Times(a, Quotient(n, a))" in repr(quotient_defining)
     assert "Quotient(n, a) = m" in repr(quotient_unique)
+    assert "a = Zero" in repr(quotient_unique)
     assert "Times(Times(x, y), z) = Times(x, Times(y, z))" in repr(times_assoc)
     assert "Times(x, Plus(y, z)) = Plus(Times(x, y), Times(x, z))" in repr(left_distrib)
 
@@ -53,11 +54,14 @@ def test_quotient_uniqueness_rule_accepts_and_rejects():
     int_m = atom(numt.INT_PREDICATE, m)
     equation = fl.Equals(n, tl.FunctionTerm(numt.TIMES, [a, m]))
     conclusion = fl.Equals(tl.FunctionTerm(numt.QUOTIENT, [n, a]), m)
-    assert rule.applies([int_m, equation], conclusion)
+    nonzero_divisor = fl.Not(fl.Equals(a, nt.Zero))
+    assert rule.applies([int_m, equation, nonzero_divisor], conclusion)
+    # The nonzero-divisor guard is required.
+    assert not rule.applies([int_m, equation], conclusion)
     # Citation order matters, matching every other AxiomSchemaRule in the module.
-    assert not rule.applies([equation, int_m], conclusion)
+    assert not rule.applies([equation, int_m, nonzero_divisor], conclusion)
     # Without Int(m) established, uniqueness alone can't be invoked.
-    assert not rule.applies([equation], conclusion)
+    assert not rule.applies([equation, nonzero_divisor], conclusion)
 
 
 def test_infix_quotient_and_divisibility_sugar_parse():

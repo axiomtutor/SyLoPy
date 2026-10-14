@@ -43,7 +43,7 @@ What's characterized here
      divides `n`) -- there is no axiom saying `Quotient` is total, and no
      axiom governing what `n/a` means when it *isn't* an integer.
        - Defining property: if `n/a` is an integer, then `n = a * (n/a)`.
-       - Uniqueness: if `m` is an integer and `n = a * m`, then `n/a = m`.
+       - Uniqueness: if `m` is an integer, `n = a * m`, and `a ≠ Zero`, then `n/a = m`.
      Both are exposed as one-step citable rules (`QuotientDefiningPropertyRule`,
      `QuotientUniquenessRule`) rather than left as a generic "Algebra"
      black box -- see the note on that below.
@@ -179,11 +179,14 @@ INT_AXIOMS = [
         _Int(_Quotient(_n, _a)), fl.Equals(_n, _Times(_a, _Quotient(_n, _a))),
     ))),
 
-    # 6. Quotient uniqueness: any integer solution to that same equation
-    #    *is* n/a -- division is the unique inverse of multiplication when
-    #    an inverse exists at all.
+    # 6. Quotient uniqueness: if a is nonzero, any integer solution to
+    #    n = a*m is n/a. Without the nonzero guard, n = a = 0 would force
+    #    0/0 to equal every integer.
     fl.ForAll('n', fl.ForAll('a', fl.ForAll('m', fl.Implies(
-        fl.And(_Int(_m), fl.Equals(_n, _Times(_a, _m))),
+        fl.And(
+            fl.And(_Int(_m), fl.Equals(_n, _Times(_a, _m))),
+            fl.Not(fl.Equals(_a, nt.Zero)),
+        ),
         fl.Equals(_Quotient(_n, _a), _m),
     )))),
 
@@ -264,18 +267,22 @@ class QuotientDefiningPropertyRule(pl.AxiomSchemaRule):
 
 
 class QuotientUniquenessRule(pl.AxiomSchemaRule):
-    """From `Int(m)` and `n = a * m` (cited in that order), infer `n/a = m`:
-    Universal Instantiation of axiom 6 above plus Modus Ponens, bundled
-    the same way as `QuotientDefiningPropertyRule`.
+    """From `Int(m)`, `n = a * m`, and `a ≠ Zero` (in that order), infer
+    `n/a = m`: Universal Instantiation of axiom 6 above plus Modus Ponens,
+    bundled the same way as `QuotientDefiningPropertyRule`.
 
     Example::
 
         3.2. Int(m). (Conjunction Elimination from 3.1)
         3.3. n = Times(a, m). (Conjunction Elimination from 3.1)
-        3.4. n/a = m. (Quotient Uniqueness from 3.2, 3.3)
+        3.4. not (a = Zero). (Premise)
+        3.5. n/a = m. (Quotient Uniqueness from 3.2, 3.3, 3.4)
+
+    A zero denominator is not covered by this rule: when `a = Zero`, the
+    equation `n = a * m` cannot uniquely identify `m`.
     """
     name = "QuotientUniqueness"
-    premise_arity = 2
+    premise_arity = 3
 
     def _expected(self, phi, candidates):
         if not isinstance(phi, fl.Equals):
@@ -285,7 +292,11 @@ class QuotientUniquenessRule(pl.AxiomSchemaRule):
                 and len(quotient_term.args) == 2):
             return None
         n_term, a_term = quotient_term.args
-        return [_Int(m_term), fl.Equals(n_term, _Times(a_term, m_term))]
+        return [
+            _Int(m_term),
+            fl.Equals(n_term, _Times(a_term, m_term)),
+            fl.Not(fl.Equals(a_term, nt.Zero)),
+        ]
 
 
 INT_TYPE = pl.Type(
