@@ -1,5 +1,3 @@
-Use number theory.
-
 (*
 A zero denominator must not determine a unique integer quotient.
 The rule requires an explicit nonzero-divisor premise.
