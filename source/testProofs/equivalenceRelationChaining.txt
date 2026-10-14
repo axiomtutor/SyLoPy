@@ -1,0 +1,39 @@
+Use discrete math.
+
+(*
+A small end-to-end example: transitivity followed by symmetry, with both
+assumptions discharged by nested conditional-introduction subproofs.
+*)
+
+# 1
+## Proof that
+### if R is an equivalence relation on X and a, b, c are in X.
+### then R(a,b) -> (R(b,c) -> R(c,a)).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a,b) -> (R(b,c) -> R(c,a)). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,c) -> R(c,a). (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,c). (Assumption for Conditional Introduction)
+  2.2.2. R(a,c). (Relation Transitivity from 2.1, 2.2.1)
+  2.2.3. R(c,a). (Relation Symmetry from 2.2.2)
+ end subproof
+end subproof
+
+# 2
+## Proof that
+### if R is a partial order on X and a, b are in X.
+### then R(a,b) -> (R(b,a) -> a = b).
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. R(a,b) -> (R(b,a) -> a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,a) -> a = b. (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,a). (Assumption for Conditional Introduction)
+  2.2.2. a = b. (Relation Antisymmetry from 2.1, 2.2.1)
+ end subproof
+end subproof
