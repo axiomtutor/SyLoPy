@@ -41,6 +41,18 @@ The existing issue has distinct paths that must all be addressed:
 
 The suite contains positive controls: a distinct `InductionRule` instance with identical semantic parameters must remain usable. Run the canonical `./run_tests.sh`; report the known WLOG/ZFC failure separately. The goal is for the new rule-registration xfails to become passing tests without introducing new failures. Do not weaken the negative tests or authorize arbitrary subclasses just to make generated rules work.
 
+### Independent PR under review — #47
+
+[PR #47](https://github.com/axiomtutor/SyLoPy/pull/47), branch `chatgpt/elaboration-binder-capture-audit`, tests and fixes three elaboration-time capture paths left unaudited after PR #44:
+
+- Set-builder equality expansion when a builder variable shadows an enclosing variable used in the range set.
+- Replacement-builder expansion where a generated existential binder captured an outer range variable.
+- Universal/existential bounded quantifiers with a binder that shadows the variable used by the range set.
+
+The three new test functions represent four cases and compare the parsed surface expression with its intended plain-logic reading. The unique-existence phrase was already safe because its competitor name avoids all names in the condition and surrounding scope; the `Existence from L` path substitutes a `ConstantTerm` witness and does not suffer variable capture.
+
+CI [run #38657003495](https://github.com/axiomtutor/SyLoPy/actions/runs/38657003495) on this PR: 1,108 passed, 12 xfailed, one known deferred ZFC/WLOG failure; coverage passed; enforced fixtures 80/80; informational fixtures 58/59. All new regressions pass. PR #47 is independent of the rule-registration implementation; no kernel files were edited. It awaits owner review.
+
 ### Other merged work
 
 - **PR #42 — [Python API docs and end-to-end examples](https://github.com/axiomtutor/SyLoPy/pull/42):** adds runnable README examples and `pytest_tests/test_readme_python_api.py`, plus `source/testProofs/theoremPromotion.txt`, `source/testProofs/quantifierReasoning.txt`, and `pytest_tests/test_theorem_surface_citations.py`. The last test intentionally xfails on the current limitation: a titled theorem with premises cannot yet be parsed as `Title from L`. This is a separate parser issue; coordinate before touching `ProofJustification.py`, which Claude owns.
