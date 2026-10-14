@@ -722,3 +722,16 @@ Found by running proofs the checker should refuse (Claude, branch `claude/captur
 - Design choice: side conditions, not capture-avoiding renaming, consistent with the standing no-alpha-equivalence discipline (`_ast_eq`, `InductionRule`, `ReplacementSchemaRule`).
 - Regression coverage: `pytest_tests/test_capture_and_schema_side_conditions.py`. Every negative test checks the refusing line, the rule and the `rule_mismatch` category, and was confirmed to fail on the master it was written against (19 of the 31 tests fail there; the other 12 are positive controls).
 - Not audited: the other `substitute_in_formula` call sites (set-builder expansion in `SetTheory`, uniqueness phrasing in `ProofParserPolicy`, `Existence from L`), which build formulas at elaboration time.
+
+
+## Owner decision: quotient uniqueness requires a nonzero denominator (2026-10-14)
+
+The owner approved requiring the divisor `a` to be nonzero in the quotient-uniqueness axiom. When `a = Zero`, the equation `n = a*m` does not uniquely determine `m`; at `n = a = Zero`, the unguarded axiom incorrectly yields `Zero/Zero = m` for every integer `m`.
+
+Implemented in [PR #45](https://github.com/axiomtutor/SyLoPy/pull/45):
+- Axiom 6 includes the side condition `not (a = Zero)`.
+- `QuotientUniquenessRule` requires that condition as its third cited premise, after `Int(m)` and `n = Times(a,m)`.
+- The `divisibility_iff_quotient_integer.txt` example explicitly assumes a nonzero divisor; its converse direction is false at zero.
+- Unit tests cover the changed axiom and rule shape, and `invalid_quotient_uniqueness_zero_divisor.txt` checks that the checker refuses to derive `Zero/Zero = m` without the guard.
+
+This preserves the project's partial-division model rather than defining division by zero.
