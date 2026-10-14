@@ -539,8 +539,16 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
             return None
         import SyLoPy.source.ProofParser as pp
         body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
-        return fl.ForAll(variable, fl.Implies(
-            membership_formula(tl.VariableTerm(variable), source), body))
+        binder = variable
+        if variable in bound_vars:
+            # The range set is parsed outside this binder, but the body is
+            # inside it. Use a fresh internal name so a same-named outer
+            # variable in the range set remains free relative to this quantifier.
+            used_names = set(bound_vars) | fl.formula_names(body) | fl.term_names(source)
+            binder = _fresh_generated_variable_name(used_names, f"__bounded_{variable}")
+            body = fl.substitute_in_formula(body, variable, tl.VariableTerm(binder))
+        return fl.ForAll(binder, fl.Implies(
+            membership_formula(tl.VariableTerm(binder), source), body))
 
     exists = re.fullmatch(
         rf"(?:there\s+exists|exists)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
@@ -554,8 +562,13 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
             return None
         import SyLoPy.source.ProofParser as pp
         body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
-        return fl.Exists(variable, fl.And(
-            membership_formula(tl.VariableTerm(variable), source), body))
+        binder = variable
+        if variable in bound_vars:
+            used_names = set(bound_vars) | fl.formula_names(body) | fl.term_names(source)
+            binder = _fresh_generated_variable_name(used_names, f"__bounded_{variable}")
+            body = fl.substitute_in_formula(body, variable, tl.VariableTerm(binder))
+        return fl.Exists(binder, fl.And(
+            membership_formula(tl.VariableTerm(binder), source), body))
 
     return None
 
