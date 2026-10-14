@@ -4,12 +4,11 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline
 
-- **Master:** [`07936b9`](https://github.com/axiomtutor/SyLoPy/commit/07936b9341c4192b258fcf886a0de53988c818ba). PR #44 (variable-capture and schema-side-condition soundness fixes) is merged; PRs #38 and #40 were previously merged.
-- **Latest full validation:** PR #44's tested head reported 1,099 passed, 3 xfailed, and the known ZFC/WLOG failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. See [PR #44](https://github.com/axiomtutor/SyLoPy/pull/44).
-- **Known ordinary failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, still blocked by the deferred WLOG / Mutatis mutandis features. Do not mask it with xfail or implement the deferred rules without owner approval.
+- **Master:** [`87fab58`](https://github.com/axiomtutor/SyLoPy/commit/87fab582399f0824bb7b0dbcc0d75b430ae2a679). PRs #41 (rule-registration audit tests), #42 (API documentation and regression examples), #43 (informational relation proofs), #45 (nonzero quotient guard), and #46 (skip redundant documentation-only push CI) are merged.
+- **Latest full validation:** [GitHub Actions run #643](https://github.com/axiomtutor/SyLoPy/actions/runs/38656453820), on `87fab58`: 1,104 passed, 12 xfailed, and one known failure; coverage passed; enforced fixtures 80/80; informational fixtures 58/59.
+- **Known ordinary failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, blocked by the deferred WLOG / Mutatis mutandis features. Do not mask it with xfail or implement those deferred rules without owner approval.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
-- **File ownership:** Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. ChatGPT/Copilot may add focused regression tests and documentation but should not edit those files without coordination.
-
+- **File ownership:** Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. ChatGPT/Copilot should focus on independent tests, docs, fixtures, and handoff unless coordinated with Claude.
 ## Owner-approved semantics and boundaries
 
 - Declarations inside a subproof are visible there and in descendants, but do not escape to the enclosing scope or affect siblings. Root declarations remain visible in every nested scope.
@@ -26,63 +25,34 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - **Promotion records theory requirements** (`866c5e9`). A promoted theorem records cited axioms and nonstandard rule requirements, and validates explicit conclusions/generalized names. The regression tests are in `pytest_tests/test_hypotheses_and_promotion.py`, `pytest_tests/test_promotion_requirements.py`, and `pytest_tests/test_theorem_promotion_audit.py`.
 - **New remaining issue:** rule authorization and requirement-merging are class/name-based. PR #41 covers parameter-mismatched induction citations, unregistered theorem instances, unregistered subclasses of default logical rules, and constructor merging that drops a distinct required induction configuration. Master already has a probe for dropped promotion requirements.
 
-## Active pull requests
+## Merged work and current priorities
 
-### PR #41 — Audit registered inference-rule instances
+### Priority 1 — Implement the registered-rule soundness fixes from PR #41
 
-[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), branch `chatgpt/parameterized-rule-registration-audit`, head [`571af93`](https://github.com/axiomtutor/SyLoPy/commit/571af93289af7d56784c47f0a9a560995519e0c2). Test-only; no kernel implementation changes.
+[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41) is merged. Its test-only regression suite, `pytest_tests/test_parameterized_rule_registration.py`, now provides acceptance criteria for Claude's implementation.
 
-- Probe 1: a direct `InductionRule("Nat", Zero, Succ)` citation is accepted although only `InductionRule("Int", ZeroInt, SuccInt)` is configured.
-- Probe 2: a valid promoted theorem `P -> P` in the allowlist authorizes a different `TheoremRule` instance concluding arbitrary `Q`.
-- Probe 3: an unregistered subclass of `ReiterationRule` overrides `applies` to assert arbitrary `Q` without premises and passes direct-citation class authorization.
-- Probe 4: a theorem that depends on the forged Reiteration subclass is accepted when the caller registers only the parent default rule and the theorem itself; this exposes class-only `RuleContext.allows_rule`.
-- Probes 5–6 cover the separate `rule_below` and `rule_hybrid` validator paths; both accept an unregistered subclass of a parent rule whose overridden `applies` asserts arbitrary Q. This prevents an implementation that tightens only ordinary `rule` citations.
-- Probe 7: `Proof.__init__` discards one of two required Nat/Int `InductionRule` configs on elaboration metadata because it deduplicates by type/name. The analogous promotion dedup bug in `_promotion_requirements` is already represented in master test `test_promotion_preserves_each_parameterized_rule_requirement`.
-- Probe 8: direct Pairing elaboration embeds `PairingAxiomRule(witness_name="Y")` in a line but exports only generic `PairingAxiomRule()` in `ElaboratedEntries.required_rules`. The test requires the witness-specific config to be exported and both generic and witness-specific configurations to survive the final `Proof.rules` merge.
-- Positive control: a distinct Nat induction object with identical `type_predicate`, `zero_term`, and `succ_symbol` parameters remains acceptable.
-- CI [run #38345530284](https://github.com/axiomtutor/SyLoPy/actions/runs/38345530284): 1,069 passed, 11 xfailed, plus the known deferred ZFC fixture failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. All added probes reproduce expected failures; the only ordinary failure is the known ZFC fixture.
-- Implementation needs consistent authorization in `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, plus semantic deduplication in `Proof.__init__` and `_promotion_requirements`. Pairing path and key design are documented in [PR #41 comments](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137881949) and [the key-design suggestion](https://github.com/axiomtutor/SyLoPy/pull/41#issuecomment-6137918415).
+The existing issue has distinct paths that must all be addressed:
 
-### PR #42 — Refresh status, document and test Python API, record rule-registration gap
+1. `ProofValidator._rule_is_registered` accepts a rule by class/subclass rather than semantic configuration. This lets a differently parameterized `InductionRule`, an unregistered `TheoremRule`, or a behavior-overriding subclass of `ReiterationRule` pass direct citation authorization.
+2. `RuleContext.allows_rule` repeats class-based authorization for rules used as dependencies of promoted theorems.
+3. The `rule_below` and `rule_hybrid` subproof validators have separate authorization branches; the regressions ensure a fix to ordinary citations does not leave these branches open.
+4. `Proof.__init__` and `_promotion_requirements` deduplicate rules by type/name and can discard parameter-distinct requirements. Preserve parameter-equal separate instances as equivalent, but keep parameter-distinct configurations separate.
+5. Direct Pairing elaboration embeds `PairingAxiomRule(witness_name="Y")` in a line without exporting that witness-specific configuration through `ElaboratedEntries.required_rules`. Generated witness-specific rules need an explicit authorization path, not a broad class-based bypass.
 
-[PR #42](https://github.com/axiomtutor/SyLoPy/pull/42), branch `chatgpt/refresh-status-after-promotion-audit`, head [`824d180`](https://github.com/axiomtutor/SyLoPy/commit/824d1801efd4a712d71020f3ad0b33ba405021bb). Documentation, fixtures and tests only; no kernel changes.
+The suite contains positive controls: a distinct `InductionRule` instance with identical semantic parameters must remain usable. Run the canonical `./run_tests.sh`; report the known WLOG/ZFC failure separately. The goal is for the new rule-registration xfails to become passing tests without introducing new failures. Do not weaken the negative tests or authorize arbitrary subclasses just to make generated rules work.
 
-- Adds a “Recommended Python API” README section with standalone examples for surface proof checking, theorem promotion plus reuse, and core proof construction from `NAT_TYPE` resources.
-- `pytest_tests/test_readme_python_api.py` executes all three marked README examples in CI; all pass.
-- `source/testProofs/theoremPromotion.txt` adds four passing blocks for reusing a theorem about an arbitrary object, and proving/citing equality symmetry via a discharged subproof.
-- `source/testProofs/quantifierReasoning.txt` demonstrates instantiating universally quantified premises at an arbitrary object, applying modus ponens, and generalizing. README links to both fixture files.
-- `pytest_tests/test_theorem_surface_citations.py` adds an expected-failure regression for the TODO that a premise-carrying theorem cannot be cited as `Title from L`. The first theorem validates; parsing fails on the unknown title. Claude was notified in [PR #42 comment](https://github.com/axiomtutor/SyLoPy/pull/42#issuecomment-6137953966). Suggested fix: `ProofJustification._cited_rule` should preserve known built-in aliases but return `NamedRulePlaceholder(title)` for an otherwise-unknown title with explicit refs, letting the kernel check premise arity. ChatGPT did not edit `ProofJustification.py`.
-- `todos.txt` documents the complete rule-registration issue: both class-only authorization sites, both deduplication sites, subclass substitution, the positive semantic-equivalence control, and Pairing witness-specific registration.
-- Public-API/theory-boundary docs and the first small end-to-end examples are checked off. PR #43 continues the broader informational-example growth with two additional relation proofs.
-- CI [run #38345715696](https://github.com/axiomtutor/SyLoPy/actions/runs/38345715696): 1,071 passed, 4 xfailed, one known deferred ZFC failure; coverage passed; enforced fixtures 79/79; informational 56/57; `source/testProofs` 44/44 including both new files. The only ordinary pytest failure and remaining informational miss are the same WLOG/Mutatis mutandis blocker.
+### Other merged work
 
-### PR #43 — Add informational relation-proof examples
+- **PR #42 — [Python API docs and end-to-end examples](https://github.com/axiomtutor/SyLoPy/pull/42):** adds runnable README examples and `pytest_tests/test_readme_python_api.py`, plus `source/testProofs/theoremPromotion.txt`, `source/testProofs/quantifierReasoning.txt`, and `pytest_tests/test_theorem_surface_citations.py`. The last test intentionally xfails on the current limitation: a titled theorem with premises cannot yet be parsed as `Title from L`. This is a separate parser issue; coordinate before touching `ProofJustification.py`, which Claude owns.
+- **PR #43 — [Informational relation-proof examples](https://github.com/axiomtutor/SyLoPy/pull/43):** adds `source/testProofs/equivalenceRelationChaining.txt`, covering equivalence-relation chaining and partial-order antisymmetry. The examples are intentionally not promoted to reusable theorems because declaration-only relation metadata is not yet carried into promoted theorem requirements.
+- **PR #45 — [Nonzero quotient denominator](https://github.com/axiomtutor/SyLoPy/pull/45):** implements the owner-approved `a != 0` guard on quotient uniqueness and tests against deriving `Zero/Zero = m`.
+- **PR #46 — [Skip docs-only push CI](https://github.com/axiomtutor/SyLoPy/pull/46):** skips redundant push-triggered runs for Markdown-only/`todos.txt` changes while preserving full PR validation.
 
-[PR #43](https://github.com/axiomtutor/SyLoPy/pull/43), branch `chatgpt/informational-equivalence-relation-example`, head [`ddfb79c`](https://github.com/axiomtutor/SyLoPy/commit/ddfb79cef382c2ffe2078cc86e7ccb128db161d8). One new informational fixture, `source/testProofs/equivalenceRelationChaining.txt`, contains two proofs:
+### Requests
 
-- For an equivalence relation, assume (R(a,b)) and (R(b,c)), derive (R(a,c)) by transitivity, then (R(c,a)) by symmetry.
-- For a partial order, assume (R(a,b)) and (R(b,a)), then derive (a=b) by antisymmetry.
-
-Both proofs exercise nested Conditional Introduction and relation-property declarations through the public proof-text pipeline. The fixture is deliberately not titled: theorem promotion currently refuses to promote proofs that rely on relation properties present only as declaration metadata, because that metadata would be lost when the theorem is reused. This is an existing limitation recorded under TODO item 8, not a defect introduced by the examples.
-
-- CI [run #38355485055](https://github.com/axiomtutor/SyLoPy/actions/runs/38355485055) for this PR head: 1,068 Python tests passed, 3 xfailed, and the known ZFC/WLOG test failed; coverage passed; enforced fixtures 79/79; informational fixtures 53/54. `source/testProofs` passes 41/41, up from 40/40 on this PR's base.
-- The full run's nonzero result is the known deferred ZFC fixture issue; do not attribute that failure to this PR. The partial-order fixture's stated conclusion initially exposed a spacing typo (`a=b` was not parsed in the header); the committed revision uses `a = b`, and both new proof blocks then pass the corpus validation.
-- The PR is independent of #41's kernel authorization work and #42's documentation/test additions. It changes no kernel or parser code.
-
-### PR #45 — Require nonzero divisor for quotient uniqueness
-
-[PR #45](https://github.com/axiomtutor/SyLoPy/pull/45), branch `chatgpt/quotient-uniqueness-nonzero-denominator`, head [`1acc0bf`](https://github.com/axiomtutor/SyLoPy/commit/1acc0bf012d473f70c795e8b12db45a2052e670c). Implements the owner's decision that quotient uniqueness requires a nonzero denominator.
-
-- Axiom 6 now also requires `not (a = Zero)`; `QuotientUniquenessRule` requires three citations in order: `Int(m)`, `n = Times(a, m)`, and `not (a = Zero)`.
-- Updated axiom/rule tests and adversarial shape tests. Added `tests/testNumberTheory/invalid_quotient_uniqueness_zero_divisor.txt`, an end-to-end negative case that tries to derive `Zero/Zero = m`.
-- The decision and rationale are recorded in `todos.txt`. No kernel or parser files were changed.
-- CI validation is pending; local `./run_tests.sh` was unavailable in the connector session.
-
-## Requests
-
-- **Claude:** investigate/fix rule authorization in both `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, including subclass substitution, plus requirement/constructor deduplication that compares parameterized rules only by type and name. Preserve matching registered rules and give generated witness-specific rules an explicit authorization path.
-- **Owner:** review PRs #41, #42, and #45. The nonzero-denominator policy for quotient uniqueness is now decided; PR #45 needs review and CI validation.
-- **Copilot:** unclaimed; avoid overlapping the kernel registration implementation until coordinated.
+- **Claude:** prioritize the PR #41 rule-authorization and semantic-deduplication implementation, with all citation/subproof/dependency paths covered. Keep the theorem-title surface-citation limitation as a separate task.
+- **Owner:** no outstanding PR-review backlog as of master `87fab58`. Decide whether to assign the separate premise-carrying theorem citation fix after the rule-registration work.
+- **ChatGPT/Copilot:** do not overlap Claude's kernel edits. Continue independent documentation/status maintenance, narrow regression coverage, or fixture work only where it materially helps.
 
 ## Coordination rules
 
