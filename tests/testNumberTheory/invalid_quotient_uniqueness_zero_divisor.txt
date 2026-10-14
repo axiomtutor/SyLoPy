@@ -3,11 +3,6 @@ A zero denominator must not determine a unique integer quotient.
 The rule requires an explicit nonzero-divisor premise.
 *)
 
-# 1
-## Proof that
-### if m is an integer.
-### then Zero/Zero = m.
-
 1. Let m be an integer. (Declaration)
 2. Int(m). (Premise)
 3. Zero = Times(Zero, m). (Premise)
