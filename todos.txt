@@ -44,6 +44,18 @@ is about making the system cleaner, easier to extend, and easier to use.
       before; the fixture is deliberately ahead of the implementation right
       now.
 
+- [ ] Quotient uniqueness (`NumberTheory.INT_AXIOMS`, axiom 6) has no `a != 0`
+      guard, so it is false in the integers at n = a = 0. From premises true of
+      z = 0 (`Int(z)` and `Times(z, m) = z` for every integer m) and any
+      integers p, q, it gives `Quotient(z, z) = p` and `Quotient(z, z) = q`,
+      hence `p = q`; a twelve-line proof of exactly that is accepted today. It
+      is harmless only while the language has no `Zero` and no ring facts about
+      it, and becomes a contradiction as soon as either is added. Owner
+      decision needed: add a `Zero` constant and guard the axiom (and
+      `QuotientUniquenessRule`) with `not (a = Zero)`, or require the integer
+      solution to be unique instead. Found by the soundness audit below; left
+      unchanged because the fix is a design choice.
+
 ## Design principles
 
 - Most things beyond the level of pure logic should be sugar. Prefer surface
@@ -698,3 +710,28 @@ What matters now is not "can we get proof checking to work at all?" It is:
 ## Collaboration note
 
 This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.
+
+## Soundness audit: variable capture and schema side conditions (2026-10-14)
+
+Found by running proofs the checker should refuse (Claude, branch `claude/capture-soundness-fixes`). Each was a proof the checker accepted that is false in some model of its premises. Two reached a contradiction outright: `Q and not Q` from the satisfiable premises `not Q` and `forall x, exists y, not (x = y)`, and an arbitrary `Q` from the set-theory axioms alone. All of them are one mistake: an instance of a quantified formula is matched or built without checking that no variable of the substituted term, or of the set being defined, is captured by a binder.
+
+- [x] `FormulaMatcher` (Universal Instantiation, Existential Introduction, Universal Modus Ponens) and `ConstantGeneralizingMatcher` (promoted theorems) bound the variable to any term, so `forall x, exists y, R(x, y)` gave `exists y, R(y, y)`. A term with a free variable that a quantifier enclosing a matched occurrence binds is now refused: the usual "the term must be free for the variable" side condition.
+- [x] `SeparationSchemaRule` placed no condition on B, X or the binders. B may now not mention the new set Y (`B := u not in Y` makes `Y = {u in X : u not in Y}`, contradictory for any X with an element), X may mention neither `u` nor `Y`, and `u` and `Y` must be distinct. The old docstring's claim that any B gives a sound instance was wrong.
+- [x] `ReplacementSchemaRule`: the image set C and the uniqueness clause's z may not occur in B, A may not mention x, y, z or C (with `f(x) = {x}`, `A := f(x)` asserts the universal set), and the four names must be distinct.
+- [x] `InductionRule`: the step's variable name may not occur in P (bound, or free as a parameter) unless it is the induction variable itself. `substitute_in_formula` does not rename bound variables, so a P that binds `n` captured the step's `n`: base `exists n, R(Zero, n)` and step `forall n, ((Nat(n) and exists n, R(n, n)) -> exists n, R(Succ(n), n))` "proved" `forall x, (Nat(x) -> exists n, R(x, n))`, false on the naturals with `R(a, b) := (a = 0 and b = 1)`.
+- Design choice: side conditions, not capture-avoiding renaming, consistent with the standing no-alpha-equivalence discipline (`_ast_eq`, `InductionRule`, `ReplacementSchemaRule`).
+- Regression coverage: `pytest_tests/test_capture_and_schema_side_conditions.py`. Every negative test checks the refusing line, the rule and the `rule_mismatch` category, and was confirmed to fail on the master it was written against (19 of the 31 tests fail there; the other 12 are positive controls).
+- Not audited: the other `substitute_in_formula` call sites (set-builder expansion in `SetTheory`, uniqueness phrasing in `ProofParserPolicy`, `Existence from L`), which build formulas at elaboration time.
+
+
+## Owner decision: quotient uniqueness requires a nonzero denominator (2026-10-14)
+
+The owner approved requiring the divisor `a` to be nonzero in the quotient-uniqueness axiom. When `a = Zero`, the equation `n = a*m` does not uniquely determine `m`; at `n = a = Zero`, the unguarded axiom incorrectly yields `Zero/Zero = m` for every integer `m`.
+
+Implemented in [PR #45](https://github.com/axiomtutor/SyLoPy/pull/45):
+- Axiom 6 includes the side condition `not (a = Zero)`.
+- `QuotientUniquenessRule` requires that condition as its third cited premise, after `Int(m)` and `n = Times(a,m)`.
+- The `divisibility_iff_quotient_integer.txt` example explicitly assumes a nonzero divisor; its converse direction is false at zero.
+- Unit tests cover the changed axiom and rule shape, and `invalid_quotient_uniqueness_zero_divisor.txt` checks that the checker refuses to derive `Zero/Zero = m` without the guard.
+
+This preserves the project's partial-division model rather than defining division by zero.

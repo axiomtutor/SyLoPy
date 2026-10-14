@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - '*'
+    # Skip redundant branch-push runs for documentation-only changes.
+    # Pull requests below still run the full suite for every change.
+    paths-ignore:
+      - '*.md'
+      - '**/*.md'
+      - 'todos.txt'
   pull_request:
     branches:
       - master

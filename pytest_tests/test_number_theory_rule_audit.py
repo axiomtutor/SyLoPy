@@ -83,7 +83,11 @@ def test_quotient_defining_property_rejects_missing_or_extra_premises():
 def _quotient_uniqueness_case():
     n, a, m = c("n"), c("a"), c("m")
     return (
-        [_int(m), fl.Equals(n, _times(a, m))],
+        [
+            _int(m),
+            fl.Equals(n, _times(a, m)),
+            fl.Not(fl.Equals(a, nt.Zero)),
+        ],
         fl.Equals(_quotient(n, a), m),
     )
 
@@ -107,27 +111,36 @@ def test_quotient_uniqueness_rejects_nonmatching_conclusions(mutate):
     n, a, m = c("n"), c("a"), c("m")
     rule = numt.QuotientUniquenessRule()
     assert not rule.applies(
-        [_int(m), fl.Equals(n, _times(a, m))],
+        [_int(m), fl.Equals(n, _times(a, m)), fl.Not(fl.Equals(a, nt.Zero))],
         mutate(n, a, m),
     )
 
 
-@pytest.mark.parametrize("first,second", [
+@pytest.mark.parametrize("first,second,third", [
     # The quotient candidate must itself be known integer.
     (lambda n, a, m: _int(_quotient(n, a)),
-     lambda n, a, m: fl.Equals(n, _times(a, m))),
+     lambda n, a, m: fl.Equals(n, _times(a, m)),
+     lambda n, a, m: fl.Not(fl.Equals(a, nt.Zero))),
     # The equation's witness must match the first candidate's m.
     (lambda n, a, m: _int(m),
-     lambda n, a, m: fl.Equals(n, _times(a, c("other_m")))),
+     lambda n, a, m: fl.Equals(n, _times(a, c("other_m"))),
+     lambda n, a, m: fl.Not(fl.Equals(a, nt.Zero))),
     # A natural-number fact is not the integer premise required by this rule.
     (lambda n, a, m: atom("Nat", m),
-     lambda n, a, m: fl.Equals(n, _times(a, m))),
+     lambda n, a, m: fl.Equals(n, _times(a, m)),
+     lambda n, a, m: fl.Not(fl.Equals(a, nt.Zero))),
+    # The denominator guard must mention this quotient's denominator.
+    (lambda n, a, m: _int(m),
+     lambda n, a, m: fl.Equals(n, _times(a, m)),
+     lambda n, a, m: fl.Not(fl.Equals(c("other_a"), nt.Zero))),
 ])
-def test_quotient_uniqueness_rejects_wrong_premise_shapes(first, second):
+def test_quotient_uniqueness_rejects_wrong_premise_shapes(first, second, third):
     n, a, m = c("n"), c("a"), c("m")
     conclusion = fl.Equals(_quotient(n, a), m)
     rule = numt.QuotientUniquenessRule()
-    assert not rule.applies([first(n, a, m), second(n, a, m)], conclusion)
+    assert not rule.applies(
+        [first(n, a, m), second(n, a, m), third(n, a, m)], conclusion
+    )
 
 
 def test_quotient_uniqueness_rejects_missing_extra_or_reversed_premises():
@@ -136,6 +149,7 @@ def test_quotient_uniqueness_rejects_missing_extra_or_reversed_premises():
     assert not rule.applies([], conclusion)
     assert not rule.applies(candidates[:1], conclusion)
     assert not rule.applies(candidates[1:], conclusion)
+    assert not rule.applies(candidates[:2], conclusion)  # Missing nonzero-divisor guard.
     assert not rule.applies(list(reversed(candidates)), conclusion)
     assert not rule.applies(candidates + [atom("P")], conclusion)
 
