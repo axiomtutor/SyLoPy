@@ -217,7 +217,10 @@ def _parse_builder(text: str, bound_vars: set) -> Optional[_SetDisplay]:
                 fl.substitute_in_formula(predicate, variable, element),
             ),
             bound=fl.bound_variable_names(predicate),
-            variable=variable,
+            # If this binder shadows an enclosing variable, let the equality
+            # expansion choose a fresh display-element name. Otherwise the
+            # generated forall can capture an outer occurrence in the range set.
+            variable=None if variable in bound_vars else variable,
         )
 
     if re.fullmatch(_NAME, head):  # {y: P(y)}
@@ -227,7 +230,10 @@ def _parse_builder(text: str, bound_vars: set) -> Optional[_SetDisplay]:
             fl.formula_names(predicate) | {variable},
             lambda element: fl.substitute_in_formula(predicate, variable, element),
             bound=fl.bound_variable_names(predicate),
-            variable=variable,
+            # If this binder shadows an enclosing variable, let the equality
+            # expansion choose a fresh display-element name. Otherwise the
+            # generated forall can capture an outer occurrence in the range set.
+            variable=None if variable in bound_vars else variable,
         )
 
     return _parse_replacement_builder(head, body, bound_vars)  # {F(x): x in X}
@@ -265,20 +271,56 @@ def _parse_replacement_builder(head: str, body: str, bound_vars: set) -> Optiona
     inner_bound = bound_vars | set(variables)
     head_term = pp.parse_term(head, inner_bound)
     extra_formulas = [pp.parse_formula(text, inner_bound) for text in extras]
-    names = set(variables) | fl.term_names(head_term)
-    bound = set(variables)
+
+    # Range sets are parsed in the surrounding scope, before the comprehension
+    # variables bind. If a range set mentions an outer variable whose name is
+    # also used as a comprehension variable, the generated Exists would capture
+    # that occurrence. Alpha-rename those local binders (and their body
+    # occurrences) before assembling the formula; keep the source terms intact.
+    source_free_variables = set().union(
+        *(fl.term_free_variables(source) for _name, source in ranges)
+    )
+    captured_names = set(variables) & source_free_variables
+    used_names = set(bound_vars) | set(variables) | fl.term_names(head_term)
     for _name, source in ranges:
+        used_names |= fl.term_names(source)
+    for formula in extra_formulas:
+        used_names |= fl.formula_names(formula)
+
+    renamed = {}
+    for name in variables:
+        if name in captured_names and name not in renamed:
+            fresh = _fresh_generated_variable_name(used_names, f"__set_builder_{name}")
+            renamed[name] = fresh
+            used_names.add(fresh)
+
+    for original, fresh in renamed.items():
+        replacement = tl.VariableTerm(fresh)
+        head_term = fl.substitute_in_term(head_term, original, replacement)
+        extra_formulas = [
+            fl.substitute_in_formula(formula, original, replacement)
+            for formula in extra_formulas
+        ]
+
+    binding_ranges = [(renamed.get(name, name), source) for name, source in ranges]
+    binding_variables = [renamed.get(name, name) for name in variables]
+    names = set(binding_variables) | fl.term_names(head_term)
+    bound = set(binding_variables)
+    for _name, source in binding_ranges:
         names |= fl.term_names(source)
     for formula in extra_formulas:
         names |= fl.formula_names(formula)
         bound |= fl.bound_variable_names(formula)
 
     def condition(element: tl.Term) -> fl.Formula:
-        conjuncts = [membership_formula(tl.VariableTerm(name), source) for name, source in ranges]
+        conjuncts = [
+            membership_formula(tl.VariableTerm(name), source)
+            for name, source in binding_ranges
+        ]
         conjuncts += extra_formulas
         conjuncts.append(fl.Equals(element, head_term))
         result = conjuncts[0] if len(conjuncts) == 1 else fl.And(*conjuncts)
-        for name in reversed(variables):
+        for name in reversed(binding_variables):
             result = fl.Exists(name, result)
         return result
 
