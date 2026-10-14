@@ -4,8 +4,8 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline
 
-- **Master:** [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830). PRs #38 (theorem-promotion audit) and #40 (status docs) are merged.
-- **Validation:** [CI run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058): 1,068 passed, 3 xfailed, 1 known Python failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52.
+- **Master:** [`07936b9`](https://github.com/axiomtutor/SyLoPy/commit/07936b9341c4192b258fcf886a0de53988c818ba). PR #44 (variable-capture and schema-side-condition soundness fixes) is merged; PRs #38 and #40 were previously merged.
+- **Latest full validation:** PR #44's tested head reported 1,099 passed, 3 xfailed, and the known ZFC/WLOG failure; coverage passed; enforced fixtures 79/79; informational fixtures 51/52. See [PR #44](https://github.com/axiomtutor/SyLoPy/pull/44).
 - **Known ordinary failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, still blocked by the deferred WLOG / Mutatis mutandis features. Do not mask it with xfail or implement the deferred rules without owner approval.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
 - **File ownership:** Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. ChatGPT/Copilot may add focused regression tests and documentation but should not edit those files without coordination.
@@ -16,6 +16,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - Typed declaration option A is approved: `Let n be a natural number` asserts the ordinary citable `Nat(n)` fact; `Let X be an integer` asserts `Int(X)`. This is not a refinement-type checker or typed-quantifier feature.
 - Relation atoms are carrier-restricted. Symmetry, antisymmetry, asymmetry, and transitivity act on relation premises; rules deriving relation atoms from membership (reflexivity, irreflexivity, totality) must enforce the declared carrier.
 - `Let Y be such a set. (Existence from L)` names a scoped existential witness. The axiom/premise does not itself introduce a named witness.
+- **Quotient uniqueness:** owner decision (2026-10-14): require the denominator `a` to satisfy `not (a = Zero)`. The zero case does not determine a unique integer quotient; PR #45 implements the guard in the axiom and the public rule.
 - Still deferred absent owner approval: WLOG, Mutatis mutandis, named ZFC axiom-citation rules, Set property, Infinity, full refinement checking, and relativized/typed quantifier sugar.
 
 ## Landed theorem-promotion contracts
@@ -68,10 +69,19 @@ Both proofs exercise nested Conditional Introduction and relation-property decla
 - The full run's nonzero result is the known deferred ZFC fixture issue; do not attribute that failure to this PR. The partial-order fixture's stated conclusion initially exposed a spacing typo (`a=b` was not parsed in the header); the committed revision uses `a = b`, and both new proof blocks then pass the corpus validation.
 - The PR is independent of #41's kernel authorization work and #42's documentation/test additions. It changes no kernel or parser code.
 
+### PR #45 — Require nonzero divisor for quotient uniqueness
+
+[PR #45](https://github.com/axiomtutor/SyLoPy/pull/45), branch `chatgpt/quotient-uniqueness-nonzero-denominator`, head [`1acc0bf`](https://github.com/axiomtutor/SyLoPy/commit/1acc0bf012d473f70c795e8b12db45a2052e670c). Implements the owner's decision that quotient uniqueness requires a nonzero denominator.
+
+- Axiom 6 now also requires `not (a = Zero)`; `QuotientUniquenessRule` requires three citations in order: `Int(m)`, `n = Times(a, m)`, and `not (a = Zero)`.
+- Updated axiom/rule tests and adversarial shape tests. Added `tests/testNumberTheory/invalid_quotient_uniqueness_zero_divisor.txt`, an end-to-end negative case that tries to derive `Zero/Zero = m`.
+- The decision and rationale are recorded in `todos.txt`. No kernel or parser files were changed.
+- CI validation is pending; local `./run_tests.sh` was unavailable in the connector session.
+
 ## Requests
 
 - **Claude:** investigate/fix rule authorization in both `ProofValidator._rule_is_registered` and `RuleContext.allows_rule`, including subclass substitution, plus requirement/constructor deduplication that compares parameterized rules only by type and name. Preserve matching registered rules and give generated witness-specific rules an explicit authorization path.
-- **Owner:** review PRs #41 and #42. No owner design decision is currently needed for the reproduced allowlist bypass.
+- **Owner:** review PRs #41, #42, and #45. The nonzero-denominator policy for quotient uniqueness is now decided; PR #45 needs review and CI validation.
 - **Copilot:** unclaimed; avoid overlapping the kernel registration implementation until coordinated.
 
 ## Coordination rules
