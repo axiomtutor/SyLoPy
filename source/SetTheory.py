@@ -955,11 +955,23 @@ class SeparationSchemaRule(pl.InferenceRule):
 
         exists Y, forall u, (u in Y <-> (u in X and B(u)))
 
-    for some term X and some formula B. B is not checked for any particular
-    shape beyond being a formula at all -- *any* B gives a sound instance,
-    which is the schema's entire content. X is likewise unconstrained here
-    (that it is actually a set already in scope is `ProofValidator`'s job,
-    not this rule's).
+    for some term X and some formula B(u). B may be any formula about `u` and
+    whatever parameters it mentions freely -- that is the schema's content --
+    but the instance is only an instance of Separation, rather than an
+    unbounded or self-referential comprehension, under three side conditions,
+    all checked here:
+
+      * `u` and `Y` are distinct variables;
+      * X is a term outside both binders (no free `u` or `Y`). An X that
+        mentioned `u` would let the "bounding" set vary with the element, so
+        the instance could define `{u : B(u)}` outright;
+      * `Y` is not free in B. Otherwise B can refer to the set being defined:
+        with `B := u not in Y`, any X that has an element gives
+        `Y = {u in X : u not in Y}`, which is contradictory and makes the
+        whole theory inconsistent.
+
+    That X is actually a set already in scope is `ProofValidator`'s job, not
+    this rule's.
 
     Example::
 
@@ -967,10 +979,9 @@ class SeparationSchemaRule(pl.InferenceRule):
         2. exists Y, forall u, (u in Y <-> (u in X and u is not in X)).
            (Separation)
 
-    (a deliberately trivial B, to show any formula qualifies -- this
-    instance asserts the existence of a subset of X cut out by a condition
-    no element can satisfy, i.e. the empty set; true, but not the point.
-    The point is that `applies` places no constraint on B at all.)
+    (a deliberately trivial B -- this instance asserts the existence of a
+    subset of X cut out by a condition no element can satisfy, i.e. the empty
+    set; true, but not the point. The point is that B ranges over formulas.)
     """
     name = "Separation"
     premise_arity = 0
@@ -993,9 +1004,20 @@ class SeparationSchemaRule(pl.InferenceRule):
             return False
         if not (isinstance(right, fl.And) and len(right.conjuncts) == 2):
             return False
-        membership_in_X, _B = right.conjuncts
-        return (isinstance(membership_in_X, fl.AtomicFormula) and membership_in_X.predicate == MEMBERSHIP_SYMBOL
-                and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u))
+        membership_in_X, B = right.conjuncts
+        if not (isinstance(membership_in_X, fl.AtomicFormula) and membership_in_X.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u)):
+            return False
+        # Side conditions that make this Separation rather than a self-referential
+        # or unbounded comprehension: u and Y are distinct binders, the bounding
+        # set X lies outside both binders, and the new set Y is not free in B
+        # (otherwise B can say "u is not in Y" and the instance is contradictory).
+        if u.name == Y.name:
+            return False
+        X_term = membership_in_X.args[1]
+        if fl.term_free_variables(X_term) & {u.name, Y.name}:
+            return False
+        return Y.name not in fl.free_variables(B)
 
 
 class PairingAxiomRule(pl.InferenceRule):
@@ -1441,8 +1463,17 @@ class ReplacementSchemaRule(pl.InferenceRule):
         exists C, forall y, (y in C <-> exists x, (x in A and B(x,y)))
 
     B is read off the antecedent (the conjunct of the witnessed existential
-    that is not itself the uniqueness clause) and is otherwise unconstrained
-    -- any formula qualifies, exactly as for Separation.
+    that is not itself the uniqueness clause). As for Separation, it ranges
+    over formulas but is not a free-for-all: the instance is only a
+    Replacement instance when
+
+      * x, y, z and C are four distinct variables;
+      * C -- the image set being asserted -- is not free in B (else B
+        refers to the set it defines), and z -- bound by the uniqueness
+        clause -- is not free in B (else the clause captures it);
+      * A is a term outside every binder it sits under (no free x, y, z or
+        C). An A mentioning x would be a different set for each x, and the
+        image of "the set of all x" is not a set.
 
     Two structural requirements tie the pieces together, and both follow
     this codebase's standing no-alpha-equivalence discipline (see
@@ -1544,7 +1575,16 @@ class ReplacementSchemaRule(pl.InferenceRule):
                 and pl._ast_eq(membership_x2.args[0], tl.VariableTerm(x_name))
                 and pl._ast_eq(membership_x2.args[1], A_term)):
             return False
-        return pl._ast_eq(B_xy_again, B_xy)
+        if not pl._ast_eq(B_xy_again, B_xy):
+            return False
+        # Side conditions (as for Separation): the image set C may not occur free in B,
+        # z (bound by the uniqueness clause) may not occur free in B, and A must lie
+        # outside every binder it sits under.
+        if len({x_name, y_name, z_name, C_name}) != 4:
+            return False
+        if {C_name, z_name} & fl.free_variables(B_xy):
+            return False
+        return not (fl.term_free_variables(A_term) & {x_name, y_name, z_name, C_name})
 
 
 def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
