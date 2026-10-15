@@ -4,7 +4,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline
 
-- **Master:** [`40630d9`](https://github.com/axiomtutor/SyLoPy/commit/40630d980d7c0fcb12d9a3d6a510ef7d900e799a), the merge of PR #48. PRs #41–#48 except #44? are now resolved; see below for notable changes.
+- **Master:** [`40630d9`](https://github.com/axiomtutor/SyLoPy/commit/40630d980d7c0fcb12d9a3d6a510ef7d900e799a), the merge of PR #48. PRs #41, #42, #43, #45, #46, #47, and #48 are merged; see below for notable changes.
 - **Latest detailed test evidence:** PR #52 CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640), on branch `chatgpt/compound-declaration-membership-premise`: 1,112 passed, 12 xfailed, one known failure; coverage passed; enforced fixtures 80/80; informational fixtures 58/59. This validates the PR head, not master.
 - **Known ordinary failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, blocked by deferred WLOG / Mutatis mutandis. Do not mask it with xfail or implement those deferred rules without owner approval.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
