@@ -513,6 +513,12 @@ implementing the rules without an explicit go-ahead.
       `{u in U: U in X}` leaves U free, so it cannot stand for the union as
       written.
 
+      Fixed: a following membership premise in a coordinated declaration
+      (e.g. `Let X be any set, a in X`) is now split from the declaration
+      descriptor, so X keeps type text `any set` and `In(a, X)` is retained
+      as a premise. The separate difference in `type_name` wording between
+      declaration paths remains a documentation/API consistency question.
+
 - [ ] Infinity axiom. Decided: the axiom introduces a set I whose defining
       property is an abstract, unspecified property P(x) -- x is in I iff
       P(x) -- the same way every set has a defining property (for {1, 2} it
