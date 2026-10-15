@@ -745,7 +745,24 @@ Found by running proofs the checker should refuse (Claude, branch `claude/captur
 - [x] `InductionRule`: the step's variable name may not occur in P (bound, or free as a parameter) unless it is the induction variable itself. `substitute_in_formula` does not rename bound variables, so a P that binds `n` captured the step's `n`: base `exists n, R(Zero, n)` and step `forall n, ((Nat(n) and exists n, R(n, n)) -> exists n, R(Succ(n), n))` "proved" `forall x, (Nat(x) -> exists n, R(x, n))`, false on the naturals with `R(a, b) := (a = 0 and b = 1)`.
 - Design choice: side conditions, not capture-avoiding renaming, consistent with the standing no-alpha-equivalence discipline (`_ast_eq`, `InductionRule`, `ReplacementSchemaRule`).
 - Regression coverage: `pytest_tests/test_capture_and_schema_side_conditions.py`. Every negative test checks the refusing line, the rule and the `rule_mismatch` category, and was confirmed to fail on the master it was written against (19 of the 31 tests fail there; the other 12 are positive controls).
-- Not audited: the other `substitute_in_formula` call sites (set-builder expansion in `SetTheory`, uniqueness phrasing in `ProofParserPolicy`, `Existence from L`), which build formulas at elaboration time.
+- [x] Audit the remaining elaboration-time substitution and binder-construction sites:
+  - Set-builder equality expansion could capture an enclosing variable when
+    the builder binder reused its name (`forall x, Y = {x in x: P(x)}`);
+    replacement-builder expansion could do the same when a generated
+    existential binder captured the outer range set
+    (`forall x, Y = {F(x): x in x}`). These are fixed in `source/SetTheory.py`
+    by choosing a fresh display binder or alpha-renaming the generated
+    comprehension binder while leaving range sets in the surrounding scope.
+  - Bounded quantifiers had the analogous issue: `forall x, forall x in x, P(x)`
+    confused the outer range variable with the inner bounded variable.
+    The universal and existential expansion paths now alpha-rename a shadowing
+    binder and its body.
+  - Regression tests are in `pytest_tests/test_set_phrase_parsing.py`.
+  - Unique-existence phrasing in `ProofParserPolicy` already picks its
+    competitor name outside `formula_names(condition)` and surrounding
+    `bound_vars`, so its substitution is capture-safe.
+  - `Existence from L` substitutes a `ConstantTerm` witness, which quantifiers
+    do not bind as `VariableTerm` occurrences; no change was needed there.
 
 
 ## Owner decision: quotient uniqueness requires a nonzero denominator (2026-10-14)
