@@ -928,9 +928,26 @@ def parse_surface_declaration_statement(
         if re.search(r'\b(?:be|are)\b', item, re.I):
             clauses.append(_surface_declaration_from_clause(item, span))
         else:
-            for formula in split_top_level(item, ' and '):
-                if formula.strip():
-                    clauses.append(SurfacePremiseClause(formula.strip(), span))
+            # In a "Let ..." statement, "a in X" is a membership declaration,
+            # not a raw formula clause. Normalize it through the existing
+            # declaration parser so its witness is declared and its membership
+            # formula is emitted by the same path as other membership clauses.
+            membership_declaration = re.match(
+                r"^((?:[A-Za-z_][A-Za-z0-9_]*)(?:\s*(?:,|and)\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+in\s+(.+)$",
+                item,
+                re.I,
+            )
+            if membership_declaration:
+                target, set_expression = membership_declaration.groups()
+                clauses.append(
+                    _surface_declaration_from_clause(
+                        f"{target} be in {set_expression}", span
+                    )
+                )
+            else:
+                for formula in split_top_level(item, ' and '):
+                    if formula.strip():
+                        clauses.append(SurfacePremiseClause(formula.strip(), span))
 
     return SurfaceDeclarationStatement(clauses, span)
 
