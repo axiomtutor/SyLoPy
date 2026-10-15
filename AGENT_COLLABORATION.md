@@ -58,6 +58,8 @@ CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640) rep
 
 [PR #53](https://github.com/axiomtutor/SyLoPy/pull/53) updates the rule-registration section of `todos.txt` so it matches the separate GitHub issues: #49 for authorization, #50 for parameter-aware requirement deduplication, and #51 for witness-specific pairing requirements. CI [run #654](https://github.com/axiomtutor/SyLoPy/actions/runs/38688771344) reports 1,108 passed, 12 xfailed, and only the established ZFC/WLOG failure; coverage and enforced fixtures passed. This is documentation-only and awaits owner review; no design or implementation changes.
 
+[PR #55](https://github.com/axiomtutor/SyLoPy/pull/55) adds a fourth independent theorem to `tests/setTheoryProofs/basic_theorems.txt`: equality implies mutual subset inclusion, proved using the existing subset expansion and Leibniz substitution. The existing Python inventory checks were extended to include proof #4. CI [run #660](https://github.com/axiomtutor/SyLoPy/actions/runs/38689233248) reports 1,108 passed, 12 xfailed, and only the established ZFC/WLOG failure; coverage passed, enforced fixtures 80/80, informational fixtures 59/60. The new proof passes. The PR is ready for owner review and changes no production rules.
+
 ### Other separately tracked work
 
 - **Issue #54** — [Allow surface citations of premise-carrying theorems](https://github.com/axiomtutor/SyLoPy/issues/54). The expected-failure probe from PR #42 shows that `Title from L` is not yet parsed for promoted theorems with premises, though the core API can express the citation. `source/ProofJustification.py` is still Claude-owned; coordinate before implementation.
