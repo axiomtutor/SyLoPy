@@ -650,27 +650,11 @@ probes reproduced).
       written in the file's theories: every proof there has the theory's axioms
       and rules. A required axiom may not mention a constant the theorem
       generalizes (it would be a hypothesis about it).
-- [ ] Open rule-registration soundness issue, reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41):
-      both `ProofValidator._rule_is_registered` (direct citations) and
-      `RuleContext.allows_rule` (promoted-theorem dependencies) authorize
-      rules by class/subclass rather than semantic configuration. Probes show
-      parameter-mismatched Nat/Int induction accepted; an unregistered
-      `TheoremRule` can assert arbitrary Q when another theorem is registered;
-      an unregistered subclass of `ReiterationRule` can override `applies`
-      and assert Q; and a theorem requiring that subclass is still citable
-      when only the parent rule is registered. Separately, `Proof.__init__`
-      and `_promotion_requirements` deduplicate configured/required rules by
-      type and name, dropping distinct parameterized configurations. The
-      positive control requires a separately constructed but parameter-equal
-      `InductionRule` instance to remain usable. Regression probes are in
-      `pytest_tests/test_parameterized_rule_registration.py`, including the
-      expected-failure behavior on current master. The fix must centralize
-      consistent authorization and semantic deduplication. Preserve the
-      generated `PairingAxiomRule(witness_name=...)`: the elaborator currently
-      embeds it in the line justification but does not register it in
-      `ElaboratedEntries.required_rules`, while the environment registers only
-      generic `PairingAxiomRule()`. Give generated witness-specific rules an
-      explicit authorization path rather than relying on class matching.
+- [ ] **Rule authorization** — [Issue #49](https://github.com/axiomtutor/SyLoPy/issues/49), regression probes from [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41). `ProofValidator._rule_is_registered` (direct citations), `RuleContext.allows_rule` (promoted-theorem dependencies), and the `rule_below` / `rule_hybrid` validator paths authorize rules by class/subclass rather than semantic configuration. This admits a parameter-mismatched Nat/Int induction, an unregistered `TheoremRule`, or a behavior-overriding subclass of a registered built-in rule. A separately constructed but parameter-equal `InductionRule` must remain usable. Regression probes are in `pytest_tests/test_parameterized_rule_registration.py`; do not weaken the negative tests.
+
+- [ ] **Parameter-aware requirement deduplication** — [Issue #50](https://github.com/axiomtutor/SyLoPy/issues/50). `Proof.__init__` and `_promotion_requirements` currently deduplicate configured/required rules by type and name, dropping distinct parameterized configurations. Preserve semantically distinct rules while deduplicating equivalent instances. This is related to, but independently testable from, authorization in Issue #49.
+
+- [ ] **Pairing witness requirements** — [Issue #51](https://github.com/axiomtutor/SyLoPy/issues/51). Elaboration can embed `PairingAxiomRule(witness_name=...)` in a line justification without registering that witness-specific rule in `ElaboratedEntries.required_rules`, while the environment registers only generic `PairingAxiomRule()`. Export the rule actually used by elaboration; do not use broad class matching as a workaround.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
