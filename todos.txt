@@ -513,6 +513,12 @@ implementing the rules without an explicit go-ahead.
       `{u in U: U in X}` leaves U free, so it cannot stand for the union as
       written.
 
+      Fixed: a following membership premise in a coordinated declaration
+      (e.g. `Let X be any set, a in X`) is now split from the declaration
+      descriptor, so X keeps type text `any set` and `In(a, X)` is retained
+      as a premise. The separate difference in `type_name` wording between
+      declaration paths remains a documentation/API consistency question.
+
 - [ ] Infinity axiom. Decided: the axiom introduces a set I whose defining
       property is an abstract, unspecified property P(x) -- x is in I iff
       P(x) -- the same way every set has a defining property (for {1, 2} it
@@ -698,6 +704,11 @@ probes reproduced).
       `Proof.__init__` and in promotion; the Pairing witness registration;
       reuse of a theorem proved through a witness line. Each mechanism was
       reverted in turn (14 mutations) and each reversion fails a test.
+- [ ] **Rule authorization** — [Issue #49](https://github.com/axiomtutor/SyLoPy/issues/49), regression probes from [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41). `ProofValidator._rule_is_registered` (direct citations), `RuleContext.allows_rule` (promoted-theorem dependencies), and the `rule_below` / `rule_hybrid` validator paths authorize rules by class/subclass rather than semantic configuration. This admits a parameter-mismatched Nat/Int induction, an unregistered `TheoremRule`, or a behavior-overriding subclass of a registered built-in rule. A separately constructed but parameter-equal `InductionRule` must remain usable. Regression probes are in `pytest_tests/test_parameterized_rule_registration.py`; do not weaken the negative tests.
+
+- [ ] **Parameter-aware requirement deduplication** — [Issue #50](https://github.com/axiomtutor/SyLoPy/issues/50). `Proof.__init__` and `_promotion_requirements` currently deduplicate configured/required rules by type and name, dropping distinct parameterized configurations. Preserve semantically distinct rules while deduplicating equivalent instances. This is related to, but independently testable from, authorization in Issue #49.
+
+- [ ] **Pairing witness requirements** — [Issue #51](https://github.com/axiomtutor/SyLoPy/issues/51). Elaboration can embed `PairingAxiomRule(witness_name=...)` in a line justification without registering that witness-specific rule in `ElaboratedEntries.required_rules`, while the environment registers only generic `PairingAxiomRule()`. Export the rule actually used by elaboration; do not use broad class matching as a workaround.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
