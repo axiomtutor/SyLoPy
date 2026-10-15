@@ -59,11 +59,12 @@ CI [run #38657003495](https://github.com/axiomtutor/SyLoPy/actions/runs/38657003
 - **PR #43 — [Informational relation-proof examples](https://github.com/axiomtutor/SyLoPy/pull/43):** adds `source/testProofs/equivalenceRelationChaining.txt`, covering equivalence-relation chaining and partial-order antisymmetry. The examples are intentionally not promoted to reusable theorems because declaration-only relation metadata is not yet carried into promoted theorem requirements.
 - **PR #45 — [Nonzero quotient denominator](https://github.com/axiomtutor/SyLoPy/pull/45):** implements the owner-approved `a != 0` guard on quotient uniqueness and tests against deriving `Zero/Zero = m`.
 - **PR #46 — [Skip docs-only push CI](https://github.com/axiomtutor/SyLoPy/pull/46):** skips redundant push-triggered runs for Markdown-only/`todos.txt` changes while preserving full PR validation.
+- **PR #48 — [Refresh post-merge status docs](https://github.com/axiomtutor/SyLoPy/pull/48):** updates README/TODO test counts from stale pre-merge figures to master `87fab58` / CI #643, corrects the status of PR #41, and removes the already-fixed quotient-uniqueness issue from the open issue list. Docs-only; CI run #647 is pending/running at handoff update time.
 
 ### Requests
 
 - **Claude:** prioritize the PR #41 rule-authorization and semantic-deduplication implementation, with all citation/subproof/dependency paths covered. Keep the theorem-title surface-citation limitation as a separate task.
-- **Owner:** no outstanding PR-review backlog as of master `87fab58`. Decide whether to assign the separate premise-carrying theorem citation fix after the rule-registration work.
+- **Owner:** review [PR #47](https://github.com/axiomtutor/SyLoPy/pull/47) (elaboration-time variable-capture fixes) and [PR #48](https://github.com/axiomtutor/SyLoPy/pull/48) (post-merge status documentation). Decide whether to assign the separate premise-carrying theorem citation fix after the rule-registration work.
 - **ChatGPT/Copilot:** do not overlap Claude's kernel edits. Continue independent documentation/status maintenance, narrow regression coverage, or fixture work only where it materially helps.
 
 ## Coordination rules
