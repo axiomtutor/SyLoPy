@@ -699,6 +699,15 @@ def _split_compound_declaration_items(body: str) -> List[str]:
             return False
         if _text_after_is_formula_start(text):
             return True
+        # A symbol named "a" can begin a membership premise ("a in X").
+        # Do not mistake that article-like first word for a declaration
+        # descriptor when it follows a completed declaration after a comma.
+        if re.match(
+            r"^[A-Za-z_][A-Za-z0-9_]*\s+(?:(?:is\s+)?(?:not\s+)?in)\b",
+            text,
+            re.I,
+        ):
+            return True
         m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\b', text)
         if not m:
             return False
