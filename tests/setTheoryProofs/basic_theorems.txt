@@ -49,3 +49,19 @@
  4.2. a is not in the empty set. (Set property)
  4.3. a is in Y. (Explosion from 4.1, 4.2)
 5. Y = the empty set. (Set Equality from 3, 4)
+
+
+# 4: Equal sets are subsets of one another
+## Proof that
+### If X = Y
+### then X is a subset of Y and Y is a subset of X.
+
+1. Let X and Y be any sets. (Declaration)
+2. X = Y. (Premise)
+3. X is a subset of Y. (Subset proof below)
+ 3.1. Let a in X. (Assumption for subset proof)
+ 3.2. a is in Y. (Leibniz Substitution from 2, 3.1)
+4. Y is a subset of X. (Subset proof below)
+ 4.1. Let a in Y. (Assumption for subset proof)
+ 4.2. a is in X. (Leibniz Substitution from 2, 4.1)
+5. X is a subset of Y and Y is a subset of X. (Conjunction Introduction from 3, 4)
