@@ -797,10 +797,13 @@ class RuleContext:
         return any(_ast_eq(formula, axiom) for axiom in self._axioms)
 
     def allows_rule(self, rule: "InferenceRule") -> bool:
-        """Is `rule` one the proof being checked allows -- an instance of one
-        of the rule types it was configured with, the test the validator
-        applies to every citation (`ProofValidator._rule_is_registered`)?"""
-        return any(isinstance(rule, type(allowed)) for allowed in self._rules)
+        """Is `rule` one the proof being checked allows -- the same rule,
+        configuration included, as one it was configured with: the test the
+        validator applies to every citation
+        (`ProofValidator._rule_is_registered`)? Induction over `Int` is not
+        induction over `Nat`, and an unregistered subclass of a registered
+        rule is not that rule."""
+        return _rule_among(rule, self._rules)
 
     def declaration(self, name: str) -> Optional[Declaration]:
         """The declaration `name` has at the line being justified: the nearest
@@ -848,6 +851,10 @@ class InferenceRule:
         must have -- `len(indices) != rule.premise_arity` is rejected
         before `applies` is ever consulted
       * implement `applies(candidates, phi) -> bool`
+      * if two instances of the class can mean different things -- because
+        they were built with different parameters -- override
+        `same_configuration`, so that a proof registers, and a citation is
+        authorized by, exactly the configuration it means (see below)
 
     A rule whose soundness also depends on the rest of the proof -- the
     `UniquenessRule`, which generalizes a constant and so needs to know the
@@ -877,6 +884,63 @@ class InferenceRule:
         """Why `applies_in_context` said no, in a sentence, if the rule can
         tell; None otherwise. Only called after a refusal."""
         return None
+
+    def same_configuration(self, other: Any) -> bool:
+        """Is `other` this very rule, configuration included?
+
+        This is how a proof's rule list authorizes a citation. Sharing a
+        Python class is not enough: a subclass can override `applies`, and a
+        rule built with other parameters -- induction over another type -- is a
+        different schema, not an instance of the registered one. So the
+        default is *exactly the same class*, which is right for every stateless
+        rule (`ModusPonensRule()` means the same wherever it is built, so a
+        freshly built instance is the registered one). A rule whose instances
+        differ by how they were configured overrides this to compare that
+        configuration (`InductionRule`, `PairingAxiomRule`), or to demand the
+        registered object itself (`TheoremRule`).
+
+        Always call it on the *registered* rule with the cited one as the
+        argument -- `_rule_among` does -- because the cited rule is what an
+        unsound proof would forge, and a subclass that answered for itself
+        could approve itself. An override should compare `type(other)` exactly
+        before it reads anything else of `other`.
+        """
+        return type(other) is type(self)
+
+    def as_requirement(self) -> "InferenceRule":
+        """The rule a theorem proved using this one asks the proof that cites
+        the theorem to have (`_promotion_requirements`). The rule itself,
+        unless it is a configuration made for one line of the proof whose
+        availability is what the theorem really rests on: the Pairing rule a
+        direct witness line cites is configured with the name of its witness,
+        but the theorem already carries what that line stated as a premise, so
+        it asks only for the Pairing rule. Authorizing a *citation* is
+        stricter, and stays so (`same_configuration`)."""
+        return self
+
+
+def _rule_among(rule: Any, rules: Iterable[Any]) -> bool:
+    """Is `rule` the same rule, configuration included, as one of `rules`?
+
+    The one test behind every "is this rule available here?" in the kernel:
+    the proof's rule list authorizing a citation
+    (`ProofValidator._rule_is_registered`); a promoted theorem asking what its
+    proof used of the proof that cites it (`RuleContext.allows_rule`); and the
+    two places that merge rule lists without losing a configuration
+    (`Proof.__init__`, `_promotion_requirements`). Keeping them on one
+    predicate means they cannot disagree about whether two rules are the
+    same one.
+
+    Each registered rule is asked (`allowed.same_configuration(rule)`), never
+    the other way round -- see `InferenceRule.same_configuration`. An object
+    that does not derive from `InferenceRule` has no such method and counts as
+    the same only when it has exactly the same class.
+    """
+    for allowed in rules:
+        same = getattr(allowed, "same_configuration", None)
+        if same(rule) if same is not None else type(allowed) is type(rule):
+            return True
+    return False
 
 
 class ExplosionRule(InferenceRule):
@@ -2739,6 +2803,17 @@ class InductionRule(AxiomSchemaRule):
         self.zero_term = zero_term
         self.succ_symbol = succ_symbol
 
+    def same_configuration(self, other: Any) -> bool:
+        """Induction over the same type, from the same base, by the same
+        successor. Induction over `Int` is not induction over `Nat`: the rule
+        proves `forall x, (T(x) -> P(x))` for *its* `T`, and that is a theorem
+        only when its base and step are the ones that generate `T`. Two
+        separate objects with the same parameters are the same rule."""
+        return (type(other) is type(self)
+                and self.type_predicate == other.type_predicate
+                and self.succ_symbol == other.succ_symbol
+                and _ast_eq(self.zero_term, other.zero_term))
+
     def _guarded(self, atom: fl.Formula, var_name: str) -> bool:
         return (isinstance(atom, fl.AtomicFormula) and atom.predicate == self.type_predicate
                 and len(atom.args) == 1 and isinstance(atom.args[0], tl.VariableTerm)
@@ -2970,6 +3045,20 @@ class TheoremRule(AxiomSchemaRule):
         self.required_rules = list(required_rules)
         self.premise_arity = len(self.premises)
 
+    def same_configuration(self, other: Any) -> bool:
+        """A theorem is registered by being the promoted object itself.
+        Another `TheoremRule` is another claim, however much it looks like this
+        one: what makes a theorem citable is that `promote_theorem` checked the
+        proof it came from, and a hand-built rule with a different conclusion
+        never had that. Identity is the strictest test and the easiest to
+        reason about; nothing in the kernel copies a `TheoremRule`, so a proof
+        that registers a theorem and cites it always holds the same object.
+        (Comparing contents instead would also be sound -- equal contents are
+        the same claim -- but it would have to compare the premises, the
+        conclusion, the generalized names and both requirement lists, and buys
+        nothing until something copies theorems.)"""
+        return self is other
+
     def _expected(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[List[fl.Formula]]:
         matcher = ConstantGeneralizingMatcher(self.generalized_names)
         if not matcher.match_formula(self.conclusion, phi):
@@ -3130,7 +3219,13 @@ def _promotion_requirements(validator: "ProofValidator") -> Tuple[List[fl.Formul
             axioms.append(axiom)
 
     def need_rule(rule: InferenceRule) -> None:
-        if not any(type(rule) is type(kept) and rule.name == kept.name for kept in rules):
+        # By configuration, not by type and name: induction over `Nat` and
+        # over `Int` have the same type and the same name, and a theorem that
+        # used both needs both.
+        as_requirement = getattr(rule, "as_requirement", None)
+        if as_requirement is not None:
+            rule = as_requirement()
+        if not _rule_among(rule, rules):
             rules.append(rule)
 
     for axiom in validator.used_axioms:
@@ -3604,9 +3699,9 @@ class ProofValidator:
         _validate_membership            tag: 'premise' / 'axiom'
         _validate_rule_below            tag: 'rule_below'
         _validate_rule                  tag: 'rule'
-        _rule_is_registered              shared "is this rule instance one
-                                         of the ones this Proof allows?"
-                                         check
+        _rule_is_registered              shared "is this rule one of the
+                                         ones this Proof allows, its
+                                         configuration included?" check
 
     Every one of the five per-tag branches ends the same way on success --
     append `phi` to `seen`, and if the line has a `label`, register it in
@@ -4394,12 +4489,16 @@ class ProofValidator:
         return ""
 
     def _rule_is_registered(self, rule: InferenceRule) -> bool:
-        """Is `rule` an instance of one of the rule *types* this `Proof`
-        was configured with? (A `Proof` built with a restricted `rules=`
-        list -- see `default_rules` -- rejects citations of rules outside
-        that list, even if the rule class exists in this module.)
+        """Is `rule` one of the rules this `Proof` was configured with -- the
+        same rule, configuration included (`InferenceRule.same_configuration`)?
+        An instance of a registered rule's *class* is not enough: a subclass
+        can override `applies`, an `InductionRule` built for another type is a
+        different schema, and a `TheoremRule` the proof never registered is an
+        unproved claim. (A `Proof` built with a restricted `rules=` list --
+        see `default_rules` -- rejects citations of rules outside that list,
+        even if the rule class exists in this module.)
         """
-        return any(isinstance(rule, type(r)) for r in self.rules)
+        return _rule_among(rule, self.rules)
 
 
 # ==========================================================================
@@ -4439,8 +4538,12 @@ class Proof:
 
         self.rules = list(rules if rules is not None else default_rules())
         for rule in required_rules:
-            if not any(type(rule) is type(existing) and getattr(rule, 'name', None) == getattr(existing, 'name', None)
-                       for existing in self.rules):
+            # Merge by configuration (see `InferenceRule.same_configuration`),
+            # the test that authorizes a citation: a required rule that is
+            # only the same *kind* of rule as one the caller supplied -- a
+            # second induction schema, a witness-specific Pairing rule -- is a
+            # different rule and must not be dropped for it.
+            if not _rule_among(rule, self.rules):
                 self.rules.append(rule)
 
         self.declarations = list(declarations or [])

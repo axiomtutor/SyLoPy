@@ -650,27 +650,54 @@ probes reproduced).
       written in the file's theories: every proof there has the theory's axioms
       and rules. A required axiom may not mention a constant the theorem
       generalizes (it would be a hypothesis about it).
-- [ ] Open rule-registration soundness issue, reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41):
-      both `ProofValidator._rule_is_registered` (direct citations) and
-      `RuleContext.allows_rule` (promoted-theorem dependencies) authorize
-      rules by class/subclass rather than semantic configuration. Probes show
-      parameter-mismatched Nat/Int induction accepted; an unregistered
-      `TheoremRule` can assert arbitrary Q when another theorem is registered;
-      an unregistered subclass of `ReiterationRule` can override `applies`
-      and assert Q; and a theorem requiring that subclass is still citable
-      when only the parent rule is registered. Separately, `Proof.__init__`
-      and `_promotion_requirements` deduplicate configured/required rules by
-      type and name, dropping distinct parameterized configurations. The
-      positive control requires a separately constructed but parameter-equal
-      `InductionRule` instance to remain usable. Regression probes are in
-      `pytest_tests/test_parameterized_rule_registration.py`, including the
-      expected-failure behavior on current master. The fix must centralize
-      consistent authorization and semantic deduplication. Preserve the
-      generated `PairingAxiomRule(witness_name=...)`: the elaborator currently
-      embeds it in the line justification but does not register it in
-      `ElaboratedEntries.required_rules`, while the environment registers only
-      generic `PairingAxiomRule()`. Give generated witness-specific rules an
-      explicit authorization path rather than relying on class matching.
+- [x] A rule is registered by its configuration, not by its Python class --
+      the soundness issue reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41),
+      whose probes in `pytest_tests/test_parameterized_rule_registration.py`
+      now pass unweakened. Before, `ProofValidator._rule_is_registered` (every
+      citation, including the `rule_below` and `rule_hybrid` branches) and
+      `RuleContext.allows_rule` (a theorem's requirements) authorized a rule
+      with `isinstance(rule, type(allowed))`, and `Proof.__init__` and
+      `_promotion_requirements` merged rules by type and name. So induction
+      over `Int` authorized induction over `Nat`; any registered `TheoremRule`
+      authorized every other one; an unregistered subclass that overrides
+      `applies` was authorized by its parent (and a theorem that needed the
+      subclass was citable with only the parent); and induction over `Nat` and
+      over `Int`, one class and one name, collapsed into one rule or one
+      requirement.
+      Now one predicate, `_rule_among(rule, rules)`, backs all four places. It
+      asks `InferenceRule.same_configuration(other)` of the *registered* rule,
+      with the *cited* rule as the argument, so a cited subclass cannot approve
+      itself by overriding the method. The default is exactly the same class,
+      right for every stateless rule (a freshly built `ModusPonensRule()` is
+      the registered one). `InductionRule` compares its type predicate, zero
+      term and successor symbol: two separate objects with the same parameters
+      are the same rule (the positive control), induction over another type is
+      not. `PairingAxiomRule` compares its witness name. `TheoremRule` is
+      matched by identity: a theorem is registered by being the object
+      `promote_theorem` made. (Comparing contents would also be sound, but it
+      needs the premises, the conclusion, the generalized names and both
+      requirement lists compared, and nothing copies theorems.) A rule whose
+      instances can differ by how they were built must override
+      `same_configuration`; the `InferenceRule` checklist says so.
+      Behavior change: a registered rule authorizes exactly its own class and
+      configuration; to use a subclass, register it. No test or fixture in the
+      repository relied on subclass matching.
+      The direct Pairing witness form is kept, not extended (owner decision,
+      above): `elaborate_pairing_witness` registers the
+      `PairingAxiomRule(witness_name=...)` it embeds, through the same
+      `add_extra_rule` path as other rules an elaboration adds, so it reaches
+      `ElaboratedEntries.required_rules` and `Proof.rules`; no class bypass.
+      A theorem proved through such a line asks its citer for the generic
+      `PairingAxiomRule` (`InferenceRule.as_requirement`), not for a rule named
+      after a witness of the proof it came from: the line's defining property is
+      already one of the theorem's premises, no other proof has that name, and
+      master already allowed this reuse.
+      Tests: `pytest_tests/test_rule_configuration_identity.py` -- the
+      comparison for each rule type; self-approving subclasses on the `rule`,
+      `rule_below`, `rule_hybrid` and theorem-requirement paths; merging in
+      `Proof.__init__` and in promotion; the Pairing witness registration;
+      reuse of a theorem proved through a witness line. Each mechanism was
+      reverted in turn (14 mutations) and each reversion fails a test.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so

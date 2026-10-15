@@ -1096,6 +1096,21 @@ class PairingAxiomRule(pl.InferenceRule):
     def __init__(self, witness_name: Optional[str] = None):
         self.witness_name = witness_name
 
+    def same_configuration(self, other: object) -> bool:
+        """The ordinary axiom-instance rule, or the rule for one particular
+        direct witness line (`There is a set Y = {a, b}`): not interchangeable.
+        The witness form checks the defining property of the constant it names,
+        so it is registered by that name -- the elaborator registers the one it
+        builds for each such line (`elaborate_pairing_witness`)."""
+        return type(other) is type(self) and self.witness_name == other.witness_name
+
+    def as_requirement(self) -> "PairingAxiomRule":
+        """A theorem proved through a direct witness line asks for the Pairing
+        rule, not for a rule named after that line's witness: the line's
+        defining property is already one of the theorem's premises, and the
+        proof that cites the theorem has its own witness, or none."""
+        return PairingAxiomRule() if self.witness_name is not None else self
+
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
@@ -1699,6 +1714,10 @@ def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
 
     context.register_declaration(declaration, entry.span)
     context.register_origin(entry.label, entry.span)
+    # The line cites this exact rule, so the proof must register it: a rule is
+    # authorized by its configuration, not by sharing a class with the generic
+    # `PairingAxiomRule()` the theory registers (`InferenceRule.same_configuration`).
+    context.add_extra_rule(rule)
     return (entry.label, defining_property, ("rule", rule, [], [declaration]))
 
 
