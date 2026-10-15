@@ -56,7 +56,7 @@ CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640) rep
 
 ### Independent documentation PR — #53
 
-[PR #53](https://github.com/axiomtutor/SyLoPy/pull/53) updates the rule-registration section of `todos.txt` so it matches the separate GitHub issues: #49 for authorization, #50 for parameter-aware requirement deduplication, and #51 for witness-specific pairing requirements. This is documentation-only and awaits owner review; no design or implementation changes.
+[PR #53](https://github.com/axiomtutor/SyLoPy/pull/53) updates the rule-registration section of `todos.txt` so it matches the separate GitHub issues: #49 for authorization, #50 for parameter-aware requirement deduplication, and #51 for witness-specific pairing requirements. CI [run #654](https://github.com/axiomtutor/SyLoPy/actions/runs/38688771344) reports 1,108 passed, 12 xfailed, and only the established ZFC/WLOG failure; coverage and enforced fixtures passed. This is documentation-only and awaits owner review; no design or implementation changes.
 
 ### Other separately tracked work
 
