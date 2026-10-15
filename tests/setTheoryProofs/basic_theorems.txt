@@ -3,8 +3,8 @@
 # declarations, no cross-references to the others), building up the
 # standard early results from empty_set_subset.txt's axioms and
 # SetTheory.py's rules the way a first chapter of a set theory textbook
-# would. More theorems get added here over time -- this is a first
-# installment of three, not the whole chapter.
+# would. More theorems get added here over time -- this is a small
+# installment, not the whole chapter.
 
 
 # 1: Subset is reflexive
