@@ -20,6 +20,12 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - **Quotient uniqueness:** owner decision (2026-10-14): require denominator `a` to satisfy `not (a = Zero)`. PR #45 implements the guard.
 - Still deferred absent owner approval: WLOG, Mutatis mutandis, named ZFC axiom-citation rules, Set property, Infinity, full refinement checking, and relativized/typed quantifier sugar.
 
+## Landed soundness contracts
+
+- Arbitrary-constant rules (`Uniqueness`, `UniversalGeneralization`, `ExistentialElimination`) account for hypotheses at any depth and declaration constraints.
+- Theorem promotion carries all assumptions, rejects unstated structural metadata, validates explicit conclusions/generalized names, and records required axioms and nonstandard rules.
+- PR #56 now authorizes rules by configuration; issues #49–#51 are resolved. Regression coverage includes direct, subproof, hybrid, and promoted-theorem paths.
+
 ## Current work and coordination
 
 - **Open issue #54:** [Allow surface citations of premise-carrying theorems](https://github.com/axiomtutor/SyLoPy/issues/54). The core API supports the citation, but surface syntax such as `Property Transport from 3` is still an expected-failure regression. `source/ProofJustification.py` is Claude-owned; coordinate before touching it.
@@ -35,10 +41,3 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - Avoid concurrent edits to the same subsystem. If Claude owns a kernel file, prefer an independent test, parser-oracle, documentation, or other isolated task until coordinated.
 - Do not weaken negative tests to make them pass. For a rejection test, verify the proof reaches the intended rule and fails for the intended reason.
 - The `chatgpt-agent-guidance` branch is deliberately unmerged and is the live coordination channel. Preserve it during branch cleanup.
-## Coordination rules
-
-- Read `README.md`, `todos.txt`, and `ARCHITECTURE_STATUS.md` before nontrivial work. Inspect master and active PRs; old handoff snapshots may be stale.
-- Do not modify, rebase, force-push, or clean up another agent's branch. Start new work from current master and isolate it in a branch/PR.
-- Preserve the enforced proof corpus, and report Python tests, coverage, enforced fixtures, informational fixtures, and the known failure separately.
-- Do not implement deferred set-theory features without explicit owner approval. Do not merge or close PRs without owner approval.
-- The `chatgpt-agent-guidance` branch is deliberately unmerged: it is the live coordination channel. Preserve it during any branch cleanup.
