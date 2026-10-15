@@ -4,7 +4,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline
 
-- **Master:** [`40630d9`](https://github.com/axiomtutor/SyLoPy/commit/40630d980d7c0fcb12d9a3d6a510ef7d900e799a), the merge of PR #48. PRs #41, #42, #43, #45, #46, #47, and #48 are merged; see below for notable changes.
+- **Master:** [`40630d9`](https://github.com/axiomtutor/SyLoPy/commit/40630d980d7c0fcb12d9a3d6a510ef7d900e799a), the merge of PR #48. PRs #41–#48 are merged; see below for notable changes.
 - **Latest detailed test evidence:** PR #52 CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640), on branch `chatgpt/compound-declaration-membership-premise`: 1,112 passed, 12 xfailed, one known failure; coverage passed; enforced fixtures 80/80; informational fixtures 58/59. This validates the PR head, not master.
 - **Known ordinary failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, blocked by deferred WLOG / Mutatis mutandis. Do not mask it with xfail or implement those deferred rules without owner approval.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
@@ -68,6 +68,7 @@ CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640) rep
 - **PR #43** — [Informational relation-proof examples](https://github.com/axiomtutor/SyLoPy/pull/43), covering equivalence-relation chaining and partial-order antisymmetry.
 - **PR #45** — [Nonzero quotient denominator](https://github.com/axiomtutor/SyLoPy/pull/45).
 - **PR #46** — [Skip docs-only push CI](https://github.com/axiomtutor/SyLoPy/pull/46).
+- **PR #44** — [Refuse variable capture in quantifier matching and schema instances](https://github.com/axiomtutor/SyLoPy/pull/44). Merged; adds variable-capture and schema side conditions.
 - **PR #47** — [Prevent outer-variable capture in set syntax elaboration](https://github.com/axiomtutor/SyLoPy/pull/47). Merged; fixes set-builder equality, replacement-builder and bounded-quantifier capture cases.
 - **PR #48** — [Refresh status docs after soundness audit merges](https://github.com/axiomtutor/SyLoPy/pull/48). Merged; refreshes the status snapshot and corrects the rule-registration issue description.
 
