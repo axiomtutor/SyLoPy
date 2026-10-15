@@ -1,6 +1,7 @@
 """Regression coverage for tests/setTheoryProofs/basic_theorems.txt, the
 growing corpus of basic axiomatic-set-theory theorems (subset reflexivity
-and transitivity, uniqueness of the empty set, and equality implying mutual inclusion). Each
+and transitivity, uniqueness of the empty set, and equality implying
+mutual inclusion). Each
 proof in that file is independent (its own declarations, no citations of
 the others), so this just confirms the whole file still validates and each
 proof's stated "### then ..." conclusion is the thing actually derived.
