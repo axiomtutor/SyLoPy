@@ -11,22 +11,23 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
-at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
-on 2026-10-13 (timestamps are in UTC). It has one known, tracked exception
+[GitHub Actions run #643](https://github.com/axiomtutor/SyLoPy/actions/runs/38656453820),
+at commit [`87fab58`](https://github.com/axiomtutor/SyLoPy/commit/87fab582399f0824bb7b0dbcc0d75b430ae2a679),
+on 2026-10-14 (timestamps are in UTC). It has one known, tracked exception
 (see `todos.txt`).
 
-- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure in
+- 1,117 Python tests: 1,104 passed, 12 xfailed, and 1 known failure in
   `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
 - Coverage passed.
-- Enforced proof fixture corpus: 79/79 passed.
-- Informational proof fixtures: 51/52 passed; the remaining proof is blocked
+- Enforced proof fixture corpus: 80/80 passed.
+- Informational proof fixtures: 58/59 passed; the remaining proof is blocked
   on the deferred WLOG / Mutatis mutandis implementation.
 
-The expected failures include two theorem-promotion audit probes that currently
-reproduce unsafe parameterized-rule requirement matching, plus the unresolved
-Existence-witness policy probe. The follow-on direct rule-registration probes
-are under review in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41).
+The expected failures include the registered-rule soundness probes from
+[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), which is merged; the
+corresponding authorization and parameterized-rule requirement fixes remain
+open implementation work. The premise-carrying theorem surface-citation
+regression from PR #42 also remains an expected failure.
 
 These numbers describe that specific run and will change as tests and fixtures
 are added.

@@ -3,16 +3,16 @@
 ## Project status
 
 The latest recorded full run on `master` is
-[GitHub Actions run #38341702058](https://github.com/axiomtutor/SyLoPy/actions/runs/38341702058),
-at commit [`d8b8d20`](https://github.com/axiomtutor/SyLoPy/commit/d8b8d20a8dce4f861756c455f1d914167c7ab830),
-on 2026-10-13 (timestamps are in UTC). The canonical `./run_tests.sh`
+[GitHub Actions run #643](https://github.com/axiomtutor/SyLoPy/actions/runs/38656453820),
+at commit [`87fab58`](https://github.com/axiomtutor/SyLoPy/commit/87fab582399f0824bb7b0dbcc0d75b430ae2a679),
+on 2026-10-14 (timestamps are in UTC). The canonical `./run_tests.sh`
 run reported:
 
-- 1,072 Python tests: 1,068 passed, 3 xfailed, and 1 known failure (see "Known issues" below).
+- 1,117 Python tests: 1,104 passed, 12 xfailed, and 1 known failure (see "Known issues" below).
   This includes the 159-case parser oracle in `parse_oracle/`.
 - Coverage passed.
-- Enforced proof fixture corpus: 79/79 passed.
-- Informational proof fixtures: 51/52 passed; the remaining proof is blocked
+- Enforced proof fixture corpus: 80/80 passed.
+- Informational proof fixtures: 58/59 passed; the remaining proof is blocked
   on the deferred WLOG / Mutatis mutandis implementation.
 
 These figures are a snapshot of that run, not a promise that counts will stay
@@ -43,18 +43,6 @@ is about making the system cleaner, easier to extend, and easier to use.
       once "ZFC axiom citations and derived rules" (below) lands -- not
       before; the fixture is deliberately ahead of the implementation right
       now.
-
-- [ ] Quotient uniqueness (`NumberTheory.INT_AXIOMS`, axiom 6) has no `a != 0`
-      guard, so it is false in the integers at n = a = 0. From premises true of
-      z = 0 (`Int(z)` and `Times(z, m) = z` for every integer m) and any
-      integers p, q, it gives `Quotient(z, z) = p` and `Quotient(z, z) = q`,
-      hence `p = q`; a twelve-line proof of exactly that is accepted today. It
-      is harmless only while the language has no `Zero` and no ring facts about
-      it, and becomes a contradiction as soon as either is added. Owner
-      decision needed: add a `Zero` constant and guard the axiom (and
-      `QuotientUniquenessRule`) with `not (a = Zero)`, or require the integer
-      solution to be unique instead. Found by the soundness audit below; left
-      unchanged because the fix is a design choice.
 
 ## Design principles
 
