@@ -97,7 +97,12 @@ Theorem promotion takes its premises from the same record the validator keeps
 theory's axioms the proof cited and the non-standard rules it used
 (`used_axioms`, `used_rules`) -- becomes the theorem's `required_axioms` and
 `required_rules`, which `TheoremRule` checks at the citation through
-`RuleContext.lists_axiom` and `RuleContext.allows_rule`.
+`RuleContext.lists_axiom` and `RuleContext.allows_rule`. A rule counts as
+allowed there, and for every citation the validator checks, when it is the same
+rule, configuration included, as one the proof was configured with
+(`InferenceRule.same_configuration`, asked of the registered rule): induction
+over `Int` is not induction over `Nat`, and an unregistered subclass is not its
+parent. `Proof` and promotion merge rule lists by the same test.
 
 The invariant for such a rule: whatever the proof relies on that says
 something about a constant must reach the context, as a recorded formula or as

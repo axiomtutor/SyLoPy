@@ -1627,9 +1627,10 @@ def default_theory_environment() -> TheoryEnvironment:
     `NUMBER_THEORY_ENVIRONMENT`) can be composed with that other theory
     again here without duplicating anything: `Proof.__init__` merges
     `required_rules`/`required_axioms`/`required_declarations` by identity
-    (rule type+name, axiom structural equality, declaration name), so a
-    theory reachable through more than one path is just a harmless no-op
-    the second time.
+    (rule configuration, axiom structural equality, declaration name), so a
+    theory reachable through more than one path is just a harmless no-op the
+    second time. Rules are the same when `InferenceRule.same_configuration`
+    says so: two inductions over different types are two rules.
     """
     environment = TheoryEnvironment(
         line_elaborators=list(_base_line_elaborators()),
