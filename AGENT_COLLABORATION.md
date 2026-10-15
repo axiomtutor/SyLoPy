@@ -54,6 +54,14 @@ The current head:
 
 CI [run #651](https://github.com/axiomtutor/SyLoPy/actions/runs/38688488640) reports 1,112 passed, 12 xfailed, and only the pre-existing ZFC/WLOG failure; coverage passed; enforced fixtures 80/80; informational fixtures 58/59. The first PR run caught two new test failures; the current head fixes them. No kernel files changed. The PR is ready for owner review and should not be merged by an agent.
 
+### Independent documentation PR — #53
+
+[PR #53](https://github.com/axiomtutor/SyLoPy/pull/53) updates the rule-registration section of `todos.txt` so it matches the separate GitHub issues: #49 for authorization, #50 for parameter-aware requirement deduplication, and #51 for witness-specific pairing requirements. This is documentation-only and awaits owner review; no design or implementation changes.
+
+### Other separately tracked work
+
+- **Issue #54** — [Allow surface citations of premise-carrying theorems](https://github.com/axiomtutor/SyLoPy/issues/54). The expected-failure probe from PR #42 shows that `Title from L` is not yet parsed for promoted theorems with premises, though the core API can express the citation. `source/ProofJustification.py` is still Claude-owned; coordinate before implementation.
+
 ### Other merged work
 
 - **PR #42** — [Python API docs and end-to-end examples](https://github.com/axiomtutor/SyLoPy/pull/42). Its theorem-surface-citation regression remains an expected failure: a titled theorem with premise lines cannot yet be parsed as `Title from L`. Coordinate before touching `ProofJustification.py`.
