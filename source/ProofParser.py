@@ -1660,8 +1660,13 @@ def default_theory_environment() -> TheoryEnvironment:
 
 
 class _ElaborationContext:
-    def __init__(self, environment: TheoryEnvironment):
+    def __init__(
+        self,
+        environment: TheoryEnvironment,
+        theorem_titles: Optional[List[str]] = None,
+    ):
         self.environment = environment
+        self.theorem_titles = tuple(theorem_titles or ())
         self.origin_by_label: Dict[str, CoreOrigin] = {}
         # Rules a `line_elaborator` constructs *while elaborating a specific
         # line* -- as opposed to `environment.rules`, which is fixed before
@@ -1901,7 +1906,10 @@ class _ElaborationContext:
                 return result
 
         try:
-            justification = parse_justification(entry.justification_text)
+            justification = parse_justification(
+                entry.justification_text,
+                theorem_titles=self.theorem_titles,
+            )
             tag = justification[0]
             declarations = []
 
@@ -1961,13 +1969,14 @@ class _ElaborationContext:
 def elaborate_proof(
     surface_proof: SurfaceProof,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_titles: Optional[List[str]] = None,
 ) -> ElaboratedEntries:
     """Lower a SurfaceProof to the strict ProofLogic entry language."""
     if environment is None:
         environment = default_theory_environment()
     else:
         environment = _with_base_line_elaborators(environment)
-    context = _ElaborationContext(environment)
+    context = _ElaborationContext(environment, theorem_titles)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
     return ElaboratedEntries(
         entries,
@@ -1982,6 +1991,7 @@ def elaborate_proof(
 def parse_proof_text(
     text: str,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_titles: Optional[List[str]] = None,
 ):
     """Parse natural proof text and elaborate it to core proof entries.
 
@@ -1990,7 +2000,7 @@ def parse_proof_text(
     origin and theory metadata used by :class:`ProofLogic.Proof`.
     """
     surface = parse_surface_proof(text)
-    entries = elaborate_proof(surface, environment)
+    entries = elaborate_proof(surface, environment, theorem_titles)
     return entries, surface.raw_lines
 
 
