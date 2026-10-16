@@ -72,6 +72,47 @@ it used are not premises but requirements: a later proof in the same file has
 them, so it may cite the theorem. See `ProofLogic.promote_theorem()` and
 `todos.txt`, item 8.
 
+### Citing a theorem
+
+A promoted theorem is cited by its title, the way a rule is. A theorem with no
+premises is cited bare, as in `(Subset is reflexive)`. A theorem with premises
+is cited with the lines that state them, in the order the theorem took them, as
+in `(Pair transport from 4, 5)`:
+
+<!-- proof-format-test: valid-proof -->
+```text
+# 1: Pair transport
+## Proof that
+### then P(a) and Q(a).
+
+1. Let a be any object. (Declaration)
+2. Let P be a predicate. (Declaration)
+3. Let Q be a predicate. (Declaration)
+4. P(a). (Premise)
+5. Q(a). (Premise)
+6. P(a) and Q(a). (Conjunction Introduction from 4, 5)
+
+# 2: Use pair transport
+## Proof that
+### then P(b) and Q(b).
+
+1. Let b be any object. (Declaration)
+2. Let P be a predicate. (Declaration)
+3. Let Q be a predicate. (Declaration)
+4. P(b). (Premise)
+5. Q(b). (Premise)
+6. P(b) and Q(b). (Pair transport from 4, 5)
+```
+
+The title is matched like a rule name (case-insensitively, hyphens as spaces),
+but a title never replaces a built-in rule name. A title can be cited only once
+its proof has been checked and promoted: citing one that is promoted later in
+the file, or whose proof failed, is a validation error ("no rule named ...").
+A name that is neither a rule nor a title in the file, followed by line numbers,
+is a parse error, so a misspelled rule name is still reported as one. Through the
+Python API, `check_proof_text` recognizes the theorems among its `rules`, and
+`parse_proof_text` takes the titles as `theorem_names`.
+
 ## 2. Proof lines and labels
 
 An ordinary proof line has the form:

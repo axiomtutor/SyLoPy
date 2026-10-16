@@ -175,6 +175,17 @@ def parse_multi_proof_file(text):
     text = _COMMENT_RE.sub(" ", text)
     lines = text.splitlines()
     positions = [index for index, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
+    # The titles of every proof in the file, so that one proof can cite another
+    # with the lines that state its premises (`(Title from 3)`): the parser
+    # cannot tell a title from a misspelled rule name. Parsing a citation does
+    # not give the proof the theorem; `run_multi_proof_file` does, once the
+    # earlier proof has been promoted, so citing a later or an unpromoted
+    # proof fails when it is checked.
+    titles = []
+    for start in positions:
+        title = _PROOF_HEADER_RE.match(lines[start].strip()).group(2)
+        if title and title.strip():
+            titles.append(title.strip())
     cases = []
     for position, start in enumerate(positions):
         end = positions[position + 1] if position + 1 < len(positions) else len(lines)
@@ -183,7 +194,9 @@ def parse_multi_proof_file(text):
         expected, description, body_start = _split_header_block(block)
         body = "\n".join(block[body_start:])
         try:
-            entries, raw_lines = pp.parse_proof_text(body) if body.strip() else ([], [])
+            entries, raw_lines = (
+                pp.parse_proof_text(body, theorem_names=titles) if body.strip() else ([], [])
+            )
             error = None
         except Exception as exc:
             entries, raw_lines = [], []
