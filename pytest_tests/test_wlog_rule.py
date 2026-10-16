@@ -1,6 +1,6 @@
 """Soundness regressions for equality-case WLOG region replay."""
 
-from .support import fl, pl, pp, tl
+from .support import pl, pp, tl
 
 
 def _check(text):
@@ -8,7 +8,7 @@ def _check(text):
     return entries, pl.Proof(entries).check_detailed()
 
 
-def _two_case_proof(*, include_second_case=True, conclusion="Q", relation_declaration=False):
+def _two_case_proof(*, include_second_case=True, conclusion="Q"):
     lines = [
         "1. Let a be any object. (Declaration)",
         "2. Let x be any object. (Declaration)",
@@ -34,9 +34,6 @@ def _two_case_proof(*, include_second_case=True, conclusion="Q", relation_declar
         f"{disjunction_label}. a = x or a = y. (Premise)",
         f"{wlog_label}. a = x. (WLOG from {disjunction_label})",
     ])
-    if relation_declaration:
-        lines.append(f"{result_label}. Let R be a reflexive relation on x. (Declaration)")
-        result_label += 1
     if conclusion == "Q":
         lines.append(
             f"{result_label}. Q. (Modus Ponens from {px_label}, {px_implies_q_label})"
@@ -177,6 +174,29 @@ begin subproof
  12.2. a = x or a = y. (Reiteration from 11)
  12.3. a = x. (WLOG from 12.2)
  12.4. Q. (Modus Ponens from 7, 9)
+end subproof
+"""
+    _entries, (ok, err) = _check(text)
+    assert ok, err
+
+
+def test_wlog_replay_transforms_a_nested_subproof():
+    text = """1. Let a be any object. (Declaration)
+2. Let x be any object. (Declaration)
+3. Let y be any object. (Declaration)
+4. Let P be a predicate. (Declaration)
+5. Let Q be a closed formula. (Declaration)
+6. Let H be a closed formula. (Declaration)
+7. P(x). (Premise)
+8. P(y). (Premise)
+9. P(x) -> Q. (Premise)
+10. P(y) -> Q. (Premise)
+11. a = x or a = y. (Premise)
+12. a = x. (WLOG from 11)
+13. H -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 13.1. H. (Assumption for Conditional Introduction)
+ 13.2. Q. (Modus Ponens from 7, 9)
 end subproof
 """
     _entries, (ok, err) = _check(text)
