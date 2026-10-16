@@ -189,7 +189,11 @@ def split_top_level(s: str, sep: str) -> List[str]:
         i += 1
     if depth > 0:
         raise ValueError("Unmatched opening parenthesis in string: " + s)
-    if buf:
+    # Preserve an empty final component when a separator trails the input.
+    # Formula/term parsers should reject "P and" and "f(a,)" rather than
+    # silently reading them as "P" and "f(a)" respectively. Empty input still
+    # returns an empty list for callers such as the zero-argument parser.
+    if buf or parts:
         parts.append(''.join(buf).strip())
     return parts
 
