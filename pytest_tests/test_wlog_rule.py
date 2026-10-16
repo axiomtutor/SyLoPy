@@ -114,17 +114,34 @@ def test_wlog_rejects_non_disjunct_assertions():
 
 
 def test_wlog_replay_transforms_structured_declaration_metadata():
-    text, _wlog_label, _result_label = _two_case_proof(relation_declaration=True)
+    text = """\\
+1. Let a be any object. (Declaration)
+2. Let X be any set. (Declaration)
+3. Let y be any object. (Declaration)
+4. Let Q be a closed formula. (Declaration)
+5. In(X, X). (Premise)
+6. In(y, y). (Premise)
+7. Q. (Premise)
+8. a = X or a = y. (Premise)
+9. a = X. (WLOG from 8)
+10. Let R be a reflexive relation on X. (Declaration)
+11. R(X, X). (Relation Reflexivity from 5)
+12. Q. (Reiteration from 7)
+"""
     entries, (ok, err) = _check(text)
     assert ok, err
-    # The parsed/original declaration remains keyed to x; replay must not mutate it.
+    # Replay uses carrier y and the already-visible In(y,y) counterpart.
+    # The source declaration itself must remain unchanged.
     relation = next(
-        d for entry in entries
-        for d in (entry[2][1] if isinstance(entry[2], tuple)
-                  and len(entry[2]) > 1 and isinstance(entry[2][1], list) else [])
-        if d.name == "R"
+        declaration
+        for entry in entries
+        for declaration in (
+            entry[2][1] if isinstance(entry[2], tuple)
+            and len(entry[2]) > 1 and isinstance(entry[2][1], list) else []
+        )
+        if declaration.name == "R"
     )
-    assert dict(relation.metadata)["carrier"] == "x"
+    assert dict(relation.metadata)["carrier"] == "X"
 
 
 def test_wlog_metadata_substitution_preserves_descriptive_property_names():
