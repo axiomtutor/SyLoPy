@@ -4293,6 +4293,28 @@ class ProofValidator:
                     CATEGORY_RULE_MISMATCH,
                     "WLOG replay does not establish the same final result for every case",
                 )
+
+            # Replayed cases can introduce additional proof obligations (for
+            # example, a premise or axiom instance inside the WLOG region).
+            # Preserve those dependencies for later context-sensitive rules
+            # and theorem promotion, without copying the chosen case's
+            # duplicate bookkeeping into the original validator.
+            for formula in replay._given_lines:
+                if not any(_ast_eq(formula, existing) for existing in self._given_lines):
+                    self._given_lines.append(formula)
+            for formula in replay.own_givens:
+                if not any(_ast_eq(formula, existing) for existing in self.own_givens):
+                    self.own_givens.append(formula)
+            for declaration in replay.own_declarations:
+                if declaration not in self.own_declarations:
+                    self.own_declarations.append(declaration)
+            self._constrained_names.update(replay._constrained_names)
+            for axiom in replay.used_axioms:
+                if not any(_ast_eq(axiom, existing) for existing in self.used_axioms):
+                    self.used_axioms.append(axiom)
+            for rule in replay.used_rules:
+                if not any(rule is existing for existing in self.used_rules):
+                    self.used_rules.append(rule)
         return None
 
     def _check_opens_with_assumption(self, first_entry: Any) -> Tuple[Optional[str], Optional[str]]:
