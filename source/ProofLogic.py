@@ -3832,12 +3832,16 @@ def _substitute_wlog_declaration(declaration: Declaration, mapping) -> Declarati
             name = target.name
     metadata = []
     for item in declaration.metadata:
-        if (isinstance(item, tuple) and len(item) == 2
-                and isinstance(item[0], str)
-                and item[0] in DESCRIPTIVE_METADATA_KEYS):
+        if not (isinstance(item, tuple) and len(item) == 2
+                and isinstance(item[0], str)):
+            metadata.append(_substitute_wlog_metadata(item, mapping))
+        elif item[0] in DESCRIPTIVE_METADATA_KEYS:
             metadata.append(item)
         else:
-            metadata.append(_substitute_wlog_metadata(item, mapping))
+            metadata.append((
+                item[0],
+                _substitute_wlog_metadata(item[1], mapping),
+            ))
     return Declaration(
         name=name,
         kind=declaration.kind,
@@ -4123,10 +4127,36 @@ class ProofValidator:
             if opening_detail:
                 return False, _mk_error(opening_label, block_label, 0, CATEGORY_BAD_OPENING, opening_detail), None
 
+        wlog_snapshot = None
         for sidx, e in enumerate(block_entries):
             entry = _classify_entry(e)
             if isinstance(entry, str):
                 return False, _mk_error(None, block_label, sidx, CATEGORY_MALFORMED_ENTRY, entry), None
+
+            if _is_wlog_entry(entry):
+                if wlog_snapshot is not None:
+                    return False, _mk_error(
+                        entry.label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                        "only one WLOG line per proof block is supported",
+                    ), None
+                wlog_snapshot = {
+                    "index": sidx,
+                    "entry": entry,
+                    "block_label": block_label,
+                    "outer_is_seen": outer_context is seen,
+                    "seen": list(seen),
+                    "labels": _clone_label_scope(labels),
+                    "declarations": _clone_declaration_scope(declarations),
+                    "outer_context": list(outer_context),
+                    "given_lines": list(self._given_lines),
+                    "assumption_stack": list(self._assumption_stack),
+                    "arbitrary_names": list(self._arbitrary_names),
+                    "constrained_names": set(self._constrained_names),
+                    "own_givens": list(self.own_givens),
+                    "own_declarations": list(self.own_declarations),
+                    "used_axioms": list(self.used_axioms),
+                    "used_rules": list(self.used_rules),
+                }
 
             if entry.is_subproof_block:
                 ok, err, sp_rec = self._validate_block(
@@ -4145,6 +4175,16 @@ class ProofValidator:
             if err:
                 return False, err, None
 
+            if wlog_snapshot is not None and sidx == wlog_snapshot["index"]:
+                reference = entry.justification[2][0]
+                wlog_snapshot["selected"] = entry.phi
+                wlog_snapshot["disjunction"] = wlog_snapshot["labels"][reference]
+
+        if wlog_snapshot is not None:
+            err = self._validate_wlog_replays(wlog_snapshot, block_entries)
+            if err:
+                return False, err, None
+
         if is_subproof:
             del self._assumption_stack[assumptions_in_force:]
             del self._arbitrary_names[arbitrary_in_force:]
@@ -4152,6 +4192,96 @@ class ProofValidator:
             return True, None, SubproofRecord(seen[0], seen, outer_context_ref=outer_context, boundary_index=boundary)
 
         return True, None, None
+
+    def _validate_wlog_replays(self, snapshot: dict, block_entries: list) -> Optional[ValidationError]:
+        """Replay a validated WLOG suffix for every alternative disjunct.
+
+        Each replay starts from a private snapshot of the lexical scopes and
+        validator bookkeeping immediately before the WLOG line. The original
+        proof, its scopes, and the chosen-case results are never rewritten.
+        """
+        wlog_entry = snapshot["entry"]
+        disjunction = snapshot.get("disjunction")
+        chosen = snapshot.get("selected")
+        if not isinstance(disjunction, fl.Or) or not isinstance(chosen, fl.Formula):
+            return _mk_error(
+                wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                CATEGORY_RULE_MISMATCH, "WLOG requires a cited disjunction and a selected disjunct",
+            )
+
+        suffix = block_entries[snapshot["index"] + 1:]
+        for alternative in disjunction.disjuncts:
+            if _ast_eq(chosen, alternative):
+                continue
+            try:
+                mapping = _wlog_substitution(chosen, alternative)
+            except ValueError as exc:
+                return _mk_error(
+                    wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                    CATEGORY_RULE_MISMATCH, f"WLOG cannot replay this case: {exc}",
+                )
+
+            try:
+                transformed_suffix = [
+                    _transform_wlog_entry(
+                        item, mapping, snapshot["labels"],
+                        snapshot["block_label"], snapshot["index"] + offset + 1,
+                    )
+                    for offset, item in enumerate(suffix)
+                ]
+            except _WLOGReplayError as exc:
+                return _mk_error(
+                    exc.label, exc.block_label, exc.sidx, exc.category, exc.detail,
+                )
+
+            replay_seen = list(snapshot["seen"])
+            replay_seen.append(alternative)
+            replay_labels = _clone_label_scope(snapshot["labels"])
+            replay_declarations = _clone_declaration_scope(snapshot["declarations"])
+            if wlog_entry.label:
+                try:
+                    replay_labels[wlog_entry.label] = alternative
+                except KeyError:
+                    return _mk_error(
+                        wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                        CATEGORY_LABEL_SHADOWING,
+                        f"WLOG replay cannot bind label '{wlog_entry.label}'",
+                    )
+
+            replay = ProofValidator(
+                self.rules, self.premises, self.axioms,
+                declarations=self.initial_declarations,
+            )
+            replay._given_lines = list(snapshot["given_lines"])
+            replay._assumption_stack = list(snapshot["assumption_stack"])
+            replay._arbitrary_names = list(snapshot["arbitrary_names"])
+            replay._constrained_names = set(snapshot["constrained_names"])
+            replay.own_givens = list(snapshot["own_givens"])
+            replay.own_declarations = list(snapshot["own_declarations"])
+            replay.used_axioms = list(snapshot["used_axioms"])
+            replay.used_rules = list(snapshot["used_rules"])
+
+            # In an ordinary block the block's seen list is its own outer
+            # context. In a subproof it is the enclosing block's snapshot.
+            # For the replayed suffix, nested subproofs must see the replay's
+            # accumulated facts rather than formulas from the original case.
+            replay_outer_context = (
+                replay_seen if snapshot["outer_is_seen"]
+                else list(snapshot["outer_context"])
+            )
+            if transformed_suffix:
+                ok, err, _ = replay._validate_block(
+                    transformed_suffix,
+                    snapshot["block_label"],
+                    replay_seen,
+                    replay_labels,
+                    replay_declarations,
+                    replay_outer_context,
+                    is_subproof=False,
+                )
+                if not ok:
+                    return err
+        return None
 
     def _check_opens_with_assumption(self, first_entry: Any) -> Tuple[Optional[str], Optional[str]]:
         """A subproof must open with an assumption ("... (Assumption for
@@ -4656,6 +4786,27 @@ class ProofValidator:
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed rule justification (expected a rule and a list of cited lines)")
         rule, indices = justification[1], justification[2]
+
+        if isinstance(rule, NamedRulePlaceholder) and rule.name == "WLOG":
+            if len(justification) != 3 or not isinstance(indices, list) or len(indices) != 1:
+                return _mk_error(label, block_label, sidx, CATEGORY_ARITY_MISMATCH,
+                                 "WLOG requires exactly one cited disjunction")
+            missing = [reference for reference in indices if reference not in labels]
+            if missing:
+                return _mk_error(label, block_label, sidx, CATEGORY_BAD_REFERENCE,
+                                 f"WLOG cites {missing}, which are not defined or not in scope at this point in the proof")
+            disjunction = labels[indices[0]]
+            if not isinstance(disjunction, fl.Or):
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "WLOG must cite a disjunction")
+            if not all(isinstance(disjunct, fl.Equals) for disjunct in disjunction.disjuncts):
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "this WLOG implementation requires equality disjuncts")
+            selected_count = sum(1 for disjunct in disjunction.disjuncts if _ast_eq(disjunct, phi))
+            if selected_count != 1:
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "the WLOG assertion must match exactly one disjunct")
+            return None
 
         if isinstance(rule, NamedRulePlaceholder):
             resolved = next((r for r in self.rules if r.name == rule.name), None)
