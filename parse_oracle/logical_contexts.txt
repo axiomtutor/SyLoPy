@@ -1,105 +1,104 @@
-# Plain-logic oracle cases for quantifier scope, free variables, and connective
-# grouping. Expectations intentionally repeat the visible logical structure:
-# these are parser regressions, not claims about validity.
+# Independent readings of natural-language logical syntax. The "expect"
+# side uses only plain-logic forms; it does not copy the surface notation.
 
-id: chatgpt-prop-negated-conditional
-context: nested
-surface: not (P -> Q)
-expect: not (P -> Q)
-why: Negation scopes over the whole parenthesized conditional.
-
-id: chatgpt-prop-conjunctive-antecedent
-context: nested
-surface: (P and Q) -> R
-expect: (P and Q) -> R
-why: Parentheses make the conjunction the full antecedent.
-
-id: chatgpt-prop-disjunctive-consequent
-context: nested
-surface: P -> (Q or R)
-expect: P -> (Q or R)
-why: Parentheses make the disjunction the full consequent.
-
-id: chatgpt-prop-biconditional-of-conditionals
-context: nested
-surface: (P -> Q) iff (Q -> P)
-expect: (P -> Q) iff (Q -> P)
-why: Both sides of the biconditional are parenthesized conditionals.
-
-id: chatgpt-fl-universal-implication
+id: logic-natural-universal-conditional
 context: line
-surface: forall x, (P(x) -> Q(x))
+surface: for all x, if P(x) then Q(x)
 expect: forall x, (P(x) -> Q(x))
-why: The universal quantifier binds x throughout the conditional.
+why: The natural-language quantifier and conditional translate to their first-order logical forms.
 
-id: chatgpt-fl-existential-conjunction
+id: logic-natural-existential-conjunction
 context: line
-surface: exists x, (P(x) and Q(x))
+surface: there exists x such that P(x) and Q(x)
 expect: exists x, (P(x) and Q(x))
-why: A single witness must satisfy both conjuncts.
+why: One witness satisfies both conjuncts.
 
-id: chatgpt-fl-universal-existential
+id: logic-natural-multiple-universal
+context: line
+surface: for all x, y such that R(x, y)
+expect: forall x, (forall y, R(x, y))
+why: The multi-variable "such that" form desugars to nested universal quantifiers.
+
+id: logic-natural-multiple-existential
+context: line
+surface: there exists x, y such that R(x, y)
+expect: exists x, (exists y, R(x, y))
+why: The multi-variable existential form desugars to nested existential quantifiers.
+
+id: logic-natural-conditional
 context: nested
-surface: forall x, exists y, R(x, y)
+surface: if P then Q
+expect: P -> Q
+why: Natural-language conditional wording lowers to implication.
+
+id: logic-implies-alias
+context: nested
+surface: P implies Q
+expect: P -> Q
+why: The word "implies" is an alias for the implication connective.
+
+id: logic-biconditional-phrase
+context: nested
+surface: P if and only if Q
+expect: P iff Q
+why: The English biconditional phrase lowers to the logical biconditional.
+
+id: logic-implication-consequent-precedence
+context: nested
+surface: P -> Q and R
+expect: P -> (Q and R)
+why: Conjunction groups inside the consequent of the implication.
+
+id: logic-disjunction-conjunction-precedence
+context: nested
+surface: P or Q and R
+expect: P or (Q and R)
+why: Conjunction binds more tightly than disjunction.
+
+id: logic-disjunction-implication-precedence
+context: nested
+surface: P or Q implies R
+expect: (P or Q) -> R
+why: Implication binds more loosely than disjunction, so the disjunction is its antecedent.
+
+id: logic-negation-symbol
+context: nested
+surface: ¬(P and Q)
+expect: not (P and Q)
+why: The negation symbol is equivalent to the word "not".
+
+id: logic-not-equal-sugar
+context: nested
+surface: a =/= b
+expect: not (a = b)
+why: The inequality token lowers to negated equality.
+
+id: logic-nested-quantifier-dependent-witness
+context: nested
+surface: for all x, there exists y such that R(x, y)
 expect: forall x, exists y, R(x, y)
-why: The existential is inside the universal, so y may depend on x.
+why: The existential quantifier remains inside the universal, allowing y to depend on x.
 
-id: chatgpt-fl-existential-universal
+id: logic-nested-quantifier-shared-witness
 context: nested
-surface: exists y, forall x, R(x, y)
+surface: there exists y such that for all x, R(x, y)
 expect: exists y, forall x, R(x, y)
-why: The existential is outside the universal, so one y serves every x.
+why: The existential quantifier scopes over the universal, requiring one witness to work for every x.
 
-id: chatgpt-fl-free-variable-in-universal-body
+id: logic-free-variable-under-universal
 context: nested
-surface: forall x, (P(x) -> Q(y))
+surface: for all x, if P(x) then Q(y)
 expect: forall x, (P(x) -> Q(y))
-why: Quantifying x must not capture the distinct free variable y.
+why: The universal binds x but must leave y free.
 
-id: chatgpt-fl-free-variable-in-existential-body
+id: logic-natural-existential-nested-in-conditional
 context: nested
-surface: exists y, (R(x, y) and P(x))
-expect: exists y, (R(x, y) and P(x))
-why: Quantifying y must not capture the distinct free variable x.
+surface: if P(x) then there exists y such that R(x, y)
+expect: P(x) -> exists y, R(x, y)
+why: The existential is scoped inside the consequent of the conditional.
 
-id: chatgpt-fl-negated-universal
-context: nested
-surface: not (forall x, P(x))
-expect: not (forall x, P(x))
-why: Negation scopes over the entire universally quantified formula.
-
-id: chatgpt-fl-universal-negated-body
-context: nested
-surface: forall x, not P(x)
-expect: forall x, not P(x)
-why: The body of the universal quantifier is the negation of P(x).
-
-id: chatgpt-fl-quantified-conditional
-context: nested
-surface: forall x, (P(x) -> exists y, R(x, y))
-expect: forall x, (P(x) -> exists y, R(x, y))
-why: The existential is scoped within the conditional's consequent and the universal's body.
-
-id: chatgpt-fl-equality-under-universal
-context: nested
-surface: forall x, (x = a -> P(x))
-expect: forall x, (x = a -> P(x))
-why: The equality and predicate share the same universally bound x.
-
-id: chatgpt-fl-function-term-equality
-context: nested
-surface: f(x) = f(y) -> x = y
-expect: f(x) = f(y) -> x = y
-why: Function terms are compared by equality inside a conditional; this is a reading test, not an assertion of validity.
-
-id: chatgpt-fl-nary-predicate
-context: nested
-surface: forall x, R(x, a, b)
-expect: forall x, R(x, a, b)
-why: The predicate keeps all three arguments while x is bound.
-
-id: chatgpt-fl-nested-existentials
-context: nested
-surface: exists x, (P(x) and exists y, (R(x, y) and Q(y)))
-expect: exists x, (P(x) and exists y, (R(x, y) and Q(y)))
-why: The inner witness y remains within the scope of the outer witness x.
+id: logic-exists-unique-lowering
+context: line
+surface: there exists a unique set Y such that P(Y)
+expect: exists Y, (P(Y) and forall X, (P(X) -> X = Y))
+why: Unique existence is expanded into existence plus a universal uniqueness condition.
