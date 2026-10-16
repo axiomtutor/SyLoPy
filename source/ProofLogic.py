@@ -3731,7 +3731,7 @@ def _visible_label_items(scope: LabelScope):
 
 
 def _wlog_formula_matches(left, right) -> bool:
-    """Match formulas modulo associative/commutative And and Or only.
+    """Match formulas modulo commutativity of And and Or only.
 
     A substitution can reverse the order of disjuncts in an external
     characterization. Reordering disjunctions/conjunctions is harmless for
