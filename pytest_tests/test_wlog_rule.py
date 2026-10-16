@@ -111,7 +111,7 @@ def test_wlog_rejects_non_disjunct_assertions():
 
 
 def test_wlog_replay_transforms_structured_declaration_metadata():
-    text = """\\
+    text = """
 1. Let a be any object. (Declaration)
 2. Let X be any set. (Declaration)
 3. Let y be any object. (Declaration)
