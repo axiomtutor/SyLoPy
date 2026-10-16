@@ -1,0 +1,13 @@
+Use discrete math.
+
+# 1: Asymmetric relations are irreflexive
+## Proof that
+### then not R(a, a).
+
+1. Let X be any set, R be an asymmetric relation on X, and a be in X. (Declaration)
+2. not R(a, a). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. R(a, a). (Assumption for contradiction)
+ 2.2. not R(a, a). (Relation Asymmetry from 2.1)
+ 2.3. R(a, a) and not R(a, a). (Conjunction Introduction from 2.1, 2.2)
+end subproof
