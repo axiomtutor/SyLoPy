@@ -665,6 +665,18 @@ class SetPropertyRule(pl.InferenceRule):
     Elimination, so the kernel gains no new logical power. The citation
     order is free: the rule recognizes the characterization wherever it
     appears among the two cited lines.
+
+    One more case: when the property is a disjunction, a cited line that is
+    one of its disjuncts gives membership (Disjunction Introduction, then the
+    biconditional), and nonmembership gives the negated disjunct::
+
+        1. forall u, (In(u, Y) iff (u = a or u = b)). (...)
+        2. x = a. (...)
+        3. In(x, Y). (Set property from 1, 2)
+
+    That case runs one way. Membership does not say which disjunct holds,
+    and `not x = a` does not exclude `x = b`, so `In(x, Y)` does not give
+    `x = a`, and `not x = a` does not give `not In(x, Y)`.
     """
 
     name = "SetProperty"
@@ -684,11 +696,16 @@ class SetPropertyRule(pl.InferenceRule):
         if matched is None:
             return False
         var, set_term, prop = matched
-        # Peel matching negations off both sides (nonmembership <-> negated property).
+        # Peel matching negations off both sides (nonmembership <-> negated
+        # property). An odd number of them reverses the direction of the
+        # one-way case below.
+        negated = False
         while isinstance(instance, fl.Not) and isinstance(phi, fl.Not):
             instance, phi = instance.sub, phi.sub
+            negated = not negated
         # One of instance/phi must be the membership atom; the other is the property instance.
-        for membership, other in ((instance, phi), (phi, instance)):
+        for membership_is_conclusion in (False, True):
+            membership, other = (phi, instance) if membership_is_conclusion else (instance, phi)
             parts = _membership_parts(membership)
             if parts is None:
                 continue
@@ -709,7 +726,13 @@ class SetPropertyRule(pl.InferenceRule):
             # membership. Do not generalize this to conjunctions or arbitrary
             # subformulas: one true conjunct/subformula does not establish a
             # whole defining property.
-            if isinstance(prop, fl.Or):
+            #
+            # This runs one way only. A disjunct gives membership, and so
+            # nonmembership gives the negated disjunct. Membership does not
+            # say *which* disjunct holds, and a negated disjunct does not rule
+            # out the others, so those directions are not derived. (The
+            # whole-property match above is an equivalence: both ways.)
+            if isinstance(prop, fl.Or) and membership_is_conclusion != negated:
                 for disjunct in prop.disjuncts:
                     disjunct_matcher = pl.FormulaMatcher(var)
                     if not disjunct_matcher.match_formula(disjunct, other):

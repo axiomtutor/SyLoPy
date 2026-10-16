@@ -313,3 +313,127 @@ def test_equality_disjunct_membership_citation_works_in_surface_proof():
     entries = _entries(text)
     ok, err = pl.Proof(entries).check_detailed()
     assert ok, err
+
+
+# --------------------------------------------------------------------
+# The equality-disjunct case runs one way only
+# --------------------------------------------------------------------
+#
+# A cited disjunct gives membership (Disjunction Introduction, then the
+# biconditional), and so nonmembership gives the negated disjunct. The other
+# two directions do not follow: membership does not say which disjunct holds,
+# and a negated disjunct does not rule out the others. Both were once accepted,
+# which let a proof of `a = b` through (see the surface proof below).
+
+c3 = c("c")
+
+
+def _triple_characterization():
+    u = v("u")
+    return fl.ForAll("u", fl.Iff(_in(u, Y), fl.Or(_eq(u, a), _eq(u, b), _eq(u, c3))))
+
+
+def test_membership_does_not_give_a_disjunct():
+    char = _pair_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b)):
+        assert not RULE.applies([char, _in(x, Y)], disjunct)
+        assert not RULE.applies([_in(x, Y), char], disjunct)
+
+
+def test_a_negated_disjunct_does_not_give_nonmembership():
+    char = _pair_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b)):
+        assert not RULE.applies([char, fl.Not(disjunct)], fl.Not(_in(x, Y)))
+        assert not RULE.applies([fl.Not(disjunct), char], fl.Not(_in(x, Y)))
+
+
+def test_nonmembership_gives_the_negated_disjunct():
+    char = _pair_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b)):
+        assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(disjunct))
+        assert RULE.applies([fl.Not(_in(x, Y)), char], fl.Not(disjunct))
+
+
+def test_each_disjunct_of_a_longer_property_gives_membership_and_none_is_given_back():
+    char = _triple_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b), _eq(x, c3)):
+        assert RULE.applies([char, disjunct], _in(x, Y))
+        assert not RULE.applies([char, _in(x, Y)], disjunct)
+        assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(disjunct))
+        assert not RULE.applies([char, fl.Not(disjunct)], fl.Not(_in(x, Y)))
+
+
+def test_the_direction_follows_the_parity_of_the_negations():
+    char = _pair_characterization()
+    not_not = lambda f: fl.Not(fl.Not(f))
+    assert RULE.applies([char, not_not(_eq(x, a))], not_not(_in(x, Y)))
+    assert not RULE.applies([char, not_not(_in(x, Y))], not_not(_eq(x, a)))
+    assert RULE.applies([char, fl.Not(not_not(_in(x, Y)))], fl.Not(not_not(_eq(x, a))))
+    assert not RULE.applies([char, fl.Not(not_not(_eq(x, a)))], fl.Not(not_not(_in(x, Y))))
+
+
+def test_a_negated_disjunct_of_the_property_gives_membership_but_not_back():
+    # P(u) = not Q(u) or u = b: from not Q(x) one gets In(x, Y), never the reverse.
+    u = v("u")
+    Q = lambda t: fl.AtomicFormula("Q", [t])
+    char = fl.ForAll("u", fl.Iff(_in(u, Y), fl.Or(fl.Not(Q(u)), _eq(u, b))))
+    assert RULE.applies([char, fl.Not(Q(x))], _in(x, Y))
+    assert not RULE.applies([char, _in(x, Y)], fl.Not(Q(x)))
+    # Nonmembership gives the negated disjunct, `not not Q(x)`; not the converse.
+    assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(fl.Not(Q(x))))
+    assert not RULE.applies([char, fl.Not(fl.Not(Q(x)))], fl.Not(_in(x, Y)))
+    assert not RULE.applies([char, Q(x)], fl.Not(_in(x, Y)))
+
+
+def test_the_whole_property_still_runs_both_ways():
+    char = _pair_characterization()
+    prop = fl.Or(_eq(x, a), _eq(x, b))
+    assert RULE.applies([char, prop], _in(x, Y))
+    assert RULE.applies([char, _in(x, Y)], prop)
+    assert RULE.applies([char, fl.Not(prop)], fl.Not(_in(x, Y)))
+    assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(prop))
+
+
+_PAIR_PREMISES = """1. Let a, b, x, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+"""
+
+
+def _check(text):
+    ok, err = pl.Proof(_entries(text)).check_detailed()
+    return ok, err
+
+
+def test_a_surface_proof_cannot_get_a_disjunct_from_membership():
+    ok, err = _check(_PAIR_PREMISES + "3. In(x, Y). (Premise)\n4. x = a. (Set property from 2, 3)\n")
+    assert not ok
+    assert err.label == "4"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+
+
+def test_a_surface_proof_cannot_get_nonmembership_from_a_negated_disjunct():
+    ok, err = _check(_PAIR_PREMISES + "3. not (x = a). (Premise)\n4. not In(x, Y). (Set property from 2, 3)\n")
+    assert not ok
+    assert err.label == "4"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+
+
+def test_a_surface_proof_still_gets_the_sound_directions():
+    ok, err = _check(_PAIR_PREMISES + "3. x = a. (Premise)\n4. In(x, Y). (Set property from 2, 3)\n")
+    assert ok, err
+    ok, err = _check(_PAIR_PREMISES + "3. not In(x, Y). (Premise)\n4. not (x = a). (Set property from 2, 3)\n")
+    assert ok, err
+
+
+def test_two_disjuncts_from_one_membership_cannot_prove_the_pair_equal():
+    """With both unsound directions open, `In(x, Y)` gave `x = a` and `x = b`,
+    hence `a = b` for any two sets: a proof of something false."""
+    ok, err = _check(_PAIR_PREMISES + (
+        "3. In(x, Y). (Premise)\n"
+        "4. x = a. (Set property from 2, 3)\n"
+        "5. x = b. (Set property from 2, 3)\n"
+        "6. a = x. (Symmetry from 4)\n"
+        "7. a = b. (Transitivity from 6, 5)\n"
+    ))
+    assert not ok
+    assert err.label == "4"
