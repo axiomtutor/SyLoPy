@@ -1217,49 +1217,6 @@ class _LogicalSourceLine:
     original_text: str
 
 
-def _comment_preserving_newlines(match: re.Match) -> str:
-    return ''.join('\n' if ch == '\n' else ' ' for ch in match.group(0))
-
-
-def _prepare_surface_lines(text: str) -> Tuple[List[_LogicalSourceLine], List[str]]:
-    """Remove comments/headings and join wrapped physical lines.
-
-    Unlike the old direct parser, this retains physical source line numbers so
-    elaboration and validation errors can be mapped back to the user's text.
-    """
-    cleaned = re.sub(r'\(\*.*?\*\)', _comment_preserving_newlines, text, flags=re.S)
-    raw_lines: List[str] = []
-    physical = []
-    for line_number, line in enumerate(cleaned.splitlines(), start=1):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        raw_lines.append(line)
-        if _is_theory_directive(stripped):
-            continue
-        physical.append((line_number, line))
-
-    logical: List[_LogicalSourceLine] = []
-    for line_number, line in physical:
-        stripped = line.strip()
-        starts_item = (
-            _LABELED_LINE_RE.match(stripped)
-            or _BEGIN_SUBPROOF_RE.match(stripped)
-            or _END_SUBPROOF_RE.match(stripped)
-        )
-        if starts_item or not logical:
-            logical.append(_LogicalSourceLine(line, line_number, line_number, line))
-        else:
-            previous = logical[-1]
-            logical[-1] = _LogicalSourceLine(
-                previous.text + ' ' + stripped,
-                previous.start_line,
-                line_number,
-                previous.original_text + '\n' + line,
-            )
-    return logical, raw_lines
-
-
 def _surface_span(item: _LogicalSourceLine, label: Optional[str] = None) -> SourceSpan:
     return SourceSpan(item.start_line, item.end_line, item.original_text, label)
 
