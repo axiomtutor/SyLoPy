@@ -651,6 +651,11 @@ class SetPropertyRule(pl.InferenceRule):
         In(t, S)      =>  P(t)          P(t)      =>  In(t, S)
         not In(t, S)  =>  not P(t)      not P(t)  =>  not In(t, S)
 
+    Partial equality support: when `P(t)` is a disjunction, a cited disjunct
+    of `P(t)` is sufficient to derive membership. This is ordinary
+    Disjunction Introduction followed by the defining biconditional; it is
+    not a general equality-substitution mechanism.
+
     Example (the characterization of a pair set, then reasoning about an
     arbitrary x)::
 
