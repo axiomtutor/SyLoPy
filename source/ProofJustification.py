@@ -8,7 +8,7 @@ rule instance.
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List
+from typing import Callable, Dict, Iterable, List, Optional
 
 import SyLoPy.source.ProofLogic as pl
 
@@ -127,16 +127,34 @@ def _rule(name: str):
     raise ValueError(f"Unknown inference rule '{name.strip()}' in justification")
 
 
-def _cited_rule(rule_name: str, refs: List[str]):
-    """Resolve `rule_name`, choosing by citation count where a name covers
-    two rules: bare "Set property" is the empty-set rule, while "Set
-    property" citing lines is the general one."""
+def _cited_rule(
+    rule_name: str,
+    refs: List[str],
+    theorem_titles: Optional[Iterable[str]] = None,
+):
+    """Resolve a cited rule, including a previously declared theorem title.
+
+    Built-in aliases and theory placeholders always take precedence. A title
+    is recognized only when the caller supplies it from earlier headers in
+    the current multi-proof file; arbitrary unknown names remain errors.
+    """
     if refs and _normalize(rule_name) in {"set property", "set property rule"}:
         return pl.NamedRulePlaceholder("SetProperty")
-    return _rule(rule_name)
+    try:
+        return _rule(rule_name)
+    except ValueError:
+        normalized = _normalize(rule_name)
+        title = next(
+            (candidate for candidate in (theorem_titles or ())
+             if _normalize(candidate) == normalized),
+            None,
+        )
+        if title is None:
+            raise
+        return pl.NamedRulePlaceholder(title)
 
 
-def parse_justification(s: str):
+def parse_justification(s: str, *, theorem_titles: Optional[Iterable[str]] = None):
     s = s.strip()
     if not s:
         raise ValueError("Justification text is required for every proof line")
@@ -163,12 +181,12 @@ def parse_justification(s: str):
     if citation:
         rule_name = s[:citation.start(0) + len(citation.group(1))].strip()
         refs = _parse_indices(citation.group(2))
-        return ("rule", _cited_rule(rule_name, refs), refs)
+        return ("rule", _cited_rule(rule_name, refs, theorem_titles), refs)
     # "Rule, 3, 3.2.1" / "Rule, 3.1 to 3.2": the rule's name, then the lines it cites.
     comma_citation = re.match(rf"^(?P<name>[^,]*[A-Za-z][^,]*?)\s*,\s*(?P<refs>{_REF_LIST_PATTERN})\s*$", s)
     if comma_citation:
         refs = _parse_refs(comma_citation.group("refs"))
-        return ("rule", _cited_rule(comma_citation.group("name"), refs), refs)
+        return ("rule", _cited_rule(comma_citation.group("name"), refs, theorem_titles), refs)
     normalized = _normalize(s)
     if normalized in {"arbitrary", "fresh variable", "fresh constant", "arbitrary object"}:
         return ("arbitrary",)
