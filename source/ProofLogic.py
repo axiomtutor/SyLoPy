@@ -4181,7 +4181,9 @@ class ProofValidator:
                 wlog_snapshot["disjunction"] = wlog_snapshot["labels"][reference]
 
         if wlog_snapshot is not None:
-            err = self._validate_wlog_replays(wlog_snapshot, block_entries)
+            err = self._validate_wlog_replays(
+                wlog_snapshot, block_entries, seen[-1] if seen else None,
+            )
             if err:
                 return False, err, None
 
@@ -4193,7 +4195,9 @@ class ProofValidator:
 
         return True, None, None
 
-    def _validate_wlog_replays(self, snapshot: dict, block_entries: list) -> Optional[ValidationError]:
+    def _validate_wlog_replays(
+        self, snapshot: dict, block_entries: list, chosen_final,
+    ) -> Optional[ValidationError]:
         """Replay a validated WLOG suffix for every alternative disjunct.
 
         Each replay starts from a private snapshot of the lexical scopes and
@@ -4281,6 +4285,14 @@ class ProofValidator:
                 )
                 if not ok:
                     return err
+
+            replay_final = replay_seen[-1] if replay_seen else None
+            if not _wlog_value_matches(chosen_final, replay_final):
+                return _mk_error(
+                    wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                    CATEGORY_RULE_MISMATCH,
+                    "WLOG replay does not establish the same final result for every case",
+                )
         return None
 
     def _check_opens_with_assumption(self, first_entry: Any) -> Tuple[Optional[str], Optional[str]]:
@@ -4796,9 +4808,9 @@ class ProofValidator:
                 return _mk_error(label, block_label, sidx, CATEGORY_BAD_REFERENCE,
                                  f"WLOG cites {missing}, which are not defined or not in scope at this point in the proof")
             disjunction = labels[indices[0]]
-            if not isinstance(disjunction, fl.Or):
+            if not isinstance(disjunction, fl.Or) or len(disjunction.disjuncts) < 2:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
-                                 "WLOG must cite a disjunction")
+                                 "WLOG must cite a disjunction with at least two cases")
             if not all(isinstance(disjunct, fl.Equals) for disjunct in disjunction.disjuncts):
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                                  "this WLOG implementation requires equality disjuncts")
