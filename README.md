@@ -13,8 +13,8 @@ It should soon develop features for more mathematical subjects.
 The last recorded baseline comparison against `master` at
 [`bc990e5`](https://github.com/axiomtutor/SyLoPy/commit/bc990e57ce71f9e607ff8e227399a6921289d40a)
 is documented in [PR #67](https://github.com/axiomtutor/SyLoPy/pull/67). On
-Python 3.12, that baseline had 1,138 passing Python tests, 2 expected failures,
-and one known failure:
+Python 3.12, that baseline had 1,138 passing Python tests, 1 failing test, and
+2 expected failures. The failing test is:
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
 Coverage passed, and all 80 enforced proof fixtures passed. The informational
 proof corpus had 59 passing fixtures out of 60.
