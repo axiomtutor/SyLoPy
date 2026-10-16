@@ -287,3 +287,29 @@ def test_witness_is_usable_inside_but_not_outside_the_subproof_that_introduced_i
     outside = mp.run_multi_proof_file(_scoped_witness_proof(use_line_inside=False))
     assert [ok for _n, _e, ok, _m, _c in outside] == [False]
     assert "Y" in outside[0][3]
+
+
+def test_an_equality_matching_one_property_disjunct_yields_membership():
+    char = _pair_characterization()
+    equality = _eq(x, a)
+    assert RULE.applies([char, equality], _in(x, Y))
+    assert RULE.applies([equality, char], _in(x, Y))
+
+
+def test_equality_disjunct_must_match_the_membership_element_and_set_property():
+    char = _pair_characterization()
+    assert not RULE.applies([char, _eq(y, a)], _in(x, Y))
+    assert not RULE.applies([char, _eq(x, Z)], _in(x, Y))
+    assert not RULE.applies([char, _eq(x, y)], _in(x, Y))
+    assert not RULE.applies([char, fl.Not(_eq(x, a))], _in(x, Y))
+
+
+def test_equality_disjunct_membership_citation_works_in_surface_proof():
+    text = """1. Let a, b, x, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. x = a. (Premise)
+4. In(x, Y). (Set property from 2, 3)
+"""
+    entries = _entries(text)
+    ok, err = pl.Proof(entries).check_detailed()
+    assert ok, err
