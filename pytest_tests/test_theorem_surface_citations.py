@@ -1,18 +1,10 @@
-"""Regression probe for citing promoted theorems with premises in proof text."""
-
-import pytest
+"""Regression tests for citing promoted theorems from proof text."""
 
 from .support import mp
 
 
-def test_premise_carrying_theorem_can_be_cited_from_proof_text():
-    """A titled theorem with a premise should accept a title followed by line refs.
-
-    The first proof promotes a rule P(a) |- P(a), generalizing over a.
-    The second proof supplies P(b) and should be able to cite the title for
-    the instance P(b). The direct core-API equivalent is already supported.
-    """
-    proof_text = """
+def _run_surface_citation(citation: str):
+    proof_text = f"""
 # 1: Property Transport
 ## Proof that
 ### then P(a).
@@ -29,27 +21,43 @@ def test_premise_carrying_theorem_can_be_cited_from_proof_text():
 1. Let b be any object. (Declaration)
 2. Let P be a predicate. (Declaration)
 3. P(b). (Premise)
-4. P(b). (Property Transport from 3)
+4. P(b). ({citation})
 """
-
-    results = mp.run_multi_proof_file(
+    return mp.run_multi_proof_file(
         proof_text,
         axioms=mp.BARE_PROOF_AXIOMS,
         rules=mp.BARE_PROOF_RULES,
         declarations=mp.BARE_PROOF_DECLARATIONS,
     )
+
+
+def test_premise_carrying_theorem_can_be_cited_from_proof_text():
+    """A titled theorem with a premise accepts a title followed by line refs."""
+    results = _run_surface_citation("Property Transport from 3")
     assert len(results) == 2, results
-    first = results[0]
-    assert first[2], f"the theorem being promoted must validate: {first[3]}"
+    assert results[0][2], f"the theorem being promoted must validate: {results[0][3]}"
+    assert results[1][2], f"premise-carrying theorem citation failed: {results[1][3]}"
 
-    second = results[1]
-    if (
-        not second[2]
-        and "Unknown inference rule 'Property Transport' in justification" in second[3]
-    ):
-        pytest.xfail(
-            "parse_justification recognizes from-lines only for built-in rule "
-            "names, so it cannot parse a titled theorem cited with its premise lines"
-        )
 
-    assert second[2], f"premise-carrying theorem citation failed: {second[3]}"
+def test_unknown_theorem_title_is_rejected_during_parsing():
+    results = _run_surface_citation("Unknown Property from 3")
+    assert len(results) == 2, results
+    assert results[0][2], f"the source theorem must validate: {results[0][3]}"
+    assert not results[1][2]
+    assert "Unknown inference rule 'Unknown Property' in justification" in results[1][3]
+
+
+def test_theorem_citation_rejects_undefined_premise_reference():
+    results = _run_surface_citation("Property Transport from 99")
+    assert len(results) == 2, results
+    assert results[0][2], f"the source theorem must validate: {results[0][3]}"
+    assert not results[1][2]
+    assert "cites ['99']" in results[1][3]
+
+
+def test_theorem_citation_rejects_malformed_reference_syntax():
+    results = _run_surface_citation("Property Transport from line 3")
+    assert len(results) == 2, results
+    assert results[0][2], f"the source theorem must validate: {results[0][3]}"
+    assert not results[1][2]
+    assert "Invalid justification format" in results[1][3]
