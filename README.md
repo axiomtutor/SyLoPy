@@ -10,35 +10,28 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-The latest recorded full run on `master` is
-[GitHub Actions run #643](https://github.com/axiomtutor/SyLoPy/actions/runs/38656453820),
-at commit [`87fab58`](https://github.com/axiomtutor/SyLoPy/commit/87fab582399f0824bb7b0dbcc0d75b430ae2a679),
-on 2026-10-14 (timestamps are in UTC). It has one known, tracked exception
-(see `todos.txt`).
+The last recorded baseline comparison against `master` at
+[`bc990e5`](https://github.com/axiomtutor/SyLoPy/commit/bc990e57ce71f9e607ff8e227399a6921289d40a)
+is documented in [PR #67](https://github.com/axiomtutor/SyLoPy/pull/67). On
+Python 3.12, that baseline had 1,138 passing Python tests, 2 expected failures,
+and one known failure:
+`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
+Coverage passed, and all 80 enforced proof fixtures passed. The informational
+proof corpus had 59 passing fixtures out of 60.
 
-- 1,117 Python tests: 1,104 passed, 12 xfailed, and 1 known failure in
-  `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-- Coverage passed.
-- Enforced proof fixture corpus: 80/80 passed.
-- Informational proof fixtures: 58/59 passed; the remaining proof is blocked
-  on the deferred WLOG / Mutatis mutandis implementation.
+The single known failure is the deliberately deferred ZFC fixture: it reaches
+the `WLOG` / `Mutatis mutandis` steps, which remain unimplemented on
+`master`. Do not interpret the informational fixture failure as an enforced
+proof-corpus regression.
 
-The expected failures include the registered-rule soundness probes from
-[PR #41](https://github.com/axiomtutor/SyLoPy/pull/41), which is merged; the
-corresponding authorization and parameterized-rule requirement fixes remain
-open implementation work. The premise-carrying theorem surface-citation
-regression from PR #42 also remains an expected failure.
+These figures describe that baseline comparison, not a guarantee that counts
+remain fixed as tests and fixtures are added. For the latest run, consult
+[GitHub Actions](https://github.com/axiomtutor/SyLoPy/actions).
 
-These numbers describe that specific run and will change as tests and fixtures
-are added.
-
-This is the key fact to keep in mind for planning: the core parser,
-elaboration pipeline, and kernel rule set are working as a coherent system.
-The remaining work is mostly consolidation, cleanup, and feature expansion,
-not repairing a broken proof engine. See `todos.txt` for the detailed,
-living task list, including design decisions that are agreed but not yet
-implemented.
-
+The core parser, elaboration pipeline, and kernel rule set are working as a
+coherent system. Remaining work includes consolidation, cleanup, and feature
+expansion. See `todos.txt` for the detailed task list and the design decisions
+that constrain unfinished work.
 ## Proof-processing pipeline
 
 ```text
