@@ -1,4 +1,4 @@
-"""Focused regression checks for the five worked theory proofs.
+"""Focused regression checks for the six worked theory proofs.
 
 The fixture corpus already checks these files as a group; keeping this small
 focused test gives direct failure messages when one worked proof stops
@@ -14,6 +14,7 @@ TEXTBOOK_PROOFS = (
     "tests/testSetTheory/separation-produces-subset.txt",
     "tests/testNumberTheory/divisibility_closed_under_right_multiplication.txt",
     "tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt",
+    "tests/testDiscreteMath/asymmetric-implies-irreflexive.txt",
 )
 
 
