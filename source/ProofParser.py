@@ -615,50 +615,12 @@ _FORMULA_START_RE = re.compile(
 )
 
 
-def _top_level_keyword_positions(s: str, keyword: str) -> List[int]:
-    positions = []
-    depth = 0
-    i = 0
-    low = s.lower()
-    needle = keyword.lower()
-    while i <= len(s) - len(keyword):
-        ch = s[i]
-        if ch == '(':
-            depth += 1
-        elif ch == ')':
-            depth -= 1
-        if depth == 0 and low.startswith(needle, i):
-            positions.append(i)
-            i += len(keyword)
-            continue
-        i += 1
-    return positions
-
-
 def _text_after_is_declaration_start(s: str) -> bool:
     return bool(_DECL_START_RE.match(s.strip()))
 
 
 def _text_after_is_formula_start(s: str) -> bool:
     return bool(_FORMULA_START_RE.match(s.strip()))
-
-
-def _next_top_level_separator(s: str, start: int) -> str:
-    """Return the next top-level `and`/comma-separated segment."""
-    depth = 0
-    i = start
-    while i < len(s):
-        if s[i] == '(':
-            depth += 1
-        elif s[i] == ')':
-            depth -= 1
-        elif depth == 0:
-            if s[i] == ',':
-                return s[start:i]
-            if s[i:i+5].lower() == ' and ':
-                return s[start:i]
-        i += 1
-    return s[start:]
 
 
 def _split_compound_declaration_items(body: str) -> List[str]:
