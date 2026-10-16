@@ -353,9 +353,11 @@ implementing the rules without an explicit go-ahead.
       in `pytest_tests/test_set_property.py`, and used in four realistic
       proofs in `tests/setTheoryProofs/pairing_theorems.txt`. Bare
       zero-citation names like `(Axiom of pairing)` now resolve through the
-      alias/placeholder table. Still open: the optional equality citation M
-      (substituting an equality while instantiating), and the witness-naming
-      axiom citation (see the first item). Note `PairingAxiomRule`,
+      alias/placeholder table. Partial equality-citation support now also
+      accepts a cited disjunct of a membership property's disjunction to
+      establish membership (ordinary Disjunction Introduction followed by the
+      biconditional). Still open: general equality substitution while
+      instantiating, and the witness-naming axiom citation (see the first item). Note `PairingAxiomRule`,
       `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` already
       exist in `SetTheory.py` as formula-shape rules; what is not built is
       the form that introduces the named set directly off the citation.
@@ -364,9 +366,12 @@ implementing the rules without an explicit go-ahead.
       `EmptySetPropertyRule` only knows the empty set's defining property.
       The general form needs to look up a membership-defining biconditional
       from a cited line N (an axiom citation, or an elaborated "contains
-      exactly P and Q" assumption) and instantiate it, optionally
-      substituting an equality from a cited line M. The citation should name
-      the instantiation witness explicitly; the checker shouldn't guess it.
+      exactly P and Q" assumption) and instantiate it, optionally using an
+      equality from a cited line M. The implemented partial case is when M is
+      itself a disjunct of the instantiated property; this is enough to derive
+      the full disjunction and then membership. General equality substitution
+      remains open. The citation should name the instantiation witness
+      explicitly; the checker shouldn't guess it.
       Decided: every set has a defining property, which `Set property`
       checks. For a set with no stated property (e.g. "Let X be any set"),
       the property is symbolic, i.e. just its own membership predicate.

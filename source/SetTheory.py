@@ -696,14 +696,27 @@ class SetPropertyRule(pl.InferenceRule):
             if not pl._ast_eq(member_of, set_term):
                 continue
             matcher = pl.FormulaMatcher(var)
-            if not matcher.match_formula(prop, other):
-                continue
-            bound_to = matcher.mapping.get(var)
-            if bound_to is not None and not pl._ast_eq(bound_to, element):
-                continue
-            # If P does not mention u, the match is vacuous; the instance must
-            # then still agree exactly with P, which match_formula already checked.
-            return True
+            if matcher.match_formula(prop, other):
+                bound_to = matcher.mapping.get(var)
+                if bound_to is None or pl._ast_eq(bound_to, element):
+                    # If P does not mention u, the match is vacuous; the
+                    # instance must still agree exactly with P.
+                    return True
+
+            # Equality can supply one disjunct of the membership property.
+            # From A (one disjunct of A or B), Disjunction Introduction gives
+            # the full property instance, which the biconditional turns into
+            # membership. Do not generalize this to conjunctions or arbitrary
+            # subformulas: one true conjunct/subformula does not establish a
+            # whole defining property.
+            if isinstance(prop, fl.Or):
+                for disjunct in prop.disjuncts:
+                    disjunct_matcher = pl.FormulaMatcher(var)
+                    if not disjunct_matcher.match_formula(disjunct, other):
+                        continue
+                    bound_to = disjunct_matcher.mapping.get(var)
+                    if bound_to is None or pl._ast_eq(bound_to, element):
+                        return True
         return False
 
 
