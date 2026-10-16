@@ -121,3 +121,22 @@ def test_relation_declaration_requires_an_explicit_carrier():
         pp.parse_proof_text(
             "1. Let X be any set, R be a reflexive relation. (Declaration)\n"
         )
+
+
+def test_asymmetry_derives_only_the_negated_reverse_pair():
+    ok, err = check("""
+1. Let X be any set, R be an asymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. not R(b, a). (Relation Asymmetry from 2)
+""")
+    assert ok, err
+
+    ok, err = check("""
+1. Let X be any set, R be an asymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, a). (Relation Asymmetry from 2)
+""")
+    assert not ok
+    assert err is not None
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert err.label == "3"
