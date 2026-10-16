@@ -63,9 +63,9 @@ why: Implication binds more loosely than disjunction, so the disjunction is its 
 
 id: logic-negation-symbol
 context: nested
-surface: ¬(P and Q)
-expect: not (P and Q)
-why: The negation symbol is equivalent to the word "not".
+surface: not P and Q
+expect: (not P) and Q
+why: Negation binds more tightly than conjunction, so only P is negated.
 
 id: logic-not-equal-sugar
 context: nested
