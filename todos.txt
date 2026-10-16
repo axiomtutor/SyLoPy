@@ -725,11 +725,14 @@ probes reproduced).
       the carrier mapped through the generalization). Until then
       `tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt`
       still checks, but its theorem is not promoted.
-- [ ] Not done: a premise-carrying theorem cannot be cited from proof text
-      (`from <lines>` works only for the built-in rules; a bare title cites a
-      theorem with no premises). Kernel-level citation works. Regression probe:
-      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text` (expected failure
-      while `ProofJustification.parse_justification` rejects `Title from L`).
+- [x] Surface citations of premise-carrying theorems: in a multi-proof file,
+      a line may cite a title from an earlier proof header and provide the
+      theorem's premise lines, e.g. `Property Transport from 3`. Only earlier
+      headers are enabled for title resolution; built-in aliases take
+      precedence, and the resulting placeholder goes through the ordinary
+      registered-rule / theorem-premise validation path. Unknown titles,
+      malformed reference syntax, and undefined references are rejected.
+      Regressions: `pytest_tests/test_theorem_surface_citations.py`.
 
 ## Short version
 
