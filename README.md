@@ -108,7 +108,9 @@ partial orders and equivalence relations.
 `ProofLogic.promote_theorem(...)` converts a checked proof into a reusable
 inference rule. The multi-proof file runner in `source/validate_all_proofs.py`
 automatically promotes titled proofs within a file, which allows later proofs to
-cite earlier results by name without inheriting local proof structure.
+cite earlier results by name without inheriting local proof structure. A theorem
+with premises is cited with the lines that state them, as in
+`(Pair transport from 4, 5)`; see `docs/PROOF_FILE_FORMAT.md`.
 
 This is deliberate: proof reuse across proofs is explicit and theory-scoped,
 not a shared lexical environment.

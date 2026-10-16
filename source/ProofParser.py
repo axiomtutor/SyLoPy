@@ -81,13 +81,13 @@ Two things worth knowing before writing new proof text
 import re
 import sys
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
 import SyLoPy.source.ProofContext as pc
-from SyLoPy.source.ProofJustification import parse_justification
+from SyLoPy.source.ProofJustification import parse_justification, theorem_titles
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaboratedEntries,
@@ -1660,8 +1660,14 @@ def default_theory_environment() -> TheoryEnvironment:
 
 
 class _ElaborationContext:
-    def __init__(self, environment: TheoryEnvironment):
+    def __init__(self, environment: TheoryEnvironment, theorem_names: Iterable[str] = ()):
         self.environment = environment
+        # Titles of the theorems this proof may cite (see
+        # `ProofJustification`): the justification parser cannot tell a title
+        # from a misspelled rule name, so whoever promotes the theorems says
+        # which exist. Citing one is only parsed here; that the proof has it
+        # is decided by the validator.
+        self.theorem_names = theorem_titles(theorem_names)
         self.origin_by_label: Dict[str, CoreOrigin] = {}
         # Rules a `line_elaborator` constructs *while elaborating a specific
         # line* -- as opposed to `environment.rules`, which is fixed before
@@ -1901,7 +1907,7 @@ class _ElaborationContext:
                 return result
 
         try:
-            justification = parse_justification(entry.justification_text)
+            justification = parse_justification(entry.justification_text, self.theorem_names)
             tag = justification[0]
             declarations = []
 
@@ -1961,13 +1967,17 @@ class _ElaborationContext:
 def elaborate_proof(
     surface_proof: SurfaceProof,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_names: Iterable[str] = (),
 ) -> ElaboratedEntries:
-    """Lower a SurfaceProof to the strict ProofLogic entry language."""
+    """Lower a SurfaceProof to the strict ProofLogic entry language.
+
+    `theorem_names` are the titles of the proved theorems the proof may cite
+    by name, with the lines that state their premises if they have any."""
     if environment is None:
         environment = default_theory_environment()
     else:
         environment = _with_base_line_elaborators(environment)
-    context = _ElaborationContext(environment)
+    context = _ElaborationContext(environment, theorem_names)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
     return ElaboratedEntries(
         entries,
@@ -1982,15 +1992,21 @@ def elaborate_proof(
 def parse_proof_text(
     text: str,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_names: Iterable[str] = (),
 ):
     """Parse natural proof text and elaborate it to core proof entries.
 
     The return shape remains ``(entries, raw_lines)`` for compatibility.
     ``entries`` is an :class:`ElaboratedEntries` list subclass containing
     origin and theory metadata used by :class:`ProofLogic.Proof`.
+
+    ``theorem_names`` are the titles of proved theorems the text may cite,
+    ``(Title from 3)`` when the theorem has premises. Parsing only needs the
+    titles; the :class:`~ProofLogic.TheoremRule` objects themselves go in the
+    ``rules`` of the :class:`~ProofLogic.Proof` that checks the entries.
     """
     surface = parse_surface_proof(text)
-    entries = elaborate_proof(surface, environment)
+    entries = elaborate_proof(surface, environment, theorem_names)
     return entries, surface.raw_lines
 
 
@@ -2002,9 +2018,20 @@ def check_proof_text(
     axioms: Optional[list] = None,
     rules: Optional[list] = None,
     declarations: Optional[list] = None,
+    theorem_names: Iterable[str] = (),
 ):
-    """Parse, elaborate, and validate proof text in one source-aware call."""
-    entries, _ = parse_proof_text(text, environment)
+    """Parse, elaborate, and validate proof text in one source-aware call.
+
+    The theorems among ``rules`` can be cited by title, with the lines that
+    state their premises; ``theorem_names`` adds titles to cite without them
+    (a citation that the proof has no such rule for is then a validation error).
+    """
+    entries, _ = parse_proof_text(
+        text,
+        environment,
+        [rule.name for rule in rules or () if isinstance(rule, pl.TheoremRule)]
+        + list(theorem_titles(theorem_names)),
+    )
     return pl.Proof(
         entries,
         premises=premises,

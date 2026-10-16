@@ -704,11 +704,11 @@ probes reproduced).
       `Proof.__init__` and in promotion; the Pairing witness registration;
       reuse of a theorem proved through a witness line. Each mechanism was
       reverted in turn (14 mutations) and each reversion fails a test.
-- [ ] **Rule authorization** — [Issue #49](https://github.com/axiomtutor/SyLoPy/issues/49), regression probes from [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41). `ProofValidator._rule_is_registered` (direct citations), `RuleContext.allows_rule` (promoted-theorem dependencies), and the `rule_below` / `rule_hybrid` validator paths authorize rules by class/subclass rather than semantic configuration. This admits a parameter-mismatched Nat/Int induction, an unregistered `TheoremRule`, or a behavior-overriding subclass of a registered built-in rule. A separately constructed but parameter-equal `InductionRule` must remain usable. Regression probes are in `pytest_tests/test_parameterized_rule_registration.py`; do not weaken the negative tests.
-
-- [ ] **Parameter-aware requirement deduplication** — [Issue #50](https://github.com/axiomtutor/SyLoPy/issues/50). `Proof.__init__` and `_promotion_requirements` currently deduplicate configured/required rules by type and name, dropping distinct parameterized configurations. Preserve semantically distinct rules while deduplicating equivalent instances. This is related to, but independently testable from, authorization in Issue #49.
-
-- [ ] **Pairing witness requirements** — [Issue #51](https://github.com/axiomtutor/SyLoPy/issues/51). Elaboration can embed `PairingAxiomRule(witness_name=...)` in a line justification without registering that witness-specific rule in `ElaboratedEntries.required_rules`, while the environment registers only generic `PairingAxiomRule()`. Export the rule actually used by elaboration; do not use broad class matching as a workaround.
+- [x] Rule authorization ([Issue #49](https://github.com/axiomtutor/SyLoPy/issues/49)),
+      parameter-aware requirement deduplication ([Issue #50](https://github.com/axiomtutor/SyLoPy/issues/50))
+      and Pairing witness requirements ([Issue #51](https://github.com/axiomtutor/SyLoPy/issues/51))
+      -- all three are the item above (PR #56), which made the probes from
+      [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41) pass unweakened.
 - [ ] Policy, not a soundness question, left as it is: a witness named by an
       `Existence from L` line is a top-level object declaration, so it is
       generalized by default (its defining formula is carried as a premise, so
@@ -725,11 +725,41 @@ probes reproduced).
       the carrier mapped through the generalization). Until then
       `tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt`
       still checks, but its theorem is not promoted.
-- [ ] Not done: a premise-carrying theorem cannot be cited from proof text
-      (`from <lines>` works only for the built-in rules; a bare title cites a
-      theorem with no premises). Kernel-level citation works. Regression probe:
-      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text` (expected failure
-      while `ProofJustification.parse_justification` rejects `Title from L`).
+- [x] A theorem with premises is cited from proof text by its title and the
+      lines that state its premises: `(Pair transport from 4, 5)`. Before,
+      `parse_justification` knew only the built-in rule names, so `Title from
+      L` was a parse error and only a bare title (a theorem with no premises)
+      could be cited; citing through the kernel API always worked. The probe
+      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text`
+      was an expected failure and is now an ordinary test.
+      The parser cannot tell a title from a misspelled rule name, so it is told
+      the titles: `parse_justification(text, theorem_names)`. The multi-proof
+      runner gives it the titles in the file's headers (every header is read
+      before any proof is parsed); `check_proof_text` gives it the
+      `TheoremRule`s among its `rules` plus any `theorem_names`;
+      `parse_proof_text` and `elaborate_proof` take `theorem_names`. A known
+      title becomes a `NamedRulePlaceholder` carrying the title as it was
+      promoted, and is resolved against the proof's rules as a bare title
+      always was. Titles are matched like rule names (case, hyphens, spacing),
+      except that two titles differing only in such spelling must each be
+      written exactly. A built-in rule name is never taken for a title.
+      An unknown name followed by citations is still a parse error: two
+      existing tests pin that (`test_an_unknown_rule_with_citations_is_an_error_not_a_mangled_placeholder`,
+      `test_invalid_justification`), and a placeholder fallback would have
+      silently turned a misspelled rule into a "no rule named" validation
+      error, so that option was not taken. The lines go in the order the
+      theorem's premises were taken; a wrong count gets the kernel's arity
+      message. Knowing a title only lets the proof be parsed: citing a title
+      promoted later in the file, or whose proof failed, is a validation error
+      ("no rule named ...").
+      Rough edge, not changed: that message's hint, "check that the relevant
+      Type was combined in", is misleading for a theorem title.
+      Tests: `pytest_tests/test_theorem_surface_citations.py` -- the parser,
+      multi-proof files (the lines, their order and count, a misspelled title,
+      a later title, a chain of theorems) and the Python API. Each piece of the
+      plumbing and of the matching was undone in turn (11 mutations) and each
+      reversion fails a test. Documented in `docs/PROOF_FILE_FORMAT.md`
+      ("Citing a theorem"), whose example `test_proof_format_doc.py` runs.
 
 ## Short version
 
