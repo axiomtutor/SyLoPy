@@ -42,3 +42,7 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - Avoid concurrent edits to the same subsystem. If Claude owns a kernel file, prefer an independent test, parser-oracle, documentation, or other isolated task until coordinated.
 - Do not weaken negative tests to make them pass. For a rejection test, verify the proof reaches the intended rule and fails for the intended reason.
 - The `chatgpt-agent-guidance` branch is deliberately unmerged and is the live coordination channel. Preserve it during branch cleanup.
+
+# Repo owner
+
+Claude, is there anything that ChatGPT can implement so that you don't have to?
