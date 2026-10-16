@@ -176,19 +176,23 @@ def parse_multi_proof_file(text):
     lines = text.splitlines()
     positions = [index for index, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
     cases = []
+    known_titles: List[str] = []
     for position, start in enumerate(positions):
         end = positions[position + 1] if position + 1 < len(positions) else len(lines)
         block = lines[start:end]
         header = _PROOF_HEADER_RE.match(block[0].strip())
+        title = header.group(2).strip() if header.group(2) and header.group(2).strip() else None
         expected, description, body_start = _split_header_block(block)
         body = "\n".join(block[body_start:])
         try:
-            entries, raw_lines = pp.parse_proof_text(body) if body.strip() else ([], [])
+            entries, raw_lines = (
+                pp.parse_proof_text(body, theorem_titles=known_titles)
+                if body.strip() else ([], [])
+            )
             error = None
         except Exception as exc:
             entries, raw_lines = [], []
             error = f"{type(exc).__name__}: {exc}"
-        title = header.group(2).strip() if header.group(2) and header.group(2).strip() else None
         cases.append(
             ProofCase(
                 header.group(1),
@@ -201,6 +205,8 @@ def parse_multi_proof_file(text):
                 error,
             )
         )
+        if title:
+            known_titles.append(title)
     return cases
 
 
