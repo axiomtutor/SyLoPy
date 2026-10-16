@@ -32,6 +32,7 @@ The core parser, elaboration pipeline, and kernel rule set are working as a
 coherent system. Remaining work includes consolidation, cleanup, and feature
 expansion. See `todos.txt` for the detailed task list and the design decisions
 that constrain unfinished work.
+
 ## Proof-processing pipeline
 
 ```text
