@@ -15,13 +15,18 @@ def _two_case_proof(*, include_second_case=True, conclusion="Q", relation_declar
         "3. Let y be any object. (Declaration)",
         "4. Let P be a predicate. (Declaration)",
         "5. Let Q be a closed formula. (Declaration)",
-        "6. P(x). (Premise)",
     ]
+    px_label = len(lines) + 1
+    lines.append(f"{px_label}. P(x). (Premise)")
+    py_label = None
     if include_second_case:
-        lines.append("7. P(y). (Premise)")
-    lines.append("8. P(x) -> Q. (Premise)")
+        py_label = len(lines) + 1
+        lines.append(f"{py_label}. P(y). (Premise)")
+    px_implies_q_label = len(lines) + 1
+    lines.append(f"{px_implies_q_label}. P(x) -> Q. (Premise)")
     if include_second_case:
-        lines.append("9. P(y) -> Q. (Premise)")
+        py_implies_q_label = len(lines) + 1
+        lines.append(f"{py_implies_q_label}. P(y) -> Q. (Premise)")
     disjunction_label = len(lines) + 1
     wlog_label = disjunction_label + 1
     result_label = wlog_label + 1
@@ -32,9 +37,12 @@ def _two_case_proof(*, include_second_case=True, conclusion="Q", relation_declar
     if relation_declaration:
         lines.append(f"{result_label}. Let R be a reflexive relation on x. (Declaration)")
         result_label += 1
-    cited = "6, 8"
-    lines.append(f"{result_label}. {conclusion}. (Modus Ponens from {cited})" if conclusion == "Q"
-                 else f"{result_label}. {conclusion}. (Reiteration from 6)")
+    if conclusion == "Q":
+        lines.append(
+            f"{result_label}. Q. (Modus Ponens from {px_label}, {px_implies_q_label})"
+        )
+    else:
+        lines.append(f"{result_label}. {conclusion}. (Reiteration from {px_label})")
     return "\n".join(lines), wlog_label, result_label
 
 
@@ -109,7 +117,6 @@ def test_wlog_replay_transforms_structured_declaration_metadata():
     text, _wlog_label, _result_label = _two_case_proof(relation_declaration=True)
     entries, (ok, err) = _check(text)
     assert ok, err
-    declaration_line = next(entry for entry in entries if entry[0] and entry[0].endswith("."))
     # The parsed/original declaration remains keyed to x; replay must not mutate it.
     relation = next(
         d for entry in entries
