@@ -20,17 +20,17 @@ def _proof_text() -> str:
 def test_basic_theorems_fixture_all_pass():
     results = mp.run_multi_proof_file(_proof_text())
     assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [
-        ("1", True), ("2", True), ("3", True), ("4", True), ("5", True),
+        ("1", True), ("2", True), ("3", True), ("4", True), ("5", True), ("6", True),
     ]
 
 
 def test_basic_theorems_have_titles_matching_their_content():
     cases = mp.parse_multi_proof_file(_proof_text())
-    assert [case.number for case in cases] == ["1", "2", "3", "4", "5"]
+    assert [case.number for case in cases] == ["1", "2", "3", "4", "5", "6"]
     # Each stated "### then ..." conclusion must itself parse as a formula
     # and be the thing the proof actually derives at the top level --
     # run_multi_proof_file's own check (exercised above) already enforces
-    # this; here we also confirm that none of the five silently fell back to
+    # this; here we also confirm that none of the six silently fell back to
     # "unparseable, skip the cross-check" (see _stated_conclusion_from).
     for case in cases:
         assert case.stated_conclusion is not None, f"proof {case.number}'s 'then' line didn't parse"
