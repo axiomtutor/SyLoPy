@@ -5,8 +5,9 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 ## Current baseline
 
 - **Master:** [`bc990e5`](https://github.com/axiomtutor/SyLoPy/commit/bc990e57ce71f9e607ff8e227399a6921289d40a), following PR #56.
-- **Open PRs:** #57 parser-oracle scope coverage; #58 set-theory proof examples; #59 remove superseded parser paths; #60 asymmetric-relation example; #61 reject trailing separators; #62 and #67 premise-carrying theorem citations (overlapping work; #67 is the broader implementation); #63 WLOG replay; #65 equality-disjunct Set property; #66 TODO refresh; #68 README status refresh. PR #64 is closed.
-- **CI baseline:** PR #67 records a comparison against master `bc990e5`: 1,138 passed, 2 xfailed, and the known ZFC fixture failure; coverage passed and all 80 enforced fixtures passed. Treat this as a recorded baseline comparison, not a new run on the merge commit.
+- **Open PRs:** #57 parser-oracle scope coverage; #58 set-theory proof examples; #59 remove superseded parser paths; #60 asymmetric-relation example; #61 reject trailing separators; #63 WLOG replay; #65 equality-disjunct Set property; #67 premise-carrying theorem citations; #68 README status refresh.
+- **Closed PRs:** #62 is superseded by #67, which includes its implementation; #66's TODO changes are also included in #67; #64 is closed.
+- **CI baseline:** PR #67 records a comparison against master `bc990e5`: 1,138 passed, 1 failed, and 2 xfailed; coverage passed and all 80 enforced fixtures passed. PR #68's run #692 on its merge ref reproduced the same counts and known failure, with 59/60 informational fixtures passing. Treat these as recorded runs against their stated commits, not as a claim about a later `master`.
 - **Known failure:** `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, blocked by deferred WLOG / Mutatis mutandis. Do not mask it.
 - **Architecture:** proof text → surface parsing → elaboration → core entries → `ProofLogic.Proof`. `ProofContext` governs elaboration scope; the kernel independently enforces scope with `LabelScope` and `DeclarationScope`.
 - **File ownership:** Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. Coordinate before editing either file.
@@ -27,8 +28,8 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current work and coordination
 
-- **Theorem citations:** PR #67 implements premise-carrying theorem citations from proof text and supersedes the narrower approach in #62; do not duplicate its work or touch Claude-owned `ProofJustification.py`.
-- **Independent cleanup/docs:** PR #59 removes dead parser paths; #66 refreshes resolved soundness TODOs; #68 refreshes the README status snapshot. Keep these isolated.
+- **Theorem citations / TODO status:** PR #67 implements premise-carrying theorem citations and includes the resolved-soundness TODO updates formerly proposed in #66. PRs #62 and #66 are closed to prevent duplicate review and merge work. Do not duplicate #67's work or begin another change in Claude-owned `ProofJustification.py` without coordination.
+- **Independent cleanup/docs:** PR #59 removes dead parser paths; #68 refreshes the README status snapshot.
 - **Examples and parser regressions:** PR #57 adds parser-oracle scope cases, #58 expands set-theory examples, #60 adds an asymmetric-relation theorem, and #61 rejects trailing separators. Review their CI and avoid duplicating the same cases.
 - **Deferred feature PRs:** #63 implements WLOG replay and #65 extends Set property. The TODO and design rules explicitly require owner approval for these features; do not treat a general instruction to continue work as authorization to expand their scope or merge them.
 - **Resolved soundness work:** PR #56 implements configuration-based rule authorization and closes issues #49–#51. Do not treat these as outstanding tasks.
