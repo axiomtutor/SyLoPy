@@ -65,3 +65,27 @@
  4.1. Let a in Y. (Assumption for subset proof)
  4.2. a is in X. (Leibniz Substitution from 2, 4.1)
 5. X is a subset of Y and Y is a subset of X. (Conjunction Introduction from 3, 4)
+
+
+# 5: Mutual inclusion implies equality
+## Proof that
+### If X is a subset of Y and Y is a subset of X
+### then X = Y.
+
+1. Let X and Y be any sets. (Declaration)
+2. X is a subset of Y. (Premise)
+3. Y is a subset of X. (Premise)
+4. X = Y. (Set Equality from 2, 3)
+
+
+# 6: Subset membership is preserved
+## Proof that
+### If X is a subset of Y and x is in X
+### then x is in Y.
+
+1. Let X and Y be any sets. (Declaration)
+2. Let x be any object. (Declaration)
+3. X is a subset of Y. (Premise)
+4. x is in X. (Premise)
+5. In(x,X) -> In(x,Y). (Universal Instantiation from 3)
+6. In(x,Y). (Modus Ponens from 5, 4)
