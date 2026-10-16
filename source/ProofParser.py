@@ -615,50 +615,12 @@ _FORMULA_START_RE = re.compile(
 )
 
 
-def _top_level_keyword_positions(s: str, keyword: str) -> List[int]:
-    positions = []
-    depth = 0
-    i = 0
-    low = s.lower()
-    needle = keyword.lower()
-    while i <= len(s) - len(keyword):
-        ch = s[i]
-        if ch == '(':
-            depth += 1
-        elif ch == ')':
-            depth -= 1
-        if depth == 0 and low.startswith(needle, i):
-            positions.append(i)
-            i += len(keyword)
-            continue
-        i += 1
-    return positions
-
-
 def _text_after_is_declaration_start(s: str) -> bool:
     return bool(_DECL_START_RE.match(s.strip()))
 
 
 def _text_after_is_formula_start(s: str) -> bool:
     return bool(_FORMULA_START_RE.match(s.strip()))
-
-
-def _next_top_level_separator(s: str, start: int) -> str:
-    """Return the next top-level `and`/comma-separated segment."""
-    depth = 0
-    i = start
-    while i < len(s):
-        if s[i] == '(':
-            depth += 1
-        elif s[i] == ')':
-            depth -= 1
-        elif depth == 0:
-            if s[i] == ',':
-                return s[start:i]
-            if s[i:i+5].lower() == ' and ':
-                return s[start:i]
-        i += 1
-    return s[start:]
 
 
 def _split_compound_declaration_items(body: str) -> List[str]:
@@ -1253,49 +1215,6 @@ class _LogicalSourceLine:
     start_line: int
     end_line: int
     original_text: str
-
-
-def _comment_preserving_newlines(match: re.Match) -> str:
-    return ''.join('\n' if ch == '\n' else ' ' for ch in match.group(0))
-
-
-def _prepare_surface_lines(text: str) -> Tuple[List[_LogicalSourceLine], List[str]]:
-    """Remove comments/headings and join wrapped physical lines.
-
-    Unlike the old direct parser, this retains physical source line numbers so
-    elaboration and validation errors can be mapped back to the user's text.
-    """
-    cleaned = re.sub(r'\(\*.*?\*\)', _comment_preserving_newlines, text, flags=re.S)
-    raw_lines: List[str] = []
-    physical = []
-    for line_number, line in enumerate(cleaned.splitlines(), start=1):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        raw_lines.append(line)
-        if _is_theory_directive(stripped):
-            continue
-        physical.append((line_number, line))
-
-    logical: List[_LogicalSourceLine] = []
-    for line_number, line in physical:
-        stripped = line.strip()
-        starts_item = (
-            _LABELED_LINE_RE.match(stripped)
-            or _BEGIN_SUBPROOF_RE.match(stripped)
-            or _END_SUBPROOF_RE.match(stripped)
-        )
-        if starts_item or not logical:
-            logical.append(_LogicalSourceLine(line, line_number, line_number, line))
-        else:
-            previous = logical[-1]
-            logical[-1] = _LogicalSourceLine(
-                previous.text + ' ' + stripped,
-                previous.start_line,
-                line_number,
-                previous.original_text + '\n' + line,
-            )
-    return logical, raw_lines
 
 
 def _surface_span(item: _LogicalSourceLine, label: Optional[str] = None) -> SourceSpan:
