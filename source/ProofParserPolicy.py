@@ -54,7 +54,7 @@ _EXISTS_SUCH_THAT_RE = re.compile(
 _EXISTS_ARTICLE_RE = re.compile(
     r"^there\s+(?:exists|is)\s+"
     r"(?P<quant>(?:an?\s+)?unique|exactly\s+one|an?|one)\s+"
-    rf"(?:{_NOT_A_KEYWORD}(?P<kind>{_NAME})\s+)?"
+    rf"(?:{_NOT_A_KEYWORD}(?P<kind>{_NAME}(?:\s+{_NAME})*)\s+)?"
     rf"(?P<name>{_NOT_A_VARIABLE}{_NAME}|\{{[^{{}}]*\}})\s*"
     r"(?P<connector>such\s+that|that|which|=|,)\s*:?\s*(?P<rest>.+)$",
     re.I,
