@@ -10,28 +10,30 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-The last recorded baseline comparison against `master` at
-[`bc990e5`](https://github.com/axiomtutor/SyLoPy/commit/bc990e57ce71f9e607ff8e227399a6921289d40a)
-is documented in [PR #67](https://github.com/axiomtutor/SyLoPy/pull/67). On
-Python 3.12, that baseline had 1,138 passing Python tests, 1 failing test, and
-2 expected failures. The failing test is:
+The latest detailed full-suite report available here is the verification documented
+for PR #71 at exact commit
+[`3955a39`](https://github.com/axiomtutor/SyLoPy/commit/3955a396197be00676252ee261f2fe34b914f693),
+before its merge into master at
+[`12deb44`](https://github.com/axiomtutor/SyLoPy/commit/12deb44456737faf08c14248e3a27445aad69698).
+That report, on Python 3.12 and 3.13, records:
+
+- 1,219 Python tests passed, 1 failed, 1 xfailed.
+- Coverage passed.
+- Enforced proof fixtures: 81/81.
+- Informational proof fixtures: 61/62.
+
+The one known failure is
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-Coverage passed, and all 80 enforced proof fixtures passed. The informational
-proof corpus had 59 passing fixtures out of 60.
-
-The single known failure is the deliberately deferred ZFC fixture: it reaches
-the `WLOG` / `Mutatis mutandis` steps, which remain unimplemented on
-`master`. Do not interpret the informational fixture failure as an enforced
-proof-corpus regression.
-
-These figures describe that baseline comparison, not a guarantee that counts
-remain fixed as tests and fixtures are added. For the latest run, consult
-[GitHub Actions](https://github.com/axiomtutor/SyLoPy/actions).
+The implemented WLOG equality-case replay reaches line 5.2.4 and fails because
+it cannot find a visible counterpart for cited line `3` after substituting the
+chosen case. `Mutatis mutandis` remains unimplemented. This is the reported
+PR-head result, not a new run at the post-merge master commit; consult
+[GitHub Actions](https://github.com/axiomtutor/SyLoPy/actions) for any newer run.
 
 The core parser, elaboration pipeline, and kernel rule set are working as a
-coherent system. Remaining work includes consolidation, cleanup, and feature
-expansion. See `todos.txt` for the detailed task list and the design decisions
-that constrain unfinished work.
+coherent system. Remaining work includes the known informational-fixture
+failure, maintainability, and feature expansion. See `todos.txt` for the
+detailed task list and the design decisions that constrain unfinished work.
 
 ## Proof-processing pipeline
 
@@ -80,10 +82,11 @@ there exists a unique set {a, b} that contains exactly a and b
 
 Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
-Set theory is the active frontier: the ZFC axiom-citation design (named
-axiom rules, WLOG, unique existence) is written up in `todos.txt`; the syntax
-above is implemented, and so is the rule `Uniqueness`. The rules `WLOG` and
-`Mutatis mutandis` are not.
+Set theory is the active frontier: the named ZFC axiom-citation design
+is written up in `todos.txt` and remains deferred pending explicit owner
+approval. The `WLOG` equality-case replay rule and `Uniqueness` are implemented;
+the informational ZFC fixture still fails during WLOG citation remapping, and
+`Mutatis mutandis` remains unimplemented.
 
 ### Number theory
 
