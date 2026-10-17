@@ -437,3 +437,91 @@ def test_two_disjuncts_from_one_membership_cannot_prove_the_pair_equal():
     ))
     assert not ok
     assert err.label == "4"
+
+
+# --------------------------------------------------------------------
+# An equality may be written either way round
+# --------------------------------------------------------------------
+#
+# `s = t` and `t = s` say the same thing, so a line that is just an equality --
+# cited or concluded, positive or negated, matching a disjunct or the whole
+# property -- may be written either way round, as it may for `Substitution`.
+# That adds no inference, and must leave the one-way case above one-way.
+
+def _flip(equality):
+    return _eq(equality.right, equality.left)
+
+
+def test_a_cited_equality_gives_membership_in_either_orientation():
+    char = _pair_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b)):
+        assert RULE.applies([char, disjunct], _in(x, Y))
+        assert RULE.applies([char, _flip(disjunct)], _in(x, Y))
+        assert RULE.applies([_flip(disjunct), char], _in(x, Y))
+
+
+def test_nonmembership_gives_the_negated_disjunct_in_either_orientation():
+    char = _pair_characterization()
+    for disjunct in (_eq(x, a), _eq(x, b)):
+        assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(disjunct))
+        assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(_flip(disjunct)))
+
+
+def test_a_flipped_equality_is_still_one_way():
+    char = _pair_characterization()
+    for disjunct in (_flip(_eq(x, a)), _flip(_eq(x, b))):
+        assert not RULE.applies([char, _in(x, Y)], disjunct)
+        assert not RULE.applies([char, fl.Not(disjunct)], fl.Not(_in(x, Y)))
+
+
+def test_a_flipped_equality_must_still_name_the_membership_element_and_a_disjunct():
+    char = _pair_characterization()
+    assert not RULE.applies([char, _eq(a, y)], _in(x, Y))   # the element is not x
+    assert not RULE.applies([char, _eq(y, a)], _in(x, Y))
+    assert not RULE.applies([char, _eq(Z, x)], _in(x, Y))   # x, but not equal to a disjunct's term
+    assert not RULE.applies([char, _eq(y, x)], _in(x, Y))
+    assert not RULE.applies([char, _eq(a, x)], _in(y, Y))   # right equality, wrong membership atom
+
+
+def test_a_single_equality_property_reads_either_way_round():
+    # A singleton: In(u, Y) iff u = a, and the same with the equality flipped.
+    u = v("u")
+    singleton = fl.ForAll("u", fl.Iff(_in(u, Y), _eq(u, a)))
+    mirrored = fl.ForAll("u", fl.Iff(_in(u, Y), _eq(a, u)))
+    for char in (singleton, mirrored):
+        for instance in (_eq(x, a), _eq(a, x)):
+            assert RULE.applies([char, instance], _in(x, Y))
+            assert RULE.applies([char, _in(x, Y)], instance)
+            assert RULE.applies([char, fl.Not(instance)], fl.Not(_in(x, Y)))
+            assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(instance))
+        assert not RULE.applies([char, _eq(a, y)], _in(x, Y))
+        assert not RULE.applies([char, _in(x, Y)], _eq(a, y))
+
+
+def test_a_property_with_the_variable_on_the_right_reads_either_way_round():
+    u = v("u")
+    char = fl.ForAll("u", fl.Iff(_in(u, Y), fl.Or(_eq(a, u), _eq(b, u))))
+    for instance in (_eq(x, a), _eq(a, x), _eq(x, b), _eq(b, x)):
+        assert RULE.applies([char, instance], _in(x, Y))
+        assert RULE.applies([char, fl.Not(_in(x, Y))], fl.Not(instance))
+        assert not RULE.applies([char, _in(x, Y)], instance)
+
+
+def test_a_surface_proof_may_cite_the_equality_either_way_round():
+    for equality in ("x = a", "a = x"):
+        ok, err = _check(_PAIR_PREMISES + f"3. {equality}. (Premise)\n4. In(x, Y). (Set property from 2, 3)\n")
+        assert ok, err
+    ok, err = _check(_PAIR_PREMISES + "3. not In(x, Y). (Premise)\n4. not (a = x). (Set property from 2, 3)\n")
+    assert ok, err
+
+
+def test_a_surface_proof_cannot_turn_a_flipped_equality_against_the_direction():
+    for premise, conclusion in (
+        ("In(x, Y)", "a = x"),                # membership does not give a disjunct
+        ("not (a = x)", "not In(x, Y)"),      # a negated disjunct does not give nonmembership
+        ("a = b", "In(x, Y)"),                # an equality that does not name x
+    ):
+        ok, err = _check(_PAIR_PREMISES + f"3. {premise}. (Premise)\n4. {conclusion}. (Set property from 2, 3)\n")
+        assert not ok, (premise, conclusion)
+        assert err.label == "4"
+        assert err.category == pl.CATEGORY_RULE_MISMATCH

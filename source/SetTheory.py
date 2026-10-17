@@ -640,6 +640,15 @@ def match_membership_characterization(formula: fl.Formula) -> Optional[Tuple[str
     return None
 
 
+def _orientations(formula: fl.Formula):
+    """`formula`, and also its mirror image when it is an equality: `s = t`
+    and `t = s` say the same thing, so an equality may be written either way
+    round (as `LeibnizSubstitutionRule` already allows)."""
+    yield formula
+    if isinstance(formula, fl.Equals):
+        yield fl.Equals(formula.right, formula.left)
+
+
 class SetPropertyRule(pl.InferenceRule):
     """General `Set property`: use a set's defining membership property.
 
@@ -677,6 +686,18 @@ class SetPropertyRule(pl.InferenceRule):
     That case runs one way. Membership does not say which disjunct holds,
     and `not x = a` does not exclude `x = b`, so `In(x, Y)` does not give
     `x = a`, and `not x = a` does not give `not In(x, Y)`.
+
+    A line that is just an equality may be written either way round, whether
+    it is cited or concluded, positive or negated, and whether it matches a
+    disjunct of the property or the whole property. `a = x` does what
+    `x = a` does::
+
+        3. a = x. (...)
+        4. In(x, Y). (Set property from 1, 3)
+
+    The mirror image is the same statement, so this adds no inference and
+    leaves the one-way case one-way. An equality inside a larger formula is
+    not turned round; it must match as written.
     """
 
     name = "SetProperty"
@@ -712,13 +733,14 @@ class SetPropertyRule(pl.InferenceRule):
             element, member_of = parts
             if not pl._ast_eq(member_of, set_term):
                 continue
-            matcher = pl.FormulaMatcher(var)
-            if matcher.match_formula(prop, other):
-                bound_to = matcher.mapping.get(var)
-                if bound_to is None or pl._ast_eq(bound_to, element):
-                    # If P does not mention u, the match is vacuous; the
-                    # instance must still agree exactly with P.
-                    return True
+            for oriented in _orientations(other):
+                matcher = pl.FormulaMatcher(var)
+                if matcher.match_formula(prop, oriented):
+                    bound_to = matcher.mapping.get(var)
+                    if bound_to is None or pl._ast_eq(bound_to, element):
+                        # If P does not mention u, the match is vacuous; the
+                        # instance must still agree exactly with P.
+                        return True
 
             # Equality can supply one disjunct of the membership property.
             # From A (one disjunct of A or B), Disjunction Introduction gives
@@ -734,12 +756,13 @@ class SetPropertyRule(pl.InferenceRule):
             # whole-property match above is an equivalence: both ways.)
             if isinstance(prop, fl.Or) and membership_is_conclusion != negated:
                 for disjunct in prop.disjuncts:
-                    disjunct_matcher = pl.FormulaMatcher(var)
-                    if not disjunct_matcher.match_formula(disjunct, other):
-                        continue
-                    bound_to = disjunct_matcher.mapping.get(var)
-                    if bound_to is None or pl._ast_eq(bound_to, element):
-                        return True
+                    for oriented in _orientations(other):
+                        disjunct_matcher = pl.FormulaMatcher(var)
+                        if not disjunct_matcher.match_formula(disjunct, oriented):
+                            continue
+                        bound_to = disjunct_matcher.mapping.get(var)
+                        if bound_to is None or pl._ast_eq(bound_to, element):
+                            return True
         return False
 
 
