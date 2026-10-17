@@ -11,20 +11,22 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 Master is currently
-[`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7).
-An integrated-tree test report is GitHub Actions
-[run #720](https://github.com/axiomtutor/SyLoPy/actions/runs/39051347643),
-from PR #76's merge ref (current master plus documentation-only edits):
+[`12dcf99`](https://github.com/axiomtutor/SyLoPy/commit/12dcf99cf28544e09776f78b4deb07186518c0d6).
+The latest integrated-tree report is GitHub Actions
+[run #729](https://github.com/axiomtutor/SyLoPy/actions/runs/39052110870),
+from PR #78's merge ref (current master plus the natural-number existential
+parser changes):
 
-- 1,220 Python tests passed, 1 failed, 1 xfailed.
+- 1,223 Python tests passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 62/63.
+- Informational proof fixtures: 63/64.
 
 The only failure is the known
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-The new surface-level uniqueness regression from PR #73 and the added
-equivalence-relation proof from PR #74 both pass in this integrated run.
+The parser regressions added in PR #78 pass, as do the surface uniqueness
+regression in PR #73, the equivalence-relation proof in PR #74, and the
+partial-order cycle proof in PR #77.
 
 The failure is in WLOG citation remapping in the informational ZFC fixture.
 The equality-case replay rule is implemented, but replaying `x = a` as
