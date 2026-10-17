@@ -392,7 +392,7 @@ def try_parse_int_formula(text: str, bound_vars):
 
 NUMBER_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="number theory",
-    nested_formula_parsers=[try_parse_int_formula],
+    nested_formula_parsers=[nt.try_parse_nat_formula, try_parse_int_formula],
     term_parsers=[try_parse_int_term],
     rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()] + list(nt.NAT_TYPE.schema_rules),
     axioms=list(INT_AXIOMS) + list(nt.NAT_AXIOMS),
