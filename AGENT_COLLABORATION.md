@@ -1,6 +1,6 @@
 # Live Collaboration Handoff
 
-Use the [stable agent guide on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md) for architecture, ownership, testing, and context-loading rules. This branch is deliberately unmerged and contains only current coordination state. Keep it short; detailed rationale belongs in the relevant TODO entry, issue, or PR.
+Use the [proposed compact stable guide in PR #80](https://github.com/axiomtutor/SyLoPy/blob/chatgpt/compact-agent-guidance/AGENT_COLLABORATION.md) for architecture, ownership, testing, and context-loading rules; master still has the older, more verbose version until that PR merges. This branch is deliberately unmerged and contains only current coordination state. Keep it short; detailed rationale belongs in the relevant TODO entry, issue, or PR.
 
 ## Baseline and open work
 
