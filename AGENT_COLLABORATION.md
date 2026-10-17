@@ -5,7 +5,9 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 ## Current baseline and open work
 
 - **Master:** [`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7), after PRs #72–#74 merged.
-- **Active follow-up:** [PR #76](https://github.com/axiomtutor/SyLoPy/pull/76) refreshes README/TODO status. Its integrated-tree run [#718](https://github.com/axiomtutor/SyLoPy/actions/runs/39051263948) reported 1,220 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81; informational fixtures 62/63.
+- **Active PRs:**
+  - [#76](https://github.com/axiomtutor/SyLoPy/pull/76) refreshes README/TODO status and records the WLOG failure cause. Integrated-tree workflow [#720](https://github.com/axiomtutor/SyLoPy/actions/runs/39051347643): 1,220 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 62/63. Only failure is the known informational ZFC/WLOG fixture.
+  - [#77](https://github.com/axiomtutor/SyLoPy/pull/77) adds a worked partial-order cycle proof. CI result not yet available.
 - **Merged work:** [PR #72](https://github.com/axiomtutor/SyLoPy/pull/72) refreshed status after #70/#71; [PR #73](https://github.com/axiomtutor/SyLoPy/pull/73) added a surface uniqueness regression; [PR #74](https://github.com/axiomtutor/SyLoPy/pull/74) added an equivalence-relation proof.
 - **Known WLOG failure:** tracked in [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). In `zfc_remaining_axioms.txt` line 5.2.4, replaying `x=a` as `x=b` substitutes `a -> b` into external line 3, changing its pair characterization `(u=a or u=b)` to `(u=b or u=b)`. That stronger property is not established for the existing set Y. Preserve the original outer citation when it still justifies the transformed line; use a substituted counterpart when a cited fact genuinely needs substitution. The replay implementation is in Claude-owned `source/ProofLogic.py`; coordinate before editing it.
 - **Deferred work:** `Mutatis mutandis` and named ZFC axiom-citation rules remain deferred pending explicit owner approval.
