@@ -90,7 +90,7 @@ def try_parse_nat_formula(text: str, bound_vars):
     number-theory environment.
     """
     normalized = " ".join(text.strip().rstrip(".").split())
-    match = re.fullmatch(r"(.+?)\\s+is\\s+a\\s+natural\\s+number", normalized, flags=re.I)
+    match = re.fullmatch(r"(.+?)\s+is\s+a\s+natural\s+number", normalized, flags=re.I)
     if match is None:
         return None
 
