@@ -372,11 +372,12 @@ implementing the rules without an explicit go-ahead.
       "x is a or b" is read greedily; parenthesize to end the phrase. A
       natural-language existential after `and`/`or` takes the rest of the
       formula (up to a `then`), while a symbolic `exists x, BODY` there still
-      stops at the next connective, as before. Existentials accept one-word
-      kinds only ("an integer n"); "a natural number n" is refused with the
-      list of supported forms, since no phrase for it exists yet. Found but
-      deliberately left alone: declaration descriptors swallow a following
-      " a ..." (`Let X be any set, a in X` gives X a garbage `type_name`), and
+      stops at the next connective, as before. Existentials support multi-word kinds when the active theory
+      environment defines the corresponding predicate phrase (e.g. "a natural
+      number n" through Number Theory); unsupported phrases fail with guidance
+      to state the condition explicitly. Found but deliberately left alone:
+      declaration descriptors swallow a following " a ..." (`Let X be any set,
+      a in X` gives X a garbage `type_name`), and
       the `type_name` wording differs between declaration paths.
 
 - [x] Bounded quantifiers (ChatGPT, PR #4). Found by checking the nine

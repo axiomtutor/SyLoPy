@@ -13,6 +13,18 @@ surface: N IS AN INTEGER
 expect: Int(N)
 why: The predicate phrase is recognized without making the object symbol's spelling case-insensitive.
 
+id: nt-natural-number-predicate
+context: line
+surface: n is a natural number
+expect: Nat(n)
+why: The natural-number phrase elaborates to the unary predicate Nat.
+
+id: nt-natural-number-predicate-nested
+context: nested
+surface: if N IS A NATURAL NUMBER then P
+expect: Nat(N) -> P
+why: The natural-number predicate remains available inside a larger formula with case-insensitive wording.
+
 id: nt-quotient-term-in-integer
 context: line
 surface: n/a is an integer
