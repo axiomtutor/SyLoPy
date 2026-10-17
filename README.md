@@ -12,8 +12,8 @@ It should soon develop features for more mathematical subjects.
 
 Master is currently
 [`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7).
-The latest integrated-tree test report is GitHub Actions
-[run #718](https://github.com/axiomtutor/SyLoPy/actions/runs/39051263948),
+An integrated-tree test report is GitHub Actions
+[run #720](https://github.com/axiomtutor/SyLoPy/actions/runs/39051347643),
 from PR #76's merge ref (current master plus documentation-only edits):
 
 - 1,220 Python tests passed, 1 failed, 1 xfailed.
