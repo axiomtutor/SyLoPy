@@ -1337,14 +1337,77 @@ class PairingAxiomRule(pl.InferenceRule):
 
 
 
+def _split_defined_set(phi: fl.Formula) -> Optional[Tuple[Optional[str], str, str, fl.Formula]]:
+    """Split ``[forall x,] exists y, forall u, (u in y <-> R)`` into
+    ``(x, y, u, R)``, or return `None` if `phi` is not of that shape.
+
+    `x` is the variable the leading ``forall`` binds, and `None` when there is
+    no leading ``forall`` -- the form of an axiom already instantiated at a set
+    of the proof. Union and Power Set both define the new set `y` by what `u`
+    must satisfy to belong to it, and differ only in `R`.
+    """
+    parameter = None
+    if isinstance(phi, fl.ForAll):
+        parameter, phi = phi.var, phi.body
+    if not isinstance(phi, fl.Exists) or not isinstance(phi.body, fl.ForAll):
+        return None
+    y_name, u_name = phi.var, phi.body.var
+    iff = phi.body.body
+    if not isinstance(iff, fl.Iff):
+        return None
+    parts = _membership_parts(iff.left)
+    if parts is None or not (pl._ast_eq(parts[0], tl.VariableTerm(u_name))
+                             and pl._ast_eq(parts[1], tl.VariableTerm(y_name))):
+        return None
+    return parameter, y_name, u_name, iff.right
+
+
+def _is_the_axioms_set(parameter: Optional[str], binders: List[str], term: tl.Term) -> bool:
+    """Is `term` the set a Union or Power Set formula is about, with `binders`
+    (the names its quantifiers bind, apart from the leading ``forall x``)?
+
+    The names bound anywhere in the formula must all differ. In the axiom in
+    full the set is the variable `parameter`, the leading ``forall`` binds. In
+    an instance there is no such variable and the set is any term, provided no
+    binder captures it: a free `y`, `u` or the like in the term would make the
+    formula say something else (see the two rules' docstrings). A constant is
+    never captured, whatever it is called.
+    """
+    names = ([parameter] if parameter is not None else []) + binders
+    if len(set(names)) != len(names):
+        return False
+    if parameter is not None:
+        return pl._ast_eq(term, tl.VariableTerm(parameter))
+    return not (fl.term_free_variables(term) & set(binders))
+
+
 class UnionAxiomRule(pl.InferenceRule):
     """Axiom of union: for any X, there is a set Y = union(X) whose members
     are exactly those objects that belong to some member of X.
-    
-    This is a zero-premise rule, cited as "(Axiom of union)".
-    
-    `phi` must have the exact shape:
+
+    This is a zero-premise rule, cited as "(Axiom of union)". Like
+    `PairingAxiomRule` and `SeparationSchemaRule` it checks the shape of the
+    formula its line states and introduces nothing; naming the set it
+    provides is `Let Y be such a set. (Existence from L)`.
+
+    `phi` has one of two shapes::
+
         forall X, exists Y, forall u, (u in Y <-> exists v, (v in X and u in v))
+        exists Y, forall u, (u in Y <-> exists v, (v in S and u in v))
+
+    The first is the axiom in full. The second is the axiom already
+    instantiated at a set S of the proof, which is how a proof usually cites
+    it::
+
+        1. Let A be any set. (Declaration)
+        2. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, A) and In(u, v)))).
+           (Axiom of union)
+
+    The bound variables may have any names, but the names must all differ.
+    In the second form S is any term the binders do not capture, so it has no
+    free `Y`, `u` or `v`. That is what keeps the instance an instance: with
+    S := u it would say that the objects u with some v in u and u in v form a
+    set, a comprehension with no bounding set that the axiom does not give.
     """
     name = "UnionAxiom"
     premise_arity = 0
@@ -1352,70 +1415,58 @@ class UnionAxiomRule(pl.InferenceRule):
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
-        
-        if not isinstance(phi, fl.ForAll):
+        split = _split_defined_set(phi)
+        if split is None:
             return False
-        X_name = phi.var
-        inner1 = phi.body
-        
-        if not isinstance(inner1, fl.Exists):
+        parameter, y_name, u_name, members = split
+
+        # R is `exists v, (v in S and u in v)`.
+        if not isinstance(members, fl.Exists):
             return False
-        Y_name = inner1.var
-        if Y_name == X_name:
+        v_name, body = members.var, members.body
+        if not (isinstance(body, fl.And) and len(body.conjuncts) == 2):
             return False
-        inner2 = inner1.body
-        
-        if not isinstance(inner2, fl.ForAll):
+        v_in_set = _membership_parts(body.conjuncts[0])
+        u_in_v = _membership_parts(body.conjuncts[1])
+        if v_in_set is None or u_in_v is None:
             return False
-        u_name = inner2.var
-        if u_name in (X_name, Y_name):
+        V, U = tl.VariableTerm(v_name), tl.VariableTerm(u_name)
+        if not (pl._ast_eq(v_in_set[0], V)
+                and pl._ast_eq(u_in_v[0], U) and pl._ast_eq(u_in_v[1], V)):
             return False
-        biconditional = inner2.body
-        
-        if not isinstance(biconditional, fl.Iff):
-            return False
-        membership_u_Y, right = biconditional.left, biconditional.right
-        
-        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
-                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_Y.args) == 2 and
-                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
-            return False
-        
-        if not isinstance(right, fl.Exists):
-            return False
-        v_name = right.var
-        if v_name in (X_name, Y_name, u_name):
-            return False
-        body = right.body
-        
-        if not isinstance(body, fl.And) or len(body.conjuncts) != 2:
-            return False
-        membership_v_X, membership_u_v = body.conjuncts
-        
-        return (isinstance(membership_v_X, fl.AtomicFormula) and
-                membership_v_X.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_v_X.args) == 2 and
-                pl._ast_eq(membership_v_X.args[0], tl.VariableTerm(v_name)) and
-                pl._ast_eq(membership_v_X.args[1], tl.VariableTerm(X_name)) and
-                isinstance(membership_u_v, fl.AtomicFormula) and
-                membership_u_v.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_v.args) == 2 and
-                pl._ast_eq(membership_u_v.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_v.args[1], tl.VariableTerm(v_name)))
+        return _is_the_axioms_set(parameter, [y_name, u_name, v_name], v_in_set[1])
 
 
 class PowerSetAxiomRule(pl.InferenceRule):
     """Axiom of power set: for any X, there is a set Y = P(X) whose members
     are exactly the subsets of X.
-    
-    This is a zero-premise rule, cited as "(Axiom of power set)".
-    
-    `phi` must have the exact shape:
+
+    This is a zero-premise rule, cited as "(Axiom of power set)". Like
+    `PairingAxiomRule` and `SeparationSchemaRule` it checks the shape of the
+    formula its line states and introduces nothing; naming the set it
+    provides is `Let Y be such a set. (Existence from L)`.
+
+    `phi` has one of two shapes::
+
         forall X, exists Y, forall u, (u in Y <-> u subset X)
-    
-    where "u subset X" is the standard subset formula (forall v, (v in u -> v in X)).
+        exists Y, forall u, (u in Y <-> u subset S)
+
+    The first is the axiom in full. The second is the axiom already
+    instantiated at a set S of the proof, which is how a proof usually cites
+    it::
+
+        1. Let A be any set. (Declaration)
+        2. exists Y, forall u, (In(u, Y) iff u subset A). (Axiom of power set)
+
+    "u subset X" is the standard subset formula, `forall w, (w in u -> w in
+    X)`, whether it comes from the `subset` syntax or is written out; `w` may
+    have any name the other binders do not use.
+
+    The bound variables may have any names, but the names must all differ.
+    In the second form S is any term the binders do not capture, so it has no
+    free `Y`, `u` or `w`. That is what keeps the instance an instance: with
+    S := u it would say that every set u is a member of Y, a set of all sets,
+    which the axiom does not give and which Separation refutes.
     """
     name = "PowerSetAxiom"
     premise_arity = 0
@@ -1423,40 +1474,26 @@ class PowerSetAxiomRule(pl.InferenceRule):
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
-        
-        if not isinstance(phi, fl.ForAll):
+        split = _split_defined_set(phi)
+        if split is None:
             return False
-        X_name = phi.var
-        inner1 = phi.body
-        
-        if not isinstance(inner1, fl.Exists):
+        parameter, y_name, u_name, subset_clause = split
+
+        # R is the subset formula `forall w, (w in u -> w in S)`.
+        if not isinstance(subset_clause, fl.ForAll):
             return False
-        Y_name = inner1.var
-        if Y_name == X_name:
+        w_name, implication = subset_clause.var, subset_clause.body
+        if not isinstance(implication, fl.Implies):
             return False
-        inner2 = inner1.body
-        
-        if not isinstance(inner2, fl.ForAll):
+        w_in_u = _membership_parts(implication.antecedent)
+        w_in_set = _membership_parts(implication.consequent)
+        if w_in_u is None or w_in_set is None:
             return False
-        u_name = inner2.var
-        if u_name in (X_name, Y_name):
+        W, U = tl.VariableTerm(w_name), tl.VariableTerm(u_name)
+        if not (pl._ast_eq(w_in_u[0], W) and pl._ast_eq(w_in_u[1], U)
+                and pl._ast_eq(w_in_set[0], W)):
             return False
-        biconditional = inner2.body
-        
-        if not isinstance(biconditional, fl.Iff):
-            return False
-        membership_u_Y, subset_clause = biconditional.left, biconditional.right
-        
-        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
-                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_Y.args) == 2 and
-                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
-            return False
-        
-        u_term = tl.VariableTerm(u_name)
-        X_term = tl.VariableTerm(X_name)
-        return pl._ast_eq(subset_clause, subset_formula(u_term, X_term))
+        return _is_the_axioms_set(parameter, [y_name, u_name, w_name], w_in_set[1])
 
 
 class InfinityAxiomRule(pl.InferenceRule):
