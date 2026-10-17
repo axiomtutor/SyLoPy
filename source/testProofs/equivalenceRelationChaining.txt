@@ -37,3 +37,15 @@ begin subproof
   2.2.2. a = b. (Relation Antisymmetry from 2.1, 2.2.1)
  end subproof
 end subproof
+
+# 3
+## Proof that
+### if R is an equivalence relation on X and a, b, c are in X.
+### if R(a,b) and R(c,b).
+### then R(a,c).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(c, b). (Premise)
+4. R(b, c). (Relation Symmetry from 3)
+5. R(a, c). (Relation Transitivity from 2, 4)
