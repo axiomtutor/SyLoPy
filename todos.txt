@@ -356,7 +356,13 @@ implementing the rules without an explicit go-ahead.
       alias/placeholder table. Partial equality-citation support now also
       accepts a cited disjunct of a membership property's disjunction to
       establish membership (ordinary Disjunction Introduction followed by the
-      biconditional). Still open: general equality substitution while
+      biconditional), and nonmembership to give the negated disjunct. That
+      case runs one way only: membership does not give a disjunct, and a
+      negated disjunct does not give nonmembership. The first version, as
+      merged, accepted those two as well -- from `In(x, Y)` for a pair set it
+      derived `x = a` and `x = b`, so `a = b` was provable for any two sets --
+      and was fixed in `SetPropertyRule._derives` (tests: "runs one way only"
+      in `pytest_tests/test_set_property.py`). Still open: general equality substitution while
       instantiating, and the witness-naming axiom citation (see the first item). Note `PairingAxiomRule`,
       `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` already
       exist in `SetTheory.py` as formula-shape rules; what is not built is
