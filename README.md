@@ -11,20 +11,25 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 Master is currently
-[`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7).
-An integrated-tree test report is GitHub Actions
-[run #720](https://github.com/axiomtutor/SyLoPy/actions/runs/39051347643),
-from PR #76's merge ref (current master plus documentation-only edits):
+[`12dcf99`](https://github.com/axiomtutor/SyLoPy/commit/12dcf99cf28544e09776f78b4deb07186518c0d6).
+The latest status-documentation-tree test run is GitHub Actions
+[run #731](https://github.com/axiomtutor/SyLoPy/actions/runs/39052334390),
+from PR #79's merge ref (master plus documentation-only changes):
 
 - 1,220 Python tests passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 62/63.
+- Informational proof fixtures: 63/64.
 
-The only failure is the known
+PR #78 separately tests the natural-number existential parser changes in
+[run #729](https://github.com/axiomtutor/SyLoPy/actions/runs/39052110870):
+1,223 passed, 1 failed, 1 xfailed, with coverage passed and the same fixture
+counts. The newly added parser regressions pass.
+
+The only failure in both runs is the known
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-The new surface-level uniqueness regression from PR #73 and the added
-equivalence-relation proof from PR #74 both pass in this integrated run.
+The surface uniqueness regression in PR #73, the equivalence-relation proof in
+PR #74, and the partial-order cycle proof in PR #77 pass.
 
 The failure is in WLOG citation remapping in the informational ZFC fixture.
 The equality-case replay rule is implemented, but replaying `x = a` as
