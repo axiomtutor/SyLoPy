@@ -11,36 +11,32 @@ It should soon develop features for more mathematical subjects.
 ## Current status
 
 Master is currently
-[`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7),
-which includes the merged follow-up changes in PRs #72–#74.
+[`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7).
+The latest integrated-tree test report is GitHub Actions
+[run #718](https://github.com/axiomtutor/SyLoPy/actions/runs/39051263948),
+from PR #76's merge ref (current master plus documentation-only edits):
 
-The latest detailed GitHub Actions reports available for those changes were
-run on separate pull-request merge refs before all three PRs had merged:
+- 1,220 Python tests passed, 1 failed, 1 xfailed.
+- Coverage passed.
+- Enforced proof fixtures: 81/81.
+- Informational proof fixtures: 62/63.
 
-- [Run #713, PR #73](https://github.com/axiomtutor/SyLoPy/actions/runs/39039151188):
-  1,220 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81;
-  informational fixtures 61/62. The added end-to-end uniqueness regression passed.
-- [Run #714, PR #74](https://github.com/axiomtutor/SyLoPy/actions/runs/39039332234):
-  1,219 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81;
-  informational fixtures 62/63. The added equivalence-relation proof passed.
-
-Both runs report the same existing failure:
+The only failure is the known
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-These results verify the changes separately; they are **not** a full-suite result
-for the final integrated master tree at `5d519db`. Check
-[GitHub Actions](https://github.com/axiomtutor/SyLoPy/actions) for a run against
-the current master tree.
+The new surface-level uniqueness regression from PR #73 and the added
+equivalence-relation proof from PR #74 both pass in this integrated run.
 
-The known failure is in WLOG citation remapping in the informational ZFC fixture.
-The equality-case replay rule is implemented, but replaying `x = a` as `x = b`
-substitutes `a -> b` into the pair characterization cited on line 3, turning
-`(u = a or u = b)` into `(u = b or u = b)`. That stronger property is not an
-established fact about the existing pair set. Issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75)
-tracks preserving invariant outer citations while still remapping facts that
-genuinely require substitution. `Mutatis mutandis` remains unimplemented.
+The failure is in WLOG citation remapping in the informational ZFC fixture.
+The equality-case replay rule is implemented, but replaying `x = a` as
+`x = b` substitutes `a -> b` into the pair characterization cited on line 3,
+turning `(u = a or u = b)` into `(u = b or u = b)`. That stronger property
+is not an established fact about the existing pair set. Issue
+[#75](https://github.com/axiomtutor/SyLoPy/issues/75) tracks preserving
+invariant outer citations while still remapping facts that genuinely require
+substitution. `Mutatis mutandis` remains unimplemented.
 
 The core parser, elaboration pipeline, and kernel rule set are working as a
-coherent system. Remaining work includes this known informational-fixture
+coherent system. Remaining work includes the known informational-fixture
 failure, maintainability, and feature expansion. See `todos.txt` for the
 detailed task list and the design decisions that constrain unfinished work.
 
