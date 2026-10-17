@@ -322,10 +322,10 @@ implementing the rules without an explicit go-ahead.
       of gap, found in review: the rule once read every string in a
       relation's metadata as a name, property labels included, so it refused
       a sound proof whose constant was merely spelled `reflexive`. Lesson for
-      any rule that generalizes a constant (`WLOG` and `Mutatis mutandis`
-      will probably need a similar view of the proof around them; that
-      design is not written yet): list everything the proof relies on, not
-      only the lines that mention the constant.
+      any rule that generalizes a constant must account for every hypothesis and
+      declaration-structure dependency, not only lines that mention the
+      constant. WLOG replay revalidates its transformed suffix and remaps
+      citations; `Mutatis mutandis` still needs a separate context design.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
@@ -353,8 +353,9 @@ implementing the rules without an explicit go-ahead.
         not already in use; the braces in "a unique set {a, b} that ..." only label the witness;
       - citations written `Rule, 3, 3.2.1` and `Rule, 3.1 to 3.2` (a range
         gives its two endpoints) beside `Rule from 3, 3.2.1`; the names of
-        planned rules (`WLOG`, `Mutatis mutandis`) resolve to named
-        placeholders (`Uniqueness` is now a real rule);
+        rule names are recognized in citations: WLOG is handled by the
+        validator's contextual replay path, while `Mutatis mutandis` remains
+        a placeholder until its separate implementation (`Uniqueness` is real);
       - a fixture's stated conclusion (`### then ...`) is compared with what
         the proof derived up to the names of bound variables
         (`ProofLogic._alpha_eq`).
@@ -670,7 +671,7 @@ What matters now is not "can we get proof checking to work at all?" It is:
 
 ## Collaboration note
 
-This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.
+This WLOG section records the implemented equality-case replay and the boundaries of further work. WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation, and citations are remapped through the replay. The known line-correspondence failure is recorded under Project status / Known issues. Generalization from equality substitutions to arbitrary properties is not implemented. Claude Code or Microsoft Copilot should treat that generalization and `Mutatis mutandis` as deferred work, not infer permission to expand them from this documentation. Coordinate before changing their semantics or overlapping active work; the goal is a precise handoff, not a replacement for normal code review.
 
 ## Soundness audit: variable capture and schema side conditions (2026-10-14)
 
