@@ -2,22 +2,20 @@
 
 ## Project status
 
-The latest detailed full-suite report available here is the verification
-documented for PR #71 at exact commit
-[`3955a39`](https://github.com/axiomtutor/SyLoPy/commit/3955a396197be00676252ee261f2fe34b914f693),
-before its merge into master at
-[`12deb44`](https://github.com/axiomtutor/SyLoPy/commit/12deb44456737faf08c14248e3a27445aad69698).
-That report recorded:
+Master is currently
+[`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7).
+An integrated-tree test report is GitHub Actions
+[run #720](https://github.com/axiomtutor/SyLoPy/actions/runs/39051347643),
+from PR #76's merge ref (current master plus documentation-only edits):
 
-- 1,219 Python tests passed, 1 failed, 1 xfailed.
+- 1,220 Python tests passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixture corpus: 81/81.
-- Informational proof fixtures: 61/62.
+- Informational proof fixtures: 62/63.
 
-These are the PR-head report's figures, not a claim that the post-merge
-master commit was retested. The sole known failure is described below. Treat
-these figures as a snapshot, not a promise that counts remain fixed as tests
-and fixtures are added.
+The added surface-level uniqueness regression from PR #73 and the
+equivalence-relation proof from PR #74 both pass in the integrated run.
+Treat test totals as snapshots, not fixed values.
 
 The current work is no longer about making the basics work. The remaining work
 is about making the system cleaner, easier to extend, and easier to use.
@@ -25,16 +23,21 @@ is about making the system cleaner, easier to extend, and easier to use.
 ## Known issues
 
 - [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
-      remains the sole reported failure in the informational proof corpus.
-      The checked equality-case WLOG replay from PR #63 is implemented; this
-      fixture now reaches line 5.2.4 and fails because replay cannot find a
-      visible counterpart for cited line `3` after substituting the chosen
-      case. Do not mask this with a weaker test or alter the fixture to hide
-      the failure. `Mutatis mutandis` (line 5.3) remains unimplemented and is
-      not reached because validation stops at the WLOG replay failure.
-      The four named ZFC axiom-citation rules remain explicitly deferred until
-      the owner gives the go-ahead; the presence of this fixture is not
-      permission to implement them.
+      remains the sole failure in the latest full-suite report. Equality-case
+      WLOG replay is implemented; the fixture fails at line 5.2.4 because
+      replay cannot find a visible counterpart for cited line `3`. The chosen
+      case `x = a` is replayed as `x = b`, inducing substitution `a -> b`.
+      Applying that substitution to line 3's pair characterization changes
+      `(u = a or u = b)` into `(u = b or u = b)`, which is not an established
+      property of the already-introduced set Y. The original characterization
+      remains sufficient for the replayed membership step; replay must be able
+      to preserve an invariant outer citation where valid, while still
+      remapping citations that genuinely require substitution. Tracked in
+      [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). Do not weaken
+      negative tests or alter the fixture to hide the failure.
+      `Mutatis mutandis` remains unimplemented and is not reached before this
+      WLOG citation-remapping failure. The named ZFC axiom-citation rules
+      remain deferred pending explicit owner approval.
 
 ## Design principles
 
