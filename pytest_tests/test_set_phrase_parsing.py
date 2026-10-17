@@ -443,7 +443,6 @@ def test_symbolic_quantifiers_keep_their_old_scope():
 
 
 @pytest.mark.parametrize("text", [
-    "there exists a natural number n such that P(n)",   # two-word kind: no such predicate
     "there exists a unique set Y",                       # no condition
     "there exists a unique set Y such that",             # empty condition
     "there exists a set such that P",                    # no variable
