@@ -51,8 +51,9 @@ is about making the system cleaner, easier to extend, and easier to use.
       [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). Do not weaken
       negative tests or alter the fixture to hide the failure.
       `Mutatis mutandis` remains unimplemented and is not reached before this
-      WLOG citation-remapping failure. The named ZFC axiom-citation rules
-      remain deferred pending explicit owner approval.
+      WLOG citation-remapping failure. The named ZFC axiom-citation rules take
+      the instance form (section 5); retiring the generic `(Axiom)` citation
+      of the four axioms remains the owner's decision.
 
 ## Design principles
 
@@ -169,7 +170,7 @@ implementing the rules without an explicit go-ahead.
       implicitly (the axiom citation introducing Y, the conditional
       introducing X).
 
-- [ ] Axiom citations as named, shape-checking rules.
+- [x] Axiom citations as named, shape-checking rules.
       Replace the `SET_AXIOMS` formula list plus generic "(Axiom)" citation
       (which requires restating the axiom verbatim) for Pairing, Union, Power
       Set, and Infinity with four named, zero-premise `InferenceRule`
@@ -194,6 +195,36 @@ implementing the rules without an explicit go-ahead.
       `PairingAxiomRule(witness_name=...)` and rule-introduced declarations).
       It stays on master for now but is not the design, and it is not to be
       extended to Union, Power Set or Infinity.
+      Built (owner go-ahead: "Implement the next todo", 2026-10-17). The four
+      rules were already in `SetTheory.py` and cited by name; what was missing
+      was "a specific instance shape". `UnionAxiomRule` and `PowerSetAxiomRule`
+      accepted only the axiom stated in full (`forall X, exists Y, ...`), so a
+      proof had to state the whole axiom and then instantiate it. They now also
+      accept the instance for a set S of the proof, which is what a proof
+      cites -- `exists Y, forall u, (In(u, Y) iff u subset A). (Axiom of power
+      set)` -- as `PairingAxiomRule` already did. Side conditions, with the
+      reasons in the rules' docstrings: the bound names must all differ, and
+      in an instance S must have no free variable that one of the rule's own
+      binders would capture (with S := u the power set instance would say
+      every set is a member of Y; with S := u the union instance would be a
+      comprehension with no bounding set). A constant is never captured,
+      whatever it is called. `PowerSetAxiomRule` also takes any name for the
+      subset clause's variable now, not only the one `u subset X` builds, so
+      `POWER_SET_AXIOM` as the module states it is accepted; each entry of
+      `SET_AXIOMS` is accepted by exactly its own named rule. Infinity has no
+      parameter, so its one shape is its instance. Tests:
+      `pytest_tests/test_axiom_citation_rules.py` (shape near misses, name
+      collisions, capture, citation from proof text, wrong citations rejected
+      at the cited line) and the informational fixture
+      `tests/setTheoryProofs/union_and_power_set_theorems.txt` (six proofs
+      citing Union and Power Set by name, including "Unique union" and
+      "Unique power set" in the shape of "Unique pairing").
+- [ ] Retire the generic `(Axiom)` citation of the four set axioms. This is
+      the "replace" half of the item above and is not done: `SET_AXIOMS` is
+      still the theory's `axioms`, so a proof can still cite one of the four
+      with `(Axiom)` and the axiom restated in full, alongside the named
+      citation. Removing that path would stop it working, so it is the
+      owner's call.
 
 - [x] WLOG equality-case replay as a proof-region rule (PR #63).
 
@@ -261,9 +292,11 @@ implementing the rules without an explicit go-ahead.
       the concluded line must name the same one (tests: "must still name the
       membership element"). Witness naming and the named axiom-citation rules
       are separate items above. Note `PairingAxiomRule`,
-      `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` already
-      exist in `SetTheory.py` as formula-shape rules; what is not built is
-      the form that introduces the named set directly off the citation.
+      `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` exist in
+      `SetTheory.py` as formula-shape rules. A form that introduces the named
+      set directly off the citation is not built, by the owner's decision of
+      2026-10-08 above: naming the set is `Let Y be such a set. (Existence
+      from L)`.
 - [ ] A symbolic defining property for a set with no stated one. Decided:
       every set has a defining property, which `Set property` checks. For a
       set with no stated property (e.g. "Let X be any set"), the property is
