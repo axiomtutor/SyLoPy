@@ -690,7 +690,12 @@ What matters now is not "can we get proof checking to work at all?" It is:
 
 ## Collaboration note
 
-This WLOG section records the implemented equality-case replay and the boundaries of further work. WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation, and citations are remapped through the replay. The known line-correspondence failure is recorded under Project status / Known issues. Generalization from equality substitutions to arbitrary properties is not implemented. Claude Code or Microsoft Copilot should treat that generalization and `Mutatis mutandis` as deferred work, not infer permission to expand them from this documentation. Coordinate before changing their semantics or overlapping active work; the goal is a precise handoff, not a replacement for normal code review.
+Agent workflow and ownership rules live in
+[`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md). Equality-case WLOG replay
+is implemented (PR #63); its outstanding citation-remapping bug is tracked in
+[issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). Arbitrary-property
+WLOG and `Mutatis mutandis` remain deferred; this note is not authorization
+to expand either feature.
 
 ## Soundness audit: variable capture and schema side conditions (2026-10-14)
 
