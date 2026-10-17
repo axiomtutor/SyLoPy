@@ -1,4 +1,4 @@
-"""Focused regression checks for the six worked theory proofs.
+"""Focused regression checks for the worked theory proof examples.
 
 The fixture corpus already checks these files as a group; keeping this small
 focused test gives direct failure messages when one worked proof stops
@@ -9,6 +9,7 @@ from SyLoPy.source import validate_all_proofs as fixture_validator
 
 
 TEXTBOOK_PROOFS = (
+    "source/testProofs/equivalenceRelationChaining.txt",
     "tests/testProofsNat/successor_has_no_fixed_points.txt",
     "tests/testSetTheory/membership-equivalence-implies-set-equality.txt",
     "tests/testSetTheory/separation-produces-subset.txt",
