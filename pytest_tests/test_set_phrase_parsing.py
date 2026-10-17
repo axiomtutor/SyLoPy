@@ -364,9 +364,15 @@ def test_malformed_bounded_quantifiers_are_refused(text):
     ("there exists a set Y such that Y = {a, b}", "exists Y, forall u, (In(u, Y) iff (u = a or u = b))"),
     ("there exists x such that there exists y such that R(x, y)", "exists x, exists y, R(x, y)"),
     ("there exists an integer n such that P(n)", "exists n, (Int(n) and P(n))"),
+    ("there exists a natural number n such that P(n)", "exists n, (Nat(n) and P(n))"),
 ])
 def test_existential_phrases_desugar_to_ordinary_quantifiers(text, plain):
     reads_as(text, plain)
+
+
+def test_unknown_multiword_existential_kind_is_rejected_with_guidance():
+    with pytest.raises(ValueError, match="no imported theory defines the condition"):
+        surface("there exists a mythical creature x such that P(x)")
 
 
 def test_the_word_set_adds_no_condition():
