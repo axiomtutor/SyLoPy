@@ -2,21 +2,22 @@
 
 ## Project status
 
-The latest recorded full run on `master` is
-[GitHub Actions run #643](https://github.com/axiomtutor/SyLoPy/actions/runs/38656453820),
-at commit [`87fab58`](https://github.com/axiomtutor/SyLoPy/commit/87fab582399f0824bb7b0dbcc0d75b430ae2a679),
-on 2026-10-14 (timestamps are in UTC). The canonical `./run_tests.sh`
-run reported:
+The latest detailed full-suite report available here is the verification
+documented for PR #71 at exact commit
+[`3955a39`](https://github.com/axiomtutor/SyLoPy/commit/3955a396197be00676252ee261f2fe34b914f693),
+before its merge into master at
+[`12deb44`](https://github.com/axiomtutor/SyLoPy/commit/12deb44456737faf08c14248e3a27445aad69698).
+That report recorded:
 
-- 1,117 Python tests: 1,104 passed, 12 xfailed, and 1 known failure (see "Known issues" below).
-  This includes the 159-case parser oracle in `parse_oracle/`.
+- 1,219 Python tests passed, 1 failed, 1 xfailed.
 - Coverage passed.
-- Enforced proof fixture corpus: 80/80 passed.
-- Informational proof fixtures: 58/59 passed; the remaining proof is blocked
-  on the deferred WLOG / Mutatis mutandis implementation.
+- Enforced proof fixture corpus: 81/81.
+- Informational proof fixtures: 61/62.
 
-These figures are a snapshot of that run, not a promise that counts will stay
-fixed as tests and fixtures are added.
+These are the PR-head report's figures, not a claim that the post-merge
+master commit was retested. The sole known failure is described below. Treat
+these figures as a snapshot, not a promise that counts remain fixed as tests
+and fixtures are added.
 
 The current work is no longer about making the basics work. The remaining work
 is about making the system cleaner, easier to extend, and easier to use.
@@ -24,25 +25,16 @@ is about making the system cleaner, easier to extend, and easier to use.
 ## Known issues
 
 - [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
-      is out of sync with its fixture, `tests/setTheoryProofs/zfc_remaining_axioms.txt`.
-      The fixture used to hold six short demonstration proofs, one per ZFC
-      axiom; it has since been rewritten -- axioms are now declared, not
-      proved, plus one worked "Unique pairing" proof that cites them -- as
-      part of designing the axiom-citation rules below, and the test still
-      expects the old shape. The fixture now parses in full (header, every
-      line, every citation). It introduces its two sets explicitly (`Let Y be
-      such a set. (Existence from 2)` and `Let X be any set. (Declaration)`,
-      the same way pairing proof 5 does) and now fails only at validation, at
-      line 5.2.3, because `WLOG` is not a registered rule. `Mutatis mutandis`
-      (line 5.3) is the other rule it needs that doesn't exist yet.
-      `Uniqueness` (line 6) now exists; the proof stops at its first missing
-      rule, so line 6 is not reached here. Its last step was checked by
-      replacing `WLOG` and `Mutatis mutandis` with stand-ins, and the same
-      proof written without either is the enforced fixture
-      `tests/testSetTheory/unique_pairing_without_wlog.txt`. Update the test
-      once "ZFC axiom citations and derived rules" (below) lands -- not
-      before; the fixture is deliberately ahead of the implementation right
-      now.
+      remains the sole reported failure in the informational proof corpus.
+      The checked equality-case WLOG replay from PR #63 is implemented; this
+      fixture now reaches line 5.2.4 and fails because replay cannot find a
+      visible counterpart for cited line `3` after substituting the chosen
+      case. Do not mask this with a weaker test or alter the fixture to hide
+      the failure. `Mutatis mutandis` (line 5.3) remains unimplemented and is
+      not reached because validation stops at the WLOG replay failure.
+      The four named ZFC axiom-citation rules remain explicitly deferred until
+      the owner gives the go-ahead; the presence of this fixture is not
+      permission to implement them.
 
 ## Design principles
 
