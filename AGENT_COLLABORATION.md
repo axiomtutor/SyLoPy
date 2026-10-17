@@ -4,11 +4,9 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 
 ## Current baseline and open work
 
-- **Master:** [`5d519db`](https://github.com/axiomtutor/SyLoPy/commit/5d519db3a2d30ea50a24467c751bdddb8fbf8dc7), after PRs #72–#74 merged.
-- **Active PRs:**
-  - [#76](https://github.com/axiomtutor/SyLoPy/pull/76) refreshes README/TODO status and records the WLOG failure cause. Integrated-tree workflow [#724](https://github.com/axiomtutor/SyLoPy/actions/runs/39051513753): 1,220 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 62/63. Only failure is the known informational ZFC/WLOG fixture.
-  - [#77](https://github.com/axiomtutor/SyLoPy/pull/77) adds a worked partial-order cycle proof. Workflow [#722](https://github.com/axiomtutor/SyLoPy/actions/runs/39051441796): 1,220 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 63/64. The new proof passes.
-- **Merged work:** [PR #72](https://github.com/axiomtutor/SyLoPy/pull/72) refreshed status after #70/#71; [PR #73](https://github.com/axiomtutor/SyLoPy/pull/73) added a surface uniqueness regression; [PR #74](https://github.com/axiomtutor/SyLoPy/pull/74) added an equivalence-relation proof.
+- **Master:** [`12dcf99`](https://github.com/axiomtutor/SyLoPy/commit/12dcf99cf28544e09776f78b4deb07186518c0d6), after PRs #72–#77 merged.
+- **Open PR:** [#78](https://github.com/axiomtutor/SyLoPy/pull/78) extends natural-language existential syntax to multi-word kinds that have a predicate phrase in the active theory. It adds `n is a natural number` → `Nat(n)`, existential/direct/nested parser regressions and oracle cases, and updates the TODO note. It avoids the kernel files. Latest workflow [#729](https://github.com/axiomtutor/SyLoPy/actions/runs/39052110870): 1,223 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81; informational fixtures 63/64. The new parser tests pass; the only failure remains the existing WLOG/ZFC fixture below.
+- **Merged work:** [PR #72](https://github.com/axiomtutor/SyLoPy/pull/72) refreshed status after #70/#71; [PR #73](https://github.com/axiomtutor/SyLoPy/pull/73) added a surface uniqueness regression; [PR #74](https://github.com/axiomtutor/SyLoPy/pull/74) added an equivalence-relation proof; [PR #77](https://github.com/axiomtutor/SyLoPy/pull/77) added a partial-order cycle proof; [PR #76](https://github.com/axiomtutor/SyLoPy/pull/76) refreshed README/TODO status and documented the WLOG failure.
 - **Known WLOG failure:** tracked in [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). In `zfc_remaining_axioms.txt` line 5.2.4, replaying `x=a` as `x=b` substitutes `a -> b` into external line 3, changing its pair characterization `(u=a or u=b)` to `(u=b or u=b)`. That stronger property is not established for the existing set Y. Preserve the original outer citation when it still justifies the transformed line; use a substituted counterpart when a cited fact genuinely needs substitution. The replay implementation is in Claude-owned `source/ProofLogic.py`; coordinate before editing it.
 - **Deferred work:** `Mutatis mutandis` and named ZFC axiom-citation rules remain deferred pending explicit owner approval.
 - **Coordination branch:** `chatgpt-agent-guidance` remains deliberately unmerged. Preserve it and update this handoff in place.
@@ -21,8 +19,8 @@ This is the live coordination record for the owner, Claude, ChatGPT, and Copilot
 - Relation atoms are carrier-restricted. Symmetry, antisymmetry, asymmetry, and transitivity act on relation premises; rules deriving relation atoms from membership (reflexivity, irreflexivity, totality) enforce the declared carrier.
 - `Let Y be such a set. (Existence from L)` names a scoped existential witness. The axiom/premise alone does not introduce a named witness.
 - Quotient uniqueness requires `not (a = Zero)`; PR #45 implements the guard.
-- For issue #69, the owner chose option A: accept equality in either orientation in the existing Set property behavior, without adding a separate substitution form. PRs #70/#71 are the active work for this area; do not duplicate or broaden them.
-- The checked WLOG equality-case replay implementation landed in PR #63. Do not describe WLOG as wholly unimplemented; the ZFC informational fixture still has the replay line-correspondence failure reported above. Any further WLOG or Mutatis mutandis changes require coordination and must not mask that failure.
+- For issue #69, the owner chose option A: accept equality in either orientation in the existing Set property behavior, without adding a separate substitution form. PRs #70/#71 delivered that work.
+- The checked WLOG equality-case replay implementation landed in PR #63. Do not describe WLOG as wholly unimplemented; the ZFC informational fixture still has the citation-remapping failure reported above. Any further WLOG or `Mutatis mutandis` changes require coordination and must not mask that failure.
 
 ## Architecture and ownership
 
