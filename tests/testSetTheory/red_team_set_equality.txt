@@ -1,0 +1,35 @@
+# 1: Set equality needs both inclusion directions
+## Invalid: the two subset facts must point in opposite directions — repeating A subset B supplies no proof that B is a subset of A
+### then A = B.
+
+1. Let A, B be any set. (Declaration)
+2. A subseteq B. (Premise)
+3. A subseteq B. (Premise)
+4. A = B. (Set equality from 2, 3)
+
+# 2: Set equality cannot mix different pairs of sets
+## Invalid: the inclusions must concern the same two sets in opposite directions — A subset B and B subset C do not establish A = C
+### then A = C.
+
+1. Let A, B, C be any set. (Declaration)
+2. A subseteq B. (Premise)
+3. B subseteq C. (Premise)
+4. A = C. (Set equality from 2, 3)
+
+# 3: The conclusion must name the two included sets
+## Invalid: the conclusion must equate exactly the two sets in the cited inclusions — the cited inclusions are about A and B, not A and C
+### then A = C.
+
+1. Let A, B, C be any set. (Declaration)
+2. A subseteq B. (Premise)
+3. B subseteq A. (Premise)
+4. A = C. (Set equality from 2, 3)
+
+# 4: Mutual inclusion justifies equality in either orientation
+## Proof that
+### then B = A.
+
+1. Let A, B be any set. (Declaration)
+2. A subseteq B. (Premise)
+3. B subseteq A. (Premise)
+4. B = A. (Set equality from 2, 3)
