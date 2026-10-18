@@ -1,0 +1,58 @@
+# 1: Set property cannot use a one-way characterization
+## Invalid: the membership characterization must be a biconditional, not a one-way conditional — implication alone does not characterize both directions
+### then x = a or x = b.
+
+1. Let a, b, x, Y be any set. (Declaration)
+2. forall u, (In(u, Y) -> (u = a or u = b)). (Premise)
+3. In(x, Y). (Premise)
+4. x = a or x = b. (Set property from 2, 3)
+
+# 2: The membership instance must concern the characterized set
+## Invalid: the membership instance must refer to the set named by its characterization — a property for Y does not characterize another set Z
+### then x = a or x = b.
+
+1. Let a, b, x, Y, Z be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. In(x, Z). (Premise)
+4. x = a or x = b. (Set property from 2, 3)
+
+# 3: The instance property must use the same element
+## Invalid: the property instance must use the same element as the membership atom — the cited membership is about x, not y
+### then y = a or y = b.
+
+1. Let a, b, x, y, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. In(x, Y). (Premise)
+4. y = a or y = b. (Set property from 2, 3)
+
+# 4: Membership does not identify a particular disjunct
+## Invalid: membership alone does not identify one disjunct of a disjunctive property — either generator may be the member
+### then x = a.
+
+1. Let a, b, x, Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+3. In(x, Y). (Premise)
+4. x = a. (Set property from 2, 3)
+
+# 5: A citation from a closed subproof is out of scope
+## Invalid: not defined or not in scope — the defining property was cited only inside a closed subproof
+### then x = a or x = b.
+
+1. Let a, b, x, Y be any set. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+  2.1. P. (Assumption for Conditional Introduction)
+  2.2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+  2.3. P. (Reiteration from 2.1)
+end subproof
+3. In(x, Y). (Premise)
+4. x = a or x = b. (Set property from 2.2, 3)
+
+# 6: Reversed equality in a disjunct is supported
+## Proof that
+### then In(x, Y).
+
+1. Let a, b, x, Y be any set. (Declaration)
+2. forall u, ((u = a or u = b) iff In(u, Y)). (Premise)
+3. a = x. (Premise)
+4. In(x, Y). (Set property from 2, 3)
