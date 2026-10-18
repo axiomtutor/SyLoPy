@@ -12,10 +12,10 @@ work and design constraints.
 
 ## Current status
 
-Equality-case WLOG replay is implemented, but one informational ZFC proof still
-fails because replay substitutes into an invariant outer citation. Issue
-[#75](https://github.com/axiomtutor/SyLoPy/issues/75) tracks the bounded fix.
-Do not weaken tests or change the fixture to hide the failure.
+Equality-case WLOG replay is implemented. One informational ZFC proof,
+`tests/setTheoryProofs/zfc_remaining_axioms.txt`, still fails because it uses
+`Mutatis mutandis`, which is deferred pending owner approval. Do not weaken
+tests or change the fixture to hide the failure.
 
 The [development TODO](todos.txt) is the source of truth for the latest
 reported test/fixture counts, remaining issues, and open design decisions.
@@ -76,9 +76,8 @@ Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
 Set theory is the active frontier. Named axiom-citation rules for Pairing,
 Union, Power Set, and Infinity are implemented, including the Union and Power
-Set instance forms. The remaining informational ZFC fixture failure is the
-WLOG citation-remapping bug tracked in issue #75. Arbitrary-property WLOG and
-`Mutatis mutandis` remain deferred.
+Set instance forms. The remaining informational ZFC fixture failure comes from its
+`Mutatis mutandis` line. That rule and arbitrary-property WLOG remain deferred.
 
 ### Number theory
 
@@ -162,8 +161,7 @@ make it easier to extend and maintain.
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
      elaboration hacks.
-   - Fix the outstanding equality-case WLOG citation-remapping defect (issue #75)
-     and extend proofs within the agreed scope. Named axiom-citation rules are
+   - Extend proofs within the agreed scope. Named axiom-citation rules are
      implemented; `Mutatis mutandis` remains deferred pending owner approval.
 
 3. Continue proof-corpus growth.

@@ -15,7 +15,8 @@ The main parser/elaboration/kernel pipeline, set theory, natural-number reasonin
 
 ## Known issues
 
-- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` remains the sole reported failure (issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75)). During equality-case WLOG replay, the substitution `a -> b` incorrectly transforms line 3's invariant pair characterization, so its citation no longer has a visible counterpart. Preserve the original visible citation when it remains valid, remapping only when substitution is necessary. Do not weaken negative tests or alter the fixture. Coordinate with Claude before touching Claude-owned `source/ProofLogic.py`. `Mutatis mutandis` remains unimplemented and deferred.
+- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` remains the sole reported failure. It was reported as issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75): equality-case WLOG replay substituted into an invariant outer citation. That defect is fixed (see the WLOG entry below) and the proof now passes line 5.2.4. It still fails at line 5.3, which uses `Mutatis mutandis`; that rule is unimplemented and deferred pending owner approval, so the test stays red. Do not weaken the test, alter the fixture or mask the failure.
+- [ ] WLOG replay does not transform the case subproofs of a `Proof by Cases ... (subproofs below)` line inside the region: they are replayed as written, while case blocks written as standalone subproofs for `Disjunction Elimination` are transformed. A valid proof is then refused when a case line depends on the chosen case. For example, with `P(a)` and `P(b)` as lines 8 and 9, `x = a` from WLOG as line 13, and the case line `P(x). (Substitution from 13, 8)`, the replay for `x = b` still reads line 13 as `x = b` and line 8 as `P(a)`, and `Substitution` refuses at the case line. It is a wrong refusal, not an unsound acceptance, because every replayed line is still checked. The same reasoning with standalone case blocks is accepted. Found while testing the #75 fix; present before it. The fix is to transform each entry of each case block (`_transform_wlog_entry`, Claude-owned `source/ProofLogic.py`), within the approved equality-case scope.
 
 ## Design principles
 
@@ -203,22 +204,49 @@ any explicit owner-approval gate on the remaining work.
       entries through the normal rule checks. Region-local citations point to
       replayed counterparts; citations outside the region are remapped to the
       earliest already-visible line whose formula matches the transformed
-      citation. Future lines and closed sibling scopes are not eligible, and
-      replay fails if no visible counterpart exists.
+      citation. Future lines and closed sibling scopes are not eligible.
+      When there is no visible counterpart, the original citation is kept if
+      exchanging the two case constants leaves the cited line unchanged (up
+      to the order of `and` and `or`); otherwise replay fails.
 
       Tests include two and three disjuncts, successful and rejected cases,
       citation remapping, absent counterparts, declaration/metadata
       substitution, nested subproofs, prevention of future-line and
       cross-sibling references, and preservation of the original proof.
-      The outstanding citation-remapping failure is tracked in
-      [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) and remains
-      the sole reported failure. Do not mask it; see "Known issues" above.
+
+      Invariant outer citations ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75);
+      Claude, branch `claude/wlog-symmetric-citations`). The first version
+      looked for a counterpart of every outside citation and failed when there
+      was none. That refused the usual proof: after `x = a`, a line such as the
+      pair characterization `forall u, (In(u, Y) iff (u = a or u = b))` is
+      cited, and the replay for `x = b` needs that line itself, not one that
+      says `u = b or u = b`. A cited outside line with no counterpart is now
+      kept if exchanging the two case constants leaves it unchanged. The
+      exchange swaps both at once, so `a -> b` and `b -> a` do not chain. A
+      line that favours one case (`P(a)`, `P(a) and R(b)`, `P(a) and P(c)`)
+      still needs its counterpart, and a kept line is still judged by the rule
+      that cites it. A counterpart is always preferred, so a replay that was
+      accepted before is unchanged; the new path only applies where replay
+      used to fail. The same decision is made inside the region's subproofs.
+      Soundness rests on the ordinary check of each replayed line, not on the
+      transformation; the exchange test keeps WLOG meaning that the same
+      argument serves for the other case, and the earlier negative test
+      (`P(x)` with no `P(y)`) still refuses. Tests:
+      `pytest_tests/test_wlog_symmetric_citations.py` (14) and the enforced
+      fixture `tests/testSetTheory/unique_pairing_with_wlog.txt`, unique
+      pairing with WLOG in both inclusions (the informational
+      `tests/setTheoryProofs/zfc_remaining_axioms.txt` uses `Mutatis mutandis`
+      for the second). 16 deliberate changes to the new code were each caught
+      by a test. The informational proof now passes line 5.2.4 and fails at
+      line 5.3, on the deferred `Mutatis mutandis`; see "Known issues" above.
 
       Limitations: arbitrary-property transformations are not implemented;
-      equality cases are the supported form. `Mutatis mutandis` is a separate,
-      larger, deferred rule and is not part of WLOG. Additional changes to
-      either feature require coordination; this status note does not authorize
-      expansion beyond the implemented equality-case replay.
+      equality cases are the supported form. A `Proof by Cases ... (subproofs
+      below)` line in the region is not transformed (see "Known issues").
+      `Mutatis mutandis` is a separate, larger, deferred rule and is not part
+      of WLOG. Additional changes to either feature require coordination; this
+      status note does not authorize expansion beyond the implemented
+      equality-case replay.
 
 - [x] General `Set property` -- `SetPropertyRule`, cited as
       `Set property from N, M` or `Set property, N, M` (bare `Set property`
@@ -684,8 +712,9 @@ What matters now is not "can we get proof checking to work at all?" It is:
 
 Agent workflow and ownership rules live in
 [`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md). Equality-case WLOG replay
-is implemented (PR #63); its outstanding citation-remapping bug is tracked in
-[issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). Arbitrary-property
+is implemented (PR #63); the citation-remapping defect in
+[issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is fixed, and the
+informational ZFC proof now stops at its `Mutatis mutandis` line. Arbitrary-property
 WLOG and `Mutatis mutandis` remain deferred; this note is not authorization
 to expand either feature.
 
