@@ -1,0 +1,47 @@
+# 1: Replacement needs a functionality hypothesis
+## Invalid: the functionality hypothesis must have the form In(x, A) -> exists y — the implication needs an image for every member of A
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)).
+
+1. Let A be any set. (Declaration)
+2. (forall x, In(x, A)) -> exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)). (Replacement)
+
+# 2: Replacement's uniqueness clause must use the defining relation
+## Invalid: the uniqueness clause must use B(x, z), obtained by substituting z for y in B(x, y) — a different antecedent is not the required functionality condition
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)).
+
+1. Let A be any set. (Declaration)
+2. (forall x, (In(x, A) -> exists y, (y = x and forall z, (In(z, A) -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)). (Replacement)
+
+# 3: Replacement must reuse the same bounding set
+## Invalid: the same bounding set A must appear in both halves of Replacement — the image definition cannot range over a different source set
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, B) and y = x)).
+
+1. Let A, B be any set. (Declaration)
+2. (forall x, (In(x, A) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, B) and y = x)). (Replacement)
+
+# 4: Replacement's bounding set cannot depend on x
+## Invalid: the bounding set A must not mention x — the source must be one fixed set
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, x) and y = x)).
+
+1. (forall x, (In(x, x) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, x) and y = x)). (Replacement)
+
+# 5: Replacement must use distinct x and y binders
+## Invalid: the variables x and y must be distinct — the image witness cannot reuse the input binder
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, A) and x = x)).
+
+1. Let A be any set. (Declaration)
+2. (forall x, (In(x, A) -> exists x, (x = x and forall z, (z = x -> z = x)))) -> exists C, forall x, (In(x, C) iff exists x, (In(x, A) and x = x)). (Replacement)
+
+# 6: Replacement must reuse y in the consequent
+## Invalid: the consequent must reuse the antecedent's y variable — the membership characterization has to use the same image variable
+### then exists C, forall w, (In(w, C) iff exists x, (In(x, A) and w = x)).
+
+1. Let A be any set. (Declaration)
+2. (forall x, (In(x, A) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall w, (In(w, C) iff exists x, (In(x, A) and w = x)). (Replacement)
+
+# 7: The trivial identity relation is a valid replacement instance
+## Proof that
+### then exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)).
+
+1. Let A be any set. (Declaration)
+2. (forall x, (In(x, A) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)). (Replacement)
