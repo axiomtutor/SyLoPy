@@ -12,22 +12,13 @@ work and design constraints.
 
 ## Current status
 
-The latest recorded full-suite verification is the fresh-clone run reported in
-[PR #81](https://github.com/axiomtutor/SyLoPy/pull/81), on Python 3.12 and
-3.13:
+Equality-case WLOG replay is implemented, but one informational ZFC proof still
+fails because replay substitutes into an invariant outer citation. Issue
+[#75](https://github.com/axiomtutor/SyLoPy/issues/75) tracks the bounded fix.
+Do not weaken tests or change the fixture to hide the failure.
 
-- 1,425 Python tests passed, 1 failed, 1 xfailed.
-- Coverage passed.
-- Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 69/70.
-
-These are reported results for the PR branch, not a separately verified green
-status check on the merge commit. The sole reported failure is
-`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
-([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)): equality-case
-WLOG replay remaps an invariant pair-set characterization as though it needed
-the chosen-case substitution. Preserve the original citation when it remains
-valid; do not weaken tests or alter the fixture to hide the failure.
+The [development TODO](todos.txt) is the source of truth for the latest
+reported test/fixture counts, remaining issues, and open design decisions.
 
 The named Pairing, Union, Power Set, and Infinity axiom-citation rules are
 implemented, including the Union and Power Set instance forms. The remaining
@@ -83,11 +74,11 @@ there exists a unique set {a, b} that contains exactly a and b
 
 Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
-Set theory is the active frontier: the named ZFC axiom-citation design
-is written up in `todos.txt` and remains deferred pending explicit owner
-approval. The `WLOG` equality-case replay rule and `Uniqueness` are implemented;
-the informational ZFC fixture still fails during WLOG citation remapping, and
-`Mutatis mutandis` remains unimplemented.
+Set theory is the active frontier. Named axiom-citation rules for Pairing,
+Union, Power Set, and Infinity are implemented, including the Union and Power
+Set instance forms. The remaining informational ZFC fixture failure is the
+WLOG citation-remapping bug tracked in issue #75. Arbitrary-property WLOG and
+`Mutatis mutandis` remain deferred.
 
 ### Number theory
 
@@ -171,9 +162,9 @@ make it easier to extend and maintain.
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
      elaboration hacks.
-   - Implement the agreed set-theory design backlog (named axiom-citation
-     rules, a checked WLOG rule, and more) — see `todos.txt` for the full,
-     current design.
+   - Fix the outstanding equality-case WLOG citation-remapping defect (issue #75)
+     and extend proofs within the agreed scope. Named axiom-citation rules are
+     implemented; `Mutatis mutandis` remains deferred pending owner approval.
 
 3. Continue proof-corpus growth.
    - Add more examples and end-to-end fixtures for edge cases, not just the core
@@ -333,5 +324,6 @@ source completion/run_tests.bash
 
 ## Summary
 
-SyLoPy is a working proof-language checker with a mature core, a validated proof
-corpus, and a clear next phase: architecture cleanup and extension. After that, develop the set theory features until it can prove core set theory theorems.
+SyLoPy is a working proof-language checker with a mature core and an established
+regression corpus. See `todos.txt` for current maintenance priorities and
+design decisions.
