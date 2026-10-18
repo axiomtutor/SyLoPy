@@ -39,11 +39,11 @@
 ### then x = a or x = b.
 
 1. Let a, b, x, Y be any set. (Declaration)
-2. P -> P. (Conditional Introduction from subproof below)
+2. a = a -> a = a. (Conditional Introduction from subproof below)
 begin subproof
-  2.1. P. (Assumption for Conditional Introduction)
+  2.1. a = a. (Assumption for Conditional Introduction)
   2.2. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
-  2.3. P. (Reiteration from 2.1)
+  2.3. a = a. (Reiteration from 2.1)
 end subproof
 3. In(x, Y). (Premise)
 4. x = a or x = b. (Set property from 2.2, 3)
