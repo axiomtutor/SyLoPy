@@ -11,7 +11,7 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 | J0 | CI shows why a fixture or test failed | merged (PR #87) |
 | J1 | Set-theory proofs, batch 1 | waiting for owner (PR #88) |
 | J2 | Refresh `docs/PROOF_FILE_FORMAT.md` | waiting for owner (PR #89) |
-| J3 | Red-team the set-theory rules | todo |
+| J3 | Red-team the set-theory rules | in progress (PR #90) |
 | J4 | Parse oracle: more phrases | todo |
 | J5 | Order and relation proofs | todo |
 | J6 | Number-theory proofs and a missing-axiom list | todo |
