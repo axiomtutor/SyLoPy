@@ -411,12 +411,13 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     a citable formula at all, and the resulting error pointed at the
     *citing* line three steps later, not at the real problem here).
 
-    This is the *fallback* case of the more general mechanism just below
-    (`elaborate_typed_declaration` / `DECLARATION_RECIPE_REGISTRY`): a
-    plain object with no registered structure recipe for its descriptor.
-    It stays a free-standing function (rather than folding into that
-    mechanism entirely) because "such that" premises need it directly,
-    without going through a full line's worth of recipe-dispatch.
+    This helper remains for declaration-like text handled by the generic
+    premise/fallback path, notably a formula-stating premise that begins
+    with a declaration and continues with "such that". Ordinary
+    "(Declaration)" lines beginning with "Let" are parsed into
+    `SurfaceDeclarationStatement` and handled by
+    `elaborate_compound_declaration`, which is the single declaration-recipe
+    dispatch path. This fallback does not dispatch structure recipes.
     """
     s = text.strip().rstrip('.').strip()
     
@@ -923,13 +924,10 @@ def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause) -> Declar
     """Reconstruct the `DeclarationClause` shape a `DeclarationRecipe`
     expects from a already-parsed `SurfaceDeclarationClause`.
 
-    Reads `is_tuple`/`domain`/`codomain` straight off `clause` rather than
-    assuming a plain single-name shape -- a recipe dispatched through the
-    coordinated `Let X be any set, (W, <) be a well-ordered poset, ...`
-    path must see the same clause shape a standalone `Let (W, <) be a
-    well-ordered poset.` line gets via `elaborate_typed_declaration`, or
-    every tuple-/typed-function-shaped recipe would silently fail to
-    match here specifically (see `SurfaceDeclarationClause`'s docstring).
+    Reads `is_tuple`/`domain`/`codomain` straight off `clause` so the
+    canonical surface-AST path passes tuple and typed-function targets to a
+    recipe in the same shape in which the user wrote them (see
+    `SurfaceDeclarationClause`'s docstring).
     """
     names = [d.name for d in clause.declarations]
     descriptor = clause.declarations[0].descriptor if clause.declarations else ""
@@ -947,16 +945,14 @@ def _declaration_metadata(attributes: Dict[str, Any]) -> tuple:
 
 
 def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationContext') -> Optional[tuple]:
-    """Elaborate the coordinated `Let ...` surface AST from left to right.
+    """Elaborate one parsed declaration statement through the canonical path.
 
-    Declarations are entered into the elaboration registry before later
-    clauses are processed. Membership clauses introduce object declarations
-    and ordinary membership premises. Formula clauses are parsed only after
-    all declarations preceding them have been registered.
-
-    The returned core representation intentionally uses only the existing
-    semantic concepts: declarations plus a formula or formula bundle marked
-    as a premise. The kernel never sees a compound-declaration construct.
+    Adjacent declaration clauses are offered together to registered recipes,
+    so a recipe can consume one clause or a short sequence that must be
+    interpreted jointly. Unmatched clauses fall back to their parsed
+    declaration metadata. Premise clauses are parsed in their original order.
+    The kernel sees only declarations and ordinary formulas, never a special
+    compound-declaration construct.
     """
     statement = entry.declaration_statement
     if statement is None:
@@ -968,33 +964,62 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
 
     declarations: List[pl.Declaration] = []
     formulas: List[fl.Formula] = []
+    clauses = statement.clauses
+    index = 0
 
-    for clause in statement.clauses:
-        if isinstance(clause, SurfaceDeclarationClause):
-            recipe_clause = _surface_clause_to_recipe_clause(clause)
+    while index < len(clauses):
+        clause = clauses[index]
+
+        if isinstance(clause, SurfacePremiseClause):
+            try:
+                formulas.append(context.parse_core_formula(clause.formula))
+            except (TypeError, ValueError) as exc:
+                raise ElaborationError(str(exc), clause.span or entry.span) from exc
+            index += 1
+            continue
+
+        if not isinstance(clause, SurfaceDeclarationClause):
+            raise TypeError(f"unknown declaration statement clause: {clause!r}")
+
+        # A recipe may require multiple adjacent declaration clauses, but it
+        # must not consume a premise clause or jump across one.
+        run_start = index
+        while index < len(clauses) and isinstance(clauses[index], SurfaceDeclarationClause):
+            index += 1
+        run = clauses[run_start:index]
+        recipe_clauses = [_surface_clause_to_recipe_clause(item) for item in run]
+
+        recipe_index = 0
+        while recipe_index < len(run):
             matched = None
+            matched_recipe = None
             for recipe in context.environment.declaration_recipes:
-                matched = recipe.try_match([recipe_clause], 0)
-                if matched is not None:
+                candidate = recipe.try_match(recipe_clauses, recipe_index)
+                if candidate is not None:
+                    matched = candidate
+                    matched_recipe = recipe
                     break
 
             if matched is not None:
                 consumed, extra_decls, extra_formulas, extra_rules = matched
-                if consumed != 1:
+                if consumed < 1 or recipe_index + consumed > len(run):
                     raise ElaborationError(
-                        f"declaration recipe {getattr(recipe, 'name', '<unknown>')!r} "
-                        "requires a declaration sequence that is not supported by this surface clause",
-                        clause.span or entry.span,
+                        f"declaration recipe {getattr(matched_recipe, 'name', '<unknown>')!r} "
+                        "returned an invalid number of consumed clauses",
+                        run[recipe_index].span or entry.span,
                     )
+                source_span = run[recipe_index].span or entry.span
                 for declaration in extra_decls:
-                    context.register_declaration(declaration, clause.span or entry.span)
+                    context.register_declaration(declaration, source_span)
                     declarations.append(declaration)
                 formulas.extend(extra_formulas)
                 for rule in extra_rules:
                     context.add_extra_rule(rule)
+                recipe_index += consumed
                 continue
 
-            for surface_decl in clause.declarations:
+            surface_clause = run[recipe_index]
+            for surface_decl in surface_clause.declarations:
                 name = surface_decl.name
                 if not _IDENTIFIER_RE.match(name):
                     raise ElaborationError(
@@ -1028,28 +1053,21 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
                 context.register_declaration(declaration, surface_decl.span or entry.span)
                 declarations.append(declaration)
 
-            if clause.membership_expression is not None:
-                target = clause.membership_expression
+            if surface_clause.membership_expression is not None:
+                target = surface_clause.membership_expression
                 if not target:
                     raise ElaborationError(
                         "membership declaration requires a target expression",
-                        clause.span or entry.span,
+                        surface_clause.span or entry.span,
                     )
-                for surface_decl in clause.declarations:
+                for surface_decl in surface_clause.declarations:
                     formula_text = f"{surface_decl.name} is in {target}"
                     try:
                         formulas.append(context.parse_core_formula(formula_text))
                     except (TypeError, ValueError) as exc:
-                        raise ElaborationError(str(exc), clause.span or entry.span) from exc
+                        raise ElaborationError(str(exc), surface_decl.span or entry.span) from exc
 
-        elif isinstance(clause, SurfacePremiseClause):
-            try:
-                formula = context.parse_core_formula(clause.formula)
-            except (TypeError, ValueError) as exc:
-                raise ElaborationError(str(exc), clause.span or entry.span) from exc
-            formulas.append(formula)
-        else:
-            raise TypeError(f"unknown declaration statement clause: {clause!r}")
+            recipe_index += 1
 
     context.register_origin(entry.label, entry.span, "compound declaration")
 
@@ -1058,89 +1076,6 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
 
     value: Any = formulas[0] if len(formulas) == 1 else formulas
     return (entry.label, value, ('premise', declarations))
-
-
-def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationContext') -> Optional[tuple]:
-    """The single, general entry point for every `Let ...` declaration
-    line: split into clauses, and for each, try every registered
-    `DeclarationRecipe` (from `context.environment.declaration_recipes`,
-    populated by whichever theory modules are loaded) before falling back
-    to a bare object/predicate/function declaration for whatever no
-    recipe recognized. Always returns a result for a `Let ...` line
-    (never `None`) -- unlike a typical `line_elaborator`, this doesn't
-    decline, because it *is* the declaration path now, not an optional
-    override of it; `parse_declaration_prefix` remains as the "such
-    that:" premise case and as this function's own per-clause fallback,
-    not as a separate thing declaration lines might reach instead.
-
-    Registering a brand new structure type (a group, a ring, ...) is
-    exactly: write an `expand` function computing the declarations,
-    formulas, and rules a declaration of that type should carry, wrap it
-    as a `DeclarationRecipe`, and add it to your module's
-    `TheoryEnvironment(declaration_recipes=[...])`. No change here, or to
-    any other theory module, is needed.
-    """
-    just = entry.justification_text.strip().lower()
-    if just not in ('declaration', 'declare'):
-        return None
-    text = entry.formula_text.strip().rstrip('.').strip()
-    if not re.match(r'^let\b', text, flags=re.I):
-        return None
-    if re.search(r'\bsuch\s+that\s*:?\s*', text, flags=re.I):
-        return None  # "such that" premises (colon optional) stay on parse_declaration_prefix's original path
-
-    body = re.sub(r'^let\s+', '', text, flags=re.I, count=1)
-    clauses = [parse_declaration_clause(c) for c in split_declaration_clauses(body)]
-
-    declarations: List[pl.Declaration] = []
-    bundle: List[fl.Formula] = []
-    recipes = context.environment.declaration_recipes
-
-    i = 0
-    while i < len(clauses):
-        matched = None
-        for recipe in recipes:
-            result = recipe.try_match(clauses, i)
-            if result is not None:
-                matched = result
-                break
-        if matched is not None:
-            consumed, extra_decls, extra_formulas, extra_rules = matched
-            for decl in extra_decls:
-                context.register_declaration(decl, entry.span)
-            declarations.extend(extra_decls)
-            bundle.extend(extra_formulas)
-            for rule in extra_rules:
-                context.add_extra_rule(rule)
-            i += max(consumed, 1)
-            continue
-
-        dc = clauses[i]
-        if dc.domain is not None:
-            # A typed-function clause with no recipe claiming its
-            # descriptor: still declare the function itself (so proofs
-            # that don't need any extra derived facts aren't forced to
-            # find/write a recipe just to name a typed function), just
-            # without any bundled range/behavior facts.
-            decl = pl.Declaration(name=dc.names[0], kind=pl.DeclarationKind.FUNCTION,
-                                                arity=1, type_name=dc.descriptor.strip())
-            context.register_declaration(decl, entry.span)
-            declarations.append(decl)
-        else:
-            try:
-                new_decls = _fallback_declarations_for_clause(dc)
-            except ValueError as exc:
-                raise ElaborationError(str(exc), entry.span) from exc
-            for decl in new_decls:
-                context.register_declaration(decl, entry.span)
-                declarations.append(decl)
-        i += 1
-
-    context.register_origin(entry.label, entry.span)
-    if not bundle:
-        return (entry.label, None, ('declare', declarations))
-    formula = bundle[0] if len(bundle) == 1 else bundle
-    return (entry.label, formula, ('premise', declarations))
 
 
 # `parse_formula` is installed by `ProofParserPolicy` at import time
@@ -1516,13 +1451,12 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
 def _base_line_elaborators():
     """Return active base elaborators, including policy-installed wrappers.
 
-    ProofParserPolicy replaces the compound declaration elaborator after
-    this module is imported. Resolve these names when building environments
-    rather than capturing function objects before the policy overlay loads.
+    ProofParserPolicy wraps compound declaration elaboration after this
+    module is imported. Resolve the active function when building environments
+    rather than capturing it before the policy overlay loads.
     """
     return (
         elaborate_compound_declaration,
-        elaborate_typed_declaration,
         try_elaborate_existence,
     )
 
