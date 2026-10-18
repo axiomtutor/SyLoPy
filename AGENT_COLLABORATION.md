@@ -6,7 +6,7 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 - **Master:** [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182).
 - **[PR #81](https://github.com/axiomtutor/SyLoPy/pull/81) merged:** named Pairing, Union, Power Set, and Infinity axiom-citation rules now support intended instance forms. Reported fresh-clone tests on Python 3.12/3.13: 1,425 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The sole failure is #75.
-- **[PR #82](https://github.com/axiomtutor/SyLoPy/pull/82):** docs-only refresh of `README.md`, `AGENT_COLLABORATION.md`, and `todos.txt`. CI failure matches the known #75 fixture failure; no other test failed.
+- **[PR #82](https://github.com/axiomtutor/SyLoPy/pull/82):** docs-only refresh of `README.md`, `AGENT_COLLABORATION.md`, and `todos.txt`. [CI run #753](https://github.com/axiomtutor/SyLoPy/actions/runs/39082070261) has only the known #75 fixture failure; no other test failed.
 - **[PR #83](https://github.com/axiomtutor/SyLoPy/pull/83):** adds WLOG regression tests that future-line and closed-sibling references remain invalid. Does not touch kernel code; CI status pending at last check.
 
 ## One known blocker
