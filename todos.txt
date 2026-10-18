@@ -2,14 +2,14 @@
 
 ## Project status
 
-The latest recorded full-suite verification is the fresh-clone run reported in [PR #81](https://github.com/axiomtutor/SyLoPy/pull/81), whose merge commit is [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182). The run was performed on Python 3.12 and 3.13:
+The latest recorded full-suite verification is the run reported for [PR #83](https://github.com/axiomtutor/SyLoPy/pull/83), commit [`34489dd`](https://github.com/axiomtutor/SyLoPy/commit/34489dd43274ecaa3df3b227888d703bf388ee56), on Python 3.12 and 3.13:
 
-- Python tests: 1,425 passed, 1 failed, 1 xfailed.
+- Python tests: 1,427 passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixtures: 81/81.
 - Informational proof fixtures: 69/70.
 
-These are PR-reported results, not an independently verified status check on the merge commit. The sole reported failure is described under Known issues below.
+These are PR-reported results for the tested branch commit, not a separate run on the merge commit. The sole reported failure is described under Known issues below.
 
 The main parser/elaboration/kernel pipeline, set theory, natural-number reasoning, and discrete-mathematics layer are in place. Current improvement work should prioritize maintainability, disciplined theory extension, and useful examples and documentation.
 
