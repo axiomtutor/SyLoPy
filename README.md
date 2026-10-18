@@ -10,40 +10,29 @@ It should soon develop features for more mathematical subjects.
 
 ## Current status
 
-Master is currently
-[`12dcf99`](https://github.com/axiomtutor/SyLoPy/commit/12dcf99cf28544e09776f78b4deb07186518c0d6).
-The latest status-documentation-tree test run is GitHub Actions
-[run #731](https://github.com/axiomtutor/SyLoPy/actions/runs/39052334390),
-from PR #79's merge ref (master plus documentation-only changes):
+The latest recorded full-suite verification is the fresh-clone run reported in
+[PR #81](https://github.com/axiomtutor/SyLoPy/pull/81), on Python 3.12 and
+3.13:
 
-- 1,220 Python tests passed, 1 failed, 1 xfailed.
+- 1,425 Python tests passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 63/64.
+- Informational proof fixtures: 69/70.
 
-PR #78 separately tests the natural-number existential parser changes in
-[run #729](https://github.com/axiomtutor/SyLoPy/actions/runs/39052110870):
-1,223 passed, 1 failed, 1 xfailed, with coverage passed and the same fixture
-counts. The newly added parser regressions pass.
+These are reported results for the PR branch, not a separately verified green
+status check on the merge commit. The sole reported failure is
+`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
+([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)): equality-case
+WLOG replay remaps an invariant pair-set characterization as though it needed
+the chosen-case substitution. Preserve the original citation when it remains
+valid; do not weaken tests or alter the fixture to hide the failure.
 
-The only failure in both runs is the known
-`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-The surface uniqueness regression in PR #73, the equivalence-relation proof in
-PR #74, and the partial-order cycle proof in PR #77 pass.
+The named Pairing, Union, Power Set, and Infinity axiom-citation rules are
+implemented, including the Union and Power Set instance forms. The remaining
+owner decision is whether to retire generic `(Axiom)` citations. `Mutatis
+mutandis` remains unimplemented and deferred.
 
-The failure is in WLOG citation remapping in the informational ZFC fixture.
-The equality-case replay rule is implemented, but replaying `x = a` as
-`x = b` substitutes `a -> b` into the pair characterization cited on line 3,
-turning `(u = a or u = b)` into `(u = b or u = b)`. That stronger property
-is not an established fact about the existing pair set. Issue
-[#75](https://github.com/axiomtutor/SyLoPy/issues/75) tracks preserving
-invariant outer citations while still remapping facts that genuinely require
-substitution. `Mutatis mutandis` remains unimplemented.
-
-The core parser, elaboration pipeline, and kernel rule set are working as a
-coherent system. Remaining work includes the known informational-fixture
-failure, maintainability, and feature expansion. See `todos.txt` for the
-detailed task list and the design decisions that constrain unfinished work.
+See `todos.txt` for the design ledger and remaining work.
 
 ## Proof-processing pipeline
 
