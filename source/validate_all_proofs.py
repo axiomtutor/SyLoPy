@@ -503,7 +503,7 @@ def main(argv=None):
     else:
         for directory, category, result in fixture_failures:
             message = result.message or "no diagnostic message"
-            message = re.sub(r"\\s*[\\r\\n]+\\s*", " ", message).strip()
+            message = re.sub(r"\s*[\r\n]+\s*", " ", message).strip()
             print(
                 f"FAIL {directory}/{result.file} #{result.proof_id} "
                 f"({category}): {message}"
