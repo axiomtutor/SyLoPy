@@ -8,7 +8,7 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 
 | Job | Title | State |
 | --- | --- | --- |
-| J0 | CI shows why a fixture or test failed | in progress (PR #87) |
+| J0 | CI shows why a fixture or test failed | waiting for owner (PR #87) |
 | J1 | Set-theory proofs, batch 1 | todo, after J0 |
 | J2 | Refresh `docs/PROOF_FILE_FORMAT.md` | todo |
 | J3 | Red-team the set-theory rules | todo |
