@@ -1,0 +1,73 @@
+# Direct consequences of union and intersection membership properties.
+
+# 1: Every member of A belongs to a set containing the union of A and B
+## Proof that
+### If forall u, (In(u, U) iff (In(u, A) or In(u, B)))
+### then A is a subset of U.
+
+1. Let A, B, U be any set. (Declaration)
+2. forall u, (In(u, U) iff (In(u, A) or In(u, B))). (Premise)
+3. A is a subset of U. (Subset proof below)
+ 3.1. Let x in A. (Assumption for subset proof)
+ 3.2. In(x, A) or In(x, B). (Disjunction Introduction from 3.1)
+ 3.3. In(x, U). (Set property from 2, 3.2)
+
+
+# 2: Every member of B belongs to a set containing the union of A and B
+## Proof that
+### If forall u, (In(u, U) iff (In(u, A) or In(u, B)))
+### then B is a subset of U.
+
+1. Let A, B, U be any set. (Declaration)
+2. forall u, (In(u, U) iff (In(u, A) or In(u, B))). (Premise)
+3. B is a subset of U. (Subset proof below)
+ 3.1. Let x in B. (Assumption for subset proof)
+ 3.2. In(x, A) or In(x, B). (Disjunction Introduction from 3.1)
+ 3.3. In(x, U). (Set property from 2, 3.2)
+
+
+# 3: Every member of an intersection belongs to A
+## Proof that
+### If forall u, (In(u, I) iff (In(u, A) and In(u, B)))
+### then I is a subset of A.
+
+1. Let A, B, I be any set. (Declaration)
+2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+3. I is a subset of A. (Subset proof below)
+ 3.1. Let x in I. (Assumption for subset proof)
+ 3.2. In(x, A) and In(x, B). (Set property from 2, 3.1)
+ 3.3. In(x, A). (Conjunction Elimination from 3.2)
+
+
+# 4: Every member of an intersection belongs to B
+## Proof that
+### If forall u, (In(u, I) iff (In(u, A) and In(u, B)))
+### then I is a subset of B.
+
+1. Let A, B, I be any set. (Declaration)
+2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+3. I is a subset of B. (Subset proof below)
+ 3.1. Let x in I. (Assumption for subset proof)
+ 3.2. In(x, A) and In(x, B). (Set property from 2, 3.1)
+ 3.3. In(x, B). (Conjunction Elimination from 3.2)
+
+
+# 5: If A is a subset of B, their intersection is A
+## Proof that
+### If A is a subset of B, and forall u, (In(u, I) iff (In(u, A) and In(u, B)))
+### then I = A.
+
+1. Let A, B, I be any set. (Declaration)
+2. A is a subset of B. (Premise)
+3. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+4. I is a subset of A. (Subset proof below)
+ 4.1. Let x in I. (Assumption for subset proof)
+ 4.2. In(x, A) and In(x, B). (Set property from 3, 4.1)
+ 4.3. In(x, A). (Conjunction Elimination from 4.2)
+5. A is a subset of I. (Subset proof below)
+ 5.1. Let y in A. (Assumption for subset proof)
+ 5.2. In(y, A) -> In(y, B). (Universal Instantiation from 2)
+ 5.3. In(y, B). (Modus Ponens from 5.2, 5.1)
+ 5.4. In(y, A) and In(y, B). (Conjunction Introduction from 5.1, 5.3)
+ 5.5. In(y, I). (Set property from 3, 5.4)
+6. I = A. (Set Equality from 4, 5)
