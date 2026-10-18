@@ -114,10 +114,18 @@ the relation carrier -- are in `tests/testProofs/uniqueness_red_team.txt`.
 
 ## Remaining consolidation work
 
-The main remaining architectural work is to identify and remove any duplicated
-parser/elaboration paths that are still reachable, then move additional
-theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
-The same pattern should be used for future order-theory and algebraic syntax.
+Declaration-justification `Let` statements now have one recipe-dispatch
+path: `parse_surface_declaration_statement` builds the surface AST, and
+`elaborate_compound_declaration` offers each contiguous run of declaration
+clauses to registered recipes, including recipes that consume multiple clauses.
+The redundant `elaborate_typed_declaration` dispatcher has been removed.
+`parse_declaration_prefix` remains for the distinct generic premise/fallback
+path, notably declaration-like premises that use `such that`; it is not a
+second route for ordinary `(Declaration)` `Let` statements.
+
+Further consolidation should target demonstrated duplication rather than move
+theory-specific syntax indiscriminately. New theory-specific syntax should
+continue to use `TheoryEnvironment` and declaration recipes where appropriate.
 
 `ProofContext` is the lexical scope for declarations, assumptions, labels and
 arbitrary bindings during elaboration; the elaborator no longer keeps a

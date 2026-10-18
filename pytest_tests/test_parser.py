@@ -372,3 +372,45 @@ def test_declaration_recipe_registry_dispatches_a_registered_structure_type_gene
     assert tag == "premise"
     assert [(d.name, d.kind) for d in declarations] == [("X", pl.DeclarationKind.OBJECT), ("Tagged", pl.DeclarationKind.PREDICATE)]
 
+def test_declaration_recipe_can_consume_multiple_adjacent_surface_clauses():
+    def expand_widget_pair(clauses, start):
+        if start + 1 >= len(clauses):
+            return None
+        carrier_clause, marker_clause = clauses[start:start + 2]
+        if (
+            carrier_clause.normalized_descriptor != "widget carrier"
+            or marker_clause.normalized_descriptor != "widget marker"
+        ):
+            return None
+
+        carrier = carrier_clause.names[0]
+        marker = marker_clause.names[0]
+        declarations = [
+            pl.Declaration(carrier, pl.DeclarationKind.OBJECT),
+            pl.Declaration(marker, pl.DeclarationKind.PREDICATE, arity=1),
+        ]
+        formula = fl.AtomicFormula(marker, [tl.ConstantTerm(carrier, carrier)])
+        return (2, declarations, [formula], [])
+
+    recipe = pl.DeclarationRecipe("WidgetPair", expand_widget_pair)
+    fake_environment = pp.TheoryEnvironment(
+        name="widget-pair theory",
+        declaration_recipes=[recipe],
+    )
+    environment = pp.default_theory_environment().extended(fake_environment)
+
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be a widget carrier and Tagged be a widget marker. (Declaration)\n",
+        environment=environment,
+    )
+    label, formula, justification = entries[0]
+    assert label == "1"
+    assert repr(formula) == "Tagged(X)"
+    tag, declarations = justification
+    assert tag == "premise"
+    assert [(d.name, d.kind) for d in declarations] == [
+        ("X", pl.DeclarationKind.OBJECT),
+        ("Tagged", pl.DeclarationKind.PREDICATE),
+    ]
+
+
