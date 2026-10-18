@@ -201,3 +201,47 @@ end subproof
 """
     _entries, (ok, err) = _check(text)
     assert ok, err
+
+
+
+def test_wlog_replay_cannot_use_a_future_line_as_a_citation():
+    text = """1. Let a be any object. (Declaration)
+2. Let x be any object. (Declaration)
+3. Let y be any object. (Declaration)
+4. Let Q be a closed formula. (Declaration)
+5. a = x or a = y. (Premise)
+6. a = x. (WLOG from 5)
+7. Q. (Reiteration from 8)
+8. Q. (Premise)
+"""
+    _entries, (ok, err) = _check(text)
+    assert not ok
+    assert err is not None
+    assert err.category == pl.CATEGORY_BAD_REFERENCE
+    assert err.label == "7"
+
+
+def test_wlog_replay_cannot_use_a_closed_sibling_line_as_a_citation():
+    text = """1. Let a be any object. (Declaration)
+2. Let x be any object. (Declaration)
+3. Let y be any object. (Declaration)
+4. Let H be a closed formula. (Declaration)
+5. Let Q be a closed formula. (Declaration)
+6. If Q then Q. (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. Q. (Assumption for Conditional Introduction)
+ 6.2. Q. (Reiteration from 6.1)
+end subproof
+7. If H then Q. (Conditional Introduction from subproof below)
+begin subproof
+ 7.1. H. (Assumption for Conditional Introduction)
+ 7.2. a = x or a = y. (Premise)
+ 7.3. a = x. (WLOG from 7.2)
+ 7.4. Q. (Reiteration from 6.1)
+end subproof
+"""
+    _entries, (ok, err) = _check(text)
+    assert not ok
+    assert err is not None
+    assert err.category == pl.CATEGORY_BAD_REFERENCE
+    assert err.label == "7.4"
