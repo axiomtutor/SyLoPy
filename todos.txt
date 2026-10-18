@@ -2,7 +2,7 @@
 
 ## Project status
 
-Master is at merge commit [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182), which merges [PR #81](https://github.com/axiomtutor/SyLoPy/pull/81). That PR reports fresh-clone verification on Python 3.12 and 3.13:
+The latest recorded full-suite verification is the fresh-clone run reported in [PR #81](https://github.com/axiomtutor/SyLoPy/pull/81), whose merge commit is [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182). The run was performed on Python 3.12 and 3.13:
 
 - Python tests: 1,425 passed, 1 failed, 1 xfailed.
 - Coverage passed.
