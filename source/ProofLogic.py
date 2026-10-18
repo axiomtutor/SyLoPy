@@ -3787,8 +3787,10 @@ def _wlog_value_matches(actual, expected) -> bool:
     return False
 
 
-def _wlog_substitution(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
-    """Derive the first supported equality-case constant substitution."""
+def _wlog_changed_terms(chosen: fl.Formula, alternative: fl.Formula) -> Tuple[tl.ConstantTerm, tl.ConstantTerm]:
+    """The one constant the chosen case has and the alternative replaces, as
+    `(chosen's constant, alternative's constant)`. The supported equality
+    cases differ in exactly one term, and it must be a constant."""
     if not isinstance(chosen, fl.Equals) or not isinstance(alternative, fl.Equals):
         raise ValueError("this WLOG implementation requires equality disjuncts")
     differences = []
@@ -3803,7 +3805,24 @@ def _wlog_substitution(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str,
     source, target = differences[0]
     if not isinstance(source, tl.ConstantTerm) or not isinstance(target, tl.ConstantTerm):
         raise ValueError("the changing WLOG terms must be constants")
+    return source, target
+
+
+def _wlog_substitution(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
+    """Derive the first supported equality-case constant substitution."""
+    source, target = _wlog_changed_terms(chosen, alternative)
     return {source.name: target}
+
+
+def _wlog_exchange(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
+    """The substitution that trades the two case constants, both replaced at
+    once (`_substitute_constants_in_formula` looks each constant up once, so
+    `a -> b` and `b -> a` do not chain). A line that this leaves unchanged,
+    up to the order of `and` and `or`, says the same thing of both cases:
+    `forall u, (In(u, Y) iff (u = a or u = b))` is such a line for the cases
+    `x = a` and `x = b`, and `P(a)` is not."""
+    source, target = _wlog_changed_terms(chosen, alternative)
+    return {source.name: target, target.name: source}
 
 
 def _substitute_wlog_metadata(value, mapping):
@@ -3884,8 +3903,18 @@ def _is_wlog_entry(entry: _ParsedEntry) -> bool:
 
 
 def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
-                          block_label, sidx):
-    """Transform one region entry and remap only its citations outside WLOG."""
+                          block_label, sidx, exchange):
+    """Transform one region entry and remap only its citations outside WLOG.
+
+    A citation outside the region is replaced by the earliest visible line
+    that says what the cited line says once `mapping` is applied (`P(a)` for
+    `P(b)`). When there is no such line, the citation is kept as it is if
+    `exchange` -- the mapping that trades the two case constants -- leaves
+    the cited line unchanged: it is background that holds equally in both
+    cases, and the replayed line is checked against it like any other.
+    Otherwise the replay fails here. The second step only ever applies where
+    the first fails, so a replay that was accepted before is unchanged.
+    """
     classified = _classify_entry(raw_entry)
     if isinstance(classified, str):
         return raw_entry
@@ -3894,7 +3923,7 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
         nested_block_label = classified.label
         nested = [
             _transform_wlog_entry(item, mapping, original_labels,
-                                  nested_block_label, index)
+                                  nested_block_label, index, exchange)
             for index, item in enumerate(classified.subproof_entries or [])
         ]
         if len(raw_entry) == 3:
@@ -3940,6 +3969,10 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
                         ),
                         None,
                     )
+                    if counterpart is None and _wlog_value_matches(
+                            original_value, _substitute_wlog_value(original_value, exchange)):
+                        remapped.append(reference)
+                        continue
                     if counterpart is None:
                         raise _WLOGReplayError(
                             label, block_label, sidx, CATEGORY_BAD_REFERENCE,
@@ -3958,7 +3991,7 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
         nested_block_label = label
         nested = [
             _transform_wlog_entry(item, mapping, original_labels,
-                                  nested_block_label, index)
+                                  nested_block_label, index, exchange)
             for index, item in enumerate(classified.nested_subproof or [])
         ]
         transformed = (label, phi, justification, nested)
@@ -4219,6 +4252,7 @@ class ProofValidator:
                 continue
             try:
                 mapping = _wlog_substitution(chosen, alternative)
+                exchange = _wlog_exchange(chosen, alternative)
             except ValueError as exc:
                 return _mk_error(
                     wlog_entry.label, snapshot["block_label"], snapshot["index"],
@@ -4230,6 +4264,7 @@ class ProofValidator:
                     _transform_wlog_entry(
                         item, mapping, snapshot["labels"],
                         snapshot["block_label"], snapshot["index"] + offset + 1,
+                        exchange,
                     )
                     for offset, item in enumerate(suffix)
                 ]

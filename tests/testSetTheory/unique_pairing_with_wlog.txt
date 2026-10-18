@@ -1,0 +1,37 @@
+# Unique pairing, with WLOG in each inclusion.
+#
+# tests/setTheoryProofs/zfc_remaining_axioms.txt proves the same statement
+# with WLOG for the first inclusion and Mutatis mutandis for the second.
+# Mutatis mutandis does not exist yet, so the second inclusion is written with
+# WLOG as well: "y is in Y" gives "y = a or y = b", and the case y = a is
+# enough because the case y = b is the same proof with b in place of a.
+#
+# Both WLOG lines cite the pair characterization (line 3, and line 5.1 for the
+# second inclusion) after the case is chosen. That line treats a and b alike,
+# so the replay for the other case cites it again instead of looking for a line
+# that says "u = b or u = b" (issue #75).
+
+
+# 1
+## Proof that
+### If a and b are sets,
+### then there exists a unique set Y such that forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. a and b are sets. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. Let X be any set. (Declaration)
+5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
+ 5.1. Forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
+ 5.2. X subseteq Y. (Subset proof below)
+  5.2.1. Let x in X. (Assumption for subset proof)
+  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
+  5.2.3. x = a. (WLOG, 5.2.2)
+  5.2.4. In(x, Y). (Set property, 3, 5.2.3)
+ 5.3. Y subseteq X. (Subset proof below)
+  5.3.1. Let y in Y. (Assumption for subset proof)
+  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
+  5.3.3. y = a. (WLOG, 5.3.2)
+  5.3.4. In(y, X). (Set property, 5.1, 5.3.3)
+ 5.4. X = Y. (Set equality, 5.2, 5.3)
+6. Exists Y, (forall u, (In(u, Y) iff (u = a or u = b))) and (forall X, (forall z, (In(z, X) iff (z = a or z = b))) -> X = Y). (Uniqueness, 2, 5)
