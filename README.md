@@ -5,8 +5,10 @@ proofs written in a human-readable surface syntax, elaborates them into a core
 proof representation, and validates the result with the kernel in
 `source/ProofLogic.py`.
 
-The project currently has some implementations for first-order logic, set theory, order theory, arithmetic, and number theory.
-It should soon develop features for more mathematical subjects.
+It includes first-order logic, set theory, natural-number and integer reasoning,
+quotient and divisibility notation, and discrete-mathematics and order-theory
+rules. See the sections below for current support and `todos.txt` for open
+work and design constraints.
 
 ## Current status
 
