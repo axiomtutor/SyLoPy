@@ -41,7 +41,7 @@
 
 # 7: The trivial identity relation is a valid replacement instance
 ## Proof that
-### then exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)).
+### then (forall x, (In(x, A) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)).
 
 1. Let A be any set. (Declaration)
 2. (forall x, (In(x, A) -> exists y, (y = x and forall z, (z = x -> z = y)))) -> exists C, forall y, (In(y, C) iff exists x, (In(x, A) and y = x)). (Replacement)
