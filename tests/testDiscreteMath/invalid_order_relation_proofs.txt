@@ -1,0 +1,99 @@
+Use discrete math.
+
+# 1: Least elements require both directions
+## Invalid proof that
+### the least-element equality follows without the reverse inclusion
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. forall x, R(a,x). (Premise)
+3. forall x, R(b,x). (Premise)
+4. R(a,b). (Universal Instantiation from 2)
+5. R(b,a). (Universal Instantiation from 3)
+6. a = b. (Relation Antisymmetry from 4, 4)
+
+# 2: Greatest elements require both directions
+## Invalid proof that
+### the greatest-element equality follows without the reverse inclusion
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. forall x, R(x,a). (Premise)
+3. forall x, R(x,b). (Premise)
+4. R(b,a). (Universal Instantiation from 2)
+5. R(a,b). (Universal Instantiation from 3)
+6. a = b. (Relation Antisymmetry from 5, 5)
+
+# 3: Leastness cannot imply minimality by symmetry alone
+## Invalid proof that
+### symmetry proves the equality conclusion from the one directed pair
+
+1. Let X be any set, R be a partial order on X, and a, x be in X. (Declaration)
+2. forall y, R(a,y). (Premise)
+3. R(x,a) -> x = a. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(x,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,x). (Universal Instantiation from 2)
+ 3.3. x = a. (Relation Symmetry from 3.1)
+end subproof
+
+# 4: Equivalence does not allow transitivity with a mismatched middle
+## Invalid proof that
+### transitivity may compose R(a,b) and R(a,c) directly
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(a,c). (Premise)
+4. R(b,a). (Relation Symmetry from 2)
+5. R(b,c). (Relation Transitivity from 2, 3)
+
+# 5: Symmetry alone cannot justify antisymmetry
+## Invalid proof that
+### equality follows from two copies of the same directed pair
+
+1. Let X be any set, R be a symmetric, antisymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(b,a). (Relation Symmetry from 2)
+4. a = b. (Relation Antisymmetry from 2, 2)
+
+# 6: Asymmetry does not prove the reverse pair
+## Invalid proof that
+### the reverse pair is incorrectly inferred from an asymmetric relation
+
+1. Let X be any set, R be an asymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(b,a). (Premise)
+4. R(b,a). (Relation Asymmetry from 2)
+
+# 7: Totality cannot be mistaken for the reflexivity rule
+## Invalid proof that
+### reflexivity cannot be cited for a merely total relation
+
+1. Let X be any set, R be a total relation on X, and a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+
+# 8: Antisymmetry is not asymmetry
+## Invalid proof that
+### antisymmetry alone does not directly establish non-relation in the reverse direction
+
+1. Let X be any set, R be an antisymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. not R(b,a). (Relation Asymmetry from 2)
+
+# 9: The strict relation must use its definition to prove irreflexivity
+## Invalid proof that
+### irreflexivity cannot be cited for S when only R was declared a partial order
+
+1. Let X be any set, R be a partial order on X, S be a relation on X, and a be in X. (Declaration)
+2. forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))). (Premise)
+3. not S(a,a). (Relation Irreflexivity from 1)
+
+# 10: Strict transitivity requires the two successive pairs
+## Invalid proof that
+### transitivity cannot infer R(a,c) from R(a,b) and R(b,c) without both pairs
+
+1. Let X be any set, R be a partial order on X, S be a relation on X, and a, b, c be in X. (Declaration)
+2. forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))). (Premise)
+3. S(a,b). (Premise)
+4. S(b,c). (Premise)
+5. R(a,b). (Premise)
+6. R(b,c). (Premise)
+7. R(a,c). (Relation Transitivity from 5, 5)
