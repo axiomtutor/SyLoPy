@@ -1,0 +1,97 @@
+# More nested bounded-quantifier and number-theory readings.
+
+id: j4-forall-exists-bounded-natural-language
+context: nested
+surface: for all x in A, there exists y in B such that R(x, y)
+expect: forall x, (In(x, A) -> exists y, (In(y, B) and R(x, y)))
+why: For each member x of A, a possibly x-dependent witness y must lie in B and satisfy R.
+
+id: j4-exists-forall-bounded-natural-language
+context: nested
+surface: there exists x in A such that for all y in B, R(x, y)
+expect: exists x, (In(x, A) and forall y, (In(y, B) -> R(x, y)))
+why: One witness x in A must satisfy the condition for every member y of B.
+
+id: j4-three-deep-bounded-quantifiers
+context: nested
+surface: forall x in A, exists y in B, forall z in C, R(x, y, z)
+expect: forall x, (In(x, A) -> exists y, (In(y, B) and forall z, (In(z, C) -> R(x, y, z))))
+why: The three restrictions map to implication, conjunction, and implication at their respective quantifier levels.
+
+id: j4-bounded-quantifier-with-negative-body
+context: nested
+surface: forall x in A, there exists y in B such that not R(x, y)
+expect: forall x, (In(x, A) -> exists y, (In(y, B) and not R(x, y)))
+why: The negation applies to R inside the existential witness condition.
+
+id: j4-bounded-quantifier-disjunction-body
+context: nested
+surface: for every x in A, P(x) or there exists y in B such that R(x, y)
+expect: forall x, (In(x, A) -> (P(x) or exists y, (In(y, B) and R(x, y))))
+why: The universal restriction scopes over the whole disjunction.
+
+id: j4-exists-bounded-then-forall-unbounded
+context: nested
+surface: there exists x in A such that for all y, R(x, y)
+expect: exists x, (In(x, A) and forall y, R(x, y))
+why: The witness is restricted to A but the inner universal has no membership restriction.
+
+id: j4-bounded-quantifiers-in-antecedent
+context: nested
+surface: if for all x in A, P(x), then there exists y in B such that Q(y)
+expect: (forall x, (In(x, A) -> P(x))) -> exists y, (In(y, B) and Q(y))
+why: Each bounded quantifier should parse as a complete formula before the outer implication.
+
+id: j4-bounded-quantifiers-in-biconditional
+context: nested
+surface: (forall x in A, P(x)) iff (there exists y in B such that Q(y))
+expect: (forall x, (In(x, A) -> P(x))) iff exists y, (In(y, B) and Q(y))
+why: Parentheses isolate each quantifier phrase as one biconditional operand.
+
+id: j4-divides-composed-dividend
+context: nested
+surface: a divides Plus(b, c) and c divides d
+expect: (exists m, (Int(m) and Plus(b, c) = Times(a, m))) and (exists n, (Int(n) and d = Times(c, n)))
+why: Each English divisibility claim expands independently in a conjunction.
+
+id: j4-negated-composite-divisibility
+context: nested
+surface: not (a divides Plus(b, c))
+expect: not (exists m, (Int(m) and Plus(b, c) = Times(a, m)))
+why: Negation applies to the entire existential definition of divisibility.
+
+id: j4-divisibility-under-existential
+context: nested
+surface: there exists a in A such that a divides n
+expect: exists a, (In(a, A) and exists m, (Int(m) and n = Times(a, m)))
+why: The bounded witness is also the divisor in the inner divisibility condition.
+
+id: j4-parity-even
+context: line
+surface: n is even
+expect: Even(n)
+why: The intended reading is a unary predicate for evenness; no arithmetic characterization is assumed in this oracle case.
+
+id: j4-parity-odd
+context: nested
+surface: if n is odd then P(n)
+expect: Odd(n) -> P(n)
+why: The intended reading is a unary predicate for oddness inside an implication.
+
+id: j4-parity-even-or-odd
+context: nested
+surface: n is even or odd
+expect: REJECT
+why: This abbreviation is intentionally ambiguous unless the language explicitly defines the alternative phrase for number predicates.
+
+id: j4-malformed-divides-chain
+context: line
+surface: a divides b divides c
+expect: REJECT
+why: Divisibility is a binary predicate-like phrase and an unparenthesized chain does not specify a formula.
+
+id: j4-malformed-bounded-body
+context: line
+surface: for every x in A, there exists y in B such that
+expect: REJECT
+why: The natural-language existential requires a property after such that.
