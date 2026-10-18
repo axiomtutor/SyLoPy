@@ -1,0 +1,55 @@
+# 1: Subset proof must open with a member of its left set
+## Invalid: the opening assumption of a subset proof must put the arbitrary object in the left-hand set — the proof goal is A subset B, but it starts with x in C
+### then A subseteq B.
+
+1. Let A, B, C be any set. (Declaration)
+2. A subseteq B. (Subset proof below)
+begin subproof
+  2.1. Let x in C. (Assumption for subset proof)
+  2.2. x in B. (Premise)
+end subproof
+
+# 2: Subset proof must conclude membership in its right set
+## Invalid: a subset proof must conclude that x is in B — the final derived line establishes membership in C instead
+### then A subseteq B.
+
+1. Let A, B, C be any set. (Declaration)
+2. A subseteq B. (Subset proof below)
+begin subproof
+  2.1. Let x in A. (Assumption for subset proof)
+  2.2. x in C. (Premise)
+end subproof
+
+# 3: Subset proof must derive more than its opening assumption
+## Invalid: a subset proof must derive membership in the right-hand set — the proof never establishes a new right-hand membership
+### then A subseteq B.
+
+1. Let A, B be any set. (Declaration)
+2. A subseteq B. (Subset proof below)
+begin subproof
+  2.1. Let x in A. (Assumption for subset proof)
+end subproof
+
+# 4: Subset proof requires exactly one immediate subproof
+## Invalid: a subset proof requires exactly one subproof immediately below it — no subproof is supplied
+### then A subseteq B.
+
+1. Let A, B be any set. (Declaration)
+2. A subseteq B. (Subset proof below)
+
+# 5: Subset proof needs a subset conclusion
+## Invalid: 'Subset proof below' requires a conclusion of the form — this justification cannot prove a general proposition
+### then P.
+
+1. P. (Subset proof below)
+
+# 6: The canonical subset proof is accepted
+## Proof that
+### then A subseteq A.
+
+1. Let A be any set. (Declaration)
+2. A subseteq A. (Subset proof below)
+begin subproof
+  2.1. Let x in A. (Assumption for subset proof)
+  2.2. x in A. (Reiteration from 2.1)
+end subproof
