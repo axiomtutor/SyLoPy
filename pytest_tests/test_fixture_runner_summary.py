@@ -44,6 +44,10 @@ def test_default_main_checks_each_suite_once_and_aggregates_results(monkeypatch)
         "Total proofs checked: 4 (enforced: 3/3, informational: 0/1)"
         in output.getvalue()
     )
+    assert (
+        "FAIL tests/informational/info.txt #1 (informational): no diagnostic message"
+        in output.getvalue()
+    )
 
 
 def test_default_main_reports_enforced_and_informational_failures(monkeypatch):
