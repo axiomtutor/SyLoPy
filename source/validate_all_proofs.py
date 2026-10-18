@@ -468,17 +468,28 @@ def main(argv=None):
     enforced_fails = 0
     enforced_results = []
     informational_results = []
+    fixture_failures = []
 
     print("=== Enforced fixture corpus ===")
     for directory in ENFORCED_DIRS:
         suite_results = run([directory])
         enforced_results.extend(suite_results)
+        fixture_failures.extend(
+            (directory, "enforced", result)
+            for result in suite_results
+            if not result.passed
+        )
         enforced_fails += _print_suite_summary(directory, suite_results, True)
 
     print("\n=== Informational fixture corpus ===")
     for directory in INFORMATIONAL_DIRS:
         suite_results = run([directory])
         informational_results.extend(suite_results)
+        fixture_failures.extend(
+            (directory, "informational", result)
+            for result in suite_results
+            if not result.passed
+        )
         _print_suite_summary(directory, suite_results, False)
 
     print(
@@ -486,6 +497,18 @@ def main(argv=None):
         f"(enforced: {sum(r.passed for r in enforced_results)}/{len(enforced_results)}, "
         f"informational: {sum(r.passed for r in informational_results)}/{len(informational_results)})"
     )
+    print("\n=== Fixtures that did not behave as expected ===")
+    if not fixture_failures:
+        print("none")
+    else:
+        for directory, category, result in fixture_failures:
+            message = result.message or "no diagnostic message"
+            message = re.sub(r"\\s*[\\r\\n]+\\s*", " ", message).strip()
+            print(
+                f"FAIL {directory}/{result.file} #{result.proof_id} "
+                f"({category}): {message}"
+            )
+
     if enforced_fails:
         print(f"\n{enforced_fails} unexpected result(s) in the enforced fixture corpus.")
         return 1
