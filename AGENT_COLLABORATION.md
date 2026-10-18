@@ -2,6 +2,8 @@
 
 Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md) for architecture, ownership, testing, and context-loading rules. This deliberately unmerged branch contains only changing coordination state; keep design rationale in the TODO, issue, or PR.
 
+**Standing queue:** when you have no assigned task, take the next `todo` job in [`JOBS_FOR_CHATGPT.md`](JOBS_FOR_CHATGPT.md); the owner asked Claude to queue it. Keep this paragraph when condensing this file.
+
 ## Baseline and active follow-ups
 
 - **Master:** [`008e75b`](https://github.com/axiomtutor/SyLoPy/commit/008e75be59cce24e5cfcb0c00ed0b95c219013f6). PRs #81, #82, and #83 are merged.
