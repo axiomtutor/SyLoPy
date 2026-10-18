@@ -1,6 +1,6 @@
 # SyLoPy proof-file format
 
-Verified against master baseline commit `c1b05c1d229fe57bc4efd1addaa50ab86a885a65`. Examples marked `proof-format-test: valid-proof` are run by pytest.
+Verified against master baseline commit `c1b05c1d229fe57bc4efd1addaa50ab86a885a65`. Complete proof examples in this document are regression-tested by pytest.
 
 This reference describes the proof-file syntax and the implemented surface forms in the current repository. The parser and theory modules remain authoritative when a rule or phrase evolves. The document distinguishes supported input syntax from features that are explicitly deferred.
 
@@ -387,7 +387,7 @@ Concrete examples are in:
 - `tests/setTheoryProofs/pairing_theorems.txt`;
 - `tests/testDiscreteMath/invalid_relation_properties.txt`.
 
-No existing repository file was modified for this contribution.
+Runnable proof examples above are checked by `pytest_tests/test_proof_format_doc.py`; current implementation details are linked to their source files and fixture examples.
 
 ## 11. Theory directives and set-theory syntax
 
