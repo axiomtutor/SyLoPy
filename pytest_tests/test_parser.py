@@ -400,7 +400,7 @@ def test_declaration_recipe_can_consume_multiple_adjacent_surface_clauses():
     environment = pp.default_theory_environment().extended(fake_environment)
 
     entries, _ = pp.parse_proof_text(
-        "1. Let X be a widget carrier and Tagged be a widget marker. (Declaration)\\n",
+        "1. Let X be a widget carrier and Tagged be a widget marker. (Declaration)\n",
         environment=environment,
     )
     label, formula, justification = entries[0]
