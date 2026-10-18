@@ -51,5 +51,5 @@ end subproof
 2. A subseteq A. (Subset proof below)
 begin subproof
   2.1. Let x in A. (Assumption for subset proof)
-  2.2. x in A. (Reiteration from 2.1)
+  2.2. In(x, A). (Reiteration from 2.1)
 end subproof
