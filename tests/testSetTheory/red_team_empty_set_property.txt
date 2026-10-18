@@ -1,0 +1,20 @@
+# 1: Empty-set property cannot establish nonmembership in another set
+## Invalid: the target must be nonmembership in the empty set — no claim about an arbitrary set follows from the empty-set property
+### then not In(a, X).
+
+1. Let a, X be any set. (Declaration)
+2. not In(a, X). (Set property)
+
+# 2: Empty-set property concludes nonmembership, not membership
+## Invalid: EmptySetProperty must conclude nonmembership, not membership — an object cannot be a member of the empty set
+### then In(a, the empty set).
+
+1. Let a be any set. (Declaration)
+2. In(a, the empty set). (Set property)
+
+# 3: Empty-set nonmembership is the valid boundary
+## Proof that
+### then a is not in the empty set.
+
+1. Let a be any set. (Declaration)
+2. a is not in the empty set. (Set property)
