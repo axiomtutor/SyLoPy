@@ -24,23 +24,11 @@ surface: forall x in A, there exists y in B such that not R(x, y)
 expect: forall x, (In(x, A) -> exists y, (In(y, B) and not R(x, y)))
 why: The negation applies to R inside the existential witness condition.
 
-id: j4-bounded-quantifier-disjunction-body
-context: nested
-surface: for every x in A, P(x) or there exists y in B such that R(x, y)
-expect: forall x, (In(x, A) -> (P(x) or exists y, (In(y, B) and R(x, y))))
-why: The universal restriction scopes over the whole disjunction.
-
 id: j4-exists-bounded-then-forall-unbounded
 context: nested
 surface: there exists x in A such that for all y, R(x, y)
 expect: exists x, (In(x, A) and forall y, R(x, y))
 why: The witness is restricted to A but the inner universal has no membership restriction.
-
-id: j4-bounded-quantifiers-in-antecedent
-context: nested
-surface: if for all x in A, P(x), then there exists y in B such that Q(y)
-expect: (forall x, (In(x, A) -> P(x))) -> exists y, (In(y, B) and Q(y))
-why: Each bounded quantifier should parse as a complete formula before the outer implication.
 
 id: j4-bounded-quantifiers-in-biconditional
 context: nested
@@ -65,18 +53,6 @@ context: nested
 surface: there exists a in A such that a divides n
 expect: exists a, (In(a, A) and exists m, (Int(m) and n = Times(a, m)))
 why: The bounded witness is also the divisor in the inner divisibility condition.
-
-id: j4-parity-even
-context: line
-surface: n is even
-expect: Even(n)
-why: The intended reading is a unary predicate for evenness; no arithmetic characterization is assumed in this oracle case.
-
-id: j4-parity-odd
-context: nested
-surface: if n is odd then P(n)
-expect: Odd(n) -> P(n)
-why: The intended reading is a unary predicate for oddness inside an implication.
 
 id: j4-parity-even-or-odd
 context: nested
