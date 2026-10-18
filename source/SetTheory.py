@@ -1021,8 +1021,9 @@ POWER_SET_AXIOM = fl.ForAll('X', fl.Exists('Y', fl.ForAll(
 """For any X, there is a set Y = P(X) = {u : u subset X}. Jech's Axiom 5.
 Reuses `subset_formula` directly rather than re-deriving subset notation,
 overriding its default (synthetic, `__subset_element`) bound-variable name
-to the natural `v` -- citing this axiom means writing it out verbatim, and
-nobody should have to type the synthetic name to do that.
+to the natural `v`. This full formula remains the form used by the generic
+`(Axiom)` citation, which requires the axiom to be restated verbatim; the
+named `PowerSetAxiomRule` also accepts the intended instance form.
 """
 
 INFINITY_AXIOM = fl.Exists('X', fl.And(

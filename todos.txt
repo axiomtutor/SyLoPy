@@ -2,58 +2,20 @@
 
 ## Project status
 
-Master is currently
-[`12dcf99`](https://github.com/axiomtutor/SyLoPy/commit/12dcf99cf28544e09776f78b4deb07186518c0d6).
-The latest status-documentation-tree test run is GitHub Actions
-[run #731](https://github.com/axiomtutor/SyLoPy/actions/runs/39052334390),
-from PR #79's merge ref (master plus documentation-only changes):
+The latest recorded full-suite verification is the fresh-clone run reported in [PR #81](https://github.com/axiomtutor/SyLoPy/pull/81), whose merge commit is [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182). The run was performed on Python 3.12 and 3.13:
 
-- 1,220 Python tests passed, 1 failed, 1 xfailed.
+- Python tests: 1,425 passed, 1 failed, 1 xfailed.
 - Coverage passed.
 - Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 63/64.
+- Informational proof fixtures: 69/70.
 
-PR #78 separately tests the natural-number existential parser changes in
-[run #729](https://github.com/axiomtutor/SyLoPy/actions/runs/39052110870):
-1,223 passed, 1 failed, 1 xfailed, with coverage passed and the same fixture
-counts. The newly added parser regressions pass.
+These are PR-reported results, not an independently verified status check on the merge commit. The sole reported failure is described under Known issues below.
 
-The only failure in both runs is the known
-`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
-The surface uniqueness regression in PR #73, the equivalence-relation proof in
-PR #74, and the partial-order cycle proof in PR #77 pass.
-
-The failure is in WLOG citation remapping in the informational ZFC fixture.
-The equality-case replay rule is implemented, but replaying `x = a` as
-`x = b` substitutes `a -> b` into the pair characterization cited on line 3,
-turning `(u = a or u = b)` into `(u = b or u = b)`. That stronger property
-is not an established fact about the existing pair set. Issue
-[#75](https://github.com/axiomtutor/SyLoPy/issues/75) tracks preserving
-invariant outer citations while still remapping facts that genuinely require
-substitution. `Mutatis mutandis` remains unimplemented.
-
-The current work is no longer about making the basics work. The remaining work
-is about making the system cleaner, easier to extend, and easier to use.
+The main parser/elaboration/kernel pipeline, set theory, natural-number reasoning, and discrete-mathematics layer are in place. Current improvement work should prioritize maintainability, disciplined theory extension, and useful examples and documentation.
 
 ## Known issues
 
-- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
-      remains the sole failure in the latest full-suite report. Equality-case
-      WLOG replay is implemented; the fixture fails at line 5.2.4 because
-      replay cannot find a visible counterpart for cited line `3`. The chosen
-      case `x = a` is replayed as `x = b`, inducing substitution `a -> b`.
-      Applying that substitution to line 3's pair characterization changes
-      `(u = a or u = b)` into `(u = b or u = b)`, which is not an established
-      property of the already-introduced set Y. The original characterization
-      remains sufficient for the replayed membership step; replay must be able
-      to preserve an invariant outer citation where valid, while still
-      remapping citations that genuinely require substitution. Tracked in
-      [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75). Do not weaken
-      negative tests or alter the fixture to hide the failure.
-      `Mutatis mutandis` remains unimplemented and is not reached before this
-      WLOG citation-remapping failure. The named ZFC axiom-citation rules take
-      the instance form (section 5); retiring the generic `(Axiom)` citation
-      of the four axioms remains the owner's decision.
+- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` remains the sole reported failure (issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75)). During equality-case WLOG replay, the substitution `a -> b` incorrectly transforms line 3's invariant pair characterization, so its citation no longer has a visible counterpart. Preserve the original visible citation when it remains valid, remapping only when substitution is necessary. Do not weaken negative tests or alter the fixture. Coordinate with Claude before touching Claude-owned `source/ProofLogic.py`. `Mutatis mutandis` remains unimplemented and deferred.
 
 ## Design principles
 
@@ -145,11 +107,10 @@ kept equivalent by regression tests rather than by making the kernel depend on
 
 ### 5. ZFC axiom citations and derived rules for set theory
 
-Design agreed while working through the user's own "Unique pairing" proof
-(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). The unchecked items below
-are not implemented yet -- this is the agreed design, written down so
-implementation can proceed later without re-litigating it. Do not start
-implementing the rules without an explicit go-ahead.
+Design and status notes from the user's "Unique pairing" proof
+(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). Checked items are implemented;
+unchecked items remain open. This ledger is not blanket authorization: follow
+any explicit owner-approval gate on the remaining work.
 
 - [x] Witness naming for axiom instances (decided: sugar, not a context-aware
       citation). `Let Y be such a set. (Existence from L)` extends the
@@ -249,11 +210,9 @@ implementing the rules without an explicit go-ahead.
       citation remapping, absent counterparts, declaration/metadata
       substitution, nested subproofs, prevention of future-line and
       cross-sibling references, and preservation of the original proof.
-      The current known failure is the informational fixture
-      `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`,
-      at line 5.2.4: replay cannot find a visible counterpart for cited line
-      `3` after substitution. This remains a real failure and must not be
-      masked.
+      The outstanding citation-remapping failure is tracked in
+      [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) and remains
+      the sole reported failure. Do not mask it; see "Known issues" above.
 
       Limitations: arbitrary-property transformations are not implemented;
       equality cases are the supported form. `Mutatis mutandis` is a separate,
