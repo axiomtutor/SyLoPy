@@ -1,11 +1,11 @@
 # Live Collaboration Handoff
 
-Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md) for architecture, ownership, testing, and context-loading rules. This deliberately unmerged branch contains only changing coordination state. Keep it short; detailed rationale belongs in the relevant TODO entry, issue, or PR.
+Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md) for architecture, ownership, testing, and context-loading rules; [PR #82](https://github.com/axiomtutor/SyLoPy/pull/82) proposes status corrections after PR #81. This deliberately unmerged branch contains only changing coordination state. Keep it short; detailed rationale belongs in the relevant TODO entry, issue, or PR.
 
 ## Baseline and current state
 
 - **Master:** [`883dc9e`](https://github.com/axiomtutor/SyLoPy/commit/883dc9e39b751cd940c63b0b9e62f418e9d03182). [PR #82](https://github.com/axiomtutor/SyLoPy/pull/82) also updates stale status text in the README.
-- **[PR #81](https://github.com/axiomtutor/SyLoPy/pull/81) merged:** the named ZFC axiom-citation rules now accept the intended Union and Power Set instance forms. It adds 202 rule tests and six informational proofs. The PR reports fresh-clone tests on Python 3.12 and 3.13: 1,425 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81; informational fixtures 69/70. These are PR-reported results, not a claim that the merge commit has a green CI run.
+- **[PR #81](https://github.com/axiomtutor/SyLoPy/pull/81) merged:** the named ZFC axiom-citation rules now accept the intended Union and Power Set instance forms. [PR #82](https://github.com/axiomtutor/SyLoPy/pull/82) refreshes stale status docs; CI confirms the known #75 failure is unchanged. [PR #83](https://github.com/axiomtutor/SyLoPy/pull/83) adds WLOG future-line and closed-sibling reference tests without editing kernel code. It adds 202 rule tests and six informational proofs. The PR reports fresh-clone tests on Python 3.12 and 3.13: 1,425 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81; informational fixtures 69/70. These are PR-reported results, not a claim that the merge commit has a green CI run.
 - The named axiom-citation rules are no longer deferred. The remaining owner decision in `todos.txt` §5 is whether to retire generic `(Axiom)` citations; do not remove them without explicit approval. `Mutatis mutandis` remains deferred.
 
 ## One known blocker
