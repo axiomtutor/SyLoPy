@@ -1,0 +1,32 @@
+# 1: Separation requires distinct binders
+## Invalid: u and Y must be distinct variables — the element binder cannot be reused as the result-set binder
+### then exists Y, forall u, (In(u, Y) iff (In(u, X) and Q(u))).
+
+1. Let X be any set. (Declaration)
+2. exists u, forall u, (In(u, u) iff (In(u, X) and Q(u))). (Separation)
+
+# 2: Separation's bounding set cannot mention the element
+## Invalid: the bounding set X must not mention u — otherwise the bound varies with the element
+### then exists Y, forall u, (In(u, Y) iff (In(u, u) and Q(u))).
+
+1. exists Y, forall u, (In(u, Y) iff (In(u, u) and Q(u))). (Separation)
+
+# 3: Separation's bounding set cannot mention the result set
+## Invalid: the bounding set X must not mention Y — the bound must be fixed independently of the set being defined
+### then exists Y, forall u, (In(u, Y) iff (In(u, Y) and Q(u))).
+
+1. exists Y, forall u, (In(u, Y) iff (In(u, Y) and Q(u))). (Separation)
+
+# 4: Separation's property cannot refer to its result set
+## Invalid: the defining property B must not mention Y — otherwise comprehension is self-referential
+### then exists Y, forall u, (In(u, Y) iff (In(u, X) and not In(u, Y))).
+
+1. Let X be any set. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (In(u, X) and not In(u, Y))). (Separation)
+
+# 5: Ordinary bounded separation is accepted
+## Proof that
+### then exists Y, forall u, (In(u, Y) iff (In(u, X) and not In(u, X))).
+
+1. Let X be any set. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (In(u, X) and not In(u, X))). (Separation)
