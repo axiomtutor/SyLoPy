@@ -31,6 +31,9 @@ if (( pytest_status == 0 )); then
 else
     echo "pytest:   FAIL"
     grep -E '^FAILED |^[0-9]+ failed|^[0-9]+ passed' "$pytest_log" | tail -n 12 || tail -n 12 "$pytest_log"
+    echo
+    echo "=== Failure details ==="
+    python3 -m pytest -q --tb=short --lf pytest_tests 2>&1 | tail -n 150
 fi
 
 # Keep the normal run compact. For line-level coverage use:
