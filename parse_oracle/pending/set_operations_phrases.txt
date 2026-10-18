@@ -1,0 +1,73 @@
+# Pending set operations and disjointness. Excluded from the loaded oracle until supported or resolved.
+
+id: j4-union-membership
+context: line
+surface: x is in the union of A and B
+expect: In(x, A) or In(x, B)
+why: Membership in a union means membership in at least one of its two sets.
+
+id: j4-union-membership-nested
+context: nested
+surface: P(x) and x belongs to A union B
+expect: P(x) and (In(x, A) or In(x, B))
+why: The union-membership claim is the second conjunct.
+
+id: j4-intersection-membership
+context: line
+surface: x belongs to the intersection of A and B
+expect: In(x, A) and In(x, B)
+why: Membership in an intersection means membership in both sets.
+
+id: j4-intersection-membership-negated
+context: nested
+surface: x is not in the intersection of A and B
+expect: not (In(x, A) and In(x, B))
+why: Negating intersection membership negates the conjunction.
+
+id: j4-union-defines-set
+context: line
+surface: A is the union of B and C
+expect: forall u, (In(u, A) iff (In(u, B) or In(u, C)))
+why: The union set contains exactly the elements belonging to B or C.
+
+id: j4-intersection-defines-set
+context: line
+surface: A is the intersection of B and C
+expect: forall u, (In(u, A) iff (In(u, B) and In(u, C)))
+why: The intersection set contains exactly the elements belonging to both B and C.
+
+id: j4-union-nested-consequence
+context: nested
+surface: if x is in the union of A and B then P(x)
+expect: (In(x, A) or In(x, B)) -> P(x)
+why: The union-membership condition is the antecedent of the implication.
+
+id: j4-disjoint-adjective
+context: line
+surface: A and B are disjoint
+expect: forall u, not (In(u, A) and In(u, B))
+why: Disjoint sets have no common member.
+
+id: j4-disjoint-from
+context: nested
+surface: A is disjoint from B and P(A)
+expect: (forall u, not (In(u, A) and In(u, B))) and P(A)
+why: Disjointness states the absence of any common member.
+
+id: j4-not-disjoint
+context: line
+surface: A and B are not disjoint
+expect: exists u, (In(u, A) and In(u, B))
+why: Two sets are not disjoint exactly when they share a member.
+
+id: j4-union-empty
+context: nested
+surface: the union of A and B is empty
+expect: forall u, not (In(u, A) or In(u, B))
+why: A union that is empty has no element from either set.
+
+id: j4-intersection-nonempty
+context: nested
+surface: the intersection of A and B is nonempty
+expect: exists u, (In(u, A) and In(u, B))
+why: A common element witnesses a nonempty intersection.
