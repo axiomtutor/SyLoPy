@@ -421,6 +421,234 @@ _CONTAINS_EXACTLY_CANDIDATE = re.compile(
 )
 
 
+_SET_OPERATION_NAME = _NAME
+_SET_OPERATION_SPAN_PATTERNS = tuple(
+    re.compile(pattern, re.I)
+    for pattern in (
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+in\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+{_SET_OPERATION_NAME}\s+union\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+not\s+in\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+not\s+disjoint(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+disjoint(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+disjoint\s+from\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.])the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+is\s+empty(?![\w.])",
+        rf"(?<![\w.])the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+is\s+nonempty(?![\w.])",
+    )
+)
+
+
+def _parse_set_operation_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Read union/intersection/disjointness wording as ordinary first-order logic."""
+    s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+
+    def term(name: str) -> Optional[tl.Term]:
+        return try_parse_set_term(name, bound_vars)
+
+    def binary_membership(left: str, right: str, use_or: bool) -> Optional[fl.Formula]:
+        left_term, right_term = term(left), term(right)
+        if left_term is None or right_term is None:
+            return None
+        element = tl.VariableTerm(element_name)
+        connective = fl.Or if use_or else fl.And
+        return connective(
+            membership_formula(element, left_term),
+            membership_formula(element, right_term),
+        )
+
+    # Membership in the union/intersection: explicit English forms are phrases
+    # because their internal "and" is not a logical connective.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+in\s+the\s+union\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Or(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+({_SET_OPERATION_NAME})\s+union\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Or(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.And(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+not\s+in\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Not(fl.And(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            ))
+
+    # "A is the union/intersection of B and C" characterizes A by membership.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+the\s+(union|intersection)\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        target, operation, left, right = match.groups()
+        target_term, left_term, right_term = term(target), term(left), term(right)
+        if None not in (target_term, left_term, right_term):
+            used = set(bound_vars or ())
+            for candidate in (target_term, left_term, right_term):
+                used |= fl.term_names(candidate)
+            element_name = _fresh_generated_variable_name(
+                used, "__set_operation_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            rhs = fl.Or if operation.lower() == "union" else fl.And
+            return fl.ForAll(
+                element_name,
+                fl.Iff(
+                    membership_formula(element, target_term),
+                    rhs(
+                        membership_formula(element, left_term),
+                        membership_formula(element, right_term),
+                    ),
+                ),
+            )
+
+    # Disjointness is universal non-overlap; its negation is witnessed overlap.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+are\s+not\s+disjoint",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__intersection_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.Exists(
+                element_name,
+                fl.And(membership_formula(element, left), membership_formula(element, right)),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+are\s+disjoint",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__disjoint_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.And(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+disjoint\s+from\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__disjoint_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.And(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    # Empty union / nonempty intersection are also formula-level statements.
+    match = re.fullmatch(
+        rf"the\s+union\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+is\s+empty",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__empty_union_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.Or(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    match = re.fullmatch(
+        rf"the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+is\s+nonempty",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__nonempty_intersection_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.Exists(
+                element_name,
+                fl.And(membership_formula(element, left), membership_formula(element, right)),
+            )
+
+    return None
+
+
+def find_set_operation_spans(text: str) -> List[Tuple[int, int]]:
+    """Protect set-operation phrases containing connective-looking words."""
+    spans = []
+    for pattern in _SET_OPERATION_SPAN_PATTERNS:
+        for match in pattern.finditer(text):
+            if _parse_set_operation_phrase(match.group(0), set()) is not None:
+                spans.append(match.span())
+    return spans
+
+
 def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
     """Spans of `text` that are one set-theory phrase although they contain
     "or"/"and"/commas: "x is a, b, or c" and "S contains exactly a, b and c".
@@ -436,6 +664,7 @@ def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
         for match in pattern.finditer(text):
             if _try_parse_display_expression(match.group(0), match.group(0), set()) is not None:
                 spans.append(match.span())
+    spans.extend(find_set_operation_spans(text))
     return spans
 
 
@@ -447,6 +676,10 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
     display = _try_parse_display_expression(s, text, bound_vars)
     if display is not None:
         return display
+
+    operation = _parse_set_operation_phrase(s, bound_vars)
+    if operation is not None:
+        return SurfaceExpression("core", operation, text)
 
     # Negative subset phrasing must be recognized before the generic connective
     # grammar sees "not". Expand it to the negation of the ordinary subset formula.
