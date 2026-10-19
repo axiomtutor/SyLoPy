@@ -399,18 +399,24 @@ def try_parse_parity_phrase(text: str, bound_vars):
             if all(matches):
                 import SyLoPy.source.ProofParser as pp
                 parsed = []
-                for match in matches:
-                    predicate = (
-                        EVEN_PREDICATE
-                        if match.group(2).lower() == "even"
-                        else ODD_PREDICATE
-                    )
-                    parsed.append(
-                        fl.AtomicFormula(
-                            predicate,
-                            [pp.parse_term(match.group(1), bound_vars)],
+                try:
+                    for match in matches:
+                        predicate = (
+                            EVEN_PREDICATE
+                            if match.group(2).lower() == "even"
+                            else ODD_PREDICATE
                         )
-                    )
+                        parsed.append(
+                            fl.AtomicFormula(
+                                predicate,
+                                [pp.parse_term(match.group(1), bound_vars)],
+                            )
+                        )
+                except ValueError:
+                    # This apparent alternative may include an outer
+                    # connective (for example, "if P then n is even").
+                    # Leave that complete formula to the general grammar.
+                    return None
                 return fl.Or(*parsed)
         return None
 
