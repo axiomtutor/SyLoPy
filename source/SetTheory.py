@@ -799,7 +799,7 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
 _BOUNDED_QUANTIFIER_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 
 _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
-    rf"(?<![\w.])(?:for\s+all|forall|there\s+exists|exists)\s+"
+    rf"(?<![\w.])(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+"
     rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
     flags=re.I,
 )
@@ -816,7 +816,7 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
             depth += 1
         elif ch in ")}":
             depth = max(0, depth - 1)
-    for match in re.finditer(r"\b(?:for\s+all|forall|there\s+exists|exists)\s+", text, flags=re.I):
+    for match in re.finditer(r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+", text, flags=re.I):
         start = match.start()
         if start > 0 and depths[start] != 0:
             continue
@@ -825,6 +825,16 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
             absolute = match.end() + then.start()
             if depths[absolute] == 0:
                 end = absolute
+                # A comma before the enclosing "then" belongs to the
+                # conditional syntax, not to the bounded quantifier's body.
+                boundary = end
+                while boundary > start and text[boundary - 1].isspace():
+                    boundary -= 1
+                if boundary > start and text[boundary - 1] == ",":
+                    boundary -= 1
+                    while boundary > start and text[boundary - 1].isspace():
+                        boundary -= 1
+                end = boundary
                 break
         candidate = text[start:end]
         if _BOUNDED_QUANTIFIER_SPAN_RE.fullmatch(candidate.strip()):
@@ -837,7 +847,7 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
 
     forall = re.fullmatch(
-        rf"(?:for\s+all|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
+        rf"(?:for\s+all|for\s+every|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
         rf"\s*(?:,\s*|we\s+have\s+)(.+)",
         s, flags=re.I,
     )
