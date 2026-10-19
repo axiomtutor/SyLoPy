@@ -63,6 +63,12 @@ Divisibility (`a|n`, "a divides n") is *not* a new primitive or a new
 rule. It is definitional sugar, expanded at parse time to
 `exists m, (Int(m) and n = a * m)` -- the same principle `SetTheory`'s
 subset notation already follows (see `ELABORATION_ARCHITECTURE.md`).
+
+Parity wording has an intentionally smaller commitment: `n is even` and
+`n is odd` lower to the unary predicates `Even(n)` and `Odd(n)`.
+These predicates are vocabulary only; this module adds no arithmetic axioms
+characterizing parity. The ambiguous shorthand `n is even or odd` remains
+rejected; write the subject explicitly in both alternatives.
 Existential Introduction/Elimination, already in `ProofLogic.default_rules()`,
 are what a proof actually cites to introduce or use a divisibility fact;
 there is no separate "Definition of Divisibility" rule to look up, the
@@ -126,6 +132,8 @@ import SyLoPy.source.TermLogic as tl
 from SyLoPy.source.ProofElaboration import TheoryEnvironment
 
 INT_PREDICATE = "Int"
+EVEN_PREDICATE = "Even"
+ODD_PREDICATE = "Odd"
 PLUS = "Plus"
 TIMES = "Times"
 NEG = "Neg"
@@ -227,6 +235,8 @@ INT_AXIOMS = [
 
 INT_DECLARATIONS = [
     pl.Declaration(INT_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(EVEN_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(ODD_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
     pl.Declaration(PLUS, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(TIMES, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(NEG, pl.DeclarationKind.FUNCTION, arity=1),
@@ -356,6 +366,30 @@ def try_parse_int_term(text: str, bound_vars):
     return _Quotient(pp.parse_term(parts[0], bound_vars), pp.parse_term(parts[1], bound_vars))
 
 
+def try_parse_parity_phrase(text: str, bound_vars):
+    """Parse the parity vocabulary as uninterpreted unary predicates.
+
+    The phrase-parser hook checks the whole input before connective splitting.
+    That lets this function preserve the deliberate rejection of the ambiguous
+    shorthand "n is even or odd" rather than letting "odd" fall back to an
+    unrelated zero-argument proposition.
+    """
+    import re
+
+    s = " ".join(text.strip().rstrip(".").split())
+    if re.fullmatch(r"(.+?)\s+is\s+(?:even\s+or\s+odd|odd\s+or\s+even)", s, flags=re.I):
+        raise ValueError(
+            f"Ambiguous parity phrase {s!r}; write the subject in both alternatives"
+        )
+    match = re.fullmatch(r"(.+?)\s+is\s+(even|odd)", s, flags=re.I)
+    if match is None:
+        return None
+
+    import SyLoPy.source.ProofParser as pp
+    predicate = EVEN_PREDICATE if match.group(2).lower() == "even" else ODD_PREDICATE
+    return fl.AtomicFormula(predicate, [pp.parse_term(match.group(1), bound_vars)])
+
+
 def try_parse_int_formula(text: str, bound_vars):
     """Formula-level sugar recognized in *any* position (top of a line or
     nested inside a connective -- see `ProofParser.parse_formula`'s
@@ -393,6 +427,7 @@ def try_parse_int_formula(text: str, bound_vars):
 NUMBER_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="number theory",
     nested_formula_parsers=[nt.try_parse_nat_formula, try_parse_int_formula],
+    phrase_parsers=[try_parse_parity_phrase],
     term_parsers=[try_parse_int_term],
     rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()] + list(nt.NAT_TYPE.schema_rules),
     axioms=list(INT_AXIOMS) + list(nt.NAT_AXIOMS),

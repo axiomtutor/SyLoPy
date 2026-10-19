@@ -1,4 +1,4 @@
-# Pending parity predicates. Excluded from the loaded oracle until supported or resolved.
+# Parity predicate surface phrases.
 
 id: j4-parity-even
 context: line
