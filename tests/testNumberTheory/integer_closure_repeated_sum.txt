@@ -1,0 +1,19 @@
+# 1: Repeated sums of integer expressions preserve integerhood
+## Proof that
+### Int(a) and Int(b) imply Int(Plus(Plus(Neg(a), b), b))
+
+1. Let a, b be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. forall x, (Int(x) -> Int(Neg(x))). (Axiom)
+5. Int(a) -> Int(Neg(a)). (Universal Instantiation from 4)
+6. Int(Neg(a)). (Modus Ponens from 5, 2)
+7. forall x, forall y, ((Int(x) and Int(y)) -> Int(Plus(x, y))). (Axiom)
+8. forall y, ((Int(Neg(a)) and Int(y)) -> Int(Plus(Neg(a), y))). (Universal Instantiation from 7)
+9. (Int(Neg(a)) and Int(b)) -> Int(Plus(Neg(a), b)). (Universal Instantiation from 8)
+10. Int(Neg(a)) and Int(b). (Conjunction Introduction from 6, 3)
+11. Int(Plus(Neg(a), b)). (Modus Ponens from 9, 10)
+12. forall y, ((Int(Plus(Neg(a), b)) and Int(y)) -> Int(Plus(Plus(Neg(a), b), y))). (Universal Instantiation from 7)
+13. (Int(Plus(Neg(a), b)) and Int(b)) -> Int(Plus(Plus(Neg(a), b), b)). (Universal Instantiation from 12)
+14. Int(Plus(Neg(a), b)) and Int(b). (Conjunction Introduction from 11, 3)
+15. Int(Plus(Plus(Neg(a), b), b)). (Modus Ponens from 13, 14)

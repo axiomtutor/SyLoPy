@@ -1,0 +1,17 @@
+# 1: Multiplying negated integers preserves integerhood
+## Proof that
+### Int(a) and Int(b) imply Int(Times(Neg(a), Neg(b)))
+
+1. Let a, b be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. forall x, (Int(x) -> Int(Neg(x))). (Axiom)
+5. Int(a) -> Int(Neg(a)). (Universal Instantiation from 4)
+6. Int(Neg(a)). (Modus Ponens from 5, 2)
+7. Int(b) -> Int(Neg(b)). (Universal Instantiation from 4)
+8. Int(Neg(b)). (Modus Ponens from 7, 3)
+9. forall x, forall y, ((Int(x) and Int(y)) -> Int(Times(x, y))). (Axiom)
+10. forall y, ((Int(Neg(a)) and Int(y)) -> Int(Times(Neg(a), y))). (Universal Instantiation from 9)
+11. (Int(Neg(a)) and Int(Neg(b))) -> Int(Times(Neg(a), Neg(b))). (Universal Instantiation from 10)
+12. Int(Neg(a)) and Int(Neg(b)). (Conjunction Introduction from 6, 8)
+13. Int(Times(Neg(a), Neg(b))). (Modus Ponens from 11, 12)

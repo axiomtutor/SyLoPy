@@ -1,0 +1,21 @@
+# 1: A sum of two integer products is an integer
+## Proof that
+### Int(a), Int(b), and Int(c) imply Int(Plus(Times(a,b), Times(a,c)))
+
+1. Let a, b, c be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. Int(c). (Premise)
+5. forall x, forall y, ((Int(x) and Int(y)) -> Int(Times(x, y))). (Axiom)
+6. forall y, ((Int(a) and Int(y)) -> Int(Times(a, y))). (Universal Instantiation from 5)
+7. (Int(a) and Int(b)) -> Int(Times(a, b)). (Universal Instantiation from 6)
+8. Int(a) and Int(b). (Conjunction Introduction from 2, 3)
+9. Int(Times(a, b)). (Modus Ponens from 7, 8)
+10. (Int(a) and Int(c)) -> Int(Times(a, c)). (Universal Instantiation from 6)
+11. Int(a) and Int(c). (Conjunction Introduction from 2, 4)
+12. Int(Times(a, c)). (Modus Ponens from 10, 11)
+13. forall x, forall y, ((Int(x) and Int(y)) -> Int(Plus(x, y))). (Axiom)
+14. forall y, ((Int(Times(a, b)) and Int(y)) -> Int(Plus(Times(a, b), y))). (Universal Instantiation from 13)
+15. (Int(Times(a, b)) and Int(Times(a, c))) -> Int(Plus(Times(a, b), Times(a, c))). (Universal Instantiation from 14)
+16. Int(Times(a, b)) and Int(Times(a, c)). (Conjunction Introduction from 9, 12)
+17. Int(Plus(Times(a, b), Times(a, c))). (Modus Ponens from 15, 16)

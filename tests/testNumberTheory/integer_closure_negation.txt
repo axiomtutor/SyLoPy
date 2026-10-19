@@ -1,0 +1,9 @@
+# 1: Negation preserves integerhood
+## Proof that
+### if a is an integer, then its additive inverse is an integer
+
+1. Let a be an object. (Declaration)
+2. Int(a). (Premise)
+3. forall x, (Int(x) -> Int(Neg(x))). (Axiom)
+4. Int(a) -> Int(Neg(a)). (Universal Instantiation from 3)
+5. Int(Neg(a)). (Modus Ponens from 4, 2)
