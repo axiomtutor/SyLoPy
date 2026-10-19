@@ -144,7 +144,7 @@ def run_mutant(
                 return Outcome(
                     mutant.id,
                     "PATTERN",
-                    f"{mutant.file!r}: expected one match, found 0 (file missing)",
+                    f"{mutant.file}: expected one match, found 0 (file missing)",
                 )
 
             try:
@@ -161,7 +161,7 @@ def run_mutant(
                 return Outcome(
                     mutant.id,
                     "PATTERN",
-                    f"{mutant.file!r}: expected one match, found {count}",
+                    f"{mutant.file}: expected one match, found {count}",
                 )
 
             target.write_text(
