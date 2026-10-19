@@ -20,8 +20,10 @@ The named axiom rules are implemented. Retiring generic `(Axiom)` citations rema
 
 ## J8 — Negative set phrases (PR #100)
 
-The owner approved continuing with the proposed parser work after J7 merged. Implementation is in [PR #100](https://github.com/axiomtutor/SyLoPy/pull/100), ready for review.
+Merged into master after CI confirmed the new oracle cases pass. The change supports the 12 readings from [finding #93](https://github.com/axiomtutor/SyLoPy/issues/93) in `source/SetTheory.py` and `parse_oracle/negated_set_phrases.txt`, with no generic connective parser or kernel change.
 
-The change supports the 12 readings previously recorded in [finding #93](https://github.com/axiomtutor/SyLoPy/issues/93), in `source/SetTheory.py` and `parse_oracle/negated_set_phrases.txt). It keeps the intended plain-logic formulas, uses fresh binders for empty/nonempty claims, removes the obsolete pending copy, and does not change generic connective parsing or the kernel.
+## J9 — Union, intersection, and disjointness phrases (in progress)
 
-Verification at tested head [`a44a30f`](https://github.com/axiomtutor/SyLoPy/commit/a44a30fd725243e2321811a7cd0c1eeb4a7079d9), CI [run #810](https://github.com/axiomtutor/SyLoPy/actions/runs/39181960278): 1,479 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All 12 new oracle cases pass. The only failure is the known deferred #75 `Mutatis mutandis` case.
+Scope: support the 12 intended readings in [finding #94](https://github.com/axiomtutor/SyLoPy/issues/94), currently in `parse_oracle/pending/set_operations_phrases.txt`. Keep the operations as ordinary formulas: union membership is disjunction, intersection membership is conjunction, and disjointness is universal non-overlap. Protect full phrases from the generic connective splitter using the existing set-theory phrase-span mechanism. Do not add set-operation terms or change the kernel.
+
+Done when all 12 intended readings pass the loaded oracle; CI has no new failures beyond known issue #75; the pending copy is removed only after the unchanged expected formulas pass.
