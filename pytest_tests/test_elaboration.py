@@ -328,6 +328,22 @@ def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof
 # anything to exercise.
 # --------------------------------------------------------------------
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1. A. (Premise)\n1. B. (Premise)\n",
+        "1. A. (Premise)\nbegin subproof\n 1. B. (Assumption)\nend subproof\n",
+    ],
+    ids=["duplicate-line-label", "duplicate-assumption-label"],
+)
+def test_duplicate_reference_labels_have_consistent_elaboration_errors(text):
+    with pytest.raises(
+        pe.ElaborationError,
+        match="already used earlier in this proof or an enclosing scope",
+    ):
+        pp.parse_proof_text(text)
+
+
 def test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_subproof():
     # The label half of the same "parent visibility" property the
     # declaration test above covers: an existential established outside a
