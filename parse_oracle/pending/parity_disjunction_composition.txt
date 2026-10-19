@@ -1,0 +1,9 @@
+# Pending parser reading reported in issue #105.
+# The smallest reproducer is kept outside the loaded oracle until the parser
+# supports the intended repeated-subject disjunction.
+
+id: parity-explicit-even-or-odd
+context: nested
+surface: n is even or n is odd
+expect: Even(n) or Odd(n)
+why: The design says to repeat the subject in both alternatives; currently try_parse_parity_phrase sends "n is even or n" to parse_term and raises ValueError. See issue #105.
