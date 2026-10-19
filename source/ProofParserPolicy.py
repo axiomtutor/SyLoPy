@@ -453,7 +453,9 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
                 _parse_formula_conventional(parts[1], bound_vars, environment),
             )
 
-    m = re.match(r"^if\s+(.*?)\s+then\s+(.*)$", s, flags=re.I)
+    # Accept the standard comma before "then" without making it part of
+    # the antecedent (which may itself be a complete theory phrase).
+    m = re.match(r"^if\s+(.*?)(?:,\s*|\s+)then\s+(.*)$", s, flags=re.I)
     if m:
         return fl.Implies(
             _parse_formula_conventional(m.group(1), bound_vars, environment),
