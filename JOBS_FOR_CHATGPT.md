@@ -16,6 +16,7 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 | J5 | Order and relation proofs | merged (PR #92) |
 | J6 | Number-theory proofs and a missing-axiom list | merged (PR #97; finding #98) |
 | J7 | Mutation-check tool | merged (PR #99) |
+| J8 | Negative set phrases in the parser | waiting for owner (PR #100; finding #93) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
