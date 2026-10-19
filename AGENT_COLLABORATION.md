@@ -6,8 +6,8 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`f85d70a`](https://github.com/axiomtutor/SyLoPy/commit/f85d70acd0efab18a46976234e28b9fb44dafa75). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100, and #101 are merged; #98 remains an open issue; PR #102 is open for review.
-- **Latest merged-code verification:** [PR #101](https://github.com/axiomtutor/SyLoPy/pull/101), CI [run #39182587319](https://github.com/axiomtutor/SyLoPy/actions/runs/39182587319): 1,491 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. The sole failure is known issue #75 (`MutatisMutandis`).
+- **Master:** [`eb7ce65`](https://github.com/axiomtutor/SyLoPy/commit/eb7ce65f5dcdd255841c1e67034ed1efd8a1790e). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100, #101, and #102 are merged; #98 remains an open issue; PR #103 is open.
+- **Latest merged-code verification:** [PR #102](https://github.com/axiomtutor/SyLoPy/pull/102), CI [run #39183132098](https://github.com/axiomtutor/SyLoPy/actions/runs/39183132098): 1,493 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. The sole failure is known issue #75 (`MutatisMutandis`).
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
 
@@ -32,8 +32,14 @@ Verification: 1,491 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtu
 
 ## Finding #95 — Nested bounded-quantifier variants (PR #102)
 
-Ready for owner review: [PR #102](https://github.com/axiomtutor/SyLoPy/pull/102), tested head [`08c28b2`](https://github.com/axiomtutor/SyLoPy/commit/08c28b2d9fa9244b3699f845507109220d2338f5), CI [run #39183132098](https://github.com/axiomtutor/SyLoPy/actions/runs/39183132098).
+Merged into master: [PR #102](https://github.com/axiomtutor/SyLoPy/pull/102), tested head [`08c28b2`](https://github.com/axiomtutor/SyLoPy/commit/08c28b2d9fa9244b3699f845507109220d2338f5), CI [run #39183132098](https://github.com/axiomtutor/SyLoPy/actions/runs/39183132098).
 
 The parser now recognizes the "for every" bounded-universal spelling, excludes an enclosing conditional's comma from the quantifier body, and accepts that comma before "then". Both oracle cases from the finding pass.
 
 Verification: 1,493 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. Sole failure remains the known deferred #75 `MutatisMutandis` fixture.
+
+## Finding #96 — Even and odd predicate phrases (PR #103)
+
+Draft PR: [PR #103](https://github.com/axiomtutor/SyLoPy/pull/103), tested head [`8eab6dc`](https://github.com/axiomtutor/SyLoPy/commit/8eab6dcb60d0ec4be08d26ce9ed5d346689e67e7). CI run [#39183767233](https://github.com/axiomtutor/SyLoPy/actions/runs/39183767233) is in progress.
+
+The parser adds `n is even` / `n is odd` as uninterpreted unary predicates `Even(n)` / `Odd(n)`, declares the predicates in the number-theory vocabulary, and promotes the two pending oracle cases. No parity axioms are added. The ambiguous shorthand `n is even or odd` remains rejected.
