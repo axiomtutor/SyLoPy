@@ -6,7 +6,7 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`cff0d18`](https://github.com/axiomtutor/SyLoPy/commit/cff0d1879fb4bb281d769bd2b9e9b2c66add8039). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, and #99 are merged; #98 is an open issue.
+- **Master:** [`22e5c4f`](https://github.com/axiomtutor/SyLoPy/commit/22e5c4f124b61b24a6e66c87adef33e5fc9c756e). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, and #100 are merged; #98 remains an open issue; PR #101 is open for review.
 - **Latest merged-code verification:** [PR #83](https://github.com/axiomtutor/SyLoPy/pull/83), CI [run #749](https://github.com/axiomtutor/SyLoPy/actions/runs/39081978883): 1,427 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 81/81; informational fixtures 69/70. The sole failure is issue #75.
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
