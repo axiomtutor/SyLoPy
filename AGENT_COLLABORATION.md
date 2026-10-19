@@ -18,10 +18,10 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 The named axiom rules are implemented. Retiring generic `(Axiom)` citations remains an owner decision. Arbitrary-property WLOG, `Mutatis mutandis`, and symbolic defining-property behavior remain deferred.
 
 
-## Proposed next task — awaiting owner approval
+## J8 — Negative set phrases (PR #100)
 
-The assigned queue J0–J7 is exhausted, and PR #99 is merged. Per the standing instruction, do not start an unqueued implementation until the owner approves a new job.
+The owner approved continuing with the proposed parser work after J7 merged. Implementation is in [PR #100](https://github.com/axiomtutor/SyLoPy/pull/100), ready for review.
 
-**Proposal J8: implement common negative set phrases from [finding #93](https://github.com/axiomtutor/SyLoPy/issues/93).** Review the 12 saved cases in `parse_oracle/pending/negated_set_phrases.txt`, preserve their intended plain-logic readings, and add support through the set-theory parser/phrase boundary (not generic elaboration or kernel changes unless investigation shows that is necessary). Keep any wording that should not be part of the supported vocabulary pending rather than weakening its expected reading. Add each supported case to the loaded oracle and ensure all loaded cases pass.
+The change supports the 12 readings previously recorded in [finding #93](https://github.com/axiomtutor/SyLoPy/issues/93), in `source/SetTheory.py` and `parse_oracle/negated_set_phrases.txt). It keeps the intended plain-logic formulas, uses fresh binders for empty/nonempty claims, removes the obsolete pending copy, and does not change generic connective parsing or the kernel.
 
-**Done when:** each of the 12 cases is either supported by a passing oracle test or explicitly left pending with the reason recorded; no expected formula is changed to match current parser behavior; the full CI run has no new failures beyond known issue #75. Await owner approval before creating a branch.
+Verification at tested head [`a44a30f`](https://github.com/axiomtutor/SyLoPy/commit/a44a30fd725243e2321811a7cd0c1eeb4a7079d9), CI [run #810](https://github.com/axiomtutor/SyLoPy/actions/runs/39181960278): 1,479 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All 12 new oracle cases pass. The only failure is the known deferred #75 `Mutatis mutandis` case.
