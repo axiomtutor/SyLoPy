@@ -1,4 +1,4 @@
-# Pending nested bounded-quantifier variants. Excluded from the loaded oracle until supported or resolved.
+# Nested bounded-quantifier phrase variants.
 
 id: j4-bounded-quantifier-disjunction-body
 context: nested
