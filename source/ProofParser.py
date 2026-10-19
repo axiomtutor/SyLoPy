@@ -1725,10 +1725,8 @@ class _ElaborationContext:
                         entry.span,
                     ) from exc
 
-            if tag == 'assume':
-                bind_reference_here(formula, assumption=True)
-            elif (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
-                  and not formula.args and isinstance(formula.predicate, str)):
+            if (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
+                    and not formula.args and isinstance(formula.predicate, str)):
                 try:
                     self.context.bind_arbitrary(formula.predicate)
                 except pc.DuplicateBindingError as exc:
@@ -1738,9 +1736,8 @@ class _ElaborationContext:
                         "scope",
                         entry.span,
                     ) from exc
-                bind_reference_here(formula)
-            else:
-                bind_reference_here(formula)
+
+            bind_reference_here(formula, assumption=(tag == 'assume'))
         return result
 
     def _elaborate_entry_impl(self, entry: Any) -> Any:
