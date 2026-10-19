@@ -22,8 +22,10 @@ The named axiom rules are implemented. Retiring generic `(Axiom)` citations rema
 
 Merged into master after CI confirmed the new oracle cases pass. The change supports the 12 readings from [finding #93](https://github.com/axiomtutor/SyLoPy/issues/93) in `source/SetTheory.py` and `parse_oracle/negated_set_phrases.txt`, with no generic connective parser or kernel change.
 
-## J9 — Union, intersection, and disjointness phrases (in progress)
+## J9 — Union, intersection, and disjointness phrases (PR #101)
 
-Scope: support the 12 intended readings in [finding #94](https://github.com/axiomtutor/SyLoPy/issues/94), currently in `parse_oracle/pending/set_operations_phrases.txt`. Keep the operations as ordinary formulas: union membership is disjunction, intersection membership is conjunction, and disjointness is universal non-overlap. Protect full phrases from the generic connective splitter using the existing set-theory phrase-span mechanism. Do not add set-operation terms or change the kernel.
+Ready for owner review: [PR #101](https://github.com/axiomtutor/SyLoPy/pull/101), tested head [`230a5a9`](https://github.com/axiomtutor/SyLoPy/commit/230a5a946ca5f942d30ce6200bf4cedb5f36df30), CI [run #816](https://github.com/axiomtutor/SyLoPy/actions/runs/39182587319).
 
-Done when all 12 intended readings pass the loaded oracle; CI has no new failures beyond known issue #75; the pending copy is removed only after the unchanged expected formulas pass.
+The change supports all 12 intended readings from [finding #94](https://github.com/axiomtutor/SyLoPy/issues/94) in `source/SetTheory.py` and `parse_oracle/set_operations_phrases.txt`. Phrases with conjunction-looking "and" are kept whole using the set-theory phrase-span path. The surface operations lower into ordinary logic; no set-operation terms or kernel behavior are added. The unchanged intended formulas all pass.
+
+Verification: 1,491 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All 12 J9 oracle cases pass. Sole failure: known deferred #75 `Mutatis mutandis` in `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`. No existing test or proof fixture was weakened.
