@@ -12,10 +12,10 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 | J1 | Set-theory proofs, batch 1 | merged (PR #88) |
 | J2 | Refresh `docs/PROOF_FILE_FORMAT.md` | merged (PR #89) |
 | J3 | Red-team the set-theory rules | merged (PR #90) |
-| J4 | Parse oracle: more phrases | waiting for owner (PR #91; findings #93–#96) |
-| J5 | Order and relation proofs | waiting for owner (PR #92) |
-| J6 | Number-theory proofs and a missing-axiom list | waiting for owner (PR #97; finding #98) |
-| J7 | Mutation-check tool | blocked: all three PR slots are occupied (#91, #92, #97) |
+| J4 | Parse oracle: more phrases | merged (PR #91; findings #93–#96) |
+| J5 | Order and relation proofs | merged (PR #92) |
+| J6 | Number-theory proofs and a missing-axiom list | merged (PR #97; finding #98) |
+| J7 | Mutation-check tool | in progress (PR #99) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
