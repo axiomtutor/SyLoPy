@@ -1,0 +1,1 @@
+# Intended readings for union, intersection, and disjointness phrasing.

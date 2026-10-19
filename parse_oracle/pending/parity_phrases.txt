@@ -1,0 +1,13 @@
+# Pending parity predicates. Excluded from the loaded oracle until supported or resolved.
+
+id: j4-parity-even
+context: line
+surface: n is even
+expect: Even(n)
+why: The intended reading is a unary predicate for evenness; no arithmetic characterization is assumed in this oracle case.
+
+id: j4-parity-odd
+context: nested
+surface: if n is odd then P(n)
+expect: Odd(n) -> P(n)
+why: The intended reading is a unary predicate for oddness inside an implication.

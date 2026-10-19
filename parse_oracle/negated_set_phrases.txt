@@ -1,0 +1,1 @@
+# Intended natural readings for negative subset, membership, and nonemptiness phrases.
