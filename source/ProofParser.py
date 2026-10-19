@@ -1712,9 +1712,12 @@ class _ElaborationContext:
             label, formula, justification = result[0], result[1], result[2]
             tag = justification[0] if isinstance(justification, tuple) and justification else None
 
-            def bind_label_here(value: Any) -> None:
+            def bind_reference_here(value: Any, *, assumption: bool = False) -> None:
                 try:
-                    self.context.bind_label(label, value)
+                    if assumption:
+                        self.context.assume(value, label=label)
+                    else:
+                        self.context.bind_label(label, value)
                 except pc.DuplicateBindingError as exc:
                     raise ElaborationError(
                         f"label '{label}' is already used earlier in this "
@@ -1722,17 +1725,8 @@ class _ElaborationContext:
                         entry.span,
                     ) from exc
 
-            if tag == 'assume':
-                try:
-                    self.context.assume(formula, label=label)
-                except pc.DuplicateBindingError as exc:
-                    raise ElaborationError(
-                        f"label '{label}' is already used earlier in this "
-                        "proof or an enclosing scope",
-                        entry.span,
-                    ) from exc
-            elif (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
-                  and not formula.args and isinstance(formula.predicate, str)):
+            if (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
+                    and not formula.args and isinstance(formula.predicate, str)):
                 try:
                     self.context.bind_arbitrary(formula.predicate)
                 except pc.DuplicateBindingError as exc:
@@ -1742,9 +1736,8 @@ class _ElaborationContext:
                         "scope",
                         entry.span,
                     ) from exc
-                bind_label_here(formula)
-            else:
-                bind_label_here(formula)
+
+            bind_reference_here(formula, assumption=(tag == 'assume'))
         return result
 
     def _elaborate_entry_impl(self, entry: Any) -> Any:
