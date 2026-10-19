@@ -6,14 +6,16 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`928ffda`](https://github.com/axiomtutor/SyLoPy/commit/928ffda268e9f6a7bba5f91508262a6f06f9afd3). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#104, #106, and #107 are merged; issues #93–#96 and #105 are closed; #98 remains an owner-decision issue; #75 remains a Claude-owned kernel issue. PR #108 is open and ready for review.
+- **Master:** [`928ffda`](https://github.com/axiomtutor/SyLoPy/commit/928ffda268e9f6a7bba5f91508262a6f06f9afd3). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#104, #106, and #107 are merged; issues #93–#96 and #105 are closed; #98 remains an owner-decision issue; #75 is fixed by PR #86 (Claude) and left open for the owner; see "One known failing test". PR #108 is open and ready for review.
 - **Latest merged-code verification:** [PR #107](https://github.com/axiomtutor/SyLoPy/pull/107), merge commit [`928ffda`](https://github.com/axiomtutor/SyLoPy/commit/928ffda268e9f6a7bba5f91508262a6f06f9afd3), tested head `bfb1a000f7d936dd0fef0c5903428fe9fd837be8`; CI [run #39194905832](https://github.com/axiomtutor/SyLoPy/actions/runs/39194905832): 1,502 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All three ambiguous-shorthand rejection cases pass. The sole CI failure remains known issue #75 (`MutatisMutandis`).
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
 
-## One known blocker
+## One known failing test
 
-[Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is the sole test failure, `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`. WLOG replay changes `x=a` to `x=b`, then wrongly substitutes the invariant pair characterization on line 3. Preserve an original visible citation when it remains valid, remapping only when necessary. **This touches Claude-owned `source/ProofLogic.py`; coordinate with Claude before editing.** Do not weaken tests or mask the failure.
+`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` is the sole test failure, and since [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix, merged) it no longer fails because of #75's WLOG replay: the proof passes line 5.2.4 and stops at line 5.3, which uses `Mutatis mutandis`, deferred pending owner approval. The test stays red; do not weaken it, change the fixture or mask the failure. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
+
+One more WLOG gap is logged in `todos.txt` under Known issues: a `Proof by Cases ... (subproofs below)` inside a WLOG region is replayed untransformed. It is in Claude-owned `source/ProofLogic.py`, and **Claude is taking it; do not edit that file.**
 
 The named axiom rules are implemented. Retiring generic `(Axiom)` citations remains an owner decision. Arbitrary-property WLOG, `Mutatis mutandis`, and symbolic defining-property behavior remain deferred.
 
