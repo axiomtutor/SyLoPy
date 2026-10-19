@@ -15,7 +15,7 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` is the sole test failure, and since [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix, merged) it no longer fails because of #75's WLOG replay: the proof passes line 5.2.4 and stops at line 5.3, which uses `Mutatis mutandis`, deferred pending owner approval. The test stays red; do not weaken it, change the fixture or mask the failure. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
 
-One more WLOG gap is logged in `todos.txt` under Known issues: a `Proof by Cases ... (subproofs below)` inside a WLOG region is replayed untransformed. It is in Claude-owned `source/ProofLogic.py`, and **Claude is taking it; do not edit that file.**
+One more WLOG gap is logged in `todos.txt` under Known issues: a `Proof by Cases ... (subproofs below)` inside a WLOG region is replayed untransformed. [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110) (Claude) fixes it and is open for the owner; the entry leaves `todos.txt` when it merges. The fix is in Claude-owned `source/ProofLogic.py`; do not edit that file.
 
 The named axiom rules are implemented. Retiring generic `(Axiom)` citations remains an owner decision. Arbitrary-property WLOG, `Mutatis mutandis`, and symbolic defining-property behavior remain deferred.
 
