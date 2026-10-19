@@ -16,7 +16,6 @@ The main parser/elaboration/kernel pipeline, set theory, natural-number reasonin
 ## Known issues
 
 - [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` remains the sole reported failure. It was reported as issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75): equality-case WLOG replay substituted into an invariant outer citation. That defect is fixed (see the WLOG entry below) and the proof now passes line 5.2.4. It still fails at line 5.3, which uses `Mutatis mutandis`; that rule is unimplemented and deferred pending owner approval, so the test stays red. Do not weaken the test, alter the fixture or mask the failure.
-- [ ] WLOG replay does not transform the case subproofs of a `Proof by Cases ... (subproofs below)` line inside the region: they are replayed as written, while case blocks written as standalone subproofs for `Disjunction Elimination` are transformed. A valid proof is then refused when a case line depends on the chosen case. For example, with `P(a)` and `P(b)` as lines 8 and 9, `x = a` from WLOG as line 13, and the case line `P(x). (Substitution from 13, 8)`, the replay for `x = b` still reads line 13 as `x = b` and line 8 as `P(a)`, and `Substitution` refuses at the case line. It is a wrong refusal, not an unsound acceptance, because every replayed line is still checked. The same reasoning with standalone case blocks is accepted. Found while testing the #75 fix; present before it. The fix is to transform each entry of each case block (`_transform_wlog_entry`, Claude-owned `source/ProofLogic.py`), within the approved equality-case scope.
 
 ## Design principles
 
@@ -240,13 +239,28 @@ any explicit owner-approval gate on the remaining work.
       by a test. The informational proof now passes line 5.2.4 and fails at
       line 5.3, on the deferred `Mutatis mutandis`; see "Known issues" above.
 
+      Case blocks (Claude, branch `claude/wlog-case-blocks`). A
+      `Proof by Cases ... (subproofs below)` line keeps one block of lines per
+      case, and the replay used to leave those blocks as written: their
+      formulas kept the chosen case's constant and their citations were not
+      remapped, so a case line that depends on the chosen case, such as
+      `P(x). (Substitution from 13, 8)` with line 13 reading `x = a`, was read
+      against `x = b` and refused. Case blocks written as standalone subproofs
+      for `Disjunction Elimination` were already transformed. Every case block
+      is now transformed like the rest of the region. That also holds a case
+      line to the rule for any other line: a citation outside the region needs
+      a counterpart for the new case or must say the same of both. A proof
+      whose case lines cited a line that favours the chosen case was accepted
+      only because its blocks were never replayed; it is now refused, as the
+      standalone form always was. No enforced fixture changed. Tests:
+      `pytest_tests/test_wlog_case_blocks.py` (9); 12 deliberate changes to the
+      code that walks the subproofs were each caught by a test.
+
       Limitations: arbitrary-property transformations are not implemented;
-      equality cases are the supported form. A `Proof by Cases ... (subproofs
-      below)` line in the region is not transformed (see "Known issues").
-      `Mutatis mutandis` is a separate, larger, deferred rule and is not part
-      of WLOG. Additional changes to either feature require coordination; this
-      status note does not authorize expansion beyond the implemented
-      equality-case replay.
+      equality cases are the supported form. `Mutatis mutandis` is a separate,
+      larger, deferred rule and is not part of WLOG. Additional changes to
+      either feature require coordination; this status note does not authorize
+      expansion beyond the implemented equality-case replay.
 
 - [x] General `Set property` -- `SetPropertyRule`, cited as
       `Set property from N, M` or `Set property, N, M` (bare `Set property`

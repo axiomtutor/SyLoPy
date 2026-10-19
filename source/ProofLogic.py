@@ -3902,6 +3902,16 @@ def _is_wlog_entry(entry: _ParsedEntry) -> bool:
     )
 
 
+def _transform_wlog_block(entries, mapping, original_labels: LabelScope,
+                          block_label, exchange):
+    """Transform the entries of one subproof, in order."""
+    return [
+        _transform_wlog_entry(item, mapping, original_labels, block_label,
+                              index, exchange)
+        for index, item in enumerate(entries or [])
+    ]
+
+
 def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
                           block_label, sidx, exchange):
     """Transform one region entry and remap only its citations outside WLOG.
@@ -3914,18 +3924,19 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
     cases, and the replayed line is checked against it like any other.
     Otherwise the replay fails here. The second step only ever applies where
     the first fails, so a replay that was accepted before is unchanged.
+
+    A line may carry subproofs, and each is transformed the same way: a
+    standalone block, the one block below a `rule_below` line, and each of the
+    case blocks below a `rule_hybrid` line such as `Proof by Cases`.
     """
     classified = _classify_entry(raw_entry)
     if isinstance(classified, str):
         return raw_entry
 
     if classified.is_subproof_block:
-        nested_block_label = classified.label
-        nested = [
-            _transform_wlog_entry(item, mapping, original_labels,
-                                  nested_block_label, index, exchange)
-            for index, item in enumerate(classified.subproof_entries or [])
-        ]
+        nested = _transform_wlog_block(
+            classified.subproof_entries, mapping, original_labels,
+            classified.label, exchange)
         if len(raw_entry) == 3:
             return (raw_entry[0], "subproof", nested)
         return ("subproof", nested)
@@ -3988,12 +3999,15 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
     elif len(raw_entry) == 3:
         transformed = (label, phi, justification)
     elif len(raw_entry) == 4:
-        nested_block_label = label
-        nested = [
-            _transform_wlog_entry(item, mapping, original_labels,
-                                  nested_block_label, index, exchange)
-            for index, item in enumerate(classified.nested_subproof or [])
-        ]
+        if isinstance(justification, tuple) and justification[:1] == ("rule_hybrid",):
+            # One list of entries per case block.
+            nested = [
+                _transform_wlog_block(block, mapping, original_labels, label, exchange)
+                for block in classified.nested_subproof or []
+            ]
+        else:
+            nested = _transform_wlog_block(
+                classified.nested_subproof, mapping, original_labels, label, exchange)
         transformed = (label, phi, justification, nested)
     else:
         return raw_entry
