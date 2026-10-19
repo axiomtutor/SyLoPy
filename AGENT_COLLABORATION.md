@@ -6,8 +6,8 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`eb7ce65`](https://github.com/axiomtutor/SyLoPy/commit/eb7ce65f5dcdd255841c1e67034ed1efd8a1790e). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100, #101, and #102 are merged; #98 remains an open issue; PR #103 is open.
-- **Latest merged-code verification:** [PR #102](https://github.com/axiomtutor/SyLoPy/pull/102), CI [run #39183132098](https://github.com/axiomtutor/SyLoPy/actions/runs/39183132098): 1,493 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. The sole failure is known issue #75 (`MutatisMutandis`).
+- **Master:** [`e3e96ad`](https://github.com/axiomtutor/SyLoPy/commit/e3e96adb3169858c578f4eec39ce79aac8c9b347). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#103 are merged; #98 remains an owner-decision issue; #75 remains a Claude-owned kernel issue. No pull requests are currently open.
+- **Latest merged-code verification:** [PR #103](https://github.com/axiomtutor/SyLoPy/pull/103), CI [run #39183767233](https://github.com/axiomtutor/SyLoPy/actions/runs/39183767233): 1,495 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. The sole failure remains known issue #75 (`MutatisMutandis`).
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
 
@@ -40,8 +40,19 @@ Verification: 1,493 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtu
 
 ## Finding #96 — Even and odd predicate phrases (PR #103)
 
-Ready for owner review: [PR #103](https://github.com/axiomtutor/SyLoPy/pull/103), tested head [`8eab6dc`](https://github.com/axiomtutor/SyLoPy/commit/8eab6dcb60d0ec4be08d26ce9ed5d346689e67e7), CI [run #39183767233](https://github.com/axiomtutor/SyLoPy/actions/runs/39183767233).
+Merged into master: [PR #103](https://github.com/axiomtutor/SyLoPy/pull/103), tested head [`8eab6dc`](https://github.com/axiomtutor/SyLoPy/commit/8eab6dcb60d0ec4be08d26ce9ed5d346689e67e7), CI [run #39183767233](https://github.com/axiomtutor/SyLoPy/actions/runs/39183767233).
 
 The parser adds `n is even` / `n is odd` as uninterpreted unary predicates `Even(n)` / `Odd(n)`, declares the predicates in the number-theory vocabulary, and promotes the two pending oracle cases. No parity axioms are added. The ambiguous shorthand `n is even or odd` remains rejected.
 
 Verification: 1,495 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. Both new parity oracle cases pass. The sole failure remains the known deferred #75 `MutatisMutandis` fixture.
+
+## Proposed next ChatGPT job — parity disjunction oracle coverage (awaiting owner approval)
+
+All queued J0–J9 jobs and findings #93–#96 are complete. The only remaining open issues are [#75](https://github.com/axiomtutor/SyLoPy/issues/75) (Claude-owned kernel work) and [#98](https://github.com/axiomtutor/SyLoPy/issues/98) (owner decision on arithmetic axioms). Do not start work on either.
+
+Suggested bounded follow-up: add loaded parser-oracle cases for the explicit, unambiguous contrast:
+- `n is even or n is odd` → `Even(n) or Odd(n)`;
+- the same explicit alternatives under an implication and conjunction, to check that phrase parsing composes with the connective grammar;
+- retain the existing rejection for `n is even or odd`.
+
+No parser behavior or arithmetic axioms need to change unless these intended readings fail. If they fail, report the smallest failing case instead of broadening semantics silently. This proposal is not authorized yet; await owner approval before creating a branch/PR.
