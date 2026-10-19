@@ -447,17 +447,6 @@ def _parse_set_operation_phrase(text: str, bound_vars: set) -> Optional[fl.Formu
     def term(name: str) -> Optional[tl.Term]:
         return try_parse_set_term(name, bound_vars)
 
-    def binary_membership(left: str, right: str, use_or: bool) -> Optional[fl.Formula]:
-        left_term, right_term = term(left), term(right)
-        if left_term is None or right_term is None:
-            return None
-        element = tl.VariableTerm(element_name)
-        connective = fl.Or if use_or else fl.And
-        return connective(
-            membership_formula(element, left_term),
-            membership_formula(element, right_term),
-        )
-
     # Membership in the union/intersection: explicit English forms are phrases
     # because their internal "and" is not a logical connective.
     match = re.fullmatch(
