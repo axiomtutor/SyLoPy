@@ -6,7 +6,7 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`d5c1a8a`](https://github.com/axiomtutor/SyLoPy/commit/d5c1a8a74ee6c69173962700f01b3a32cf8296f8). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#104, and #106 are merged; issues #93–#96 and #105 are closed; #98 remains an owner-decision issue; #75 remains a Claude-owned kernel issue. No pull requests are currently open.
+- **Master:** [`d5c1a8a`](https://github.com/axiomtutor/SyLoPy/commit/d5c1a8a74ee6c69173962700f01b3a32cf8296f8). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#104, and #106 are merged; issues #93–#96 and #105 are closed; #98 remains an owner-decision issue; #75 remains a Claude-owned kernel issue. PR #107 is open and ready for review.
 - **Latest merged-code verification:** [PR #106](https://github.com/axiomtutor/SyLoPy/pull/106), merge commit [`d5c1a8a`](https://github.com/axiomtutor/SyLoPy/commit/d5c1a8a74ee6c69173962700f01b3a32cf8296f8), tested head `e3ce24d3a9762c9fbe8cea218fe3b954e0f6cdea`; CI [run #39189983829](https://github.com/axiomtutor/SyLoPy/actions/runs/39189983829): 1,499 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All four explicit parity-disjunction oracle cases pass. The sole CI failure remains known issue #75 (`MutatisMutandis`).
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
@@ -55,11 +55,13 @@ The coverage-only follow-up recorded the smallest reproducer, `n is even or n is
 
 Verification on tested head `e3ce24d3a9762c9fbe8cea218fe3b954e0f6cdea`: CI [run #39189983829](https://github.com/axiomtutor/SyLoPy/actions/runs/39189983829), 1,499 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All four new parity-disjunction cases pass. The sole failure remains issue #75 (`Mutatis mutandis` in the informational ZFC fixture).
 
-## Proposed next ChatGPT job — reject ambiguous parity shorthand inside compound formulas (awaiting owner approval)
 
-Add a small set of loaded `REJECT` oracle cases checking that the intentionally ambiguous shorthand `n is even or odd` remains rejected when used as a component of larger formulas, for example:
-- `if n is even or odd then P`;
-- `P and (n is even or odd)`;
-- `not (n is even or odd)`.
+## Parity shorthand compound rejection coverage (PR #107)
 
-Keep the accepted explicit contrast `n is even or n is odd` unchanged. This is a regression-coverage job first: do not change parser behavior unless a case demonstrates a real inconsistency, and then isolate the smallest counterexample before broadening semantics. This proposal is not authorized yet; await owner approval before creating a branch or PR.
+The owner approved the proposed coverage task. [PR #107](https://github.com/axiomtutor/SyLoPy/pull/107) adds three loaded `REJECT` oracle cases for the ambiguous shorthand `n is even or odd` inside an implication, conjunction, and negation. The explicit repeated-subject contrast `n is even or n is odd` remains covered as accepted. The now-obsolete pending copy of that explicit case was removed because its behavior is implemented by PR #106.
+
+Tested head: `bfb1a000f7d936dd0fef0c5903428fe9fd837be8`; CI [run #39194905832](https://github.com/axiomtutor/SyLoPy/actions/runs/39194905832): 1,502 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All three new rejection cases pass. The only failure is issue #75 (`Mutatis mutandis` in the informational ZFC fixture).
+
+## Proposed next ChatGPT job — parity phrasing with composite subjects (awaiting owner approval)
+
+Extend the parser oracle with a small set of cases using explicit parity alternatives whose repeated subjects are compound terms (for example, `Plus(a, b) is even or Plus(a, b) is odd`), and a reversed-order disjunction (`n is odd or n is even`). Include one quantified or conditional context to confirm the formulas compose under binding. These should stay as oracle-only changes unless a case reveals a concrete parser defect; preserve the standalone rejection of `n is even or odd`. Await owner approval before opening another branch or PR.
