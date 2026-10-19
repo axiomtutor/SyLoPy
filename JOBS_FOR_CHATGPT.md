@@ -12,9 +12,9 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 | J1 | Set-theory proofs, batch 1 | waiting for owner (PR #88) |
 | J2 | Refresh `docs/PROOF_FILE_FORMAT.md` | waiting for owner (PR #89) |
 | J3 | Red-team the set-theory rules | waiting for owner (PR #90) |
-| J4 | Parse oracle: more phrases | todo |
-| J5 | Order and relation proofs | todo |
-| J6 | Number-theory proofs and a missing-axiom list | todo |
+| J4 | Parse oracle: more phrases | waiting for owner (PR #91; findings #93–#96) |
+| J5 | Order and relation proofs | waiting for owner (PR #92) |
+| J6 | Number-theory proofs and a missing-axiom list | waiting for owner (PR #97; finding #98) |
 | J7 | Mutation-check tool | todo, low priority |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
