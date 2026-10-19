@@ -74,3 +74,12 @@ Tested head: `1f87bf3729bb65310a2b15f74edfdca99d73dbf8`; CI [run #39195128146](h
 ## Proposed next ChatGPT job — preserve shorthand rejection under quantifiers (awaiting owner approval)
 
 Add one or two oracle `REJECT` cases showing that the intentionally ambiguous `n is even or odd` remains rejected beneath a universal and an existential quantifier (for example, `forall n, n is even or odd` and `exists n, n is even or odd`). Keep the accepted repeated-subject form unchanged. This is oracle-only unless a test reveals inconsistent behavior; await approval before creating a branch/PR.
+
+
+## Proposed cleanup — make parser extension assembly explicit (awaiting owner approval)
+
+`ProofParserPolicy.py` currently modifies several `ProofParser` functions at import time, and `LineBreakSyntax.install()` replaces additional parser functions. The package import order therefore determines the effective parser implementation, and related behavior is split among the parser, policy overlay, and line-break module.
+
+A bounded refactor should replace this implicit installation with explicit, named extension points or one documented parser-assembly step, while preserving the public parser API and the current regression corpus. Keep the membership-characterization behavior unchanged for explicit `NUMBER_THEORY_ENVIRONMENT` callers: `pytest_tests/test_compound_declarations.py` currently asserts it, so moving that behavior into SetTheory alone would be a semantic change, not a cleanup.
+
+**Done when:** parser import-contract tests, parser/oracle tests, line-broken declaration tests, compound-declaration tests, and full CI pass with no changed proof or oracle expectations. Do not begin until the owner approves the proposal.
