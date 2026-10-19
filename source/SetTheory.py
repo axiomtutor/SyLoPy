@@ -448,6 +448,18 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
     if display is not None:
         return display
 
+    # Negative subset phrasing must be recognized before the generic connective
+    # grammar sees "not". Expand it to the negation of the ordinary subset formula.
+    m = re.match(
+        r"^(.+?)\s+(?:is\s+not\s+(?:(?:a\s+)?subset\s+of|subseteq)|not\s+(?:subseteq|subset\s+of))\s+(.+)$",
+        s, flags=re.I,
+    )
+    if m:
+        left = try_parse_set_term(m.group(1), bound_vars)
+        right = try_parse_set_term(m.group(2), bound_vars)
+        if left is not None and right is not None:
+            return SurfaceExpression("core", fl.Not(subset_formula(left, right)), text)
+
     m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq|subset)\s+(.+)$", s, flags=re.I)
     if m:
         left = try_parse_set_term(m.group(1), bound_vars)
@@ -469,6 +481,81 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
                 fl.ForAll(witness, fl.Not(membership_formula(tl.VariableTerm(witness), set_term))),
                 text,
             )
+
+    # Empty and nonempty claims desugar to ordinary quantifiers. Generated binders
+    # must not capture the name of the set or variables from the surrounding scope.
+    m = re.match(r"^(.+?)\s+is\s+not\s+nonempty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__nonempty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Not(fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term))), text
+            )
+
+    m = re.match(r"^(.+?)\s+is\s+(?:not\s+)?empty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__empty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            if re.search(r"\s+is\s+not\s+empty$", s, flags=re.I):
+                return SurfaceExpression(
+                    "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+                )
+            return SurfaceExpression(
+                "core", fl.ForAll(witness, fl.Not(membership_formula(tl.VariableTerm(witness), set_term))), text
+            )
+
+    m = re.match(r"^(.+?)\s+is\s+nonempty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__nonempty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+            )
+
+    m = re.match(r"^(.+?)\s+has\s+an?\s+element$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__element_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+            )
+
+    m = re.match(r"^(.+?)\s+does\s+not\s+belong\s+to\s+(.+)$", s, flags=re.I)
+    if m:
+        element = try_parse_set_term(m.group(1), bound_vars)
+        set_term = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", fl.Not(membership_formula(element, set_term)), text)
+
+    m = re.match(r"^(.+?)\s+does\s+not\s+contain\s+(.+)$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        element = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", fl.Not(membership_formula(element, set_term)), text)
+
+    m = re.match(r"^(.+?)\s+is\s+an?\s+element\s+of\s+(.+)$", s, flags=re.I)
+    if m:
+        element = try_parse_set_term(m.group(1), bound_vars)
+        set_term = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", membership_formula(element, set_term), text)
 
     m = re.match(r"^(.+?)\s+is\s+not\s+in\s+(.+)$", s, flags=re.I)
     if m:
