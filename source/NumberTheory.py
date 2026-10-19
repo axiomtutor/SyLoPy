@@ -381,6 +381,35 @@ def try_parse_parity_phrase(text: str, bound_vars):
         raise ValueError(
             f"Ambiguous parity phrase {s!r}; write the subject in both alternatives"
         )
+    # A repeated-subject parity disjunction is explicit and can be
+    # elaborated as ordinary disjunction. Recognize it before the single-
+    # phrase matcher, whose non-greedy subject group would otherwise consume
+    # the earlier "is even or n" as part of the final predicate's subject.
+    alternatives = _split_top_level(s, " or ")
+    if len(alternatives) > 1:
+        matches = [
+            re.fullmatch(r"(.+?)\s+is\s+(even|odd)", alternative.strip(), flags=re.I)
+            for alternative in alternatives
+        ]
+        if all(matches):
+            import SyLoPy.source.ProofParser as pp
+            parsed = []
+            for match in matches:
+                predicate = (
+                    EVEN_PREDICATE
+                    if match.group(2).lower() == "even"
+                    else ODD_PREDICATE
+                )
+                parsed.append(
+                    fl.AtomicFormula(
+                        predicate,
+                        [pp.parse_term(match.group(1), bound_vars)],
+                    )
+                )
+            return fl.Or(*parsed)
+        # Let the ordinary connective grammar handle mixed disjunctions.
+        return None
+
     match = re.fullmatch(r"(.+?)\s+is\s+(even|odd)", s, flags=re.I)
     if match is None:
         return None
