@@ -1,0 +1,13 @@
+# 1: Reiteration repeats the cited formula exactly
+## Proof that
+### then P.
+
+1. P. (Premise)
+2. P. (Reiteration from 1)
+
+# 2: Reiteration cannot change the cited formula
+## Invalid: formula mismatch — the target formula differs from the cited premise.
+### then Q.
+
+1. P. (Premise)
+2. Q. (Reiteration from 1)
