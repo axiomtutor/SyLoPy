@@ -1,13 +1,17 @@
 # 1: Reiteration repeats the cited formula exactly
 ## Proof that
+### if P is a closed formula.
 ### then P.
 
-1. P. (Premise)
-2. P. (Reiteration from 1)
+1. Let P be a closed formula. (Declaration)
+2. P. (Premise)
+3. P. (Reiteration from 2)
 
 # 2: Reiteration cannot change the cited formula
 ## Invalid: formula mismatch — the target formula differs from the cited premise.
+### if P and Q are closed formulas.
 ### then Q.
 
-1. P. (Premise)
-2. Q. (Reiteration from 1)
+1. Let P and Q be closed formulas. (Declaration)
+2. P. (Premise)
+3. Q. (Reiteration from 2)
