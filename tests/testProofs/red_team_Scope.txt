@@ -1,0 +1,20 @@
+# 1: Outer labels are visible inside a subproof
+## Proof that
+### then A -> A.
+
+1. A -> A. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for Conditional Introduction)
+ 1.2. A. (Reiteration from 1.1)
+end subproof
+
+# 2: A label from a closed subproof is not visible afterward
+## Invalid: closed-scope reference — line 1.1 is local to the closed subproof.
+### then A.
+
+1. A -> A. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for Conditional Introduction)
+ 1.2. A. (Reiteration from 1.1)
+end subproof
+2. A. (Reiteration from 1.1)
