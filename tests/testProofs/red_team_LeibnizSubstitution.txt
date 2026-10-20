@@ -2,26 +2,38 @@
 ## Proof that
 ### then Q(b).
 
-1. Let a and b be objects, and Q be a predicate such that: a = b. Q(a). (Premise)
-2. Q(b). (Substitution from 1, 1)
+1. Let a and b be objects. (Declaration)
+2. Let Q be a predicate. (Declaration)
+3. a = b. (Premise)
+4. Q(a). (Premise)
+5. Q(b). (Substitution from 3, 4)
 
 # 2: Substitution must make an actual replacement
 ## Invalid: no-op substitution — citing equality while leaving the formula unchanged is not substitution.
 ### then Q(a).
 
-1. Let a and b be objects, and Q be a predicate such that: a = b. Q(a). (Premise)
-2. Q(a). (Substitution from 1, 1)
+1. Let a and b be objects. (Declaration)
+2. Let Q be a predicate. (Declaration)
+3. a = b. (Premise)
+4. Q(a). (Premise)
+5. Q(a). (Substitution from 3, 4)
 
 # 3: Substitution must use a term named by the equality
 ## Invalid: unmatched term — the equality a=b cannot justify replacing a with c.
 ### then Q(c).
 
-1. Let a, b, and c be objects, and Q be a predicate such that: a = b. Q(a). (Premise)
-2. Q(c). (Substitution from 1, 1)
+1. Let a, b, and c be objects. (Declaration)
+2. Let Q be a predicate. (Declaration)
+3. a = b. (Premise)
+4. Q(a). (Premise)
+5. Q(c). (Substitution from 3, 4)
 
 # 4: Substitution must preserve formula structure apart from the equality replacement
 ## Invalid: structural mismatch — substituting a=b in Q(a) cannot produce R(b).
 ### then R(b).
 
-1. Let a and b be objects, and Q, R be predicates such that: a = b. Q(a). (Premise)
-2. R(b). (Substitution from 1, 1)
+1. Let a and b be objects. (Declaration)
+2. Let Q and R be predicates. (Declaration)
+3. a = b. (Premise)
+4. Q(a). (Premise)
+5. R(b). (Substitution from 3, 4)
