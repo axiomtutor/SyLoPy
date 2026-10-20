@@ -9,19 +9,19 @@
 ## Invalid: repeated-occurrence mismatch — R(a,b) is not an instance of forall x, R(x,x).
 ### then R(a, b).
 
-1. Let R be a predicate such that: forall x, R(x, x). (Premise)
+1. Let a be an object and R be a predicate such that: forall x, R(x, x). (Premise)
 2. R(a, b). (Universal Instantiation from 1)
 
 # 3: Universal instantiation cannot change the predicate
 ## Invalid: predicate mismatch — the conclusion is not an instance of the cited universal body.
 ### then Q(a).
 
-1. Let P be a predicate such that: forall x, P(x). (Premise)
+1. Let a be an object and P, Q be predicates such that: forall x, P(x). (Premise)
 2. Q(a). (Universal Instantiation from 1)
 
 # 4: Universal instantiation requires a universal premise
 ## Invalid: quantifier shape — existential quantification does not license instantiation of a chosen witness.
 ### then P(a).
 
-1. Let P be a predicate such that: exists x, P(x). (Premise)
+1. Let a be an object and P be a predicate such that: exists x, P(x). (Premise)
 2. P(a). (Universal Instantiation from 1)
