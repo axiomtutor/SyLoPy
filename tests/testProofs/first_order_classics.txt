@@ -640,3 +640,62 @@ begin subproof
   end subproof
  end subproof
 end subproof
+
+
+# 40: The drinker paradox
+## Proof that
+### then exists x, (D(x) -> forall y, D(y)).
+
+1. Let a be an object and D be a predicate. (Declaration)
+2. (forall y, D(y)) or not (forall y, D(y)). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not ((forall y, D(y)) or not (forall y, D(y))). (Assumption for Contradiction)
+ 2.2. not (forall y, D(y)) and not not (forall y, D(y)). (De Morgans from 2.1)
+ 2.3. not (forall y, D(y)). (Conjunction Elimination from 2.2)
+ 2.4. not not (forall y, D(y)). (Conjunction Elimination from 2.2)
+ 2.5. forall y, D(y). (Proof by Contradiction from subproof below)
+ begin subproof
+  2.5.1. not (forall y, D(y)). (Assumption for Contradiction)
+  2.5.2. not (forall y, D(y)) and not not (forall y, D(y)). (Conjunction Introduction from 2.5.1, 2.4)
+ end subproof
+ 2.6. (forall y, D(y)) and not (forall y, D(y)). (Conjunction Introduction from 2.5, 2.3)
+end subproof
+3. exists x, (D(x) -> forall y, D(y)). (Proof by Cases from 2, subproofs below)
+begin subproof
+ 3.case1. forall y, D(y). (Case)
+ 3.case1.1. D(a) -> forall y, D(y). (Conditional Introduction from subproof below)
+ begin subproof
+  3.case1.1.1. D(a). (Assumption for Conditional Introduction)
+  3.case1.1.2. forall y, D(y). (Reiteration from 3.case1)
+ end subproof
+ 3.case1.2. exists x, (D(x) -> forall y, D(y)). (Existential Introduction from 3.case1.1)
+end subproof
+begin subproof
+ 3.case2. not (forall y, D(y)). (Case)
+ 3.case2.1. exists x, not D(x). (Proof by Contradiction from subproof below)
+ begin subproof
+  3.case2.1.1. not exists x, not D(x). (Assumption for Contradiction)
+  3.case2.1.2. forall y, D(y). (Universal Generalization from subproof below)
+  begin subproof
+   3.case2.1.2.0. let c be arbitrary. (Arbitrary)
+   3.case2.1.2.1. D(c). (Proof by Contradiction from subproof below)
+   begin subproof
+    3.case2.1.2.1.1. not D(c). (Assumption for Contradiction)
+    3.case2.1.2.1.2. exists x, not D(x). (Existential Introduction from 3.case2.1.2.1.1)
+    3.case2.1.2.1.3. (exists x, not D(x)) and not (exists x, not D(x)). (Conjunction Introduction from 3.case2.1.2.1.2, 3.case2.1.1)
+   end subproof
+  end subproof
+  3.case2.1.3. (forall y, D(y)) and not (forall y, D(y)). (Conjunction Introduction from 3.case2.1.2, 3.case2)
+ end subproof
+ 3.case2.2. Let w be an object. (Declare)
+ 3.case2.3. exists x, (D(x) -> forall y, D(y)). (Existential Elimination from 3.case2.1, subproof below)
+ begin subproof
+  3.case2.3.1. not D(w). (Assumption for Existential Elimination)
+  3.case2.3.2. D(w) -> forall y, D(y). (Conditional Introduction from subproof below)
+  begin subproof
+   3.case2.3.2.1. D(w). (Assumption for Conditional Introduction)
+   3.case2.3.2.2. forall y, D(y). (Explosion from 3.case2.3.2.1, 3.case2.3.1)
+  end subproof
+  3.case2.3.3. exists x, (D(x) -> forall y, D(y)). (Existential Introduction from 3.case2.3.2)
+ end subproof
+end subproof
