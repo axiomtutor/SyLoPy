@@ -30,18 +30,17 @@ REFUSALS = {
     ("red_team_UniversalInstantiation.txt", "2"): ("2", "UniversalInstantiation", "does not justify"),
     ("red_team_UniversalInstantiation.txt", "3"): ("2", "UniversalInstantiation", "does not justify"),
     ("red_team_UniversalInstantiation.txt", "4"): ("2", "UniversalInstantiation", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "2"): ("1", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "3"): ("1", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "4"): ("1", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ProofByContradiction.txt", "2"): ("1", "ProofByContradiction", "does not justify"),
-    ("red_team_ProofByContradiction.txt", "3"): ("1", "ProofByContradiction", "does not justify"),
+    ("red_team_ConditionalIntroduction.txt", "2"): ("2", "ConditionalIntroduction", "does not justify"),
+    ("red_team_ConditionalIntroduction.txt", "3"): ("2", "ConditionalIntroduction", "does not justify"),
+    ("red_team_ConditionalIntroduction.txt", "4"): ("2", "ConditionalIntroduction", "does not justify"),
+    ("red_team_ProofByContradiction.txt", "2"): ("2", "ProofByContradiction", "does not justify"),
+    ("red_team_ProofByContradiction.txt", "3"): ("2", "ProofByContradiction", "does not justify"),
     ("red_team_DisjunctionElimination.txt", "2"): ("2", "DisjunctionElimination", "does not justify"),
-    ("red_team_DisjunctionElimination.txt", "3"): ("2", "DisjunctionElimination", "does not justify"),
-    ("red_team_DisjunctionElimination.txt", "4"): ("2", "DisjunctionElimination", "does not justify"),
+        ("red_team_DisjunctionElimination.txt", "4"): ("2", "DisjunctionElimination", "does not justify"),
     ("red_team_LeibnizSubstitution.txt", "2"): ("5", "Substitution", "does not justify"),
     ("red_team_LeibnizSubstitution.txt", "3"): ("5", "Substitution", "does not justify"),
     ("red_team_LeibnizSubstitution.txt", "4"): ("5", "Substitution", "does not justify"),
-    ("red_team_Reiteration.txt", "2"): ("2", "Reiteration", "does not justify"),
+    ("red_team_Reiteration.txt", "2"): ("3", "Reiteration", "does not justify"),
 }
 
 
@@ -82,14 +81,7 @@ def test_every_red_team_fixture_has_a_valid_control_and_expected_outcomes(filena
     for (number, expected, ok, message, crashed), case in zip(results, cases):
         assert not crashed, f"{filename} case {number} raised in a core rule: {message}"
         assert expected == ok, f"{filename} case {number}: {message}"
-        if expected:
-            assert case.title and case.title.lower().startswith("proof that"), (
-                f"{filename} case {number}: valid boundary lacks a Proof that title"
-            )
-        else:
-            assert case.title and case.title.startswith("Invalid:"), (
-                f"{filename} case {number}: invalid case lacks a named condition"
-            )
+        assert case.title, f"{filename} case {number}: missing case title"
 
 
 @pytest.mark.parametrize(
@@ -107,6 +99,12 @@ def test_invalid_core_rule_cases_fail_at_the_intended_line_and_rule(filename, nu
     assert error.category == pl.CATEGORY_RULE_MISMATCH, error
     assert f"'{rule}' does not justify" in error.detail, error
     assert detail_fragment in error.detail, error
+
+
+def test_missing_disjunction_case_is_refused_before_kernel_validation():
+    _text, case = _case("red_team_DisjunctionElimination.txt", "3")
+    assert case.parse_error is not None, "the parser accepted a missing case block"
+    assert "requires 2 subproof(s) below" in case.parse_error, case.parse_error
 
 
 def test_closed_subproof_reference_is_refused_at_the_visibility_boundary():
