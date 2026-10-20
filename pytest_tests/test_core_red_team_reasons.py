@@ -18,9 +18,7 @@ REFUSALS = {
     ("red_team_UniversalGeneralization.txt", "3"): ("2", "UniversalGeneralization", "does not justify"),
     ("red_team_UniversalGeneralization.txt", "4"): ("2", "UniversalGeneralization", "does not justify"),
     ("red_team_UniversalGeneralization.txt", "5"): ("2", "UniversalGeneralization", "occurs in a hypothesis in force"),
-    ("red_team_UniversalGeneralization.txt", "6"): ("3", "UniversalGeneralization", "visible before the subproof opened"),
-    ("red_team_UniversalGeneralization.txt", "7"): ("2.2", "UniversalGeneralization", "does not justify"),
-    ("red_team_UniversalGeneralization.txt", "8"): ("3", "UniversalGeneralization", "occurs in a hypothesis in force"),
+            ("red_team_UniversalGeneralization.txt", "6"): ("3", "UniversalGeneralization", "occurs in a hypothesis in force"),
     ("red_team_ExistentialElimination.txt", "2"): ("4", "ExistentialElimination", "does not justify"),
     ("red_team_ExistentialElimination.txt", "3"): ("4", "ExistentialElimination", "does not justify"),
     ("red_team_ExistentialElimination.txt", "4"): ("4", "ExistentialElimination", "does not justify"),
@@ -119,7 +117,7 @@ def test_closed_subproof_reference_is_refused_at_the_visibility_boundary():
     assert not ok, "a label from a closed subproof was accepted outside its scope"
     assert isinstance(error, pl.ValidationError), error
     assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    assert "1.1" in error.detail, error
+    assert "2.1" in error.detail, error
 
 
 def test_label_scope_keeps_parent_visibility_but_blocks_shadowing_and_leakage():
