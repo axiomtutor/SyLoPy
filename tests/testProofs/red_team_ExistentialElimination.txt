@@ -2,7 +2,7 @@
 ## Proof that
 ### then exists x, P(x).
 
-1. exists x, P(x). (Premise)
+1. Let P be a predicate such that: exists x, P(x). (Premise)
 2. Let w be an object. (Declare)
 3. exists x, P(x). (Existential Elimination from 1, subproof below)
 begin subproof
@@ -14,7 +14,7 @@ end subproof
 ## Invalid: witness-assumption shape — the subproof assumes Q(w), not the cited existential body P(w).
 ### then Q(a).
 
-1. exists x, P(x). (Premise)
+1. Let P and Q be predicates such that: exists x, P(x). (Premise)
 2. Let a be an object. (Declare)
 3. Let w be an object. (Declare)
 4. Q(a). (Existential Elimination from 1, subproof below)
@@ -27,7 +27,7 @@ end subproof
 ## Invalid: subproof-conclusion shape — the subproof concludes P(w), not Q(a).
 ### then Q(a).
 
-1. exists x, P(x). (Premise)
+1. Let P and Q be predicates such that: exists x, P(x). (Premise)
 2. Let a be an object. (Declare)
 3. Let w be an object. (Declare)
 4. Q(a). (Existential Elimination from 1, subproof below)
@@ -42,7 +42,7 @@ end subproof
 
 1. Let a be an object. (Declare)
 2. Let w be an object. (Declare)
-3. P(a). (Premise)
+3. Let P be a predicate such that: P(a). (Premise)
 4. Q(a). (Existential Elimination from 3, subproof below)
 begin subproof
  4.1. P(w). (Assumption for Existential Elimination)
@@ -53,7 +53,7 @@ end subproof
 ## Invalid: existential-witness freshness — the constant w already occurs in the cited existential formula.
 ### then Q(a).
 
-1. exists x, R(x, w). (Premise)
+1. Let w be an object and R be a predicate such that: exists x, R(x, w). (Premise)
 2. Let a be an object. (Declare)
 3. Q(a). (Existential Elimination from 1, subproof below)
 begin subproof
