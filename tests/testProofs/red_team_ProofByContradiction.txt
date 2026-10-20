@@ -1,0 +1,36 @@
+# 1: Proof by contradiction from an actual contradiction
+## Proof that
+### if P is a closed formula.
+### then P or not P.
+
+1. Let P be a closed formula. (Declaration)
+2. P or not P. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (P or not P). (Assumption for Contradiction)
+ 2.2. not P and not not P. (De Morgans from 2.1)
+end subproof
+
+# 2: Proof by contradiction requires a contradictory subproof conclusion
+## Invalid: contradiction shape — the subproof ends with not A, not a contradiction.
+### if A is a closed formula.
+### then A.
+
+1. Let A be a closed formula. (Declaration)
+2. A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. not A. (Reiteration from 2.1)
+end subproof
+
+# 3: Proof by contradiction must conclude the formula opposed by the assumption
+## Invalid: target mismatch — contradiction under not A does not establish unrelated B.
+### if A and B are closed formulas.
+### then B.
+
+1. Let A and B be closed formulas. (Declaration)
+2. B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not A. (Assumption for Contradiction)
+ 2.2. A. (Premise)
+ 2.3. A and not A. (Conjunction Introduction from 2.2, 2.1)
+end subproof
