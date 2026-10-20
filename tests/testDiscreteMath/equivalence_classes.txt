@@ -151,7 +151,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
 
 # 6: Every object in the carrier belongs to a named equivalence class
 ## Proof that
-### then exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u))) and In(a, C))).
+### then exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C))).
 
 1. Let X be any set, R be an equivalence relation on X, and a be in X. (Declaration)
 2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
@@ -164,8 +164,8 @@ end subproof
 5. R(a, a). (Relation Reflexivity from 1)
 6. In(a, X) and R(a, a). (Conjunction Introduction from 1, 5)
 7. In(a, C). (Set property from 3, 6)
-8. (forall u, (In(u, C) iff (In(u, X) and R(a, u))) and In(a, C). (Conjunction Introduction from 4, 7)
-9. exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u))) and In(a, C)). (Existential Introduction from 8)
+8. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C). (Conjunction Introduction from 4, 7)
+9. exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)). (Existential Introduction from 8)
 
 # 7: Symmetry cannot be used when the relation has not been declared symmetric
 ## Invalid: undeclared symmetry — the relation is reflexive and transitive, but not declared symmetric.
@@ -193,6 +193,7 @@ end subproof
   7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
   7.5. R(a, u). (Conjunction Elimination from 7.4)
   7.6. R(b, u). (Relation Transitivity from 2, 7.5)
+  7.7. In(u, D). (Set property from 6, 7.6)
 
 # 9: Set property needs the carrier-membership conjunct
 ## Invalid: missing carrier membership — R(b,u) alone does not establish u belongs to the class of b.
