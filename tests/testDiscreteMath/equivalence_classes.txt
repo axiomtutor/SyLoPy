@@ -171,28 +171,33 @@ end subproof
 ## Invalid: undeclared symmetry — the relation is reflexive and transitive, but not declared symmetric.
 ### then R(b, a).
 
-Use discrete math.
 
 1. Let X be any set, R be a reflexive and transitive relation on X, and a, b be in X. (Declaration)
 2. R(a, b). (Premise)
 3. R(b, a). (Relation Symmetry from 2)
 
-# 8: Relation transitivity cannot reverse the direction of a premise
+# 8: The subset proof cannot reverse the direction required for transitivity
 ## Invalid: transitivity direction — R(a,b) and R(a,u) do not chain to R(b,u).
 ### then C subseteq D.
 
-Use discrete math.
-
 1. Let X be any set, R be a transitive relation on X, and a, b be in X. (Declaration)
 2. R(a, b). (Premise)
-3. R(a, a). (Premise)
-4. R(b, a). (Relation Transitivity from 2, 3)
+3. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+4. Let C be such a set. (Existence from 3)
+5. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+6. Let D be such a set. (Existence from 5)
+7. C subseteq D. (Subset proof below)
+  7.1. Let u in C. (Assumption for subset proof)
+  7.2. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  7.3. In(u, C) -> (In(u, X) and R(a, u)). (Biconditional Elimination from 7.2)
+  7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
+  7.5. R(a, u). (Conjunction Elimination from 7.4)
+  7.6. R(b, u). (Relation Transitivity from 2, 7.5)
 
 # 9: Set property needs the carrier-membership conjunct
 ## Invalid: missing carrier membership — R(b,u) alone does not establish u belongs to the class of b.
 ### then C subseteq D.
 
-Use discrete math.
 
 1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
 2. R(a, b). (Premise)
