@@ -37,7 +37,7 @@ def test_all_equivalence_class_proofs_match_their_declared_validity():
     "number,expected_line,expected_rule,detail",
     [
         ("7", "3", "RelationSymmetry", "does not justify"),
-        ("8", "7", "RelationTransitivity", "does not justify"),
+        ("8", "7.6", "RelationTransitivity", "does not justify"),
         ("9", "7.8", "SetProperty", "does not justify"),
     ],
 )
