@@ -18,9 +18,9 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`. Edit only
 | J7 | Mutation-check tool | merged (PR #99) |
 | J8 | Negative set phrases in the parser | merged (PR #100; finding #93) |
 | J9 | Union, intersection, and disjointness phrases | merged (PR #101; finding #94) |
-| J16 | First-order logic classics | todo |
-| J17 | Red-team the quantifier and scope rules | todo |
-| J18 | Equivalence classes and partitions | todo |
+| J16 | First-order logic classics | in progress (PR #111) |
+| J17 | Red-team the quantifier and scope rules | in progress (PR #112) |
+| J18 | Equivalence classes and partitions | in progress (PR #113) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
