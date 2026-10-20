@@ -478,7 +478,7 @@ end subproof
 ### then f(a) = f(b).
 
 1. Let a and b be objects such that: a = b. (Premise)
-2. Let P be a predicate such that: P(f(a)). (Premise)
+2. f(a) = f(a). (Premise)
 3. f(a) = f(a). (Reflexivity)
 4. f(a) = f(b). (Substitution from 1, 3)
 
@@ -618,3 +618,25 @@ end subproof
 
 1. Let R be a predicate such that: forall y, exists x, R(x, y). (Premise)
 2. exists x, forall y, R(x, y). (Universal Instantiation from 1)
+
+
+# 39: Symmetry and transitivity imply reflexivity wherever the relation is defined
+## Proof that
+### then forall x, ((exists y, R(x, y)) -> R(x, x)).
+
+1. Let X be any set and R be a symmetric and transitive relation on X. (Declaration)
+2. forall x, ((exists y, R(x, y)) -> R(x, x)). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. (exists y, R(c, y)) -> R(c, c). (Conditional Introduction from subproof below)
+ begin subproof
+  2.1.1. exists y, R(c, y). (Assumption for Conditional Introduction)
+  2.1.2. Let w be an object. (Declare)
+  2.1.3. R(c, c). (Existential Elimination from 2.1.1, subproof below)
+  begin subproof
+   2.1.3.1. R(c, w). (Assumption for Existential Elimination)
+   2.1.3.2. R(w, c). (Relation Symmetry from 2.1.3.1)
+   2.1.3.3. R(c, c). (Relation Transitivity from 2.1.3.1, 2.1.3.2)
+  end subproof
+ end subproof
+end subproof
