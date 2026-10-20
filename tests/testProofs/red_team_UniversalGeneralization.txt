@@ -13,7 +13,7 @@ end subproof
 ## Invalid: arbitrary-opening shape — the subproof must open by introducing the arbitrary constant.
 ### then forall x, P(x).
 
-1. forall x, P(x). (Premise)
+1. Let P be a predicate such that: forall x, P(x). (Premise)
 2. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  2.1. P(c). (Assumption)
@@ -24,7 +24,7 @@ end subproof
 ## Invalid: conclusion shape — the subproof conclusion is not the body of the proposed universal statement.
 ### then forall x, P(x).
 
-1. forall x, P(x). (Premise)
+1. Let P be a predicate such that: forall x, P(x). (Premise)
 2. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  2.0. let c be arbitrary. (Arbitrary)
@@ -33,10 +33,10 @@ end subproof
 
 # 4: The generalized variable must occur in the quantified body
 ## Invalid: bound-variable match — the proposed quantified variable does not instantiate the subproof conclusion.
-### then forall x, P(y).
+### then forall x, exists y, P(y).
 
 1. Let P be a predicate such that: forall x, P(x). (Premise)
-2. forall x, P(y). (Universal Generalization from subproof below)
+2. forall x, exists y, P(y). (Universal Generalization from subproof below)
 begin subproof
  2.0. let c be arbitrary. (Arbitrary)
  2.1. P(c). (Universal Instantiation from 1)
@@ -46,7 +46,7 @@ end subproof
 ## Invalid: hypothesis in force — the arbitrary constant occurs in a premise inside the generalization subproof.
 ### then forall x, P(x).
 
-1. forall x, P(x). (Premise)
+1. Let P be a predicate such that: forall x, P(x). (Premise)
 2. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  2.0. let c be arbitrary. (Arbitrary)
@@ -57,7 +57,7 @@ end subproof
 ## Invalid: outer-context freshness — the generalized constant occurs before the subproof opens.
 ### then forall x, P(x).
 
-1. Q(c). (Premise)
+1. Let c be an object and P, Q be predicates such that: Q(c). (Premise)
 2. forall x, P(x). (Premise)
 3. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
@@ -69,7 +69,7 @@ end subproof
 ## Invalid: enclosing-assumption freshness — an assumption in force mentions the proposed arbitrary constant.
 ### then Q(c) -> forall x, P(x).
 
-1. forall x, P(x). (Premise)
+1. Let c be an object and P, Q be predicates such that: forall x, P(x). (Premise)
 2. Q(c) -> forall x, P(x). (Conditional Introduction from subproof below)
 begin subproof
  2.1. Q(c). (Assumption for Conditional Introduction)
@@ -85,7 +85,7 @@ end subproof
 ### then forall x, P(x).
 
 1. Let X be any set. (Declaration)
-2. forall x, P(x). (Premise)
+2. Let P be a predicate such that: forall x, P(x). (Premise)
 3. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  3.0. let c be arbitrary. (Arbitrary)
