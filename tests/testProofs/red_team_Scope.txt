@@ -22,3 +22,13 @@ begin subproof
  2.2. A. (Reiteration from 2.1)
 end subproof
 3. A. (Reiteration from 2.1)
+
+
+# 3: A later line is not visible to an earlier citation
+## Invalid: forward reference — the label does not exist at the point of citation.
+### if P is a closed formula.
+### then P.
+
+1. Let P be a closed formula. (Declaration)
+2. P. (Reiteration from 3)
+3. P. (Premise)
