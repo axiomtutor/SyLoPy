@@ -9,7 +9,7 @@
 ## Invalid: repeated-occurrence mismatch — R(a,b) is not an instance of forall x, R(x,x).
 ### then R(a, b).
 
-1. Let a be an object and R be a predicate such that: forall x, R(x, x). (Premise)
+1. Let a and b be objects, and R be a predicate such that: forall x, R(x, x). (Premise)
 2. R(a, b). (Universal Instantiation from 1)
 
 # 3: Universal instantiation cannot change the predicate
