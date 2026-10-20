@@ -15,3 +15,17 @@
 1. Let P and Q be closed formulas. (Declaration)
 2. P. (Premise)
 3. Q. (Reiteration from 2)
+
+
+# 3: Reiteration cannot cite a formula after its subproof has closed
+## Invalid: closed-scope citation — line 2.1 is no longer visible after the conditional subproof closes.
+### if A is a closed formula.
+### then A.
+
+1. Let A be a closed formula. (Declaration)
+2. A -> A. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Conditional Introduction)
+ 2.2. A. (Reiteration from 2.1)
+end subproof
+3. A. (Reiteration from 2.1)
