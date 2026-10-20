@@ -38,7 +38,7 @@ def test_all_equivalence_class_proofs_match_their_declared_validity():
     [
         ("7", "3", "RelationSymmetry", "does not justify"),
         ("8", "7", "RelationTransitivity", "does not justify"),
-        ("9", "7", "SetProperty", "does not justify"),
+        ("9", "7.8", "SetProperty", "does not justify"),
     ],
 )
 def test_invalid_twins_are_rejected_by_the_target_rule(number, expected_line, expected_rule, detail):
