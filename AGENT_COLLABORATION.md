@@ -87,3 +87,12 @@ Add one or two oracle `REJECT` cases showing that the intentionally ambiguous `n
 A bounded refactor should replace this implicit installation with explicit, named extension points or one documented parser-assembly step, while preserving the public parser API and the current regression corpus. Keep the membership-characterization behavior unchanged for explicit `NUMBER_THEORY_ENVIRONMENT` callers: `pytest_tests/test_compound_declarations.py` currently asserts it, so moving that behavior into SetTheory alone would be a semantic change, not a cleanup.
 
 **Done when:** parser import-contract tests, parser/oracle tests, line-broken declaration tests, compound-declaration tests, and full CI pass with no changed proof or oracle expectations. Do not begin until the owner approves the proposal.
+
+
+## Proposed next ChatGPT job — expand informational relation and order proofs (awaiting owner approval)
+
+The master TODO's §3 calls for expanding the proof corpus around algebraic and order-theoretic examples, while §4 asks for more user-facing proof patterns. The completed J16–J18 work adds new base-logic and equivalence-class coverage; the next bounded job could add a small batch of informational examples using only currently implemented relation and order rules.
+
+Suggested scope: inspect the current `tests/testDiscreteMath/` corpus, identify specific textbook-level gaps, add roughly 8–12 short proofs in one new informational fixture, and add a test that reports every unexpected result. Do not add axioms, modify existing expected outcomes, edit kernel files, or treat a failure caused by unsupported mathematics as a reason to change the theory. File a smallest-example finding instead if an intended textbook proof is blocked by the current rule set.
+
+This is a proposal only. Do not begin until the owner approves and it is added to `JOBS_FOR_CHATGPT.md`.
