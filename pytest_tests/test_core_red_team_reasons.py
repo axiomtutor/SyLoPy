@@ -205,7 +205,7 @@ def test_universal_generalization_refuses_each_kind_of_constraining_hypothesis(c
 
 
 def _existential_elimination_fixture(outer=()):
-    existential = fl.Exists("x", atom("P", fl.VariableTerm("x")))
+    existential = fl.Exists("x", atom("P", v("x")))
     assumption = atom("P", c("w"))
     conclusion = atom("Q", c("a"))
     subproof = pl.SubproofRecord(
