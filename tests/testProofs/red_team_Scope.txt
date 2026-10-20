@@ -1,20 +1,24 @@
 # 1: Outer labels are visible inside a subproof
 ## Proof that
+### if A is a closed formula.
 ### then A -> A.
 
-1. A -> A. (Conditional Introduction from subproof below)
+1. Let A be a closed formula. (Declaration)
+2. A -> A. (Conditional Introduction from subproof below)
 begin subproof
- 1.1. A. (Assumption for Conditional Introduction)
- 1.2. A. (Reiteration from 1.1)
+ 2.1. A. (Assumption for Conditional Introduction)
+ 2.2. A. (Reiteration from 2.1)
 end subproof
 
 # 2: A label from a closed subproof is not visible afterward
-## Invalid: closed-scope reference — line 1.1 is local to the closed subproof.
+## Invalid: closed-scope reference — line 2.1 is local to the closed subproof.
+### if A is a closed formula.
 ### then A.
 
-1. A -> A. (Conditional Introduction from subproof below)
+1. Let A be a closed formula. (Declaration)
+2. A -> A. (Conditional Introduction from subproof below)
 begin subproof
- 1.1. A. (Assumption for Conditional Introduction)
- 1.2. A. (Reiteration from 1.1)
+ 2.1. A. (Assumption for Conditional Introduction)
+ 2.2. A. (Reiteration from 2.1)
 end subproof
-2. A. (Reiteration from 1.1)
+3. A. (Reiteration from 2.1)
