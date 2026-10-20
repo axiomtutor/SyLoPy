@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import SyLoPy.source.validate_all_proofs as mp
-from .support import atom, c, fl, pl
+from .support import atom, c, fl, pl, v
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = ROOT / "tests" / "testProofs"
@@ -173,7 +173,7 @@ def _generalization_fixture(outer=()):
         outer_context_ref=list(outer),
         boundary_index=len(outer),
     )
-    target = fl.ForAll("x", atom("P", fl.VariableTerm("x")))
+    target = fl.ForAll("x", atom("P", v("x")))
     return [subproof], target
 
 
