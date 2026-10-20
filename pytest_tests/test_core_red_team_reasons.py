@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import SyLoPy.source.validate_all_proofs as mp
-from .support import pl
+from .support import atom, c, fl, pl
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = ROOT / "tests" / "testProofs"
@@ -105,6 +105,17 @@ def test_missing_disjunction_case_is_refused_before_kernel_validation():
     assert "requires 2 subproof(s) below" in case.parse_error, case.parse_error
 
 
+def test_forward_reference_is_refused_before_the_target_label_exists():
+    _text, case = _case("red_team_Scope.txt", "3")
+    assert case.parse_error is None, case.parse_error
+    ok, error = _checked(case)
+    assert not ok, "an earlier line cited a later label"
+    assert isinstance(error, pl.ValidationError), error
+    assert error.label == "2", error
+    assert error.category == pl.CATEGORY_BAD_REFERENCE, error
+    assert "3" in error.detail, error
+
+
 def test_closed_subproof_reference_is_refused_at_the_visibility_boundary():
     _text, case = _case("red_team_Scope.txt", "2")
     if case.parse_error:
@@ -150,3 +161,82 @@ def test_declaration_scope_keeps_parent_visibility_but_blocks_shadowing_and_leak
     assert child.lookup("R") == relation
     with pytest.raises(KeyError):
         child.declare(pl.Declaration("X", pl.DeclarationKind.OBJECT))
+
+
+
+def _generalization_fixture(outer=()):
+    flag = atom("c")
+    conclusion = atom("P", c("c"))
+    subproof = pl.SubproofRecord(
+        flag,
+        [flag, conclusion],
+        outer_context_ref=list(outer),
+        boundary_index=len(outer),
+    )
+    target = fl.ForAll("x", atom("P", fl.VariableTerm("x")))
+    return [subproof], target
+
+
+def test_universal_generalization_refuses_a_constant_mentioned_in_outer_context():
+    outer = [atom("Q", c("c"))]
+    candidates, target = _generalization_fixture(outer)
+    reason = pl.UniversalGeneralizationRule().explain_in_context(
+        candidates, target, pl.RuleContext()
+    )
+    assert reason is not None
+    assert "visible before the subproof opened" in reason
+
+
+@pytest.mark.parametrize(
+    "context,expected",
+    [
+        (pl.RuleContext(given=[atom("P", c("c"))]), "occurs in a hypothesis in force"),
+        (pl.RuleContext(assumptions=[atom("Q", c("c"))]), "occurs in a hypothesis in force"),
+        (pl.RuleContext(given=[atom("P", c("c"))]), "occurs in a hypothesis in force"),
+        (pl.RuleContext(constrained_names=["c"]), "structure of a declaration"),
+    ],
+    ids=["premise-or-axiom", "enclosing-assumption", "such-that-or-witness-hypothesis", "constrained-carrier"],
+)
+def test_universal_generalization_refuses_each_kind_of_constraining_hypothesis(context, expected):
+    candidates, target = _generalization_fixture()
+    reason = pl.UniversalGeneralizationRule().explain_in_context(candidates, target, context)
+    assert reason is not None
+    assert expected in reason
+
+
+def _existential_elimination_fixture(outer=()):
+    existential = fl.Exists("x", atom("P", fl.VariableTerm("x")))
+    assumption = atom("P", c("w"))
+    conclusion = atom("Q", c("a"))
+    subproof = pl.SubproofRecord(
+        assumption,
+        [assumption, conclusion],
+        outer_context_ref=list(outer),
+        boundary_index=len(outer),
+    )
+    return [existential, subproof], conclusion
+
+
+def test_existential_elimination_refuses_a_witness_mentioned_in_outer_context():
+    candidates, target = _existential_elimination_fixture([atom("R", c("w"))])
+    reason = pl.ExistentialEliminationRule().explain_in_context(
+        candidates, target, pl.RuleContext()
+    )
+    assert reason is not None
+    assert "visible before the subproof opened" in reason
+
+
+def test_existential_elimination_refuses_a_witness_in_a_hypothesis_in_force():
+    candidates, target = _existential_elimination_fixture()
+    context = pl.RuleContext(given=[atom("R", c("w"))])
+    reason = pl.ExistentialEliminationRule().explain_in_context(candidates, target, context)
+    assert reason is not None
+    assert "occurs in a hypothesis in force" in reason
+
+
+def test_existential_elimination_refuses_a_witness_named_by_declaration_structure():
+    candidates, target = _existential_elimination_fixture()
+    context = pl.RuleContext(constrained_names=["w"])
+    reason = pl.ExistentialEliminationRule().explain_in_context(candidates, target, context)
+    assert reason is not None
+    assert "structure of a declaration" in reason
