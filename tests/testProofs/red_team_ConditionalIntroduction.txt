@@ -1,0 +1,39 @@
+# 1: Conditional introduction with matching assumption and conclusion
+## Proof that
+### then A -> A.
+
+1. A -> A. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for Conditional Introduction)
+ 1.2. A. (Reiteration from 1.1)
+end subproof
+
+# 2: Conditional introduction requires the stated antecedent as the assumption
+## Invalid: antecedent mismatch — the subproof assumes C, not A.
+### then A -> B.
+
+1. A -> B. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. C. (Assumption for Conditional Introduction)
+ 1.2. B. (Premise)
+end subproof
+
+# 3: Conditional introduction requires the stated consequent as the conclusion
+## Invalid: consequent mismatch — the subproof concludes C, not B.
+### then A -> B.
+
+1. A -> B. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. A. (Assumption for Conditional Introduction)
+ 1.2. C. (Premise)
+end subproof
+
+# 4: Conditional introduction cannot use a subproof with a mismatched target and opening
+## Invalid: antecedent and consequent mismatch — neither the opening assumption nor the last line matches the target conditional.
+### then A -> B.
+
+1. A -> B. (Conditional Introduction from subproof below)
+begin subproof
+ 1.1. C. (Assumption for Conditional Introduction)
+ 1.2. D. (Premise)
+end subproof
