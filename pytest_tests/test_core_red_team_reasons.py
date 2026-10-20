@@ -99,6 +99,19 @@ def test_invalid_core_rule_cases_fail_at_the_intended_line_and_rule(filename, nu
     assert detail_fragment in error.detail, error
 
 
+def test_sibling_case_cannot_cite_a_closed_line_from_another_case():
+    _text, case = _case("red_team_DisjunctionElimination.txt", "5")
+    if case.parse_error is not None:
+        message = case.parse_error.casefold()
+        assert any(part in message for part in ("not in scope", "not defined", "not found", "bad reference")), case.parse_error
+        return
+    ok, error = _checked(case)
+    assert not ok, "a case cited a line belonging to its sibling case"
+    assert isinstance(error, pl.ValidationError), error
+    assert error.category == pl.CATEGORY_BAD_REFERENCE, error
+    assert "2.2.case1" in error.detail, error
+
+
 def test_missing_disjunction_case_is_refused_before_kernel_validation():
     _text, case = _case("red_team_DisjunctionElimination.txt", "3")
     assert case.parse_error is not None, "the parser accepted a missing case block"
