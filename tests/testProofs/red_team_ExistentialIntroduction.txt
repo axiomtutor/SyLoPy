@@ -9,12 +9,12 @@
 ## Invalid: instance shape — a universal formula is not an instance of the existential body.
 ### then exists x, P(x).
 
-1. forall x, P(x). (Premise)
+1. Let P be a predicate such that: forall x, P(x). (Premise)
 2. exists x, P(x). (Existential Introduction from 1)
 
 # 3: Existential introduction cannot switch predicate symbols
 ## Invalid: predicate mismatch — the cited formula does not instantiate the existential body's predicate.
 ### then exists x, P(x).
 
-1. Let a be an object and Q be a predicate such that: Q(a). (Premise)
+1. Let a be an object and P, Q be predicates such that: Q(a). (Premise)
 2. exists x, P(x). (Existential Introduction from 1)
