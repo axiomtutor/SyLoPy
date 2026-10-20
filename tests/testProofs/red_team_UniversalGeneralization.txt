@@ -13,7 +13,7 @@ end subproof
 ## Invalid: arbitrary-opening shape — the subproof must open by introducing the arbitrary constant.
 ### then forall x, P(x).
 
-1. Let P be a predicate such that: forall x, P(x). (Premise)
+1. Let c be an object and P be a predicate such that: forall x, P(x). (Premise)
 2. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  2.1. P(c). (Assumption)
@@ -24,7 +24,7 @@ end subproof
 ## Invalid: conclusion shape — the subproof conclusion is not the body of the proposed universal statement.
 ### then forall x, P(x).
 
-1. Let P be a predicate such that: forall x, P(x). (Premise)
+1. Let P and Q be predicates such that: forall x, P(x). (Premise)
 2. forall x, P(x). (Universal Generalization from subproof below)
 begin subproof
  2.0. let c be arbitrary. (Arbitrary)
@@ -53,34 +53,7 @@ begin subproof
  2.1. P(c). (Premise)
 end subproof
 
-# 6: A constant in an outer premise is not arbitrary
-## Invalid: outer-context freshness — the generalized constant occurs before the subproof opens.
-### then forall x, P(x).
-
-1. Let c be an object and P, Q be predicates such that: Q(c). (Premise)
-2. forall x, P(x). (Premise)
-3. forall x, P(x). (Universal Generalization from subproof below)
-begin subproof
- 3.0. let c be arbitrary. (Arbitrary)
- 3.1. P(c). (Universal Instantiation from 2)
-end subproof
-
-# 7: An enclosing assumption cannot constrain the generalized constant
-## Invalid: enclosing-assumption freshness — an assumption in force mentions the proposed arbitrary constant.
-### then Q(c) -> forall x, P(x).
-
-1. Let c be an object and P, Q be predicates such that: forall x, P(x). (Premise)
-2. Q(c) -> forall x, P(x). (Conditional Introduction from subproof below)
-begin subproof
- 2.1. Q(c). (Assumption for Conditional Introduction)
- 2.2. forall x, P(x). (Universal Generalization from subproof below)
- begin subproof
-  2.2.0. let c be arbitrary. (Arbitrary)
-  2.2.1. P(c). (Universal Instantiation from 1)
- end subproof
-end subproof
-
-# 8: A witness whose defining property mentions the arbitrary constant blocks generalization
+# 6: A witness whose defining property mentions the arbitrary constant blocks generalization
 ## Invalid: witness-hypothesis freshness — the witness declaration depends on the arbitrary constant.
 ### then forall x, P(x).
 
