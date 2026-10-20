@@ -6,8 +6,8 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 ## Baseline and active follow-ups
 
-- **Master:** [`928ffda`](https://github.com/axiomtutor/SyLoPy/commit/928ffda268e9f6a7bba5f91508262a6f06f9afd3). PRs #81–#92 (excluding issue-only numbers #93–#96), #97, #99, #100–#104, #106, and #107 are merged; issues #93–#96 and #105 are closed; #98 remains an owner-decision issue; #75 is fixed by PR #86 (Claude) and left open for the owner; see "One known failing test". PR #108 is open and ready for review.
-- **Latest merged-code verification:** [PR #107](https://github.com/axiomtutor/SyLoPy/pull/107), merge commit [`928ffda`](https://github.com/axiomtutor/SyLoPy/commit/928ffda268e9f6a7bba5f91508262a6f06f9afd3), tested head `bfb1a000f7d936dd0fef0c5903428fe9fd837be8`; CI [run #39194905832](https://github.com/axiomtutor/SyLoPy/actions/runs/39194905832): 1,502 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All three ambiguous-shorthand rejection cases pass. The sole CI failure remains known issue #75 (`MutatisMutandis`).
+- **Master:** [`045de51`](https://github.com/axiomtutor/SyLoPy/commit/045de51c63769d2eb2a47476b2a070f97e2b59cd), merging PR #113. PRs #109–#113 are all merged; earlier merged work includes #81–#108 (excluding issue-only numbers as applicable). No pull requests are open at the last check. Issues #75 and #98 remain open: #75 is fixed as a WLOG replay defect but stays red at the owner-deferred `Mutatis mutandis` line, and #98 records owner decisions about number-theory axioms.
+- **Latest merged-code verification:** PR #113, merge commit [`045de51`](https://github.com/axiomtutor/SyLoPy/commit/045de51c63769d2eb2a47476b2a070f97e2b59cd), CI [run #39476179269](https://github.com/axiomtutor/SyLoPy/actions/runs/39476179269): 1,583 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 229/229; informational fixtures 79/80. The sole CI failure is `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`, which reaches the owner-deferred `Mutatis mutandis` at line 5.3.
 - **[PR #84](https://github.com/axiomtutor/SyLoPy/pull/84), status/docs cleanup:** makes `todos.txt` the source for suite counts, removes stale README claims, and corrects next-work guidance. CI [run #758](https://github.com/axiomtutor/SyLoPy/actions/runs/39085002613) has only the known #75 failure.
 - **[PR #85](https://github.com/axiomtutor/SyLoPy/pull/85), declaration consolidation:** removes the redundant `elaborate_typed_declaration` path and moves sequence-aware declaration-recipe dispatch into the active surface-AST path, with a two-clause recipe regression test. CI [run #760](https://github.com/axiomtutor/SyLoPy/actions/runs/39085118117): 1,428 passed, 1 failed, 1 xfailed; coverage passed; enforced 81/81; informational 69/70. The new test passes; only #75 fails.
 
@@ -15,9 +15,13 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` is the sole test failure, and since [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix, merged) it no longer fails because of #75's WLOG replay: the proof passes line 5.2.4 and stops at line 5.3, which uses `Mutatis mutandis`, deferred pending owner approval. The test stays red; do not weaken it, change the fixture or mask the failure. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
 
-One more WLOG gap is logged in `todos.txt` under Known issues: a `Proof by Cases ... (subproofs below)` inside a WLOG region is replayed untransformed. [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110) (Claude) fixes it and is open for the owner; the entry leaves `todos.txt` when it merges. The fix is in Claude-owned `source/ProofLogic.py`; do not edit that file.
+The WLOG replay gap for `Proof by Cases ... (subproofs below)` inside a WLOG region was fixed by PR #110 (merged). PRs #111–#113 were also merged by the owner: first-order logic classics, core quantifier/scope red-team cases, and equivalence-class/partition proofs. Claude was asked for candid review feedback on all three; no Claude review submission or reply was visible at the last check.
 
 The named axiom rules are implemented. Retiring generic `(Axiom)` citations remains an owner decision. Arbitrary-property WLOG, `Mutatis mutandis`, and symbolic defining-property behavior remain deferred.
+
+## Queue status (2026-10-20)
+
+J16–J18 are merged (PRs #111–#113); there is currently no `todo` job in `JOBS_FOR_CHATGPT.md`. The proposed jobs below remain explicitly gated on owner approval. Do not begin them just because the standing queue is empty.
 
 
 ## J8 — Negative set phrases (PR #100)
