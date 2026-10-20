@@ -2,7 +2,7 @@
 ## Proof that
 ### then R(a, a).
 
-1. Let R be a predicate such that: forall x, R(x, x). (Premise)
+1. Let a be an object and R be a predicate such that: forall x, R(x, x). (Premise)
 2. R(a, a). (Universal Instantiation from 1)
 
 # 2: Universal instantiation must consistently replace every occurrence
