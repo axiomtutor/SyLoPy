@@ -204,13 +204,16 @@ def test_universal_generalization_refuses_a_constant_mentioned_in_outer_context(
     "context,expected",
     [
         (pl.RuleContext(given=[atom("P", c("c"))]), "occurs in a hypothesis in force"),
+        (pl.RuleContext(given=[fl.ForAll("x", atom("Q", c("c"), v("x")))]), "occurs in a hypothesis in force"),
         (pl.RuleContext(assumptions=[atom("Q", c("c"))]), "occurs in a hypothesis in force"),
-        (pl.RuleContext(given=[atom("P", c("c"))]), "occurs in a hypothesis in force"),
+        (pl.RuleContext(given=[fl.Exists("y", atom("R", c("c"), v("y")))]), "occurs in a hypothesis in force"),
         (pl.RuleContext(constrained_names=["c"]), "structure of a declaration"),
     ],
-    ids=["premise-or-axiom", "enclosing-assumption", "such-that-or-witness-hypothesis", "constrained-carrier"],
+    ids=["premise", "axiom-formula", "enclosing-assumption", "witness-or-stated-property", "constrained-carrier"],
 )
 def test_universal_generalization_refuses_each_kind_of_constraining_hypothesis(context, expected):
+    # Premises, cited axioms, formula-stating declarations, witness statements,
+    # and active assumptions all reach the rule through RuleContext.hypotheses.
     candidates, target = _generalization_fixture()
     reason = pl.UniversalGeneralizationRule().explain_in_context(candidates, target, context)
     assert reason is not None
@@ -247,9 +250,29 @@ def test_existential_elimination_refuses_a_witness_in_a_hypothesis_in_force():
     assert "occurs in a hypothesis in force" in reason
 
 
+def test_existential_elimination_refuses_a_witness_in_an_enclosing_assumption():
+    candidates, target = _existential_elimination_fixture()
+    context = pl.RuleContext(assumptions=[atom("S", c("w"))])
+    reason = pl.ExistentialEliminationRule().explain_in_context(candidates, target, context)
+    assert reason is not None
+    assert "occurs in a hypothesis in force" in reason
+
+
 def test_existential_elimination_refuses_a_witness_named_by_declaration_structure():
     candidates, target = _existential_elimination_fixture()
     context = pl.RuleContext(constrained_names=["w"])
     reason = pl.ExistentialEliminationRule().explain_in_context(candidates, target, context)
     assert reason is not None
     assert "structure of a declaration" in reason
+
+
+
+def test_reiteration_after_close_is_refused_at_the_closed_line():
+    _text, case = _case("red_team_Reiteration.txt", "3")
+    assert case.parse_error is None, case.parse_error
+    ok, error = _checked(case)
+    assert not ok, "Reiteration cited a line after its subproof closed"
+    assert isinstance(error, pl.ValidationError), error
+    assert error.label == "3", error
+    assert error.category == pl.CATEGORY_BAD_REFERENCE, error
+    assert "2.1" in error.detail, error
