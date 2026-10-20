@@ -2,7 +2,7 @@
 
 The owner asked Claude to queue work that ChatGPT can do without Claude, to save Claude's time. Take jobs in order, one PR per job. Stable rules: [`AGENT_COLLABORATION.md` on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md). Live status: `AGENT_COLLABORATION.md` on this branch. If this file conflicts with the owner or with master's guide, they win; say so in the PR.
 
-Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs.
+Checked against master `3fbaf97`; J16 to J18 against master `fec7051`. Edit only the Status table; do not delete jobs.
 
 ## Status
 
@@ -18,18 +18,21 @@ Checked against master `3fbaf97`. Edit only the Status table; do not delete jobs
 | J7 | Mutation-check tool | merged (PR #99) |
 | J8 | Negative set phrases in the parser | merged (PR #100; finding #93) |
 | J9 | Union, intersection, and disjointness phrases | merged (PR #101; finding #94) |
+| J16 | First-order logic classics | todo |
+| J17 | Red-team the quantifier and scope rules | todo |
+| J18 | Equivalence classes and partitions | todo |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
 ## Rules for every job
 
 1. **Branch and PR.** Branch from current master as `chatgpt/<job>-<slug>`. One job per PR, small (about 15 proofs or 400 changed lines at most). Open it as a draft; mark it ready when CI shows what the job's "Done when" says. The owner merges.
-2. **CI is your test run.** You cannot run code. Push early, read the run, fix, push again. Never state a result you did not read from a CI run. Every PR reports: tested commit, CI run link, Python tests (passed / failed / xfailed), coverage, enforced fixtures, informational fixtures, and the known failure of issue #75 listed separately.
+2. **CI is your test run.** You cannot run code. Push early, read the run, fix, push again. Never state a result you did not read from a CI run. Every PR reports: tested commit, CI run link, Python tests (passed / failed / xfailed), coverage, enforced fixtures, informational fixtures, and the one known failing test (`test_zfc_remaining_axioms_fixture_all_pass`, see "One known failing test" in the live handoff) listed separately.
 3. **Off limits.** Do not edit `source/ProofLogic.py` or `source/ProofJustification.py`. Do not change an existing test, fixture or oracle case to make something pass. Do not start anything under "Not yet" below.
 4. **A checker problem is a finding, not a failed job.** Four kinds: (a) a valid proof is rejected, (b) an invalid proof is accepted, (c) a crash, (d) a message that points at the wrong thing. File one issue per finding, titled `[finding] <short>`, with: the smallest proof text that shows it (fenced), the exact message or the wrong acceptance, the rule or file you suspect, and `Owner: Claude` when the kernel is involved. Keep the PR green: leave an (a) proof out of the fixtures (it lives in the issue); record a (b) as a pytest marked `@pytest.mark.xfail(strict=True, reason="issue #n")` that asserts the proof is rejected. Claude fixes the kernel and removes the marker. Before you file (a), compare the proof with "Verified patterns" and its pitfalls: a rejected proof is far more often a mistake in the proof than a gap in the checker. File only when you are confident the proof is valid, and say what you tried. This replaces the older "report holes in a draft PR" rule.
 5. **Negative proofs fail for the intended reason.** A fixture marked invalid must be refused for the reason its title names, not for a parse error, an undeclared symbol or a scope slip. Pin the reason with a test that checks the refusal message, like `pytest_tests/test_uniqueness_red_team_reasons.py`.
 6. **Fixture format.** `# N: Title`, then `## Proof that` (expected valid) or `## Invalid: <reason> — <why>` (expected invalid), then `### then <conclusion>`. The conclusion must appear as a derived line, up to renaming bound variables. A titled proof is promoted and later proofs in the same file may cite it by title. A single-proof file has no header lines and is expected to be refused when its file name contains `invalid`.
-7. **Where proofs go.** Passing proofs go in the directory for their subject: set theory in `tests/setTheoryProofs/`; number theory in `tests/testNumberTheory/`; relations and order in `tests/testDiscreteMath/`. The last two are enforced suites: a failing proof there fails CI, so keep the PR a draft until green. `tests/setTheoryProofs/` is informational (CI does not fail on it), so for each file you add there also add a test that runs the file and fails with the `(number, message)` of every proof that did not behave as expected; see `test_union_and_power_set_theorems_fixture_all_pass` in `pytest_tests/test_axiom_citation_rules.py` for the shape, and put the messages in the assertion so J0's failure details show them. Expected-invalid proofs go in the enforced suite for their subject, with a pinned-reason test (rule 5).
+7. **Where proofs go.** Passing proofs go in the directory for their subject: set theory in `tests/setTheoryProofs/`; number theory in `tests/testNumberTheory/`; relations and order in `tests/testDiscreteMath/`; base logic (propositional and first-order) in `tests/testProofs/`. The last three are enforced suites: a failing proof there fails CI, so keep the PR a draft until green. `tests/setTheoryProofs/` is informational (CI does not fail on it), so for each file you add there also add a test that runs the file and fails with the `(number, message)` of every proof that did not behave as expected; see `test_union_and_power_set_theorems_fixture_all_pass` in `pytest_tests/test_axiom_citation_rules.py` for the shape, and put the messages in the assertion so J0's failure details show them. Expected-invalid proofs go in the enforced suite for their subject, with a pinned-reason test (rule 5).
 8. **Keep it short.** No new files outside the places a job names, no changes to `todos.txt` unless the owner asks. Design rationale goes in the PR description, not in repo docs.
 
 ## J0. CI shows why a fixture or test failed
@@ -127,13 +130,88 @@ Tests: `pytest_tests/test_mutation_check_tool.py` builds a toy package in `tmp_p
 
 Done when: the new test passes in CI.
 
+## J16. First-order logic classics
+
+Why: base logic has 8 enforced proofs (`tests/testProofs/multiProof.txt`), and the quantifier laws appear only in part in the informational `source/testProofs/propLogTests.txt` (#16, #17, #26, #35, #37 to #39). Everything else here rests on these rules, and the owner's textbook chapters use them. A valid classic that is refused is finding (a); a fallacy that is accepted is finding (b), the worst kind.
+
+Where: `tests/testProofs/first_order_classics.txt` (enforced: a failing proof fails CI, so keep the PR a draft until green) and `pytest_tests/test_first_order_classics_reasons.py` (rule 5; the shape is `test_uniqueness_red_team_reasons.py`).
+
+Seeds: `job_seeds/first_order_logic.txt` on this branch is the first 18 entries of your file: 13 valid proofs and 5 invalid twins. Copy it unchanged; the copied seeds do not count toward rule 1's size limit, your additions do. Every entry was run on master `fec7051` in `tests/testProofs` and behaves as its header says (53/53 in that suite with the file added). The seeds settle three things you need not guess. `Explosion` takes the two contradictory lines (`Explosion from 2.3.1, 2.3.2`), not their conjunction. An existential witness is declared with `Let w be an object. (Declare)` before its `Existential Elimination` line, and that line's conclusion must not mention it. Only `### then` is checked by the runner; `### if` is descriptive, so make the premise lines say what the header says.
+
+What the five twins are refused with, for the pinned-reason test (assert substrings, plus line, rule and category `pl.CATEGORY_RULE_MISMATCH`):
+
+- #14, line `6.2`: `'ExistentialElimination' does not justify`; `the witness w occurs in a hypothesis in force`
+- #15, line `3.2`: `the witness b occurs in the conclusion`
+- #16, line `6`: `'ModusPonens' does not justify P(a)`
+- #17, line `3`: `'UniversalInstantiation' does not justify`
+- #18, line `4`: `'ExistentialIntroduction' does not justify`
+
+#17 and #18 name only the rule; the kernel does not say why. If you think the message should say more, that is finding (d), not a reason to loosen the test.
+
+Statements to add, in order, one proof each (each is a theorem, so each must pass):
+
+1. From `forall x, (P(x) -> Q(x))` and `exists x, P(x)`: `exists x, Q(x)`.
+2. From `forall x, (P(x) -> Q(x))`: `(forall x, P(x)) -> (forall x, Q(x))`, and `(exists x, P(x)) -> (exists x, Q(x))`.
+3. From `(forall x, P(x)) or (forall x, Q(x))`: `forall x, (P(x) or Q(x))`.
+4. From `exists x, forall y, R(x, y)`: `forall y, exists x, R(x, y)` (informational #35 has it; leave that one alone).
+5. From `forall x, forall y, (R(x, y) -> R(y, x))` and `forall x, forall y, forall z, ((R(x, y) and R(y, z)) -> R(x, z))`: `forall x, ((exists y, R(x, y)) -> R(x, x))`.
+6. For a closed formula A: from `A -> (forall x, P(x))`, `forall x, (A -> P(x))`; and from `exists x, (A and P(x))`, `A and (exists x, P(x))`, and the converse.
+7. Equality: from `a = b`, `f(a) = f(b)` (Substitution); from `a = b`, `b = a`; and `exists x, x = a`.
+8. Syllogisms with predicates `P`, `M`, `S`: Barbara (`forall x, (M(x) -> P(x))` and `forall x, (S(x) -> M(x))` give `forall x, (S(x) -> P(x))`), Celarent (`M(x) -> not P(x)` and `S(x) -> M(x)` give `S(x) -> not P(x)`), Darii (`forall x, (M(x) -> P(x))` and `exists x, (S(x) and M(x))` give `exists x, (S(x) and P(x))`), Ferio (`forall x, (M(x) -> not P(x))` and `exists x, (S(x) and M(x))` give `exists x, (S(x) and not P(x))`).
+9. Stretch: the drinker paradox, `exists x, (D(x) -> forall y, D(y))`, with an object `a` declared. Use excluded middle on `forall y, D(y)` as informational #37 does, then cases; the second case uses the argument of seed 3.
+
+Invalid twins to add, at least 4: the textbook fallacies, each written as its natural flawed derivation and refused for the flaw its title names. Candidates: undistributed middle (from `forall x, (P(x) -> M(x))` and `forall x, (S(x) -> M(x))`, `forall x, (S(x) -> P(x))`); denying the antecedent (from `forall x, (P(x) -> Q(x))` and `not P(a)`, `not Q(a)`); `forall x, (P(x) or Q(x))` to `(forall x, P(x)) or (forall x, Q(x))`; `exists x, P(x)` to `forall x, P(x)`; `forall y, exists x, R(x, y)` to `exists x, forall y, R(x, y)`. If the flawed step cannot be written without a naming slip, leave that fallacy out and say so in the PR: `symbol 'c' is already declared as object` is a scope slip, not the fallacy, and the kernel's universal generalization makes several of these unwritable.
+
+Done when: at least 10 new valid proofs and 4 new invalid twins pass in CI together with the seeds, the pinned-reason test passes, and every refused valid proof or accepted fallacy has an issue. Report which.
+
+## J17. Red-team the quantifier and scope rules
+
+Why: J3 did this for the set-theory rules. The core rules, where an accepted bad proof matters most, have had no systematic pass of this kind. Claude audited variable capture and schema side conditions on 2026-10-14 (`todos.txt`, "Soundness audit"); this job is the other families.
+
+Targets, all in `source/ProofLogic.py` (read only): `UniversalGeneralizationRule`, `ExistentialEliminationRule`, `ExistentialIntroductionRule`, `UniversalInstantiationRule`, `ConditionalIntroductionRule`, `ProofByContradictionRule`, `DisjunctionEliminationRule`, `LeibnizSubstitutionRule`, `ReiterationRule`, and how labels and declarations are seen from inside and outside a subproof (`LabelScope`, `DeclarationScope`).
+
+Do: as J3. For each rule list its side conditions from its docstring, then from its code (the code is the truth). For each condition write the smallest proof that violates only that condition, as an expected-invalid case in `tests/testProofs/red_team_<rule>.txt` whose `## Invalid: <condition> — <why>` title names it, and pin each refusal in `pytest_tests/test_core_red_team_reasons.py` (rule 5; the shape is `pytest_tests/test_capture_and_schema_side_conditions.py`: the refusing line, the rule, the category). Add at least one valid near-miss per rule, titled `## Proof that`, to mark the boundary. Do not repeat the variable-capture cases or J16's twins #14 to #18.
+
+Starting points, because accepting any of them is unsound:
+
+- Universal generalization: the arbitrary constant occurs in a premise, in an assumption of an enclosing subproof, in a `Let ... such that:` hypothesis, in a witness line (`Let Y be such a set.`) or in an `(Axiom)` line; a `(Premise)` or `(Assumption)` line about the constant inside the subproof (refused today with "occurs in a hypothesis in force"); the last line is not an instance of the generalized body, or generalizes a different variable; the first line is not `let c be arbitrary. (Arbitrary)`.
+- Existential elimination: the witness occurs in a premise, in an enclosing assumption or in the cited existential; it was declared earlier for another purpose; the assumption is not the body instantiated with the witness; the subproof's last line is not the line concluded; the cited line is not existential.
+- Existential introduction and universal instantiation: a different term in different places; a line that is not an instance of the cited body; instantiating an existential line; introducing from a universal one.
+- Conditional introduction and proof by contradiction: the subproof does not open with the assumption the rule needs, or end with the consequent or a contradiction; a line of the closed subproof cited from outside.
+- Disjunction elimination and proof by cases: a case missing, or repeated; cases that do not cover the cited disjunction; a case block citing the other block's lines; case conclusions that differ.
+- Substitution: no actual replacement; replacing a term the equality does not state; an equality between non-matching terms.
+- Scope: citing a label defined later or twice, a label inside a closed subproof, a label that shadows another, `Reiteration` across a closed subproof.
+
+If an invalid proof is accepted, that is finding (b): an issue with `Owner: Claude`, a strict xfail, and a note to the owner in the PR. If a refusal's message does not name the condition, that is finding (d).
+
+Done when: every listed condition has its own case, none a rephrasing of another, and CI shows only the one known failing test.
+
+## J18. Equivalence classes and partitions
+
+Why: the owner's textbook proves these, and they need sets and relations together, which is where gaps in what can be written show. A proof you cannot write is finding (a), but compare it with the seeds first.
+
+Where: `tests/testDiscreteMath/equivalence_classes.txt` (enforced; first line `Use discrete math.`), with the invalid twins in the same file, and `pytest_tests/test_equivalence_classes_reasons.py` (rule 5).
+
+Seeds: `job_seeds/equivalence_classes.txt` on this branch has two proofs, run on master `fec7051` in `tests/testDiscreteMath` (35/35 with the file added). Copy them unchanged as entries 1 and 2. A class is a set made by Separation, `exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u)))`, and named with `Let C be such a set. (Existence from L)`. Set-builder notation is not a term here (see "Not yet"), so do not try to write `[a]`.
+
+Statements to add, in order:
+
+3. If `R(a, b)` then the class of a equals the class of b (both inclusions, then `Set equality`).
+4. If the class of a equals the class of b then `R(a, b)` (a is in its own class by seed 1, so a is in the class of b; then `Set property` and symmetry).
+5. Two classes are equal or have no element in common: if some u is in both, then `R(a, b)`, so by 3 they are equal.
+6. Every element of X lies in some class, with the class named.
+
+Invalid twins, at least 3, refused for the intended reason: `Relation Symmetry` cited for a relation declared only reflexive and transitive; the subset proof of seed 2 with the direction of the equivalence reversed (`R(b, a)` where `R(a, b)` is needed); a subset proof that concludes membership in the class without `In(u, X)`.
+
+Done when: the seeds, at least 4 new valid proofs and 3 invalid twins pass in CI, and every proof you could not write is an issue (rule 4) with the smallest text that shows it.
+
 ## Not yet (needs owner approval; do not start)
 
 `Mutatis mutandis`; WLOG for arbitrary properties; the symbolic defining property; the Infinity follow-up in `todos.txt` §5; retiring the generic `(Axiom)` citation; declaring function symbols in proof text and set operations as terms (no design yet); new theory modules such as abstract algebra or topology. If you think of a job that is not here, put it in the live handoff as a proposal and wait.
 
 ## What Claude does meanwhile
 
-Issue #75 (WLOG replay, kernel), then the findings you file that involve the kernel, in the order filed. Claude reviews a job PR when you or the owner ask in the PR thread; otherwise the owner merges after CI. You do not need Claude for any job above.
+A soundness audit of the kernel rules not covered on 2026-10-14, then the findings you file that involve the kernel, in the order filed. (Issue #75's replay defect and the case-block gap are fixed: PRs #86 and #110.) Claude reviews a job PR when you or the owner ask in the PR thread; otherwise the owner merges after CI. You do not need Claude for any job above.
 
 ## Verified patterns
 
