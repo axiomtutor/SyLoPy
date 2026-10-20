@@ -1,0 +1,95 @@
+# 1: Universal generalization with a genuinely arbitrary constant
+## Proof that
+### then forall x, P(x).
+
+1. Let P be a predicate such that: forall x, P(x). (Premise)
+2. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. P(c). (Universal Instantiation from 1)
+end subproof
+
+# 2: Universal generalization cannot start with an ordinary assumption
+## Invalid: arbitrary-opening shape — the subproof must open by introducing the arbitrary constant.
+### then forall x, P(x).
+
+1. forall x, P(x). (Premise)
+2. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.1. P(c). (Assumption)
+ 2.2. P(c). (Reiteration from 2.1)
+end subproof
+
+# 3: Universal generalization must conclude an instance of its body
+## Invalid: conclusion shape — the subproof conclusion is not the body of the proposed universal statement.
+### then forall x, P(x).
+
+1. forall x, P(x). (Premise)
+2. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. Q(c). (Premise)
+end subproof
+
+# 4: The generalized variable must occur in the quantified body
+## Invalid: bound-variable match — the proposed quantified variable does not instantiate the subproof conclusion.
+### then forall x, P(y).
+
+1. Let P be a predicate such that: forall x, P(x). (Premise)
+2. forall x, P(y). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. P(c). (Universal Instantiation from 1)
+end subproof
+
+# 5: A premise inside the subproof cannot constrain its arbitrary constant
+## Invalid: hypothesis in force — the arbitrary constant occurs in a premise inside the generalization subproof.
+### then forall x, P(x).
+
+1. forall x, P(x). (Premise)
+2. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. P(c). (Premise)
+end subproof
+
+# 6: A constant in an outer premise is not arbitrary
+## Invalid: outer-context freshness — the generalized constant occurs before the subproof opens.
+### then forall x, P(x).
+
+1. Q(c). (Premise)
+2. forall x, P(x). (Premise)
+3. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let c be arbitrary. (Arbitrary)
+ 3.1. P(c). (Universal Instantiation from 2)
+end subproof
+
+# 7: An enclosing assumption cannot constrain the generalized constant
+## Invalid: enclosing-assumption freshness — an assumption in force mentions the proposed arbitrary constant.
+### then Q(c) -> forall x, P(x).
+
+1. forall x, P(x). (Premise)
+2. Q(c) -> forall x, P(x). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. Q(c). (Assumption for Conditional Introduction)
+ 2.2. forall x, P(x). (Universal Generalization from subproof below)
+ begin subproof
+  2.2.0. let c be arbitrary. (Arbitrary)
+  2.2.1. P(c). (Universal Instantiation from 1)
+ end subproof
+end subproof
+
+# 8: A witness whose defining property mentions the arbitrary constant blocks generalization
+## Invalid: witness-hypothesis freshness — the witness declaration depends on the arbitrary constant.
+### then forall x, P(x).
+
+1. Let X be any set. (Declaration)
+2. forall x, P(x). (Premise)
+3. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let c be arbitrary. (Arbitrary)
+ 3.1. exists Y, forall u, (In(u, Y) iff (In(u, X) and u = c)). (Separation)
+ 3.2. Let Y be such a set. (Existence from 3.1)
+ 3.3. P(c). (Universal Instantiation from 2)
+end subproof
