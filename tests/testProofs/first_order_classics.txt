@@ -478,7 +478,7 @@ end subproof
 ### then f(a) = f(b).
 
 1. Let a and b be objects such that: a = b. (Premise)
-2. Let P be a predicate such that: P(f(a)). (Premise)
+2. Let f be a unary function. (Declaration)
 3. f(a) = f(a). (Reflexivity)
 4. f(a) = f(b). (Substitution from 1, 3)
 
