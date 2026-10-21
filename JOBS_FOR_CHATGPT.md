@@ -2,7 +2,7 @@
 
 The owner asked Claude to queue work that ChatGPT can do without Claude, to save Claude's time. Take jobs in order, one PR per job. Stable rules: [`AGENT_COLLABORATION.md` on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md). Live status: `AGENT_COLLABORATION.md` on this branch. If this file conflicts with the owner or with master's guide, they win; say so in the PR.
 
-Checked against master `3fbaf97`; J16 to J18 against master `fec7051`. Edit only the Status table; do not delete jobs.
+Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`. Edit only the Status table; do not delete jobs.
 
 ## Status
 
@@ -21,6 +21,8 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`. Edit only
 | J16 | First-order logic classics | merged (PR #111) |
 | J17 | Red-team the quantifier and scope rules | merged (PR #112) |
 | J18 | Equivalence classes and partitions | merged (PR #113) |
+| J19 | Fix the J16 and J18 review findings | todo |
+| J20 | Fix the J17 review findings | todo |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
@@ -205,13 +207,46 @@ Invalid twins, at least 3, refused for the intended reason: `Relation Symmetry` 
 
 Done when: the seeds, at least 4 new valid proofs and 3 invalid twins pass in CI, and every proof you could not write is an issue (rule 4) with the smallest text that shows it.
 
+## J19. Fix the J16 and J18 review findings
+
+Why: the owner asked Claude to review PRs #111 and #113 ([#111 review](https://github.com/axiomtutor/SyLoPy/pull/111#issuecomment-6309381566), [#113 review](https://github.com/axiomtutor/SyLoPy/pull/113#issuecomment-6309382063)). The findings are about your own files, and every text you need is already run: `job_seeds/j19_j20_cases.md` holds the entries (keys below) and the exact refusal messages. Each entry was run on master `045de51` in the suite it belongs to; with J19 and J20 applied, `tests/testProofs` passes 122/122 and `tests/testDiscreteMath` 42/42. This job edits your J16 and J18 cases, which rule 3 would otherwise forbid, and only as listed; the seeds stay byte for byte (J16 #1 to #18, J18 #1 and #2).
+
+Where: `tests/testProofs/first_order_classics.txt`, `tests/testDiscreteMath/equivalence_classes.txt`, `pytest_tests/test_first_order_classics_reasons.py`, `pytest_tests/test_equivalence_classes_reasons.py`.
+
+Do:
+
+1. J16 #35 is refused for a different reason than its title: it cites the bundled premises without instantiating, and a valid Modus Tollens written the same way is refused identically. Replace its proof with `fo35` (same number and title; refused at line 3).
+2. J16 #36 and #37 are refused by Universal Instantiation's generic checks, not by the fallacies they name. Keep the proofs and change each `## Invalid:` line to the one under "Retitles". In the PR, say which of the five fallacies you could not write in their natural form; the job asked for that.
+3. J16 #38 restates seed #15. Replace it with `fo38` (statement 5 exactly as J16 gave it; valid) and drop its row from `_EXPECTED_REFUSALS`. Append `fo41` as #41, the valid sibling of #35. Keep #39. Optional: replace #28 with `fo28` (symmetry by Substitution rather than a `Symmetry` citation).
+4. J18: add the three `### then` lines listed under "`equivalence_classes.txt`: conclusions", and replace #6 with `ec6`. In `test_all_equivalence_class_proofs_match_their_declared_validity`, assert `case.stated_conclusion is not None` for cases 3 to 6, so a malformed `### then` cannot silently switch the check off again.
+5. Pins, both test files: replace the second assertion (`detail in error.detail` repeats `does not justify` for most rows) with the prefix from the message table (rule, formula and cited lines), and keep the reason fragments the table lists (J16 #14 and #15, J18 #9). Pin J16 #35 at line 3.
+6. Optional: remove the uncited lines (J18 #4's line 11, #5's lines 8 and 10) and renumber; a slip shows up as a bad citation in CI.
+
+Done when: CI shows only the known failing test and the PR says, per item, what changed. Claude then runs the J7 tool on your branch: `python3 tools/mutation_check.py job_seeds/j19_mutants.json --tests "python3 -m pytest -q -x -p no:cacheprovider pytest_tests/test_first_order_classics_reasons.py pytest_tests/test_equivalence_classes_reasons.py pytest_tests/test_core_red_team_reasons.py -k 'not refuses and not scope_keeps'"`. `MT-deny-antecedent` must be KILLED; on master it survives, because the old #35 is refused under the mutant too.
+
+## J20. Fix the J17 review findings
+
+Why: the owner asked Claude to review PR #112 ([review](https://github.com/axiomtutor/SyLoPy/pull/112#issuecomment-6309381845)). Claude mutated `source/ProofLogic.py` one side condition at a time (30 mutants): three survive every test, and 22 of the 25 rule-level pins assert only `does not justify`. The entries and messages are in `job_seeds/j19_j20_cases.md`, run as for J19. The edits below to your J17 files are authorized; rule 3 still covers everything else.
+
+Where: `tests/testProofs/red_team_*.txt` and `pytest_tests/test_core_red_team_reasons.py`.
+
+Do:
+
+1. Add `de6` (DisjunctionElimination #6), `pbc4` and `pbc5` (ProofByContradiction #4 and its valid sibling #5), `ee6` and `ee7` (ExistentialElimination #6 and #7), `scope4` and `scope5` (Scope #4 and #5). Add rows to `REFUSALS` for `de6`, `pbc4`, `ee6` and `ee7`; `scope4` and `scope5` are refused by elaboration, so pin `case.parse_error` with the message in the table.
+2. Remove duplicates. Reiteration #3 and Scope #2 are the same proof: replace Scope #2 with `scope2`, which cites the closed line by a different rule. Delete ConditionalIntroduction #4 (it is #2 and #3 at once) and its `REFUSALS` row.
+3. Pins: in `test_invalid_core_rule_cases_fail_at_the_intended_line_and_rule`, replace the second assertion (`detail_fragment` is `does not justify` for 22 of 25 rows) with the prefix from the message table, and keep the reason fragments the table lists. Several cases print the same prefix, so this pins the line, rule, formula and cited lines, not the reason; reasons need kernel explanations, which are Claude's to add (the pins get upgraded then). Say so in the PR.
+4. Layer pins: replace `test_sibling_case_cannot_cite_a_closed_line_from_another_case` and `test_closed_subproof_reference_is_refused_at_the_visibility_boundary` with checker-level pins and delete their parse-error branches, which never run today: DE #5 at `2.2.case2`, Scope #2 and Reiteration #3 at `3`, category `CATEGORY_BAD_REFERENCE`, the cited label in the detail.
+5. Add the direct test for the witness in the cited existential (snippet in the seeds file); no test pins that condition directly today.
+
+Done when: CI shows only the known failing test and the PR says, per item, what changed. Claude then runs the J7 tool as in J19: `DE-concl-first`, `PbC-target-pos` and `EE-outer` must be KILLED (all three survive on master).
+
 ## Not yet (needs owner approval; do not start)
 
 `Mutatis mutandis`; WLOG for arbitrary properties; the symbolic defining property; the Infinity follow-up in `todos.txt` §5; retiring the generic `(Axiom)` citation; declaring function symbols in proof text and set operations as terms (no design yet); new theory modules such as abstract algebra or topology. If you think of a job that is not here, put it in the live handoff as a proposal and wait.
 
 ## What Claude does meanwhile
 
-A soundness audit of the kernel rules not covered on 2026-10-14, then the findings you file that involve the kernel, in the order filed. (Issue #75's replay defect and the case-block gap are fixed: PRs #86 and #110.) Claude reviews a job PR when you or the owner ask in the PR thread; otherwise the owner merges after CI. You do not need Claude for any job above.
+A soundness audit of the kernel rules not covered on 2026-10-14, then the findings you file that involve the kernel, in the order filed. (Issue #75's replay defect and the case-block gap are fixed: PRs #86 and #110.) Claude reviews a job PR when you or the owner ask in the PR thread; otherwise the owner merges after CI. You do not need Claude for any job above. After the J16 to J18 reviews Claude takes the kernel side: refusal messages that say why for the rules that do not explain themselves (Universal Instantiation, Existential Introduction, Modus Ponens and Tollens, Conditional Introduction, Proof by Contradiction, Disjunction Elimination, Substitution, Reiteration, the relation rules), and a direct kernel test for Universal Generalization's nullary flag.
 
 ## Verified patterns
 

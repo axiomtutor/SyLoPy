@@ -1,0 +1,26 @@
+[
+  {
+    "id": "MT-deny-antecedent",
+    "file": "source/ProofLogic.py",
+    "old": "        if not _ast_eq(neg_consequent.sub, conditional.consequent): return False\n        return isinstance(phi, fl.Not) and _ast_eq(phi.sub, conditional.antecedent)",
+    "new": "        if _ast_eq(neg_consequent.sub, conditional.antecedent):\n            return isinstance(phi, fl.Not) and _ast_eq(phi.sub, conditional.consequent)\n        if not _ast_eq(neg_consequent.sub, conditional.consequent): return False\n        return isinstance(phi, fl.Not) and _ast_eq(phi.sub, conditional.antecedent)"
+  },
+  {
+    "id": "DE-concl-first",
+    "file": "source/ProofLogic.py",
+    "old": "if not _ast_eq(sp1.conclusion, phi) or not _ast_eq(sp2.conclusion, phi):\n            return False",
+    "new": "if not _ast_eq(sp2.conclusion, phi):\n            return False"
+  },
+  {
+    "id": "PbC-target-pos",
+    "file": "source/ProofLogic.py",
+    "old": "return isinstance(phi, fl.Not) and _ast_eq(phi.sub, sp.assumption)",
+    "new": "return isinstance(phi, fl.Not)"
+  },
+  {
+    "id": "EE-outer",
+    "file": "source/ProofLogic.py",
+    "old": "            for outer_formula in sp.get_outer_context():\n                if _term_occurs_in_formula(instantiated_term, outer_formula):",
+    "new": "            for outer_formula in []:\n                if _term_occurs_in_formula(instantiated_term, outer_formula):"
+  }
+]

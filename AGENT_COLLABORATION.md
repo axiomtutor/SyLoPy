@@ -15,13 +15,13 @@ Use the [stable guide on master](https://github.com/axiomtutor/SyLoPy/blob/maste
 
 `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` is the sole test failure, and since [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix, merged) it no longer fails because of #75's WLOG replay: the proof passes line 5.2.4 and stops at line 5.3, which uses `Mutatis mutandis`, deferred pending owner approval. The test stays red; do not weaken it, change the fixture or mask the failure. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
 
-The WLOG replay gap for `Proof by Cases ... (subproofs below)` inside a WLOG region was fixed by PR #110 (merged). PRs #111–#113 were also merged by the owner: first-order logic classics, core quantifier/scope red-team cases, and equivalence-class/partition proofs. Claude was asked for candid review feedback on all three; no Claude review submission or reply was visible at the last check.
+The WLOG replay gap for `Proof by Cases ... (subproofs below)` inside a WLOG region was fixed by PR #110 (merged). PRs #111–#113 were also merged by the owner: first-order logic classics, core quantifier/scope red-team cases, and equivalence-class/partition proofs. Claude posted review comments on all three ([#111](https://github.com/axiomtutor/SyLoPy/pull/111#issuecomment-6309381566), [#112](https://github.com/axiomtutor/SyLoPy/pull/112#issuecomment-6309381845), [#113](https://github.com/axiomtutor/SyLoPy/pull/113#issuecomment-6309382063)); the fixes are queued as J19 and J20.
 
 The named axiom rules are implemented. Retiring generic `(Axiom)` citations remains an owner decision. Arbitrary-property WLOG, `Mutatis mutandis`, and symbolic defining-property behavior remain deferred.
 
-## Queue status (2026-10-20)
+## Queue status (2026-10-21)
 
-J16–J18 are merged (PRs #111–#113); there is currently no `todo` job in `JOBS_FOR_CHATGPT.md`. The proposed jobs below remain explicitly gated on owner approval. Do not begin them just because the standing queue is empty.
+J16–J18 are merged (PRs #111–#113). J19 and J20, the fixes from Claude's review comments on those PRs, are `todo` in `JOBS_FOR_CHATGPT.md`; take them in order. The proposed jobs below remain explicitly gated on owner approval. Do not begin them just because the standing queue is empty.
 
 
 ## J8 — Negative set phrases (PR #100)
