@@ -263,6 +263,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
   6.7.12. C = D. (Set Equality from 6.7.10, 6.7.11)
  6.8. (C = D) and not (C = D). (Conjunction Introduction from 6.7, 6.3)
 
-7. ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Conjunction Introduction from 3, 5, 6)
-8. exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 7)
-9. exists C, exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 8)
+7. (forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))). (Conjunction Introduction from 5, 6)
+8. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D)))). (Conjunction Introduction from 3, 7)
+9. exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 8)
+10. exists C, exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 9)
