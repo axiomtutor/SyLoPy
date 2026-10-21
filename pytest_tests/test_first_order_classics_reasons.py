@@ -13,16 +13,44 @@ FIXTURE = Path(__file__).resolve().parents[1] / "tests" / "testProofs" / "first_
 # The later cases are the textbook fallacies added by J16. The line and
 # rule pins ensure that parse errors or unrelated scope errors cannot pass.
 _EXPECTED_REFUSALS = {
-    "14": ("6.2", "ExistentialElimination", "the witness w occurs in a hypothesis in force"),
-    "15": ("3.2", "ExistentialElimination", "the witness b occurs in the conclusion"),
-    "16": ("6", "ModusPonens", "does not justify P(a)"),
-    "17": ("3", "UniversalInstantiation", "does not justify"),
-    "18": ("4", "ExistentialIntroduction", "does not justify"),
-    "34": ("2.1.5", "ModusPonens", "does not justify P(c)"),
-    "35": ("2", "ModusTollens", "does not justify"),
-    "36": ("2", "UniversalInstantiation", "does not justify"),
-    "37": ("2", "UniversalInstantiation", "does not justify"),
-    "38": ("2", "UniversalInstantiation", "does not justify"),
+    "14": (
+        "6.2", "ExistentialElimination",
+        "'ExistentialElimination' does not justify (∃x. (P(x) ∧ Q(x))) from the cited line(s) ['4'] and attached subproofs",
+        "the witness w occurs in P(w), which was visible before the subproof opened; the witness w occurs in a hypothesis in force, P(w), so what the subproof derived may depend on it",
+    ),
+    "15": (
+        "3.2", "ExistentialElimination",
+        "'ExistentialElimination' does not justify R(c, b) from the cited line(s) ['3.1'] and attached subproofs",
+        "the witness b occurs in the conclusion",
+    ),
+    "16": (
+        "6", "ModusPonens",
+        "'ModusPonens' does not justify P(a) from the cited line(s) ['5', '4']", None,
+    ),
+    "17": (
+        "3", "UniversalInstantiation",
+        "'UniversalInstantiation' does not justify (∃y. ¬y = y) from the cited line(s) ['2']", None,
+    ),
+    "18": (
+        "4", "ExistentialIntroduction",
+        "'ExistentialIntroduction' does not justify (∃x. R(x, x)) from the cited line(s) ['3']", None,
+    ),
+    "34": (
+        "2.1.5", "ModusPonens",
+        "'ModusPonens' does not justify P(c) from the cited line(s) ['2.1.4', '2.1.3']", None,
+    ),
+    "35": (
+        "3", "ModusTollens",
+        "'ModusTollens' does not justify ¬Q(a) from the cited line(s) ['2', '1']", None,
+    ),
+    "36": (
+        "2", "UniversalInstantiation",
+        "'UniversalInstantiation' does not justify ((∀x. P(x)) ∨ (∀x. Q(x))) from the cited line(s) ['1']", None,
+    ),
+    "37": (
+        "2", "UniversalInstantiation",
+        "'UniversalInstantiation' does not justify (∀x. P(x)) from the cited line(s) ['1']", None,
+    ),
 }
 
 
@@ -44,9 +72,11 @@ def _case_error(number):
 
 @pytest.mark.parametrize("number", sorted(_EXPECTED_REFUSALS, key=int))
 def test_each_invalid_twin_is_refused_for_its_named_reason(number):
-    line, rule, detail = _EXPECTED_REFUSALS[number]
+    line, rule, prefix, reason = _EXPECTED_REFUSALS[number]
     error = _case_error(number)
     assert error.label == line, error
     assert error.category == pl.CATEGORY_RULE_MISMATCH, error
     assert f"'{rule}' does not justify" in error.detail, error
-    assert detail in error.detail, error
+    assert error.detail.startswith(prefix), error
+    if reason is not None:
+        assert reason in error.detail, error

@@ -488,7 +488,8 @@ end subproof
 ### then b = a.
 
 1. Let a and b be objects such that: a = b. (Premise)
-2. b = a. (Symmetry from 1)
+2. a = a. (Reflexivity)
+3. b = a. (Substitution from 1, 2)
 
 # 29: Every object equals some object
 ## Proof that
@@ -596,29 +597,50 @@ end subproof
 ### then not Q(a).
 
 1. Let a be an object and P, Q be predicates such that: forall x, (P(x) -> Q(x)). not P(a). (Premise)
-2. not Q(a). (Modus Tollens from 1)
+2. P(a) -> Q(a). (Universal Instantiation from 1)
+3. not Q(a). (Modus Tollens from 2, 1)
 
 # 36: Universal disjunction fallacy
-## Invalid: quantifier distribution — a pointwise disjunction need not select one disjunct uniformly.
+## Invalid: wrong-rule citation — Universal Instantiation yields an instance of the cited body, which (forall x, P(x)) or (forall x, Q(x)) is not.
 ### then (forall x, P(x)) or (forall x, Q(x)).
 
 1. Let P and Q be predicates such that: forall x, (P(x) or Q(x)). (Premise)
 2. (forall x, P(x)) or (forall x, Q(x)). (Universal Instantiation from 1)
 
 # 37: Existential-to-universal fallacy
-## Invalid: existential-to-universal inference — one witness does not establish a universal statement.
+## Invalid: wrong-rule citation — the cited line is existential, and forall x, P(x) is not an instance of its body.
 ### then forall x, P(x).
 
 1. Let P be a predicate such that: exists x, P(x). (Premise)
 2. forall x, P(x). (Universal Instantiation from 1)
 
-# 38: Quantifier-order fallacy
-## Invalid: quantifier-order fallacy — a witness may depend on the universally quantified variable.
-### then exists x, forall y, R(x, y).
+# 38: Symmetric and transitive predicates are reflexive wherever defined
+## Proof that
+### if R is a predicate such that: forall x, forall y, (R(x, y) -> R(y, x)). forall x, forall y, forall z, ((R(x, y) and R(y, z)) -> R(x, z)).
+### then forall x, ((exists y, R(x, y)) -> R(x, x)).
 
-1. Let R be a predicate such that: forall y, exists x, R(x, y). (Premise)
-2. exists x, forall y, R(x, y). (Universal Instantiation from 1)
-
+1. Let R be a predicate such that: forall x, forall y, (R(x, y) -> R(y, x)). forall x, forall y, forall z, ((R(x, y) and R(y, z)) -> R(x, z)). (Premise)
+2. forall x, ((exists y, R(x, y)) -> R(x, x)). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. (exists y, R(c, y)) -> R(c, c). (Conditional Introduction from subproof below)
+ begin subproof
+  2.1.1. exists y, R(c, y). (Assumption for Conditional Introduction)
+  2.1.2. Let w be an object. (Declare)
+  2.1.3. R(c, c). (Existential Elimination from 2.1.1, subproof below)
+  begin subproof
+   2.1.3.1. R(c, w). (Assumption for Existential Elimination)
+   2.1.3.2. forall y, (R(c, y) -> R(y, c)). (Universal Instantiation from 1)
+   2.1.3.3. R(c, w) -> R(w, c). (Universal Instantiation from 2.1.3.2)
+   2.1.3.4. R(w, c). (Modus Ponens from 2.1.3.3, 2.1.3.1)
+   2.1.3.5. forall y, forall z, ((R(c, y) and R(y, z)) -> R(c, z)). (Universal Instantiation from 1)
+   2.1.3.6. forall z, ((R(c, w) and R(w, z)) -> R(c, z)). (Universal Instantiation from 2.1.3.5)
+   2.1.3.7. (R(c, w) and R(w, c)) -> R(c, c). (Universal Instantiation from 2.1.3.6)
+   2.1.3.8. R(c, w) and R(w, c). (Conjunction Introduction from 2.1.3.1, 2.1.3.4)
+   2.1.3.9. R(c, c). (Modus Ponens from 2.1.3.7, 2.1.3.8)
+  end subproof
+ end subproof
+end subproof
 
 # 39: Symmetry and transitivity imply reflexivity wherever the relation is defined
 ## Proof that
@@ -699,3 +721,12 @@ begin subproof
   3.case2.3.3. exists x, (D(x) -> forall y, D(y)). (Existential Introduction from 3.case2.3.2)
  end subproof
 end subproof
+
+# 41: Modus Tollens after instantiation (the valid sibling of #35)
+## Proof that
+### if a is an object and P, Q are predicates such that: forall x, (P(x) -> Q(x)). not Q(a).
+### then not P(a).
+
+1. Let a be an object and P, Q be predicates such that: forall x, (P(x) -> Q(x)). not Q(a). (Premise)
+2. P(a) -> Q(a). (Universal Instantiation from 1)
+3. not P(a). (Modus Tollens from 2, 1)
