@@ -21,8 +21,8 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J16 | First-order logic classics | merged (PR #111) |
 | J17 | Red-team the quantifier and scope rules | merged (PR #112) |
 | J18 | Equivalence classes and partitions | merged (PR #113) |
-| J19 | Fix the J16 and J18 review findings | todo |
-| J20 | Fix the J17 review findings | todo |
+| J19 | Fix the J16 and J18 review findings | in progress (PR #114) |
+| J20 | Fix the J17 review findings | in progress (PR #115) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
