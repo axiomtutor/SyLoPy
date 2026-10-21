@@ -48,6 +48,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
 # 3: Related elements have equal equivalence classes
 ## Proof that
 ### if R(a, b) then the class of a equals the class of b
+### then C = D.
 
 1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
 2. R(a, b). (Premise)
@@ -86,6 +87,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
 # 4: Equal equivalence classes imply related representatives
 ## Proof that
 ### if the class of a equals the class of b then R(a, b)
+### then R(a, b).
 
 1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
 2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
@@ -105,6 +107,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
 # 5: Two equivalence classes with a common member are equal
 ## Proof that
 ### if a member belongs to the class of a and the class of b then the classes are equal
+### then C = D.
 
 1. Let X be any set, R be an equivalence relation on X, and a, b, u be in X. (Declaration)
 2. exists C, forall v, (In(v, C) iff (In(v, X) and R(a, v))). (Separation)
@@ -151,21 +154,16 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
 
 # 6: Every object in the carrier belongs to a named equivalence class
 ## Proof that
-### then exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C))).
+### then exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)).
 
 1. Let X be any set, R be an equivalence relation on X, and a be in X. (Declaration)
 2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
 3. Let C be such a set. (Existence from 2)
-4. forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Universal Generalization from subproof below)
-begin subproof
- 4.0. let c be arbitrary. (Arbitrary)
- 4.1. In(c, C) iff (In(c, X) and R(a, c)). (Universal Instantiation from 3)
-end subproof
-5. R(a, a). (Relation Reflexivity from 1)
-6. In(a, X) and R(a, a). (Conjunction Introduction from 1, 5)
-7. In(a, C). (Set property from 3, 6)
-8. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C). (Conjunction Introduction from 4, 7)
-9. exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)). (Existential Introduction from 8)
+4. R(a, a). (Relation Reflexivity from 1)
+5. In(a, X) and R(a, a). (Conjunction Introduction from 1, 4)
+6. In(a, C). (Set property from 3, 5)
+7. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C). (Conjunction Introduction from 3, 6)
+8. exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)). (Existential Introduction from 7)
 
 # 7: Symmetry cannot be used when the relation has not been declared symmetric
 ## Invalid: undeclared symmetry — the relation is reflexive and transitive, but not declared symmetric.
