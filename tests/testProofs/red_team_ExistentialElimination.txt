@@ -75,7 +75,7 @@ begin subproof
 end subproof
 
 # 7: The witness cannot occur in a premise stated inside its own subproof
-## Invalid: hypothesis in force — R(w) is a premise of the whole proof, so what the subproof derived may depend on it.
+## Invalid: hypothesis in force — the existential-elimination subproof assumes R(w), so its conclusion may depend on witness w.
 ### then exists x, R(x).
 
 1. Let P and R be predicates such that: exists x, P(x). (Premise)
