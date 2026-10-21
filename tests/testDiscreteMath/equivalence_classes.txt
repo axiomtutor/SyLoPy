@@ -230,7 +230,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
  6.4. not not exists u, (In(u, C) and In(u, D)). (Conjunction Elimination from 6.2)
  6.5. exists u, (In(u, C) and In(u, D)). (Proof by Contradiction from subproof below)
   6.5.1. not exists u, (In(u, C) and In(u, D)). (Assumption for Contradiction)
-  6.5.2. (exists u, (In(u, C) and In(u, D))) and not exists u, (In(u, C) and In(u, D)). (Conjunction Introduction from 6.5, 6.5.1)
+  6.5.2. not exists u, (In(u, C) and In(u, D)) and not not exists u, (In(u, C) and In(u, D)). (Conjunction Introduction from 6.5.1, 6.4)
  6.6. Let w be an object. (Declare)
  6.7. C = D. (Existential Elimination from 6.5, subproof below)
   6.7.1. In(w, C) and In(w, D). (Assumption for Existential Elimination)
