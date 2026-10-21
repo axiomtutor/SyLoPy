@@ -14,31 +14,35 @@ FIXTURE_DIR = ROOT / "tests" / "testProofs"
 # Scope-only references are pinned separately because they are intentionally
 # refused at the visibility boundary, not by an inference-rule matcher.
 REFUSALS = {
-    ("red_team_UniversalGeneralization.txt", "2"): ("2", "UniversalGeneralization", "does not justify"),
-    ("red_team_UniversalGeneralization.txt", "3"): ("2", "UniversalGeneralization", "does not justify"),
-    ("red_team_UniversalGeneralization.txt", "4"): ("2", "UniversalGeneralization", "does not justify"),
-    ("red_team_UniversalGeneralization.txt", "5"): ("2", "UniversalGeneralization", "occurs in a hypothesis in force"),
-            ("red_team_UniversalGeneralization.txt", "6"): ("3", "UniversalGeneralization", "occurs in a hypothesis in force"),
-    ("red_team_ExistentialElimination.txt", "2"): ("4", "ExistentialElimination", "does not justify"),
-    ("red_team_ExistentialElimination.txt", "3"): ("4", "ExistentialElimination", "does not justify"),
-    ("red_team_ExistentialElimination.txt", "4"): ("4", "ExistentialElimination", "does not justify"),
-    ("red_team_ExistentialElimination.txt", "5"): ("3", "ExistentialElimination", "occurs in the existential formula"),
-    ("red_team_ExistentialIntroduction.txt", "2"): ("2", "ExistentialIntroduction", "does not justify"),
-    ("red_team_ExistentialIntroduction.txt", "3"): ("2", "ExistentialIntroduction", "does not justify"),
-    ("red_team_UniversalInstantiation.txt", "2"): ("2", "UniversalInstantiation", "does not justify"),
-    ("red_team_UniversalInstantiation.txt", "3"): ("2", "UniversalInstantiation", "does not justify"),
-    ("red_team_UniversalInstantiation.txt", "4"): ("2", "UniversalInstantiation", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "2"): ("2", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "3"): ("2", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ConditionalIntroduction.txt", "4"): ("2", "ConditionalIntroduction", "does not justify"),
-    ("red_team_ProofByContradiction.txt", "2"): ("2", "ProofByContradiction", "does not justify"),
-    ("red_team_ProofByContradiction.txt", "3"): ("2", "ProofByContradiction", "does not justify"),
-    ("red_team_DisjunctionElimination.txt", "2"): ("2", "DisjunctionElimination", "does not justify"),
-        ("red_team_DisjunctionElimination.txt", "4"): ("2", "DisjunctionElimination", "does not justify"),
-    ("red_team_LeibnizSubstitution.txt", "2"): ("5", "Substitution", "does not justify"),
-    ("red_team_LeibnizSubstitution.txt", "3"): ("5", "Substitution", "does not justify"),
-    ("red_team_LeibnizSubstitution.txt", "4"): ("5", "Substitution", "does not justify"),
-    ("red_team_Reiteration.txt", "2"): ("3", "Reiteration", "does not justify"),
+    ("red_team_UniversalGeneralization.txt", "2"): ("2", "UniversalGeneralization", "'UniversalGeneralization' does not justify (∀x. P(x)) from the subproof immediately below this line", None),
+    ("red_team_UniversalGeneralization.txt", "3"): ("2", "UniversalGeneralization", "'UniversalGeneralization' does not justify (∀x. P(x)) from the subproof immediately below this line", None),
+    ("red_team_UniversalGeneralization.txt", "4"): ("2", "UniversalGeneralization", "'UniversalGeneralization' does not justify (∀x. (∃y. P(y))) from the subproof immediately below this line", None),
+    ("red_team_UniversalGeneralization.txt", "5"): ("2", "UniversalGeneralization", "'UniversalGeneralization' does not justify (∀x. P(x)) from the subproof immediately below this line", "the generalized constant c occurs in a hypothesis in force, P(c), so what the subproof derived may depend on it"),
+    ("red_team_UniversalGeneralization.txt", "6"): ("3", "UniversalGeneralization", "'UniversalGeneralization' does not justify (∀x. P(x)) from the subproof immediately below this line", "the generalized constant c occurs in a hypothesis in force, (∀u. (In(u, Y) ↔ (In(u, X) ∧ u = c))), so what the subproof derived may depend on it"),
+    ("red_team_ExistentialElimination.txt", "2"): ("4", "ExistentialElimination", "'ExistentialElimination' does not justify Q(a) from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_ExistentialElimination.txt", "3"): ("4", "ExistentialElimination", "'ExistentialElimination' does not justify Q(a) from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_ExistentialElimination.txt", "4"): ("4", "ExistentialElimination", "'ExistentialElimination' does not justify Q(a) from the cited line(s) ['3'] and attached subproofs", None),
+    ("red_team_ExistentialElimination.txt", "5"): ("3", "ExistentialElimination", "'ExistentialElimination' does not justify a = a from the cited line(s) ['1'] and attached subproofs", "the witness w occurs in the existential formula; the witness w occurs in (∃x. R(x, w)), which was visible before the subproof opened; the witness w occurs in a hypothesis in force, (∃x. R(x, w)), so what the subproof derived may depend on it"),
+    ("red_team_ExistentialElimination.txt", "6"): ("4", "ExistentialElimination", "'ExistentialElimination' does not justify (∃x. P(x)) from the cited line(s) ['1'] and attached subproofs", "the witness w occurs in w = w, which was visible before the subproof opened"),
+    ("red_team_ExistentialElimination.txt", "7"): ("3", "ExistentialElimination", "'ExistentialElimination' does not justify (∃x. R(x)) from the cited line(s) ['1'] and attached subproofs", "the witness w occurs in a hypothesis in force, R(w), so what the subproof derived may depend on it"),
+    ("red_team_ExistentialIntroduction.txt", "2"): ("2", "ExistentialIntroduction", "'ExistentialIntroduction' does not justify (∃x. P(x)) from the cited line(s) ['1']", None),
+    ("red_team_ExistentialIntroduction.txt", "3"): ("2", "ExistentialIntroduction", "'ExistentialIntroduction' does not justify (∃x. P(x)) from the cited line(s) ['1']", None),
+    ("red_team_UniversalInstantiation.txt", "2"): ("2", "UniversalInstantiation", "'UniversalInstantiation' does not justify R(a, b) from the cited line(s) ['1']", None),
+    ("red_team_UniversalInstantiation.txt", "3"): ("2", "UniversalInstantiation", "'UniversalInstantiation' does not justify Q(a) from the cited line(s) ['1']", None),
+    ("red_team_UniversalInstantiation.txt", "4"): ("2", "UniversalInstantiation", "'UniversalInstantiation' does not justify P(a) from the cited line(s) ['1']", None),
+    ("red_team_ConditionalIntroduction.txt", "2"): ("2", "ConditionalIntroduction", "'ConditionalIntroduction' does not justify (A() → B()) from the subproof immediately below this line", None),
+    ("red_team_ConditionalIntroduction.txt", "3"): ("2", "ConditionalIntroduction", "'ConditionalIntroduction' does not justify (A() → B()) from the subproof immediately below this line", None),
+    ("red_team_ProofByContradiction.txt", "2"): ("2", "ProofByContradiction", "'ProofByContradiction' does not justify A() from the subproof immediately below this line", None),
+    ("red_team_ProofByContradiction.txt", "3"): ("2", "ProofByContradiction", "'ProofByContradiction' does not justify B() from the subproof immediately below this line", None),
+    ("red_team_ProofByContradiction.txt", "4"): ("2", "ProofByContradiction", "'ProofByContradiction' does not justify ¬B() from the subproof immediately below this line", None),
+    ("red_team_DisjunctionElimination.txt", "2"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_DisjunctionElimination.txt", "4"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_DisjunctionElimination.txt", "5"): ("2.2.case2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_DisjunctionElimination.txt", "6"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
+    ("red_team_LeibnizSubstitution.txt", "2"): ("5", "Substitution", "'Substitution' does not justify Q(a) from the cited line(s) ['3', '4']", None),
+    ("red_team_LeibnizSubstitution.txt", "3"): ("5", "Substitution", "'Substitution' does not justify Q(c) from the cited line(s) ['3', '4']", None),
+    ("red_team_LeibnizSubstitution.txt", "4"): ("5", "Substitution", "'Substitution' does not justify R(b) from the cited line(s) ['3', '4']", None),
+    ("red_team_Reiteration.txt", "2"): ("3", "Reiteration", "'Reiteration' does not justify Q() from the cited line(s) ['2']", None),
 }
 
 
@@ -88,7 +92,7 @@ def test_every_red_team_fixture_has_a_valid_control_and_expected_outcomes(filena
     ids=[f"{filename}-case-{number}" for filename, number in sorted(REFUSALS)],
 )
 def test_invalid_core_rule_cases_fail_at_the_intended_line_and_rule(filename, number):
-    line, rule, detail_fragment = REFUSALS[(filename, number)]
+    line, rule, prefix, reason_fragment = REFUSALS[(filename, number)]
     _text, case = _case(filename, number)
     ok, error = _checked(case)
     assert not ok, f"{filename} case {number} was accepted"
@@ -96,20 +100,22 @@ def test_invalid_core_rule_cases_fail_at_the_intended_line_and_rule(filename, nu
     assert error.label == line, error
     assert error.category == pl.CATEGORY_RULE_MISMATCH, error
     assert f"'{rule}' does not justify" in error.detail, error
-    assert detail_fragment in error.detail, error
+    assert error.detail.startswith(prefix), error
+    if reason_fragment is not None:
+        assert reason_fragment in error.detail, error
 
 
 def test_sibling_case_cannot_cite_a_closed_line_from_another_case():
     _text, case = _case("red_team_DisjunctionElimination.txt", "5")
-    if case.parse_error is not None:
-        message = case.parse_error.casefold()
-        assert any(part in message for part in ("not in scope", "not defined", "not found", "bad reference")), case.parse_error
-        return
+    assert case.parse_error is None, case.parse_error
     ok, error = _checked(case)
     assert not ok, "a case cited a line belonging to its sibling case"
     assert isinstance(error, pl.ValidationError), error
+    assert error.label == "2.2.case2", error
     assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    assert "2.2.case1" in error.detail, error
+    assert error.detail.startswith(
+        "cites ['2.2.case1'], which is not defined or not in scope at this point in the proof"
+    ), error
 
 
 def test_missing_disjunction_case_is_refused_before_kernel_validation():
@@ -126,23 +132,35 @@ def test_forward_reference_is_refused_before_the_target_label_exists():
     assert isinstance(error, pl.ValidationError), error
     assert error.label == "2", error
     assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    assert "3" in error.detail, error
+    assert error.detail.startswith(
+        "cites ['3'], which is not defined or not in scope at this point in the proof"
+    ), error
 
 
 def test_closed_subproof_reference_is_refused_at_the_visibility_boundary():
     _text, case = _case("red_team_Scope.txt", "2")
-    if case.parse_error:
-        diagnostic = case.parse_error.casefold()
-        assert any(fragment in diagnostic for fragment in (
-            "not in scope", "not found", "not defined", "already used", "enclosing scope"
-        )), case.parse_error
-        return
+    assert case.parse_error is None, case.parse_error
     ok, error = _checked(case)
     assert not ok, "a label from a closed subproof was accepted outside its scope"
     assert isinstance(error, pl.ValidationError), error
+    assert error.label == "3", error
     assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    assert "2.1" in error.detail, error
+    assert error.detail.startswith(
+        "cites ['2.1', '2.1'], which are not defined or not in scope at this point in the proof"
+    ), error
 
+
+
+def test_duplicate_label_is_refused_during_elaboration():
+    _text, case = _case("red_team_Scope.txt", "4")
+    assert case.parse_error is not None, "duplicate labels were accepted"
+    assert "ElaborationError: Line 2: label '2' is already used earlier in this proof or an enclosing scope" in case.parse_error
+
+
+def test_shadowed_label_is_refused_during_elaboration():
+    _text, case = _case("red_team_Scope.txt", "5")
+    assert case.parse_error is not None, "a subproof label shadowing a visible label was accepted"
+    assert "ElaborationError: Line 1: label '1' is already used earlier in this proof or an enclosing scope" in case.parse_error
 
 def test_label_scope_keeps_parent_visibility_but_blocks_shadowing_and_leakage():
     parent = pl.LabelScope()
@@ -267,6 +285,23 @@ def test_existential_elimination_refuses_a_witness_named_by_declaration_structur
 
 
 
+
+def test_existential_elimination_refuses_a_witness_named_in_the_cited_existential():
+    existential = fl.Exists("x", atom("R", v("x"), c("w")))
+    assumption = atom("R", c("w"), c("w"))
+    conclusion = atom("Q", c("a"))
+    subproof = pl.SubproofRecord(
+        assumption,
+        [assumption, conclusion],
+        outer_context_ref=[],
+        boundary_index=0,
+    )
+    reason = pl.ExistentialEliminationRule().explain_in_context(
+        [existential, subproof], conclusion, pl.RuleContext()
+    )
+    assert reason is not None
+    assert "occurs in the existential formula" in reason
+
 def test_reiteration_after_close_is_refused_at_the_closed_line():
     _text, case = _case("red_team_Reiteration.txt", "3")
     assert case.parse_error is None, case.parse_error
@@ -275,4 +310,6 @@ def test_reiteration_after_close_is_refused_at_the_closed_line():
     assert isinstance(error, pl.ValidationError), error
     assert error.label == "3", error
     assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    assert "2.1" in error.detail, error
+    assert error.detail.startswith(
+        "cites ['2.1'], which is not defined or not in scope at this point in the proof"
+    ), error
