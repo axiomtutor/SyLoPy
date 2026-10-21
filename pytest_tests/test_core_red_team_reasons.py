@@ -313,6 +313,7 @@ def test_reiteration_after_close_is_refused_at_the_closed_line():
         "cites ['2.1'], which is not defined or not in scope at this point in the proof"
     ), error
 
+
 @pytest.mark.parametrize(
     "flag",
     [atom("c", c("z")), atom("other")],
