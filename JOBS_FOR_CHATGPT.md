@@ -18,9 +18,9 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J7 | Mutation-check tool | merged (PR #99) |
 | J8 | Negative set phrases in the parser | merged (PR #100; finding #93) |
 | J9 | Union, intersection, and disjointness phrases | merged (PR #101; finding #94) |
-| J16 | First-order logic classics | merged (PR #111) |
-| J17 | Red-team the quantifier and scope rules | merged (PR #112) |
-| J18 | Equivalence classes and partitions | merged (PR #113) |
+| J16 | First-order logic classics | merged (PR #111; review follow-ups #114 and #116) |
+| J17 | Red-team the quantifier and scope rules | merged (PR #112; review follow-ups #115 and #116) |
+| J18 | Equivalence classes and partitions | merged (PR #113; review follow-ups #114 and #116) |
 | J19 | Fix the J16 and J18 review findings | merged (PR #114) |
 | J20 | Fix the J17 review findings | merged (PR #115) |
 
