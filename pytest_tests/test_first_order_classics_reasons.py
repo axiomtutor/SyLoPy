@@ -91,8 +91,21 @@ def test_wrong_rule_citation_twins_have_valid_sibling_controls():
     )
     by_number = {number: (expected, ok, message, crashed)
                  for number, expected, ok, message, crashed in results}
-    for number in ("42", "43"):
-        expected, ok, message, crashed = by_number[number]
-        assert expected, f"control case {number} must be declared valid"
-        assert not crashed, f"control case {number} crashed: {message}"
-        assert ok, f"valid control case {number} was rejected: {message}"
+    cases = {case.number: case for case in mp.parse_multi_proof_file(text)}
+    for control, invalid_twin in (("42", "36"), ("43", "37")):
+        assert cases[control].stated_conclusion is not None, (
+            f"valid control case {control} has no parsed stated conclusion"
+        )
+        assert cases[invalid_twin].stated_conclusion is not None, (
+            f"invalid case {invalid_twin} has no parsed stated conclusion"
+        )
+        assert cases[control].expected_valid, (
+            f"control case {control} must be declared valid"
+        )
+        assert not cases[invalid_twin].expected_valid, (
+            f"case {invalid_twin} must remain declared invalid"
+        )
+        expected, ok, message, crashed = by_number[control]
+        assert expected, f"control case {control} must be declared valid"
+        assert not crashed, f"control case {control} crashed: {message}"
+        assert ok, f"valid control case {control} was rejected: {message}"
