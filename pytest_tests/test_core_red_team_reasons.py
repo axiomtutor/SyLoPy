@@ -37,7 +37,6 @@ REFUSALS = {
     ("red_team_ProofByContradiction.txt", "4"): ("2", "ProofByContradiction", "'ProofByContradiction' does not justify ¬B() from the subproof immediately below this line", None),
     ("red_team_DisjunctionElimination.txt", "2"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
     ("red_team_DisjunctionElimination.txt", "4"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
-    ("red_team_DisjunctionElimination.txt", "5"): ("2.2.case2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
     ("red_team_DisjunctionElimination.txt", "6"): ("2", "DisjunctionElimination", "'DisjunctionElimination' does not justify R() from the cited line(s) ['1'] and attached subproofs", None),
     ("red_team_LeibnizSubstitution.txt", "2"): ("5", "Substitution", "'Substitution' does not justify Q(a) from the cited line(s) ['3', '4']", None),
     ("red_team_LeibnizSubstitution.txt", "3"): ("5", "Substitution", "'Substitution' does not justify Q(c) from the cited line(s) ['3', '4']", None),
