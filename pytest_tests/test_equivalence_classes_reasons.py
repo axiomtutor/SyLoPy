@@ -25,15 +25,15 @@ def test_all_equivalence_class_proofs_match_their_declared_validity():
         rules=mp.BARE_PROOF_RULES,
         declarations=mp.BARE_PROOF_DECLARATIONS,
     )
-    assert [number for number, *_ in results] == [str(n) for n in range(1, 10)]
+    assert [number for number, *_ in results] == [str(n) for n in range(1, 11)]
     cases = mp.parse_multi_proof_file(text)
     for case in cases:
-        if case.expected_valid and case.number in {"3", "4", "5", "6"}:
+        if case.expected_valid and case.number in {"3", "4", "5", "6", "10"}:
             assert case.stated_conclusion is not None, (
                 f"valid case {case.number} has no parsed stated conclusion"
             )
     assert [ok for _number, expected, ok, _message, crashed in results
-            if expected and not crashed] == [True] * 6
+            if expected and not crashed] == [True] * 7
     for number, expected, ok, message, crashed in results:
         assert not crashed, f"case {number} raised in a rule: {message}"
         assert expected == ok, f"case {number}: {message}"

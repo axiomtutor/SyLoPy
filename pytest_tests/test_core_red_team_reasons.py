@@ -312,3 +312,26 @@ def test_reiteration_after_close_is_refused_at_the_closed_line():
     assert error.detail.startswith(
         "cites ['2.1'], which is not defined or not in scope at this point in the proof"
     ), error
+
+
+@pytest.mark.parametrize(
+    "flag",
+    [atom("c", c("z")), atom("other")],
+    ids=["non-nullary-flag", "wrong-constant-name"],
+)
+def test_universal_generalization_requires_a_nullary_matching_arbitrary_flag(flag):
+    # Apart from the opening flag, these entries satisfy UG's shape conditions:
+    # the subproof concludes P(c), and the target is forall x, P(x).
+    conclusion = atom("P", c("c"))
+    subproof = pl.SubproofRecord(
+        flag,
+        [flag, conclusion],
+        outer_context_ref=[],
+        boundary_index=0,
+    )
+    target = fl.ForAll("x", atom("P", v("x")))
+
+    assert not pl.UniversalGeneralizationRule().applies_in_context(
+        [subproof], target, pl.RuleContext()
+    )
+

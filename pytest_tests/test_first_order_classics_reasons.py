@@ -80,3 +80,33 @@ def test_each_invalid_twin_is_refused_for_its_named_reason(number):
     assert error.detail.startswith(prefix), error
     if reason is not None:
         assert reason in error.detail, error
+
+
+def test_wrong_rule_citation_twins_have_valid_sibling_controls():
+    text = FIXTURE.read_text(encoding="utf-8")
+    results = mp.run_multi_proof_file(
+        text,
+        axioms=mp.BARE_PROOF_AXIOMS,
+        rules=mp.BARE_PROOF_RULES,
+        declarations=mp.BARE_PROOF_DECLARATIONS,
+    )
+    by_number = {number: (expected, ok, message, crashed)
+                 for number, expected, ok, message, crashed in results}
+    cases = {case.number: case for case in mp.parse_multi_proof_file(text)}
+    for control, invalid_twin in (("42", "36"), ("43", "37")):
+        assert cases[control].stated_conclusion is not None, (
+            f"valid control case {control} has no parsed stated conclusion"
+        )
+        assert cases[invalid_twin].stated_conclusion is not None, (
+            f"invalid case {invalid_twin} has no parsed stated conclusion"
+        )
+        assert cases[control].expected_valid, (
+            f"control case {control} must be declared valid"
+        )
+        assert not cases[invalid_twin].expected_valid, (
+            f"case {invalid_twin} must remain declared invalid"
+        )
+        expected, ok, message, crashed = by_number[control]
+        assert expected, f"control case {control} must be declared valid"
+        assert not crashed, f"control case {control} crashed: {message}"
+        assert ok, f"valid control case {control} was rejected: {message}"
