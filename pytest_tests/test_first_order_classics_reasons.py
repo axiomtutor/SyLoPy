@@ -81,6 +81,7 @@ def test_each_invalid_twin_is_refused_for_its_named_reason(number):
     if reason is not None:
         assert reason in error.detail, error
 
+
 def test_wrong_rule_citation_twins_have_valid_sibling_controls():
     text = FIXTURE.read_text(encoding="utf-8")
     results = mp.run_multi_proof_file(
