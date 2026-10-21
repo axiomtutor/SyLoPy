@@ -34,3 +34,25 @@ begin subproof
  2.2. A. (Premise)
  2.3. A and not A. (Conjunction Introduction from 2.2, 2.1)
 end subproof
+
+# 4: Proof by contradiction from a positive assumption concludes its negation
+## Invalid: target mismatch — a contradiction under A does not establish not B.
+### then not B.
+
+1. Let A and B be closed formulas such that: A. not A. (Premise)
+2. not B. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Contradiction)
+ 2.2. A and not A. (Conjunction Introduction from 2.1, 1)
+end subproof
+
+# 5: Proof by contradiction from a positive assumption (the valid sibling of #4)
+## Proof that
+### then not A.
+
+1. Let A be a closed formula such that: not A. (Premise)
+2. not A. (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Contradiction)
+ 2.2. A and not A. (Conjunction Introduction from 2.1, 1)
+end subproof

@@ -70,3 +70,18 @@ begin subproof
  2.1.case2. Q. (Case)
  2.2.case2. R. (Reiteration from 2.2.case1)
 end subproof
+
+# 6: The first case block must end in the requested conclusion
+## Invalid: case-conclusion mismatch — the first block ends in S, not R.
+### then R.
+
+1. Let P, Q, R, S be closed formulas such that: P or Q. if P then S. if Q then R. (Premise)
+2. R. (Proof by Cases from 1, subproofs below)
+begin subproof
+ 2.1.case1. P. (Case)
+ 2.2.case1. S. (Modus Ponens from 1, 2.1.case1)
+end subproof
+begin subproof
+ 2.1.case2. Q. (Case)
+ 2.2.case2. R. (Modus Ponens from 1, 2.1.case2)
+end subproof

@@ -60,3 +60,29 @@ begin subproof
  3.1. R(w, w). (Assumption for Existential Elimination)
  3.2. a = a. (Reflexivity)
 end subproof
+
+# 6: The witness cannot occur in a line visible before the subproof
+## Invalid: outer-context freshness — w occurs in line 3, which is visible before the subproof opens, though no hypothesis mentions w.
+### then exists x, P(x).
+
+1. Let P be a predicate such that: exists x, P(x). (Premise)
+2. Let w be an object. (Declare)
+3. w = w. (Reflexivity)
+4. exists x, P(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. exists x, P(x). (Existential Introduction from 4.1)
+end subproof
+
+# 7: The witness cannot occur in a premise stated inside its own subproof
+## Invalid: hypothesis in force — the existential-elimination subproof assumes R(w), so its conclusion may depend on witness w.
+### then exists x, R(x).
+
+1. Let P and R be predicates such that: exists x, P(x). (Premise)
+2. Let w be an object. (Declare)
+3. exists x, R(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 3.1. P(w). (Assumption for Existential Elimination)
+ 3.2. R(w). (Premise)
+ 3.3. exists x, R(x). (Existential Introduction from 3.2)
+end subproof

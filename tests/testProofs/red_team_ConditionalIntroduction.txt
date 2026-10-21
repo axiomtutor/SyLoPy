@@ -33,15 +33,3 @@ begin subproof
  2.1. A. (Assumption for Conditional Introduction)
  2.2. C. (Premise)
 end subproof
-
-# 4: Conditional introduction requires both a matching assumption and conclusion
-## Invalid: antecedent and consequent mismatch — neither the opening assumption nor the last line matches the target conditional.
-### if A, B, C, and D are closed formulas.
-### then A -> B.
-
-1. Let A, B, C, and D be closed formulas. (Declaration)
-2. A -> B. (Conditional Introduction from subproof below)
-begin subproof
- 2.1. C. (Assumption for Conditional Introduction)
- 2.2. D. (Premise)
-end subproof
