@@ -247,9 +247,10 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     loosest of all the biconditional family -- the textbook convention,
     not the order this function's own checks run in (see below for why
     those two things differ). This is the `parse_formula` every caller
-    actually gets: it's installed onto `ProofParser.parse_formula` at
-    import time (see the bottom of this module) and is deliberately an
-    *extension* of the core parser rather than a second parser
+    actually gets after the package initializer calls
+    `install_parser_extensions`: it installs this function as
+    `ProofParser.parse_formula` and is deliberately an *extension* of the
+    core parser rather than a second parser
     implementation -- it reaches back into `ProofParser`'s own
     `split_top_level`, `parse_term`, `_match_applied_symbol`, and
     `_BARE_IDENTIFIER_RE` for everything except connective ordering.
