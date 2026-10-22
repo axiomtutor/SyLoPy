@@ -1,8 +1,8 @@
 """Language-policy extensions for the proof parser.
 
 The parser implementation lives in ProofParser. This module defines policy
-extensions and exposes one explicit installation entry point; importing it
-alone does not mutate the parser module.
+extensions and exposes one explicit installation entry point. The package
+initializer invokes that entry point after both modules have loaded.
 """
 from __future__ import annotations
 
