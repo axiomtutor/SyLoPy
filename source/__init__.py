@@ -1,7 +1,12 @@
-"""Core SyLoPy source package."""
+"""Core SyLoPy source package.
 
-# Keep the public parser facade available as ``source.ProofParser`` and expose
-# its language-policy module explicitly.  Language-policy extensions are kept
-# separate from the parser implementation.
+Parser extension assembly is centralized here so importing the parser facade
+always produces one fully configured surface-language parser.
+"""
+
 from . import ProofParser as ProofParser
 from . import ProofParserPolicy as ProofParserPolicy
+
+# Keep all parser mutations in one named, idempotent assembly step rather than
+# letting ProofParserPolicy patch the parser as an import side effect.
+ProofParserPolicy.install_parser_extensions(ProofParser)
