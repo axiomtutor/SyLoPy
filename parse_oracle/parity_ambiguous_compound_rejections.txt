@@ -17,3 +17,15 @@ context: nested
 surface: not (n is even or odd)
 expect: REJECT
 why: Negation changes only the outer connective and must not change how the inner shorthand parity phrase is interpreted.
+
+id: parity-ambiguous-shorthand-under-universal-quantifier
+context: nested
+surface: forall n, n is even or odd
+expect: REJECT
+why: A universal quantifier must not make the ambiguous shorthand parity disjunction unambiguous.
+
+id: parity-ambiguous-shorthand-under-existential-quantifier
+context: nested
+surface: exists n, n is even or odd
+expect: REJECT
+why: An existential quantifier must not make the ambiguous shorthand parity disjunction unambiguous.
