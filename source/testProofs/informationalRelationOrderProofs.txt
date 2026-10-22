@@ -1,0 +1,127 @@
+Use discrete math.
+
+# 1: Symmetry and transitivity give local reflexivity
+## Proof that
+### if R is symmetric and transitive and R(a,b)
+### then R(a,a) and R(b,b).
+
+1. Let X be any set, R be a symmetric, transitive relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, a). (Relation Symmetry from 2)
+4. R(a, a). (Relation Transitivity from 2, 3)
+5. R(b, b). (Relation Transitivity from 3, 2)
+6. R(a, a) and R(b, b). (Conjunction Introduction from 4, 5)
+
+# 2: Transitivity composes a three-edge chain
+## Proof that
+### if R is transitive and R(a,b), R(b,c), R(c,d)
+### then R(a,d).
+
+1. Let X be any set, R be a transitive relation on X, and a, b, c, d be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, c). (Premise)
+4. R(c, d). (Premise)
+5. R(a, c). (Relation Transitivity from 2, 3)
+6. R(a, d). (Relation Transitivity from 5, 4)
+
+# 3: Transitivity has a useful contrapositive
+## Proof that
+### if R is transitive, R(a,b), and not R(a,c)
+### then not R(b,c).
+
+1. Let X be any set, R be a transitive relation on X, and a, b, c be in X. (Declaration)
+2. R(a, b). (Premise)
+3. not R(a, c). (Premise)
+4. not R(b, c). (Proof by Contradiction from subproof below)
+begin subproof
+ 4.1. R(b, c). (Assumption for contradiction)
+ 4.2. R(a, c). (Relation Transitivity from 2, 4.1)
+ 4.3. R(a, c) and not R(a, c). (Conjunction Introduction from 4.2, 3)
+end subproof
+
+# 4: A symmetric and asymmetric relation has no edges
+## Proof that
+### if R is both symmetric and asymmetric
+### then not R(a,b).
+
+1. Let X be any set, R be a symmetric, asymmetric relation on X, and a, b be in X. (Declaration)
+2. not R(a, b). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. R(a, b). (Assumption for contradiction)
+ 2.2. R(b, a). (Relation Symmetry from 2.1)
+ 2.3. not R(b, a). (Relation Asymmetry from 2.1)
+ 2.4. R(b, a) and not R(b, a). (Conjunction Introduction from 2.2, 2.3)
+end subproof
+
+# 5: Totality supplies the reverse direction when one direction fails
+## Proof that
+### if R is total and not R(a,b)
+### then R(b,a).
+
+1. Let X be any set, R be a total relation on X, and a, b be in X. (Declaration)
+2. not R(a, b). (Premise)
+3. R(a, b) or R(b, a). (Relation Totality from 1, 1)
+4. R(b, a). (Proof by Cases from 3, subproofs below)
+begin subproof
+ 4.1.case1. R(a, b). (Case)
+ 4.2.case1. R(b, a). (Explosion from 2, 4.1.case1)
+end subproof
+begin subproof
+ 4.1.case2. R(b, a). (Case)
+ 4.2.case2. R(b, a). (Reiteration from 4.1.case2)
+end subproof
+
+# 6: A symmetric total relation relates every pair in both directions
+## Proof that
+### if R is symmetric and total
+### then R(a,b) and R(b,a).
+
+1. Let X be any set, R be a symmetric, total relation on X, and a, b be in X. (Declaration)
+2. R(a, b) or R(b, a). (Relation Totality from 1, 1)
+3. R(a, b) and R(b, a). (Proof by Cases from 2, subproofs below)
+begin subproof
+ 3.1.case1. R(a, b). (Case)
+ 3.2.case1. R(b, a). (Relation Symmetry from 3.1.case1)
+ 3.3.case1. R(a, b) and R(b, a). (Conjunction Introduction from 3.1.case1, 3.2.case1)
+end subproof
+begin subproof
+ 3.1.case2. R(b, a). (Case)
+ 3.2.case2. R(a, b). (Relation Symmetry from 3.1.case2)
+ 3.3.case2. R(a, b) and R(b, a). (Conjunction Introduction from 3.2.case2, 3.1.case2)
+end subproof
+
+# 7: A total antisymmetric relation has one orientation between distinct points
+## Proof that
+### if R is total and antisymmetric and a is not b
+### then (R(a,b) or R(b,a)) and not (R(a,b) and R(b,a)).
+
+1. Let X be any set, R be a total, antisymmetric relation on X, and a, b be in X. (Declaration)
+2. not (a = b). (Premise)
+3. R(a, b) or R(b, a). (Relation Totality from 1, 1)
+4. not (R(a, b) and R(b, a)). (Proof by Contradiction from subproof below)
+begin subproof
+ 4.1. R(a, b) and R(b, a). (Assumption for contradiction)
+ 4.2. R(a, b). (Conjunction Elimination from 4.1)
+ 4.3. R(b, a). (Conjunction Elimination from 4.1)
+ 4.4. a = b. (Relation Antisymmetry from 4.2, 4.3)
+ 4.5. (a = b) and not (a = b). (Conjunction Introduction from 4.4, 2)
+end subproof
+5. (R(a, b) or R(b, a)) and not (R(a, b) and R(b, a)). (Conjunction Introduction from 3, 4)
+
+# 8: A four-cycle in a partial order identifies opposite vertices
+## Proof that
+### if R is a partial order and R(a,b), R(b,c), R(c,d), R(d,a)
+### then a = c and b = d.
+
+1. Let X be any set, R be a partial order on X, and a, b, c, d be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, c). (Premise)
+4. R(c, d). (Premise)
+5. R(d, a). (Premise)
+6. R(a, c). (Relation Transitivity from 2, 3)
+7. R(c, a). (Relation Transitivity from 4, 5)
+8. a = c. (Relation Antisymmetry from 6, 7)
+9. R(b, d). (Relation Transitivity from 3, 4)
+10. R(d, b). (Relation Transitivity from 5, 2)
+11. b = d. (Relation Antisymmetry from 9, 10)
+12. a = c and b = d. (Conjunction Introduction from 8, 11)
