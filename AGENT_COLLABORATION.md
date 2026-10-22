@@ -90,9 +90,9 @@ The owner approved this oracle-only task. [PR #117](https://github.com/axiomtuto
 
 ## Explicit parser-extension assembly (PR #118 — merged)
 
-`ProofParserPolicy.py` currently modifies several `ProofParser` functions at import time, and `LineBreakSyntax.install()` replaces additional parser functions. The package import order therefore determines the effective parser implementation, and related behavior is split among the parser, policy overlay, and line-break module.
+Before PR #118, `ProofParserPolicy.py` modified several `ProofParser` functions at import time, while `LineBreakSyntax.install()` replaced additional parser functions. The package import order therefore determined the effective parser implementation, and related behavior was split among the parser, policy overlay, and line-break module. This was the motivation for the explicit assembly refactor.
 
-A bounded refactor should replace this implicit installation with explicit, named extension points or one documented parser-assembly step, while preserving the public parser API and the current regression corpus. Keep the membership-characterization behavior unchanged for explicit `NUMBER_THEORY_ENVIRONMENT` callers: `pytest_tests/test_compound_declarations.py` currently asserts it, so moving that behavior into SetTheory alone would be a semantic change, not a cleanup.
+The refactor preserved the public parser API and regression corpus. Membership-characterization behavior remains available to explicit `NUMBER_THEORY_ENVIRONMENT` callers, as required by `pytest_tests/test_compound_declarations.py`; it was not moved into SetTheory alone.
 
 PR #118 centralizes the line-break, formula, declaration-normalization, and membership-characterization extensions in `install_parser_extensions`, called by `source/__init__.py`, and adds an idempotency regression test. No proof or oracle expectation changed. Tested head `f0435dfdf9cfbb44652ce07470928f606b4fd6c6`; CI [run #916](https://github.com/axiomtutor/SyLoPy/actions/runs/39702646324): 1,594 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 239/239; informational fixtures 79/80. The sole failure was the deferred `Mutatis mutandis` case.
 
