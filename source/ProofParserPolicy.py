@@ -532,11 +532,6 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     raise ValueError(f"Unrecognized formula syntax: {s!r}")
 
 
-_parser.parse_formula = _parse_formula_conventional
-
-
-_original_elaborate_compound_declaration = _parser.elaborate_compound_declaration
-
 
 def _membership_characterization(text: str):
     s = text.strip().rstrip(".").strip()
