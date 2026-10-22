@@ -27,9 +27,9 @@ The named axiom rules are implemented. Retiring generic `(Axiom)` citations rema
 - PR #116 added direct `RuleContext` regression tests for `UniversalGeneralizationRule` rejecting both a non-nullary arbitrary-opening flag and a nullary flag with the wrong constant name. These passed in CI #911; they do not change Claude-owned kernel code. The corresponding mutant still needs an explicit mutation-check report from Claude.
 - [PR #116](https://github.com/axiomtutor/SyLoPy/pull/116) is merged. It adds valid controls for J16 cases #36/#37 with parsed-conclusion assertions, the full equal-or-disjoint theorem in equivalence-class case #10, removes three unused lines from cases #4/#5, and adds direct UG arbitrary-opening flag regressions. Tested PR head `90da6ddf55773279f2e5cce1ce2529bbc69b4674`, PR CI [run #909](https://github.com/axiomtutor/SyLoPy/actions/runs/39640121821), and merge commit `f2a8f75` CI [run #911](https://github.com/axiomtutor/SyLoPy/actions/runs/39640477680) both report 1,591 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 239/239, informational 79/80. The only failure is the known deferred `Mutatis mutandis` step at ZFC fixture line 5.3. No kernel production files were modified.
 
-## Queue status (2026-10-21)
+## Queue status (2026-10-21, after PRs #117–#119)
 
-J16–J20 and the follow-up review PR #116 are merged (PRs #111–#116). The proposed unrelated jobs below remain explicitly gated on owner approval. Do not begin them merely because the standing queue is empty.
+J16–J20 and follow-up PR #116 remain merged (PRs #111–#116). The owner then authorized three bounded follow-ups, all now merged: parity-shorthand rejection coverage (PR #117), explicit parser-extension assembly (PR #118), and informational relation/order proofs (PR #119). Their completed status is recorded in `JOBS_FOR_CHATGPT.md`. The remaining design items under “Not yet” are still gated on explicit owner approval.
 
 
 ## J8 — Negative set phrases (PR #100)
@@ -83,24 +83,20 @@ Tested head: `bfb1a000f7d936dd0fef0c5903428fe9fd837be8`; CI [run #39194905832](h
 
 Tested head: `1f87bf3729bb65310a2b15f74edfdca99d73dbf8`; CI [run #39195128146](https://github.com/axiomtutor/SyLoPy/actions/runs/39195128146): 1,506 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 140/140; informational fixtures 79/80. All four new cases pass. The sole failure remains issue #75 (`Mutatis mutandis` in the informational ZFC fixture).
 
-## Proposed next ChatGPT job — preserve shorthand rejection under quantifiers (awaiting owner approval)
+## Parity shorthand rejection under quantifiers (PR #117 — merged)
 
-Add one or two oracle `REJECT` cases showing that the intentionally ambiguous `n is even or odd` remains rejected beneath a universal and an existential quantifier (for example, `forall n, n is even or odd` and `exists n, n is even or odd`). Keep the accepted repeated-subject form unchanged. This is oracle-only unless a test reveals inconsistent behavior; await approval before creating a branch/PR.
+The owner approved this oracle-only task. [PR #117](https://github.com/axiomtutor/SyLoPy/pull/117) added rejection cases for `forall n, n is even or odd` and `exists n, n is even or odd`, preserving the accepted repeated-subject form. Tested head `76b0ddd61765221e83b8358dbafbb10e01baf40d`; CI [run #914](https://github.com/axiomtutor/SyLoPy/actions/runs/39701720665): 1,593 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 239/239; informational fixtures 79/80. The only failure was the deferred `Mutatis mutandis` case.
 
 
-## Proposed cleanup — make parser extension assembly explicit (awaiting owner approval)
+## Explicit parser-extension assembly (PR #118 — merged)
 
 `ProofParserPolicy.py` currently modifies several `ProofParser` functions at import time, and `LineBreakSyntax.install()` replaces additional parser functions. The package import order therefore determines the effective parser implementation, and related behavior is split among the parser, policy overlay, and line-break module.
 
 A bounded refactor should replace this implicit installation with explicit, named extension points or one documented parser-assembly step, while preserving the public parser API and the current regression corpus. Keep the membership-characterization behavior unchanged for explicit `NUMBER_THEORY_ENVIRONMENT` callers: `pytest_tests/test_compound_declarations.py` currently asserts it, so moving that behavior into SetTheory alone would be a semantic change, not a cleanup.
 
-**Done when:** parser import-contract tests, parser/oracle tests, line-broken declaration tests, compound-declaration tests, and full CI pass with no changed proof or oracle expectations. Do not begin until the owner approves the proposal.
+PR #118 centralizes the line-break, formula, declaration-normalization, and membership-characterization extensions in `install_parser_extensions`, called by `source/__init__.py`, and adds an idempotency regression test. No proof or oracle expectation changed. Tested head `f0435dfdf9cfbb44652ce07470928f606b4fd6c6`; CI [run #916](https://github.com/axiomtutor/SyLoPy/actions/runs/39702646324): 1,594 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 239/239; informational fixtures 79/80. The sole failure was the deferred `Mutatis mutandis` case.
 
 
-## Proposed next ChatGPT job — expand informational relation and order proofs (awaiting owner approval)
+## Informational relation and order proofs (PR #119 — merged)
 
-The master TODO's §3 calls for expanding the proof corpus around algebraic and order-theoretic examples, while §4 asks for more user-facing proof patterns. The completed J16–J18 work adds new base-logic and equivalence-class coverage; the next bounded job could add a small batch of informational examples using only currently implemented relation and order rules.
-
-Suggested scope: inspect the current `tests/testDiscreteMath/` corpus, identify specific textbook-level gaps, add roughly 8–12 short proofs in one new informational fixture, and add a test that reports every unexpected result. Do not add axioms, modify existing expected outcomes, edit kernel files, or treat a failure caused by unsupported mathematics as a reason to change the theory. File a smallest-example finding instead if an intended textbook proof is blocked by the current rule set.
-
-This is a proposal only. Do not begin until the owner approves and it is added to `JOBS_FOR_CHATGPT.md`.
+The master TODO's §3 calls for expanding the proof corpus around algebraic and order-theoretic examples, while §4 asks for more user-facing proof patterns. [PR #119](https://github.com/axiomtutor/SyLoPy/pull/119) fulfilled this bounded follow-up with eight informational proofs using existing rules and a dedicated test that reports every unexpected result. No axioms, existing proof expectations, or kernel code changed. Tested head `1c85fb5f553cab0a221fef84784f399e032b5947`; CI [run #920](https://github.com/axiomtutor/SyLoPy/actions/runs/39703431049): 1,595 passed, 1 failed, 1 xfailed; coverage passed; enforced fixtures 239/239; informational fixtures 87/88. All eight new proofs passed; the one suite failure was the deferred `Mutatis mutandis` case.
