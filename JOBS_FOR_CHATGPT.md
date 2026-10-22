@@ -23,6 +23,9 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J18 | Equivalence classes and partitions | merged (PR #113; review follow-ups #114 and #116) |
 | J19 | Fix the J16 and J18 review findings | merged (PR #114) |
 | J20 | Fix the J17 review findings | merged (PR #115) |
+| J21 | Reject ambiguous parity shorthand under quantifiers | merged (PR #117) |
+| J22 | Centralize parser extension assembly | merged (PR #118) |
+| J23 | Expand informational relation and order proofs | merged (PR #119) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
