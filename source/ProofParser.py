@@ -62,9 +62,9 @@ subproof's own (recursively parsed) entry list::
 Two things worth knowing before writing new proof text
 --------------------------------------------------------------------------
 1. **Connective precedence follows the textbook convention, not the order
-   `parse_formula`'s checks run in.** `ProofParserPolicy` installs the
-   active formula parser (`_parse_formula_conventional`) over this
-   module's `parse_formula` name at import time, using ordinary
+   `parse_formula`'s checks run in.** The package's explicit assembly step
+   installs `ProofParserPolicy._parse_formula_conventional` as the active
+   implementation, using ordinary
    precedence: ``not`` binds tightest, then ``and``, then ``or``, then
    ``->``/``implies``, loosest of all the biconditional family. So
    ``parse_formula("A -> B and C")`` parses as ``A -> (B and C)``, and
@@ -1078,40 +1078,20 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
     return (entry.label, value, ('premise', declarations))
 
 
-# `parse_formula` is installed by `ProofParserPolicy` at import time
-# (`_parse_formula_conventional`, using textbook connective precedence --
-# see that function's docstring for the exact recognition order) and is
-# deliberately *not* defined here. An earlier version of this function
-# lived at this exact spot, splitting `and`/`or` *before* `->` so that
-# (unlike the active parser, and unlike ordinary textbook precedence)
-# implication bound *tighter* than conjunction/disjunction; it was fully
-# superseded the same way `parse_justification` above was, and for the
-# same reason it was safe to delete outright: `ProofParserPolicy`
-# overwrites `ProofParser.parse_formula` unconditionally the moment the
-# package loads, so nothing has called this module's own definition since
-# that override was introduced. Unlike `parse_justification`'s
-# replacement, `_parse_formula_conventional` isn't a self-contained
-# module of its own -- it reaches back into this module's `split_top_level`,
-# `parse_term`, `_match_applied_symbol`, and `_BARE_IDENTIFIER_RE` -- so it
-# stays a policy overlay in `ProofParserPolicy.py` rather than moving here
-# or being imported wholesale the way `parse_justification` was.
+# `parse_formula` is intentionally supplied by the policy extension rather
+# than defined in this module. The assembly step in source/__init__.py calls
+# ProofParserPolicy.install_parser_extensions, which installs the conventional-
+# precedence implementation. It remains in ProofParserPolicy because it uses
+# this module's split_top_level, parse_term, _match_applied_symbol, and
+# _BARE_IDENTIFIER_RE helpers.
 
 
-# `parse_justification` itself lives in `ProofJustification.py` (imported
-# above) and is deliberately *not* redefined here. An earlier,
-# substring-keyword-matching implementation used to live at this exact
-# spot; it was fully superseded when `ProofJustification`'s deterministic
-# alias-table resolver became the authoritative rule-name parser, but the
-# old body was left in place, silently dead: `SyLoPy/source/__init__.py`
-# imports `ProofParserPolicy` right after this module, and
-# `ProofParserPolicy` overwrote `ProofParser.parse_justification` at
-# import time regardless of what was defined here, so nothing ever
-# actually called the old inline version again. Removed once confirmed
-# nothing referenced it directly (see `test_import_contract.py` and the
-# module-identity check in `pytest_tests/test_parser.py`); `source/
-# test_parser.py`, the one file that *did* still exercise the dead
-# version's behavior directly, was correspondingly retired -- its still-
-# relevant cases live on in `pytest_tests/test_parser.py`.
+# `parse_justification` lives in ProofJustification.py (imported above) and
+# is deliberately not redefined here. The old inline implementation used
+# substring keyword matching and became dead when ProofJustification's
+# deterministic alias-table resolver became authoritative. Its obsolete
+# source/test_parser.py coverage was retired; relevant cases remain in
+# pytest_tests/test_parser.py.
 
 
 def _split_trailing_parenthetical(text: str) -> Tuple[Optional[str], Optional[str]]:
@@ -1451,9 +1431,9 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
 def _base_line_elaborators():
     """Return active base elaborators, including policy-installed wrappers.
 
-    ProofParserPolicy wraps compound declaration elaboration after this
-    module is imported. Resolve the active function when building environments
-    rather than capturing it before the policy overlay loads.
+    The package's explicit assembly step installs the wrapper before callers
+    build theory environments. Resolve the active function here rather than
+    capturing it during module initialization.
     """
     return (
         elaborate_compound_declaration,
