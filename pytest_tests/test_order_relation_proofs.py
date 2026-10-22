@@ -8,6 +8,7 @@ from .support import mp
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "tests" / "testDiscreteMath"
 _VALID = _FIXTURE_DIR / "order_relation_proofs.txt"
 _INVALID = _FIXTURE_DIR / "invalid_order_relation_proofs.txt"
+_INFORMATIONAL = Path(__file__).resolve().parents[1] / "source" / "testProofs" / "informationalRelationOrderProofs.txt"
 
 
 def _run(path: Path):
@@ -44,3 +45,16 @@ def test_each_invalid_twin_fails_at_its_intended_rule():
         assert message, f"case {number} failed without a message"
         assert f"Line {label}" in message, f"case {number} failed at the wrong line: {message}"
         assert rule.lower() in message.lower(), f"case {number} did not name {rule}: {message}"
+
+
+def test_informational_relation_order_examples_all_prove():
+    results = _run(_INFORMATIONAL)
+    expected_numbers = [str(n) for n in range(1, 9)]
+    assert [number for number, *_rest in results] == expected_numbers, results
+
+    unexpected = [
+        (number, expected_valid, ok, message, crashed)
+        for number, expected_valid, ok, message, crashed in results
+        if not expected_valid or not ok or crashed
+    ]
+    assert not unexpected, f"Informational relation/order proofs did not behave as expected: {unexpected}"
