@@ -57,3 +57,17 @@ def test_core_package_modules_import_cleanly():
 
 
 
+
+
+def test_parser_extension_assembly_is_explicit_and_idempotent():
+    result = run_clean_import(
+        "from SyLoPy.source import ProofParser as parser, ProofParserPolicy as policy\n"
+        "names = ('parse_formula', 'parse_surface_declaration_statement', "
+        "'elaborate_compound_declaration', '_prepare_surface_lines', "
+        "'split_declaration_clauses', '_split_compound_declaration_items')\n"
+        "before = tuple(getattr(parser, name) for name in names)\n"
+        "policy.install_parser_extensions(parser)\n"
+        "after = tuple(getattr(parser, name) for name in names)\n"
+        "assert after == before"
+    )
+    assert result.returncode == 0, result.stderr

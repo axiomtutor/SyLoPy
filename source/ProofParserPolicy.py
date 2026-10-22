@@ -1,26 +1,23 @@
 """Language-policy extensions for the proof parser.
 
-The parser implementation lives in :mod:`ProofParser`.  This module contains
-small, explicit policy extensions that used to be installed by a compatibility
-facade.  Keeping them separate avoids putting theory-specific surface syntax
-into the core parser while avoiding any dependency on a legacy parser module.
+The parser implementation lives in ProofParser. This module defines policy
+extensions and exposes one explicit installation entry point; importing it
+alone does not mutate the parser module.
 """
 from __future__ import annotations
 
 import re
 
-from SyLoPy.source import ProofParser as _parser
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
 
-# `parse_justification` no longer needs to be installed here: it has no
-# dependency on anything in `ProofParser`, so `ProofParser.py` now imports
-# `ProofJustification.parse_justification` directly at its own top level
-# instead of relying on this module to patch it in after the fact.
-_install_line_break_syntax(_parser)
-
-
-_original_parse_surface_declaration_statement = _parser.parse_surface_declaration_statement
+# Initialized by install_parser_extensions. These indirections let policy
+# functions reuse the parser's core helpers without importing and patching it
+# as a side effect of this module's import.
+_parser = None
+_original_parse_surface_declaration_statement = None
+_original_elaborate_compound_declaration = None
+_installed_parser = None
 
 
 def _parse_surface_declaration_statement(text, span):
@@ -32,9 +29,6 @@ def _parse_surface_declaration_statement(text, span):
         flags=re.I,
     )
     return _original_parse_surface_declaration_statement(normalized, span)
-
-
-_parser.parse_surface_declaration_statement = _parse_surface_declaration_statement
 
 
 _NAME = r"[A-Za-z_][A-Za-z0-9_]*"
@@ -538,11 +532,6 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     raise ValueError(f"Unrecognized formula syntax: {s!r}")
 
 
-_parser.parse_formula = _parse_formula_conventional
-
-
-_original_elaborate_compound_declaration = _parser.elaborate_compound_declaration
-
 
 def _membership_characterization(text: str):
     s = text.strip().rstrip(".").strip()
@@ -616,4 +605,31 @@ def _elaborate_membership_characterization(entry, context):
     return _original_elaborate_compound_declaration(entry, context)
 
 
-_parser.elaborate_compound_declaration = _elaborate_membership_characterization
+def install_parser_extensions(parser) -> None:
+    """Install parser-policy extensions at one explicit assembly point.
+
+    source.__init__ calls this after the parser and policy modules have loaded.
+    Repeated calls with the same parser are harmless; installation into a
+    different parser module is unsupported.
+    """
+    global _parser
+    global _original_parse_surface_declaration_statement
+    global _original_elaborate_compound_declaration
+    global _installed_parser
+
+    if _installed_parser is parser:
+        return
+    if _installed_parser is not None:
+        raise RuntimeError("parser-policy extensions are already installed on another module")
+
+    _parser = parser
+    _install_line_break_syntax(parser)
+
+    _original_parse_surface_declaration_statement = parser.parse_surface_declaration_statement
+    parser.parse_surface_declaration_statement = _parse_surface_declaration_statement
+    parser.parse_formula = _parse_formula_conventional
+
+    _original_elaborate_compound_declaration = parser.elaborate_compound_declaration
+    parser.elaborate_compound_declaration = _elaborate_membership_characterization
+
+    _installed_parser = parser
