@@ -26,10 +26,10 @@ Keep theory-specific syntax and interpretation in theory environments and declar
 
 ## Current constraints
 
-- Equality-case WLOG replay is implemented (PR #63) and keeps outside citations that treat both cases alike ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)); it is not a new feature to implement from scratch. The informational ZFC proof `zfc_remaining_axioms.txt` still fails at its `Mutatis mutandis` line, which is deferred. Do not mask the failure, weaken negative tests, or expand WLOG to arbitrary properties.
+- Equality-case WLOG replay is implemented (PR #63) and keeps outside citations that treat both cases alike ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)); it is not a new feature to implement from scratch. `Mutatis mutandis` is implemented for names replaced by names, and the informational ZFC proof `zfc_remaining_axioms.txt` that uses it passes. Do not weaken negative tests or expand WLOG to arbitrary properties.
 - The general `Set property` rule is implemented. Do not follow obsolete notes that describe it as wholly deferred.
 - The named Pairing, Union, Power Set, and Infinity axiom-citation rules are implemented, including the Union/Power Set instance forms (PR #81). The remaining owner decision is whether to retire generic `(Axiom)` citations; see `todos.txt` §5.
-- `Mutatis mutandis` remains deferred pending explicit owner approval.
+- `Mutatis mutandis` is implemented only for names replaced by names. Replacing a name by a term, or a relation or function symbol by another, remains deferred pending explicit owner approval.
 - The scoped witness form `Let Y be such a set. (Existence from L)` names a witness from an existing existential; the axiom citation itself does not introduce one. Do not extend the older direct Pairing-witness form to other axioms.
 
 For the full rationale and current open work, consult only the relevant entries in `todos.txt` and the linked issue/PR; avoid copying that history into this guide.

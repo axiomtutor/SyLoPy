@@ -318,7 +318,62 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
-Equality-case WLOG is implemented: it handles a disjunction of two equality cases and replays the following proof region for the other case, including retaining outside citations when they are invariant under exchanging the two case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is recognized as a spelling but is not an implemented inference rule and remains deferred pending owner approval.
+Equality-case WLOG is implemented: it handles a disjunction of two equality cases and replays the following proof region for the other case, including retaining outside citations when they are invariant under exchanging the two case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names; see the next subsection.
+
+### Mutatis mutandis: the same argument for other names
+
+`P'. (Mutatis mutandis, B)` says that line `B` was derived by an argument that works just as well for other names, and that `P'` is what `B` says with those names. `P'. (Mutatis mutandis, A to B)` says the same and names the line `A` where the argument starts. The names are read off the two statements: each name in `B` that changes is replaced by one name, wherever it occurs. Two names may be exchanged (`T(a, b)` repeated as `T(b, a)`), one may be replaced alone (`Q(a)` as `Q(b)`), and two may be replaced by one name. Nothing else may change: the predicates, the shape of the formula and the free variables stay, and bound variables may be named differently as long as they correspond.
+
+The checker does not take the line on trust. It writes out the argument that is being repeated -- the justification of line `B` and the subproofs below it, with the names replaced -- and checks that like any other line, so a refusal is an ordinary refusal at the `Mutatis mutandis` line, saying which line of the argument failed. What the expansion has to arrange is the lines that the argument cites from outside. A cited line that says something about a name being replaced (`P(a)` when `a` becomes `b`) is replaced by the earliest visible line that says it of the new name (`P(b)`); a cited line that says nothing about those names (a general fact) is cited as it is. A premise written as one bundle (`Let P, Q be predicates such that: A. B. (Premise)`) stands for a line it states every fact of. The range `A to B` also asks that line `A` have such a counterpart for the new names, which is how the start of the argument is checked; `A` itself is not repeated, and the lines between `A` and `B` are not either.
+
+<!-- proof-format-test: valid-proof -->
+```text
+# 1: The same argument for b, citing the facts about b
+## Proof that
+### if P, Q and R are predicates such that: P(a) -> Q(a). Q(a) -> R(a). P(b) -> Q(b). Q(b) -> R(b).
+### then (P(a) -> R(a)) and (P(b) -> R(b)).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates. (Declare)
+3. P(a) -> Q(a). (Premise)
+4. Q(a) -> R(a). (Premise)
+5. P(b) -> Q(b). (Premise)
+6. Q(b) -> R(b). (Premise)
+7. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 7.1. P(a). (Assumption for Conditional Introduction)
+ 7.2. Q(a). (Modus Ponens from 3, 7.1)
+ 7.3. R(a). (Modus Ponens from 4, 7.2)
+end subproof
+8. P(b) -> R(b). (Mutatis mutandis, 3 to 7)
+9. (P(a) -> R(a)) and (P(b) -> R(b)). (Conjunction Introduction from 7, 8)
+
+# 2: Two names exchanged
+## Proof that
+### if R and T are predicates such that: R(a, b) -> T(a, b). R(b, a) -> T(b, a). R(a, b). R(b, a).
+### then T(a, b) and T(b, a).
+
+1. Let a and b be objects. (Declare)
+2. Let R and T be predicates. (Declare)
+3. R(a, b) -> T(a, b). (Premise)
+4. R(b, a) -> T(b, a). (Premise)
+5. R(a, b). (Premise)
+6. R(b, a). (Premise)
+7. T(a, b). (Modus Ponens from 3, 5)
+8. T(b, a). (Mutatis mutandis, 7)
+9. T(a, b) and T(b, a). (Conjunction Introduction from 7, 8)
+```
+
+The line is refused, with the reason, when:
+
+- line `B` was not derived by a rule from other lines (a premise, an assumption or a declaration has no argument to repeat), or is a WLOG step (an argument that contains a WLOG step can be repeated);
+- the argument contains a hypothesis -- a premise, an axiom, a witness named with `Existence from`, a declaration that states a fact or records structure -- since repeating it would add a hypothesis that nobody wrote;
+- the new statement is not line `B` with names replaced (a different predicate, shape, free variable or quantifier), replaces nothing, or replaces one name by two;
+- a line of the argument cites a line for which no visible line says the same of the new names, or `A` has no such counterpart;
+- more than `B` or `A to B` is cited, the range runs backwards, or a cited line is not visible (a line inside a subproof that has ended is not);
+- the repeated argument is itself wrong for the new names, as when the new name is the witness the argument introduces: the usual freshness check of the repeated rule refuses it.
+
+Limits of this form: only names are replaced, not names by terms, and not one relation or function symbol by another. A name can be replaced only if it occurs in the statement of `B` and of the new line. A repeated argument is one line with the subproofs attached to it; a model whose argument contains a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.
 
 ## 8. Premises, axioms, and conclusions
 
@@ -409,7 +464,7 @@ Separation and Replacement are schema citations. For axiom-instance and `Set pro
 Features explicitly deferred:
 
 - WLOG for arbitrary properties. Only the equality-case WLOG replay is implemented.
-- `Mutatis mutandis`, which remains unimplemented pending owner approval.
+- `Mutatis mutandis` beyond names replaced by names: replacing a name by a term, or a relation or function symbol by another with the rules that correspond to them. Only the first form is implemented.
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
 
 ## 12. Worked set-theory proofs

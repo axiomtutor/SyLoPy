@@ -1,10 +1,11 @@
 # Unique pairing, with WLOG in each inclusion.
 #
 # tests/setTheoryProofs/zfc_remaining_axioms.txt proves the same statement
-# with WLOG for the first inclusion and Mutatis mutandis for the second.
-# Mutatis mutandis does not exist yet, so the second inclusion is written with
-# WLOG as well: "y is in Y" gives "y = a or y = b", and the case y = a is
-# enough because the case y = b is the same proof with b in place of a.
+# with WLOG for the first inclusion and Mutatis mutandis for the second
+# (tests/testSetTheory/mutatis_mutandis_sets.txt has that version too). Here
+# the second inclusion is written with WLOG as well: "y is in Y" gives
+# "y = a or y = b", and the case y = a is enough because the case y = b is the
+# same proof with b in place of a.
 #
 # Both WLOG lines cite the pair characterization (line 3, and line 5.1 for the
 # second inclusion) after the case is chosen. That line treats a and b alike,

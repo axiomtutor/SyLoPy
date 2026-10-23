@@ -1,0 +1,423 @@
+(*
+Mutatis mutandis, stage 1: names replaced by names.
+
+`P'. (Mutatis mutandis, A to B)` repeats the argument of line B for the names
+that make B say P'; a single citation `B` repeats the argument of line B alone.
+The validator expands the line into the repeated argument and checks that like
+any other, so each refusal below is an ordinary refusal at the Mutatis mutandis
+line. Every invalid case has a valid case that differs from it only in the
+point it names.
+*)
+
+# 1: The same argument for b, citing the facts about b
+## Proof that
+### if P, Q and R are predicates such that: P(a) -> Q(a). Q(a) -> R(a). P(b) -> Q(b). Q(b) -> R(b).
+### then (P(a) -> R(a)) and (P(b) -> R(b)).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates. (Declare)
+3. P(a) -> Q(a). (Premise)
+4. Q(a) -> R(a). (Premise)
+5. P(b) -> Q(b). (Premise)
+6. Q(b) -> R(b). (Premise)
+7. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 7.1. P(a). (Assumption for Conditional Introduction)
+ 7.2. Q(a). (Modus Ponens from 3, 7.1)
+ 7.3. R(a). (Modus Ponens from 4, 7.2)
+end subproof
+8. P(b) -> R(b). (Mutatis mutandis, 3 to 7)
+9. (P(a) -> R(a)) and (P(b) -> R(b)). (Conjunction Introduction from 7, 8)
+
+# 2: The starting line has no counterpart for b
+## Invalid: starting line — line 3 says P(a) -> Q(a), and nothing says P(b) -> Q(b).
+### then P(b) -> R(b).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates. (Declare)
+3. P(a) -> Q(a). (Premise)
+4. Q(a) -> R(a). (Premise)
+5. Q(b) -> R(b). (Premise)
+6. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. P(a). (Assumption for Conditional Introduction)
+ 6.2. Q(a). (Modus Ponens from 3, 6.1)
+ 6.3. R(a). (Modus Ponens from 4, 6.2)
+end subproof
+7. P(b) -> R(b). (Mutatis mutandis, 3 to 6)
+
+# 3: A line the argument cites has no counterpart for b
+## Invalid: cited line — line 6.3 cites line 4, which says Q(a) -> R(a), and nothing says Q(b) -> R(b).
+### then P(b) -> R(b).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates. (Declare)
+3. P(a) -> Q(a). (Premise)
+4. Q(a) -> R(a). (Premise)
+5. P(b) -> Q(b). (Premise)
+6. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. P(a). (Assumption for Conditional Introduction)
+ 6.2. Q(a). (Modus Ponens from 3, 6.1)
+ 6.3. R(a). (Modus Ponens from 4, 6.2)
+end subproof
+7. P(b) -> R(b). (Mutatis mutandis, 3 to 6)
+
+# 4: Two names exchanged, one line repeated
+## Proof that
+### if R and T are predicates such that: R(a, b) -> T(a, b). R(b, a) -> T(b, a). R(a, b). R(b, a).
+### then T(a, b) and T(b, a).
+
+1. Let a and b be objects. (Declare)
+2. Let R and T be predicates. (Declare)
+3. R(a, b) -> T(a, b). (Premise)
+4. R(b, a) -> T(b, a). (Premise)
+5. R(a, b). (Premise)
+6. R(b, a). (Premise)
+7. T(a, b). (Modus Ponens from 3, 5)
+8. T(b, a). (Mutatis mutandis, 7)
+9. T(a, b) and T(b, a). (Conjunction Introduction from 7, 8)
+
+# 5: The exchanged line has no counterpart
+## Invalid: cited line — line 6 cites line 5, which says R(a, b), and nothing says R(b, a).
+### then T(b, a).
+
+1. Let a and b be objects. (Declare)
+2. Let R and T be predicates. (Declare)
+3. R(a, b) -> T(a, b). (Premise)
+4. R(b, a) -> T(b, a). (Premise)
+5. R(a, b). (Premise)
+6. T(a, b). (Modus Ponens from 3, 5)
+7. T(b, a). (Mutatis mutandis, 6)
+
+# 6: Background that names neither object stays cited
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) -> Q(x)). P(a). P(b).
+### then Q(a) and Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(b). (Mutatis mutandis, 4)
+6. Q(a) and Q(b). (Conjunction Introduction from 4, 5)
+
+# 7: The new name lacks what the argument used about the old one
+## Invalid: cited line — line 3 cites line 2, which says P(a), and nothing says P(b).
+### then Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. Q(a). (Universal Modus Ponens from 1, 2)
+4. Q(b). (Mutatis mutandis, 3)
+
+# 8: A repeat can be repeated
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) -> Q(x)). P(a). P(b). P(c).
+### then Q(b) and Q(c).
+
+1. Let a, b, c be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. P(c). (Premise)
+5. Q(a). (Universal Modus Ponens from 1, 2)
+6. Q(b). (Mutatis mutandis, 5)
+7. Q(c). (Mutatis mutandis, 6)
+8. Q(b) and Q(c). (Conjunction Introduction from 6, 7)
+
+# 9: A repeated conditional proof can be repeated again
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) -> Q(x)).
+### then (P(b) -> Q(b)) and (P(c) -> Q(c)).
+
+1. Let a, b, c be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P(a). (Assumption for Conditional Introduction)
+ 2.2. Q(a). (Universal Modus Ponens from 1, 2.1)
+end subproof
+3. P(b) -> Q(b). (Mutatis mutandis, 2)
+4. P(c) -> Q(c). (Mutatis mutandis, 3)
+5. (P(b) -> Q(b)) and (P(c) -> Q(c)). (Conjunction Introduction from 3, 4)
+
+# 10: Inside a subproof, repeating a line from outside it
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) -> Q(x)). P(a). P(b).
+### then P(b) -> Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. P(b) -> Q(b). (Conditional Introduction from subproof below)
+begin subproof
+ 5.1. P(b). (Assumption for Conditional Introduction)
+ 5.2. Q(b). (Mutatis mutandis, 4)
+end subproof
+
+# 11: A line inside a closed subproof cannot be repeated from outside it
+## Invalid: scope — line 4.2 is inside a subproof that has ended.
+### then Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 4.1. P(a). (Assumption for Conditional Introduction)
+ 4.2. Q(a). (Universal Modus Ponens from 1, 4.1)
+end subproof
+5. Q(b). (Mutatis mutandis, 4.2)
+
+# 12: A premise has no argument to repeat
+## Invalid: model — line 2 is a premise, not a line that a rule derived from other lines.
+### then P(b).
+
+1. Let a, b be objects and P be a predicate. (Declare)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. P(b). (Mutatis mutandis, 2)
+
+# 13: The new line is not the cited line with names replaced
+## Invalid: names only — Q(a) would have to become P(b), a different predicate.
+### then P(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. P(b). (Mutatis mutandis, 4)
+
+# 14: Nothing is replaced
+## Invalid: nothing to change — Q(a) says what line 4 says.
+### then Q(a).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(a). (Mutatis mutandis, 4)
+
+# 15: One name replaced everywhere by one name
+## Proof that
+### if P and T are predicates such that: forall x, (P(x) -> T(x, x)). P(a). P(b).
+### then T(b, b).
+
+1. Let a, b be objects and P, T be predicates such that: forall x, (P(x) -> T(x, x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. T(a, a). (Universal Modus Ponens from 1, 2)
+5. T(b, b). (Mutatis mutandis, 4)
+
+# 16: One name cannot be replaced by two names
+## Invalid: names only — a would have to be replaced by both b and c.
+### then T(b, c).
+
+1. Let a, b, c be objects and P, T be predicates such that: forall x, (P(x) -> T(x, x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. T(a, a). (Universal Modus Ponens from 1, 2)
+5. T(b, c). (Mutatis mutandis, 4)
+
+# 17: A range names a start and an end, and nothing more
+## Invalid: citations — three lines are cited, and the rule takes one line or a range of two.
+### then Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(b). (Mutatis mutandis, 2 to 4, 3)
+
+# 18: The cited line must exist
+## Invalid: citations — line 9 does not exist.
+### then Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(b). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(b). (Mutatis mutandis, 9)
+
+# 19: An existential-elimination argument repeated for another name
+## Proof that
+### if P and Q are predicates such that: exists x, P(x). forall x, (P(x) -> Q(a)). forall x, (P(x) -> Q(b)).
+### then Q(a) and Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. P(w) -> Q(a). (Universal Instantiation from 2)
+ 4.3. Q(a). (Modus Ponens from 4.2, 4.1)
+end subproof
+5. forall x, (P(x) -> Q(b)). (Premise)
+6. Q(b). (Mutatis mutandis, 4)
+7. Q(a) and Q(b). (Conjunction Introduction from 4, 6)
+
+# 20: The new name cannot be the argument's own witness
+## Invalid: freshness — repeating the argument for w makes its witness w occur in its conclusion Q(w).
+### then Q(w).
+
+1. Let a be an object and P, Q be predicates such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. P(w) -> Q(a). (Universal Instantiation from 2)
+ 4.3. Q(a). (Modus Ponens from 4.2, 4.1)
+end subproof
+5. forall x, (P(x) -> Q(w)). (Premise)
+6. Q(w). (Mutatis mutandis, 4)
+
+# 21: An argument that cites a bundle of premises, repeated for b
+## Proof that
+### if P, Q and R are predicates such that: P(a) -> Q(a). Q(a) -> R(a). P(b) -> Q(b). Q(b) -> R(b).
+### then P(b) -> R(b).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates such that: P(a) -> Q(a). Q(a) -> R(a). P(b) -> Q(b). Q(b) -> R(b). (Premise)
+3. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. P(a). (Assumption for Conditional Introduction)
+ 3.2. Q(a). (Modus Ponens from 2, 3.1)
+ 3.3. R(a). (Modus Ponens from 2, 3.2)
+end subproof
+4. P(b) -> R(b). (Mutatis mutandis, 2 to 3)
+
+# 22: A bundle of premises that lacks the facts about b
+## Invalid: starting line — the bundle on line 2 says Q(a) -> R(a) but not Q(b) -> R(b).
+### then P(b) -> R(b).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates such that: P(a) -> Q(a). Q(a) -> R(a). P(b) -> Q(b). (Premise)
+3. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. P(a). (Assumption for Conditional Introduction)
+ 3.2. Q(a). (Modus Ponens from 2, 3.1)
+ 3.3. R(a). (Modus Ponens from 2, 3.2)
+end subproof
+4. P(b) -> R(b). (Mutatis mutandis, 2 to 3)
+
+# 23: An existential elimination inside the repeated argument
+## Proof that
+### if P and Q are predicates such that: exists x, P(x). forall x, (P(x) -> Q(a)). forall x, (P(x) -> Q(b)).
+### then P(b) -> Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 4.1. P(a). (Assumption for Conditional Introduction)
+ 4.2. Q(a). (Existential Elimination from 1, subproof below)
+ begin subproof
+  4.2.1. P(w). (Assumption for Existential Elimination)
+  4.2.2. P(w) -> Q(a). (Universal Instantiation from 2)
+  4.2.3. Q(a). (Modus Ponens from 4.2.2, 4.2.1)
+ end subproof
+end subproof
+5. forall x, (P(x) -> Q(b)). (Premise)
+6. P(b) -> Q(b). (Mutatis mutandis, 4)
+
+# 24: The new name cannot be the witness of an existential elimination inside the argument
+## Invalid: freshness — the repeated line 4.2 has witness w and conclusion Q(w).
+### then P(w) -> Q(w).
+
+1. Let a be an object and P, Q be predicates such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 4.1. P(a). (Assumption for Conditional Introduction)
+ 4.2. Q(a). (Existential Elimination from 1, subproof below)
+ begin subproof
+  4.2.1. P(w). (Assumption for Existential Elimination)
+  4.2.2. P(w) -> Q(a). (Universal Instantiation from 2)
+  4.2.3. Q(a). (Modus Ponens from 4.2.2, 4.2.1)
+ end subproof
+end subproof
+5. forall x, (P(x) -> Q(w)). (Premise)
+6. P(w) -> Q(w). (Mutatis mutandis, 4)
+
+# 25: A repeated argument may cite a fact but not assume it again
+## Proof that
+### if P and Q are predicates such that: Q(a). Q(b).
+### then P(b) -> Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: Q(a). Q(b). (Premise)
+2. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P(a). (Assumption for Conditional Introduction)
+ 2.2. Q(a). (Reiteration from 1)
+end subproof
+3. P(b) -> Q(b). (Mutatis mutandis, 2)
+
+# 26: A repeated argument may not contain a premise
+## Invalid: hypothesis — line 2.2 is a premise, and repeating it would state a premise that was not given.
+### then P(b) -> Q(b).
+
+1. Let a, b be objects and P, Q be predicates such that: Q(a). Q(b). (Premise)
+2. P(a) -> Q(a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P(a). (Assumption for Conditional Introduction)
+ 2.2. Q(a). (Premise)
+end subproof
+3. P(b) -> Q(b). (Mutatis mutandis, 2)
+
+# 27: A range starts before it ends
+## Invalid: citations — the range 7 to 3 runs backwards.
+### then P(b) -> R(b).
+
+1. Let a and b be objects. (Declare)
+2. Let P, Q and R be predicates. (Declare)
+3. P(a) -> Q(a). (Premise)
+4. Q(a) -> R(a). (Premise)
+5. P(b) -> Q(b). (Premise)
+6. Q(b) -> R(b). (Premise)
+7. P(a) -> R(a). (Conditional Introduction from subproof below)
+begin subproof
+ 7.1. P(a). (Assumption for Conditional Introduction)
+ 7.2. Q(a). (Modus Ponens from 3, 7.1)
+ 7.3. R(a). (Modus Ponens from 4, 7.2)
+end subproof
+8. P(b) -> R(b). (Mutatis mutandis, 7 to 3)
+
+# 28: Without loss of generality is not repeated, only an argument that contains it
+## Invalid: model — line 2 is a WLOG step, which has no argument of its own to repeat.
+### then a = c.
+
+1. Let a, b, c be objects such that: a = b or a = c. (Premise)
+2. a = b. (WLOG, 1)
+3. a = c. (Mutatis mutandis, 2)
+
+# 29: Mutatis mutandis inside the region that WLOG repeats for the other case
+## Proof that
+### if P and Q are predicates such that: a = b or a = c. forall x, (P(x) -> Q(x)). P(a). P(b). P(c).
+### then exists y, Q(y).
+
+1. Let a, b, c be objects and P, Q be predicates such that: a = b or a = c. (Premise)
+2. forall x, (P(x) -> Q(x)). (Premise)
+3. P(a). (Premise)
+4. P(b). (Premise)
+5. P(c). (Premise)
+6. a = b. (WLOG, 1)
+7. Q(a). (Universal Modus Ponens from 2, 3)
+8. Q(b). (Mutatis mutandis, 7)
+9. exists y, Q(y). (Existential Introduction from 8)
+
+# 30: The repeat inside a WLOG region is checked in the other case too
+## Invalid: cited line — in the case a = c, line 7 repeats line 6 for c, and nothing says P(c).
+### then exists y, Q(y).
+
+1. Let a, b, c be objects and P, Q be predicates such that: a = b or a = c. (Premise)
+2. forall x, (P(x) -> Q(x)). (Premise)
+3. P(a). (Premise)
+4. P(b). (Premise)
+5. a = b. (WLOG, 1)
+6. Q(a). (Universal Modus Ponens from 2, 3)
+7. Q(b). (Mutatis mutandis, 6)
+8. exists y, Q(y). (Existential Introduction from 7)

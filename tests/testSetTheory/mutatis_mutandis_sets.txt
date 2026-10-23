@@ -1,0 +1,66 @@
+(*
+Mutatis mutandis in set theory. Case 1 is the unique-pairing proof whose second
+inclusion repeats the first with X and Y exchanged; the first inclusion contains
+a WLOG step, and that step is repeated along with the rest of the argument.
+Case 2 does the same for two sets that are each known to have exactly the
+members a and b, and case 3 shows what is refused when the second set is only
+known to contain a and b. The generic cases, with a refused twin for each valid
+one, are in tests/testProofs/mutatis_mutandis.txt.
+*)
+
+# 1: Unique pairing, the second inclusion by Mutatis mutandis
+## Proof that
+### If a and b are sets,
+### then there exists a unique set Y such that forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. a and b are sets. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. Let X be any set. (Declaration)
+5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
+ 5.1. Forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
+ 5.2. X subseteq Y. (Subset proof below)
+  5.2.1. Let x in X. (Assumption for subset proof)
+  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
+  5.2.3. x = a. (WLOG, 5.2.2)
+  5.2.4. In(x, Y). (Set property, 3, 5.2.3)
+ 5.3. Y subseteq X. (Mutatis mutandis, 5.1 to 5.2)
+ 5.4. X = Y. (Set equality, 5.2, 5.3)
+6. Exists Y, (forall u, (In(u, Y) iff (u = a or u = b))) and (forall X, (forall z, (In(z, X) iff (z = a or z = b))) -> X = Y). (Uniqueness, 2, 5)
+
+# 2: Two sets with exactly the members a and b are equal
+## Proof that
+### If X and Y are sets that both have exactly a and b as their members,
+### then X = Y.
+
+1. Let a and b be any sets. (Declaration)
+2. Let X and Y be any sets. (Declaration)
+3. forall u, (In(u, X) iff (u = a or u = b)). (Premise)
+4. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+5. X subseteq Y. (Subset proof below)
+ 5.1. Let x in X. (Assumption for subset proof)
+ 5.2. In(x, X) iff (x = a or x = b). (Universal Instantiation from 3)
+ 5.3. In(x, X) -> (x = a or x = b). (Biconditional Elimination from 5.2)
+ 5.4. x = a or x = b. (Modus Ponens from 5.3, 5.1)
+ 5.5. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 4)
+ 5.6. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.5)
+ 5.7. In(x, Y). (Modus Ponens from 5.6, 5.4)
+6. Y subseteq X. (Mutatis mutandis, 3 to 5)
+7. X = Y. (Set equality, 5, 6)
+
+# 3: A set that only has to contain a and b is not repeated into
+## Invalid: starting line — line 3 says what the members of X are, and nothing says that of Y.
+### then Y subseteq X.
+
+1. Let a and b be any sets. (Declaration)
+2. Let X and Y be any sets. (Declaration)
+3. forall u, (In(u, X) iff (u = a or u = b)). (Premise)
+4. forall u, ((u = a or u = b) -> In(u, Y)). (Premise)
+5. X subseteq Y. (Subset proof below)
+ 5.1. Let x in X. (Assumption for subset proof)
+ 5.2. In(x, X) iff (x = a or x = b). (Universal Instantiation from 3)
+ 5.3. In(x, X) -> (x = a or x = b). (Biconditional Elimination from 5.2)
+ 5.4. x = a or x = b. (Modus Ponens from 5.3, 5.1)
+ 5.5. (x = a or x = b) -> In(x, Y). (Universal Instantiation from 4)
+ 5.6. In(x, Y). (Modus Ponens from 5.5, 5.4)
+6. Y subseteq X. (Mutatis mutandis, 3 to 5)
