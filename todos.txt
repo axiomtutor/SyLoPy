@@ -2,14 +2,14 @@
 
 ## Project status
 
-The latest recorded full-suite verification is the run reported for [PR #83](https://github.com/axiomtutor/SyLoPy/pull/83), commit [`34489dd`](https://github.com/axiomtutor/SyLoPy/commit/34489dd43274ecaa3df3b227888d703bf388ee56), on Python 3.12 and 3.13:
+The latest recorded full-suite verification is the run reported for [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121), commit [`ee45eb5`](https://github.com/axiomtutor/SyLoPy/commit/ee45eb55a26174ed98b9c4747a550bf6c5e6fc55), on Python 3.12 and 3.13:
 
-- Python tests: 1,427 passed, 1 failed, 1 xfailed.
+- Python tests: 1,743 passed, 1 xfailed.
 - Coverage passed.
-- Enforced proof fixtures: 81/81.
-- Informational proof fixtures: 69/70.
+- Enforced proof fixtures: 272/272.
+- Informational proof fixtures: 88/88.
 
-These are PR-reported results for the tested branch commit, not a separate run on the merge commit. The sole reported failure is described under Known issues below.
+These are PR-reported results for the tested branch commit, not a separate run on the merge commit. No failure is reported.
 
 The main parser/elaboration/kernel pipeline, set theory, natural-number reasoning, and discrete-mathematics layer are in place. Current improvement work should prioritize maintainability, disciplined theory extension, and useful examples and documentation.
 
@@ -527,7 +527,7 @@ any explicit owner-approval gate on the remaining work.
       Tests: enforced fixtures `tests/testProofs/mutatis_mutandis.txt` (30
       cases, each invalid one with a valid twin that differs in the one point
       it names) and `tests/testSetTheory/mutatis_mutandis_sets.txt` (3);
-      `pytest_tests/test_mutatis_mutandis.py` (87) and
+      `pytest_tests/test_mutatis_mutandis.py` (91) and
       `pytest_tests/test_mutatis_mutandis_reasons.py` (56), which pin every
       refusal to its line, category and reason. 89 deliberate changes to the
       new code (`tools/mutation_check.py`): 86 were each caught by a test, and
