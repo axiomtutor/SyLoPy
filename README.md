@@ -12,10 +12,11 @@ work and design constraints.
 
 ## Current status
 
-Equality-case WLOG replay is implemented. One informational ZFC proof,
-`tests/setTheoryProofs/zfc_remaining_axioms.txt`, still fails because it uses
-`Mutatis mutandis`, which is deferred pending owner approval. Do not weaken
-tests or change the fixture to hide the failure.
+Equality-case WLOG replay is implemented, and so is `Mutatis mutandis` for
+names replaced by names. Replacing a name by a term, or one relation or
+function symbol by another, is deferred pending owner approval. The
+informational ZFC proof `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose
+second inclusion uses `Mutatis mutandis`, passes.
 
 The [development TODO](todos.txt) is the source of truth for the latest
 reported test/fixture counts, remaining issues, and open design decisions.
@@ -23,7 +24,8 @@ reported test/fixture counts, remaining issues, and open design decisions.
 The named Pairing, Union, Power Set, and Infinity axiom-citation rules are
 implemented, including the Union and Power Set instance forms. The remaining
 owner decision is whether to retire generic `(Axiom)` citations. `Mutatis
-mutandis` remains unimplemented and deferred.
+mutandis` is implemented for names replaced by names; its extensions are
+deferred.
 
 See `todos.txt` for the design ledger and remaining work.
 
@@ -76,8 +78,9 @@ Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
 Set theory is the active frontier. Named axiom-citation rules for Pairing,
 Union, Power Set, and Infinity are implemented, including the Union and Power
-Set instance forms. The remaining informational ZFC fixture failure comes from its
-`Mutatis mutandis` line. That rule and arbitrary-property WLOG remain deferred.
+Set instance forms. The informational ZFC fixture, whose second inclusion repeats
+the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG and
+`Mutatis mutandis` beyond names replaced by names remain deferred.
 
 ### Number theory
 
@@ -161,8 +164,9 @@ make it easier to extend and maintain.
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
      elaboration hacks.
-   - Extend proofs within the agreed scope. Named axiom-citation rules are
-     implemented; `Mutatis mutandis` remains deferred pending owner approval.
+   - Extend proofs within the agreed scope. Named axiom-citation rules and
+     `Mutatis mutandis` for names are implemented; replacing names by terms, or
+     relation and function symbols, remains deferred pending owner approval.
 
 3. Continue proof-corpus growth.
    - Add more examples and end-to-end fixtures for edge cases, not just the core

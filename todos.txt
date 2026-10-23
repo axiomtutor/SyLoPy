@@ -15,7 +15,7 @@ The main parser/elaboration/kernel pipeline, set theory, natural-number reasonin
 
 ## Known issues
 
-- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` remains the sole reported failure. It was reported as issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75): equality-case WLOG replay substituted into an invariant outer citation. That defect is fixed (see the WLOG entry below) and the proof now passes line 5.2.4. It still fails at line 5.3, which uses `Mutatis mutandis`; that rule is unimplemented and deferred pending owner approval, so the test stays red. Do not weaken the test, alter the fixture or mask the failure.
+- [x] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` was the sole reported failure. It was reported as issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75): equality-case WLOG replay substituted into an invariant outer citation. That defect was fixed (see the WLOG entry below), after which the proof stopped at line 5.3, which uses `Mutatis mutandis`. Stage 1 of that rule is implemented (see its entry below) and the test passes. The test was not weakened and the fixture was not altered.
 
 ## Design principles
 
@@ -236,8 +236,9 @@ any explicit owner-approval gate on the remaining work.
       pairing with WLOG in both inclusions (the informational
       `tests/setTheoryProofs/zfc_remaining_axioms.txt` uses `Mutatis mutandis`
       for the second). 16 deliberate changes to the new code were each caught
-      by a test. The informational proof now passes line 5.2.4 and fails at
-      line 5.3, on the deferred `Mutatis mutandis`; see "Known issues" above.
+      by a test. The informational proof then passed line 5.2.4 and stopped at
+      line 5.3, on `Mutatis mutandis`, which is implemented since (see its
+      entry below).
 
       Case blocks (Claude, branch `claude/wlog-case-blocks`). A
       `Proof by Cases ... (subproofs below)` line keeps one block of lines per
@@ -257,8 +258,8 @@ any explicit owner-approval gate on the remaining work.
       code that walks the subproofs were each caught by a test.
 
       Limitations: arbitrary-property transformations are not implemented;
-      equality cases are the supported form. `Mutatis mutandis` is a separate,
-      larger, deferred rule and is not part of WLOG. Additional changes to
+      equality cases are the supported form. `Mutatis mutandis` is a separate
+      rule (see its entry) and is not part of WLOG. Additional changes to
       either feature require coordination; this status note does not authorize
       expansion beyond the implemented equality-case replay.
 
@@ -377,7 +378,8 @@ any explicit owner-approval gate on the remaining work.
       any rule that generalizes a constant must account for every hypothesis and
       declaration-structure dependency, not only lines that mention the
       constant. WLOG replay revalidates its transformed suffix and remaps
-      citations; `Mutatis mutandis` still needs a separate context design.
+      citations; `Mutatis mutandis` expands into a repeated argument that is
+      revalidated the same way.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
@@ -405,9 +407,9 @@ any explicit owner-approval gate on the remaining work.
         not already in use; the braces in "a unique set {a, b} that ..." only label the witness;
       - citations written `Rule, 3, 3.2.1` and `Rule, 3.1 to 3.2` (a range
         gives its two endpoints) beside `Rule from 3, 3.2.1`; the names of
-        rule names are recognized in citations: WLOG is handled by the
-        validator's contextual replay path, while `Mutatis mutandis` remains
-        a placeholder until its separate implementation (`Uniqueness` is real);
+        rule names are recognized in citations: WLOG and `Mutatis mutandis`
+        are handled by the validator's contextual replay path (`Uniqueness` is
+        real);
       - a fixture's stated conclusion (`### then ...`) is compared with what
         the proof derived up to the names of bound variables
         (`ProofLogic._alpha_eq`).
@@ -481,13 +483,75 @@ any explicit owner-approval gate on the remaining work.
       then the axiom rules. Do not start the rules until given an explicit
       go-ahead.
 
-- [ ] Mutatis mutandis (deferred -- larger, separate project).
-      Confirmed to be a real, checkable rule: given two parallel subproofs of
-      the same shape, it swaps *which cited line plays which role* (e.g. the
-      line supplying the disjunct fact and the line supplying the membership
-      conclusion trade places), rather than substituting terms. Bigger and
-      less well-specified than the items above; needs its own design pass and
-      does not block them.
+- [x] Mutatis mutandis, stage 1: names replaced by names (Claude, branch
+      `claude/mutatis-mutandis`). `P'. (Mutatis mutandis, B)` repeats the
+      argument of line B for the names that make B say P'. `P'. (Mutatis
+      mutandis, A to B)` does the same and also requires that line A have a
+      counterpart for the new names: `A to B` reads as "the argument from A
+      to B", where A is checked and not repeated. The owner agreed that
+      reading, and that the new names must have whatever property the old ones
+      were cited as having, on 2026-10-21; stages 2 and 3 below were not
+      approved.
+      Design: the validator expands the line into the argument it stands for
+      (`ProofValidator._expand_mutatis_mutandis`) and validates that like any
+      other line, so it is not a trusted rule of its own. `_mm_align` reads the
+      names to replace off B's statement and the new statement; the
+      transformation WLOG uses (`_transform_wlog_entry`, now taking a
+      `_ReplayPolicy`) rewrites B's justification and the subproofs below it,
+      and replaces each citation from outside the argument by the earliest
+      visible line that says the same of the new names. A bundle premise
+      stands for a line when it states every fact the line does. A cited line
+      that says nothing about a replaced name stays cited. Whatever the
+      expansion cites, derives or declares is checked by the kernel as if it
+      had been written out, so a new name that the argument's own witness
+      would capture is refused by the ordinary freshness check. `LabelScope`
+      records the entry that justified each label (`set_source`,
+      `source_of`) for this.
+      Refused, each at the Mutatis mutandis line with its reason: a line B that
+      no rule derived (a premise, an assumption, a declaration), a WLOG step as
+      B (an argument that contains one can be repeated), an argument that
+      contains a hypothesis (a premise, an axiom, a witness named with
+      `Existence from`, a declaration that states a fact or records
+      structure, and any justification not known to be safe to repeat), a
+      statement that is not B with names replaced (another predicate, shape,
+      free variable or quantifier), nothing replaced, one name replaced by two,
+      a cited line or a start line A with no counterpart, more than `B` or
+      `A to B`, a backwards range, a cited line that is not in scope.
+      WLOG is unchanged apart from one thing: the matcher that finds a
+      counterpart line now also ignores the names of bound variables, as it
+      ignored the order of and/or, so WLOG accepts what it accepted and some
+      replays it used to refuse. The kernel's rules still match by `_ast_eq`.
+      The informational `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose
+      second inclusion uses the rule, passes, and with it
+      `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
+      Tests: enforced fixtures `tests/testProofs/mutatis_mutandis.txt` (30
+      cases, each invalid one with a valid twin that differs in the one point
+      it names) and `tests/testSetTheory/mutatis_mutandis_sets.txt` (3);
+      `pytest_tests/test_mutatis_mutandis.py` (87) and
+      `pytest_tests/test_mutatis_mutandis_reasons.py` (56), which pin every
+      refusal to its line, category and reason. 89 deliberate changes to the
+      new code (`tools/mutation_check.py`): 86 were each caught by a test, and
+      the other three are redundant guards (two overlapping size checks in the
+      existing and/or matcher, which are caught together, and a scan of
+      declaration slots that an earlier check already covers). Running them,
+      and the coverage report, found gaps that are now tested: WLOG's refusal
+      of a replay that needs a bundle premise, the alignment of negations,
+      biconditionals, equations and the size of and/or, the statement of the
+      line kept as written down to the name of a bound variable, and the
+      matcher's negation.
+      Limitations: the repeated argument is line B with the subproofs attached
+      to it; the lines between A and B are not replayed. A name is replaced only
+      if it occurs in B's statement and the new statement, so two sets that
+      appear in neither cannot be exchanged. An argument with a witness line, a
+      premise, an axiom or a structure declaration is refused rather than
+      repeated. The finder accepts a counterpart whose and/or are in another
+      order, but a kernel rule that needs the exact formula still refuses it.
+- [ ] Mutatis mutandis, stage 2: a name replaced by a term, which asks
+      whether an argument about `a` is an argument about `f(c)` (no rule
+      depends on `a` being a constant) and which freshness conditions apply.
+      Stage 3: a relation or function symbol replaced by another, with the
+      rules that correspond to each. Neither is designed in detail or
+      approved; both need an owner decision before any work.
 
 ### 6. Typed declarations: `Let X be an integer` should type X
 
@@ -728,9 +792,10 @@ Agent workflow and ownership rules live in
 [`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md). Equality-case WLOG replay
 is implemented (PR #63); the citation-remapping defect in
 [issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is fixed, and the
-informational ZFC proof now stops at its `Mutatis mutandis` line. Arbitrary-property
-WLOG and `Mutatis mutandis` remain deferred; this note is not authorization
-to expand either feature.
+informational ZFC proof now passes, its `Mutatis mutandis` line included.
+`Mutatis mutandis` is implemented for names replaced by names. Arbitrary-property
+WLOG, and `Mutatis mutandis` beyond names, remain deferred; this note is not
+authorization to expand either feature.
 
 ## Soundness audit: variable capture and schema side conditions (2026-10-14)
 
