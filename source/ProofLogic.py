@@ -1098,16 +1098,38 @@ class LabelScope:
             ...
         KeyError: '1'
     """
-    __slots__ = ("_local", "_parent")
+    __slots__ = ("_local", "_parent", "_sources")
 
     def __init__(self, parent: Optional["LabelScope"] = None):
         self._local: Dict[str, Any] = {}
         self._parent = parent
+        # The proof entry that justified each label bound at this level,
+        # kept so that `Mutatis mutandis` can repeat a visible line's
+        # argument. It follows the same scoping as the labels themselves.
+        self._sources: Dict[str, Any] = {}
 
     def __setitem__(self, label: str, value: Any) -> None:
         if label in self:
             raise KeyError(label)
         self._local[label] = value
+
+    def set_source(self, label: str, entry: Any) -> None:
+        """Record `entry`, the proof entry that justified `label`, at this
+        level. Nothing is recorded for a label that is not bound here (a
+        declaration that states no formula binds none)."""
+        if label in self._local:
+            self._sources[label] = entry
+
+    def source_of(self, label: str) -> Any:
+        """The entry recorded for `label` by `set_source`, looked up through
+        the enclosing scopes like the label itself, or None when the label
+        was bound without one (a standalone subproof, a replayed case)."""
+        scope = self
+        while scope is not None:
+            if label in scope._sources:
+                return scope._sources[label]
+            scope = scope._parent
+        return None
 
     def __getitem__(self, label: str) -> Any:
         scope = self
@@ -3702,6 +3724,7 @@ def _clone_label_scope(scope: LabelScope) -> LabelScope:
     for original in reversed(chain):
         clone = LabelScope(parent=clone)
         clone._local.update(original._local)
+        clone._sources.update(original._sources)
     return clone if clone is not None else LabelScope()
 
 
@@ -3731,16 +3754,25 @@ def _visible_label_items(scope: LabelScope):
 
 
 def _wlog_formula_matches(left, right) -> bool:
-    """Match formulas modulo commutativity of And and Or only.
+    """Match formulas modulo commutativity of And and Or, and modulo the names
+    of bound variables.
 
     A substitution can reverse the order of disjuncts in an external
-    characterization. Reordering disjunctions/conjunctions is harmless for
-    citation reuse; no other propositional equivalences are assumed here.
+    characterization, and two lines that say the same thing may name their
+    bound variable differently (`forall z, ...` and `forall u, ...`).
+    Reordering disjunctions/conjunctions and renaming a bound variable are
+    both harmless for citation reuse; no other propositional equivalences are
+    assumed here.
     """
+    return _wlog_matches_in(left, right, {}, {}, 0)
+
+
+def _wlog_matches_in(left, right, env_left: dict, env_right: dict, depth: int) -> bool:
+    """`_wlog_formula_matches` below `depth` quantifiers: `env_left` and
+    `env_right` give each variable the quantifier level that binds it (as in
+    `_alpha_eq_in`), so two variables correspond when they have the same level."""
     if type(left) is not type(right):
         return False
-    if isinstance(left, fl.AtomicFormula) or isinstance(left, fl.Equals):
-        return _ast_eq(left, right)
     if isinstance(left, (fl.And, fl.Or)):
         xs = left.conjuncts if isinstance(left, fl.And) else left.disjuncts
         ys = right.conjuncts if isinstance(right, fl.And) else right.disjuncts
@@ -3749,24 +3781,25 @@ def _wlog_formula_matches(left, right) -> bool:
         unmatched = list(ys)
         for item in xs:
             for index, candidate in enumerate(unmatched):
-                if _wlog_formula_matches(item, candidate):
+                if _wlog_matches_in(item, candidate, env_left, env_right, depth):
                     unmatched.pop(index)
                     break
             else:
                 return False
         return not unmatched
     if isinstance(left, fl.Not):
-        return _wlog_formula_matches(left.sub, right.sub)
+        return _wlog_matches_in(left.sub, right.sub, env_left, env_right, depth)
     if isinstance(left, fl.Implies):
-        return (_wlog_formula_matches(left.antecedent, right.antecedent)
-                and _wlog_formula_matches(left.consequent, right.consequent))
+        return (_wlog_matches_in(left.antecedent, right.antecedent, env_left, env_right, depth)
+                and _wlog_matches_in(left.consequent, right.consequent, env_left, env_right, depth))
     if isinstance(left, fl.Iff):
-        return (_wlog_formula_matches(left.left, right.left)
-                and _wlog_formula_matches(left.right, right.right))
+        return (_wlog_matches_in(left.left, right.left, env_left, env_right, depth)
+                and _wlog_matches_in(left.right, right.right, env_left, env_right, depth))
     if isinstance(left, (fl.ForAll, fl.Exists)):
-        return (left.var == right.var
-                and _wlog_formula_matches(left.body, right.body))
-    return _ast_eq(left, right)
+        return _wlog_matches_in(
+            left.body, right.body,
+            {**env_left, left.var: depth}, {**env_right, right.var: depth}, depth + 1)
+    return _alpha_eq_in(left, right, env_left, env_right, depth)
 
 
 def _wlog_value_matches(actual, expected) -> bool:
@@ -3902,18 +3935,47 @@ def _is_wlog_entry(entry: _ParsedEntry) -> bool:
     )
 
 
+def _visible_counterpart(original_labels: LabelScope, expected) -> Optional[str]:
+    """The label of the earliest visible line whose value is `expected` (see
+    `_wlog_value_matches`), or None."""
+    return next(
+        (
+            candidate_label
+            for candidate_label, candidate_value
+            in _visible_label_items(original_labels)
+            if _wlog_value_matches(candidate_value, expected)
+        ),
+        None,
+    )
+
+
+class _ReplayPolicy(NamedTuple):
+    """How a replay of part of a proof looks for the line to cite in place of
+    a line outside the replay, and what it says when there is none.
+
+    `find(labels, expected)` is the label of a visible line that says what
+    `expected` says, or None. `refusal(citing_label, cited_label, cited_value,
+    expected)` is the detail of the refusal; None keeps the wording of WLOG.
+    """
+    find: Any
+    refusal: Any = None
+
+
+_WLOG_POLICY = _ReplayPolicy(_visible_counterpart)
+
+
 def _transform_wlog_block(entries, mapping, original_labels: LabelScope,
-                          block_label, exchange):
+                          block_label, exchange, policy=_WLOG_POLICY):
     """Transform the entries of one subproof, in order."""
     return [
         _transform_wlog_entry(item, mapping, original_labels, block_label,
-                              index, exchange)
+                              index, exchange, policy)
         for index, item in enumerate(entries or [])
     ]
 
 
 def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
-                          block_label, sidx, exchange):
+                          block_label, sidx, exchange, policy=_WLOG_POLICY):
     """Transform one region entry and remap only its citations outside WLOG.
 
     A citation outside the region is replaced by the earliest visible line
@@ -3928,6 +3990,10 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
     A line may carry subproofs, and each is transformed the same way: a
     standalone block, the one block below a `rule_below` line, and each of the
     case blocks below a `rule_hybrid` line such as `Proof by Cases`.
+
+    `Mutatis mutandis` uses this transformation too, with its own `policy`
+    (`_ReplayPolicy`) for what counts as a line that says the same and for the
+    wording of the refusal.
     """
     classified = _classify_entry(raw_entry)
     if isinstance(classified, str):
@@ -3936,7 +4002,7 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
     if classified.is_subproof_block:
         nested = _transform_wlog_block(
             classified.subproof_entries, mapping, original_labels,
-            classified.label, exchange)
+            classified.label, exchange, policy)
         if len(raw_entry) == 3:
             return (raw_entry[0], "subproof", nested)
         return ("subproof", nested)
@@ -3971,24 +4037,20 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
                         continue
                     original_value = original_labels[reference]
                     expected = _substitute_wlog_value(original_value, mapping)
-                    counterpart = next(
-                        (
-                            candidate_label
-                            for candidate_label, candidate_value
-                            in _visible_label_items(original_labels)
-                            if _wlog_value_matches(candidate_value, expected)
-                        ),
-                        None,
-                    )
+                    counterpart = policy.find(original_labels, expected)
                     if counterpart is None and _wlog_value_matches(
                             original_value, _substitute_wlog_value(original_value, exchange)):
                         remapped.append(reference)
                         continue
                     if counterpart is None:
-                        raise _WLOGReplayError(
-                            label, block_label, sidx, CATEGORY_BAD_REFERENCE,
+                        detail = (
+                            policy.refusal(label, reference, original_value, expected)
+                            if policy.refusal is not None else
                             f"WLOG replay has no visible counterpart for cited line "
-                            f"'{reference}' after substituting the chosen case",
+                            f"'{reference}' after substituting the chosen case"
+                        )
+                        raise _WLOGReplayError(
+                            label, block_label, sidx, CATEGORY_BAD_REFERENCE, detail,
                         )
                     remapped.append(counterpart)
                 parts[index] = remapped
@@ -4002,16 +4064,240 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
         if isinstance(justification, tuple) and justification[:1] == ("rule_hybrid",):
             # One list of entries per case block.
             nested = [
-                _transform_wlog_block(block, mapping, original_labels, label, exchange)
+                _transform_wlog_block(block, mapping, original_labels, label, exchange,
+                                      policy)
                 for block in classified.nested_subproof or []
             ]
         else:
             nested = _transform_wlog_block(
-                classified.nested_subproof, mapping, original_labels, label, exchange)
+                classified.nested_subproof, mapping, original_labels, label, exchange,
+                policy)
         transformed = (label, phi, justification, nested)
     else:
         return raw_entry
     return transformed
+
+
+# --------------------------------------------------------------------------
+# Mutatis mutandis
+#
+#     5.2. X subseteq Y. (Subset proof below)
+#      ...
+#     5.3. Y subseteq X. (Mutatis mutandis, 5.1 to 5.2)
+#
+# repeats the argument of an earlier line for different names. The validator
+# does not trust it as a rule of its own: it *expands* the line -- the
+# argument of line 5.2 with X and Y exchanged, which is read off the two
+# statements -- and validates that expansion like any other line, so a refusal
+# is always an ordinary refusal and nothing is accepted that could not have
+# been written out. What the expansion has to take care of is the lines the
+# argument cites from outside: each one that says something about a name being
+# replaced (5.1 says it of X) needs a visible line that says the same of the
+# replacement (line 3 says it of Y), and that line is cited instead.
+# --------------------------------------------------------------------------
+
+_MUTATIS_MUTANDIS = "MutatisMutandis"
+
+# The justification tags a repeated argument may contain. A premise, an axiom
+# or a declaration that states a formula is a hypothesis of the whole proof:
+# repeating it would add a hypothesis that nobody wrote. Anything not listed
+# here is refused for the same reason, so a tag added later is refused until
+# someone decides it is safe to repeat.
+_MM_REPEATABLE_TAGS = ("rule", "rule_below", "rule_hybrid", "assume", "arbitrary", "declare")
+
+
+def _is_mm_entry(entry: _ParsedEntry) -> bool:
+    justification = entry.justification
+    return (
+        not entry.is_subproof_block
+        and isinstance(justification, tuple)
+        and len(justification) >= 2
+        and justification[0] == "rule"
+        and isinstance(justification[1], NamedRulePlaceholder)
+        and justification[1].name == _MUTATIS_MUTANDIS
+    )
+
+
+def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_claim: dict,
+              depth: int) -> None:
+    """Fill `sigma` with the names that must be replaced for `model` to say
+    what `claim` says, walking the two together.
+
+    Only names are replaced: the shapes, the predicate and function symbols
+    and the free variables must agree, and bound variables must correspond
+    (they may be named differently). A name is replaced by one name, wherever
+    it occurs. Raises `ValueError` with the first disagreement.
+    """
+    def differ() -> ValueError:
+        return ValueError(f"only names may change, but {model!r} would have to become {claim!r}")
+
+    if type(model) is not type(claim):
+        raise differ()
+    if isinstance(model, tl.ConstantTerm):
+        known = sigma.setdefault(model.name, claim)
+        if known.name != claim.name:
+            raise ValueError(
+                f"{model.name} would have to be replaced by both {known.name} and {claim.name}")
+        return
+    if isinstance(model, tl.VariableTerm):
+        bound_model, bound_claim = model.name in env_model, claim.name in env_claim
+        if bound_model or bound_claim:
+            if bound_model and bound_claim and env_model[model.name] == env_claim[claim.name]:
+                return
+            raise differ()
+        if model.name != claim.name:
+            raise differ()
+        return
+    if isinstance(model, tl.FunctionTerm):
+        if model.symbol != claim.symbol or len(model.args) != len(claim.args):
+            raise differ()
+        for x, y in zip(model.args, claim.args):
+            _mm_align(x, y, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.AtomicFormula):
+        if model.predicate != claim.predicate or len(model.args) != len(claim.args):
+            raise differ()
+        for x, y in zip(model.args, claim.args):
+            if isinstance(x, tl.Term) and isinstance(y, tl.Term):
+                _mm_align(x, y, sigma, env_model, env_claim, depth)
+            elif x != y:
+                raise differ()
+        return
+    if isinstance(model, (fl.And, fl.Or)):
+        xs = model.conjuncts if isinstance(model, fl.And) else model.disjuncts
+        ys = claim.conjuncts if isinstance(claim, fl.And) else claim.disjuncts
+        if len(xs) != len(ys):
+            raise differ()
+        for x, y in zip(xs, ys):
+            _mm_align(x, y, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.Not):
+        _mm_align(model.sub, claim.sub, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.Implies):
+        _mm_align(model.antecedent, claim.antecedent, sigma, env_model, env_claim, depth)
+        _mm_align(model.consequent, claim.consequent, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, (fl.Iff, fl.Equals)):
+        _mm_align(model.left, claim.left, sigma, env_model, env_claim, depth)
+        _mm_align(model.right, claim.right, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, (fl.ForAll, fl.Exists)):
+        _mm_align(model.body, claim.body,
+                  sigma, {**env_model, model.var: depth}, {**env_claim, claim.var: depth}, depth + 1)
+        return
+    if model != claim:
+        raise differ()
+
+
+def _mm_renaming(sigma: Dict[str, tl.Term]) -> str:
+    """`sigma` in words: `X by Y and Y by X`."""
+    parts = [f"{old} by {new.name}" for old, new in sigma.items()]
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def _mm_show(value) -> str:
+    """A visible line's value, for a message."""
+    if isinstance(value, fl.Formula):
+        return repr(value)
+    if isinstance(value, list):
+        return "; ".join(_mm_show(item) for item in value)
+    return "a subproof"
+
+
+def _mm_facts(value) -> Optional[List[fl.Formula]]:
+    """The formulas a line's value states: the formula itself, or the members
+    of a bundle. None for a value that is not a statement of facts (a
+    standalone subproof)."""
+    if isinstance(value, fl.Formula):
+        return [value]
+    if isinstance(value, list):
+        facts: List[fl.Formula] = []
+        for item in value:
+            inner = _mm_facts(item)
+            if inner is None:
+                return None
+            facts.extend(inner)
+        return facts
+    return None
+
+
+def _mm_says(candidate, expected, needed: Optional[List[fl.Formula]]) -> bool:
+    """Whether a visible line whose value is `candidate` says what `expected`
+    says: it is that value (`_wlog_value_matches`), or it states every one of
+    its facts (`needed`, from `_mm_facts`).
+
+    The second is what lets a premise written as one bundle -- `Let P, Q and
+    R be such that: A. B. C. (Premise)` -- stand in for a single fact, or for
+    another bundle that is part of it. Which of a bundle's facts a rule then
+    uses is for the rule to find, as it is wherever a line cites a bundle.
+    """
+    if _wlog_value_matches(candidate, expected):
+        return True
+    stated = _mm_facts(candidate)
+    return bool(needed) and stated is not None and all(
+        any(_wlog_formula_matches(have, want) for have in stated) for want in needed)
+
+
+def _mm_counterpart(labels: LabelScope, expected) -> Optional[str]:
+    """The label of the earliest visible line that says what `expected` says
+    (`_mm_says`), or None."""
+    needed = _mm_facts(expected)
+    return next(
+        (label for label, value in _visible_label_items(labels)
+         if _mm_says(value, expected, needed)),
+        None,
+    )
+
+
+def _mm_blocked_line(raw_entry) -> Optional[Tuple[Optional[str], str]]:
+    """The first line of `raw_entry` -- a line and the subproofs below it --
+    that `Mutatis mutandis` may not repeat, as `(label, reason)`, or None.
+
+    Repeating a derivation is sound because the repeated lines are validated;
+    repeating a hypothesis would not be, since it would add a premise, an
+    axiom, a declared fact or declared structure to what the whole proof
+    takes for granted. See `_MM_REPEATABLE_TAGS`.
+    """
+    classified = _classify_entry(raw_entry)
+    if isinstance(classified, str):
+        return None, classified
+    if classified.is_subproof_block:
+        for item in classified.subproof_entries or []:
+            found = _mm_blocked_line(item)
+            if found is not None:
+                return found
+        return None
+
+    label, justification = classified.label, classified.justification
+    if not isinstance(justification, tuple) or not justification:
+        return label, "it has no justification"
+    tag = justification[0]
+    declarations = [
+        item for part in justification[1:] if isinstance(part, list)
+        for item in part if isinstance(item, Declaration)
+    ]
+    if tag == "premise":
+        return label, "it is a premise (so is a witness named with 'Existence from')"
+    if tag == "axiom":
+        return label, "it is an axiom"
+    if tag not in _MM_REPEATABLE_TAGS:
+        return label, f"its justification '{tag}' is not one that can be repeated"
+    if tag == "declare" and classified.phi is not None:
+        return label, "it declares names and states a fact about them"
+    if tag == "rule" and len(justification) >= 4 and justification[3]:
+        return label, "it declares names and states a fact about them"
+    if any(declaration.metadata for declaration in declarations):
+        return label, "it declares structure"
+
+    nested = classified.nested_subproof
+    if nested:
+        for block in (nested if tag == "rule_hybrid" else [nested]):
+            for item in block:
+                found = _mm_blocked_line(item)
+                if found is not None:
+                    return found
+    return None
 
 
 class ProofValidator:
@@ -4180,6 +4466,15 @@ class ProofValidator:
             if isinstance(entry, str):
                 return False, _mk_error(None, block_label, sidx, CATEGORY_MALFORMED_ENTRY, entry), None
 
+            # A `Mutatis mutandis` line is validated as the argument it
+            # repeats, with the line's own label and statement.
+            repeating = None
+            if _is_mm_entry(entry):
+                e, repeating, err = self._expand_mutatis_mutandis(entry, sidx, block_label, labels)
+                if err:
+                    return False, err, None
+                entry = _classify_entry(e)
+
             if _is_wlog_entry(entry):
                 if wlog_snapshot is not None:
                     return False, _mk_error(
@@ -4219,8 +4514,16 @@ class ProofValidator:
                 continue
 
             err = self._validate_line(entry, sidx, block_label, is_subproof, seen, labels, declarations, outer_context)
+            if err and repeating is not None:
+                # The repeated line's own refusal reads as the line's; a
+                # refusal inside the repeated argument says which of its lines.
+                inside = "" if err.label == entry.label else f"{err.location}, in the repeated argument: "
+                err = _mk_error(entry.label, block_label, sidx, err.category,
+                                repeating + inside + err.detail)
             if err:
                 return False, err, None
+            if entry.label:
+                labels.set_source(entry.label, e)
 
             if wlog_snapshot is not None and sidx == wlog_snapshot["index"]:
                 reference = entry.justification[2][0]
@@ -4365,6 +4668,119 @@ class ProofValidator:
                 if not any(rule is existing for existing in self.used_rules):
                     self.used_rules.append(rule)
         return None
+
+    def _expand_mutatis_mutandis(self, entry: _ParsedEntry, sidx: int, block_label: Optional[str],
+                                 labels: LabelScope):
+        """Expand a `Mutatis mutandis` line into the entry that stands for it.
+
+        `P. (Mutatis mutandis, A to B)` repeats the argument of line B for
+        the names that make B say P: the names to replace are read off B's
+        statement and P (`_mm_align`), the argument -- B's justification and
+        the subproofs below it -- is rewritten with them, and each line it
+        cites from outside is replaced by the visible line that says the
+        same of the new names (`_transform_wlog_entry`). Line A, where the
+        argument starts, must itself have such a line. A single cited line
+        is B alone.
+
+        Returns `(entry, note, None)`: the entry to validate in the line's
+        place, carrying its label and statement, and the beginning of the
+        message to give if that validation fails; or `(None, None, error)`.
+        """
+        label, claim, justification = entry.label, entry.phi, entry.justification
+
+        def refuse(category: str, detail: str):
+            return None, None, _mk_error(label, block_label, sidx, category, detail)
+
+        if len(justification) != 3 or entry.nested_subproof is not None:
+            return refuse(CATEGORY_MALFORMED_JUSTIFICATION,
+                          "Mutatis mutandis cites lines and nothing else: it takes no subproofs "
+                          "and declares nothing")
+        refs = justification[2]
+        if not isinstance(claim, fl.Formula) or not isinstance(refs, list):
+            return refuse(CATEGORY_MALFORMED_ENTRY,
+                          "Mutatis mutandis needs a formula and a list of cited lines")
+        if not 1 <= len(refs) <= 2:
+            return refuse(CATEGORY_ARITY_MISMATCH,
+                          "Mutatis mutandis cites the line whose argument it repeats, or a range "
+                          f"'A to B' that ends at it; it was given {refs}")
+        missing = [reference for reference in refs if reference not in labels]
+        if missing:
+            return refuse(CATEGORY_BAD_REFERENCE,
+                          f"Mutatis mutandis cites {missing}, which {'is' if len(missing) == 1 else 'are'} "
+                          "not defined or not in scope at this point in the proof")
+
+        if len(refs) == 2:
+            order = [visible for visible, _ in _visible_label_items(labels)]
+            if order.index(refs[0]) > order.index(refs[1]):
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cites the range '{refs[0]} to {refs[1]}' backwards: "
+                              f"line {refs[0]} comes after line {refs[1]}")
+
+        start = refs[0] if len(refs) == 2 else None
+        model_label = refs[-1]
+        model_value = labels[model_label]
+        model_entry = labels.source_of(model_label)
+        model = _classify_entry(model_entry) if model_entry is not None else None
+        if (not isinstance(model_value, fl.Formula) or not isinstance(model, _ParsedEntry)
+                or model.is_subproof_block or not isinstance(model.justification, tuple)
+                or model.justification[0] not in ("rule", "rule_below", "rule_hybrid")):
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis repeats an argument, and line {model_label} is not a line "
+                          "that a rule derived from other lines")
+        if _is_wlog_entry(model):
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis cannot repeat line {model_label}: it is a WLOG step, "
+                          "which has no argument of its own to repeat (an argument that contains "
+                          "a WLOG step can be repeated)")
+        blocked = _mm_blocked_line(model_entry)
+        if blocked is not None:
+            blocked_label, why = blocked
+            where = f"line {blocked_label}" if blocked_label else "an unlabeled line"
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis cannot repeat the argument of line {model_label}: "
+                          f"{where} is part of it, and {why}; a repeated argument may not add "
+                          "a hypothesis")
+
+        sigma: Dict[str, tl.Term] = {}
+        try:
+            _mm_align(model_value, claim, sigma, {}, {}, 0)
+        except ValueError as exc:
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"{claim!r} is not line {model_label}, {model_value!r}, with names "
+                          f"replaced: {exc}")
+        sigma = {old: new for old, new in sigma.items() if new.name != old}
+        if not sigma:
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"nothing to change: {claim!r} says what line {model_label} says")
+        renaming = _mm_renaming(sigma)
+
+        if start is not None:
+            start_value = labels[start]
+            expected_start = _substitute_wlog_value(start_value, sigma)
+            if _mm_counterpart(labels, expected_start) is None:
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cannot start from line {start}: it says "
+                              f"{_mm_show(start_value)}, and no visible line says "
+                              f"{_mm_show(expected_start)}, which is what it says with {renaming}")
+
+        def no_counterpart(citing_label, reference, original, expected):
+            where = f"line {citing_label}" if citing_label else "an unlabeled line"
+            return (f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: "
+                    f"{where} cites line {reference}, which says {_mm_show(original)}, "
+                    f"and no visible line says {_mm_show(expected)}")
+
+        try:
+            transformed = _transform_wlog_entry(
+                model_entry, sigma, labels, block_label, sidx, sigma,
+                _ReplayPolicy(_mm_counterpart, no_counterpart))
+        except _WLOGReplayError as exc:
+            return refuse(exc.category, exc.detail)
+
+        if len(model_entry) == 4:
+            repeated = (label, claim, transformed[2], transformed[3])
+        else:
+            repeated = (label, claim, transformed[2])
+        return repeated, f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: ", None
 
     def _check_opens_with_assumption(self, first_entry: Any) -> Tuple[Optional[str], Optional[str]]:
         """A subproof must open with an assumption ("... (Assumption for
@@ -4758,6 +5174,10 @@ class ProofValidator:
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed hybrid rule justification")
         rule, indices = justification[1], justification[2]
+        if isinstance(rule, NamedRulePlaceholder) and rule.name == _MUTATIS_MUTANDIS:
+            return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
+                             "Mutatis mutandis cites lines and nothing else: it takes no subproofs "
+                             "and declares nothing")
         if nested_subproof is None or not isinstance(nested_subproof, list):
             return _mk_error(label, block_label, sidx, CATEGORY_MISSING_SUBPROOF,
                              "hybrid rule requires subproofs below the cited line")
