@@ -2,7 +2,7 @@
 
 The owner asked Claude to queue work that ChatGPT can do without Claude, to save Claude's time. Take jobs in order, one PR per job. Stable rules: [`AGENT_COLLABORATION.md` on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md). Live status: `AGENT_COLLABORATION.md` on this branch. If this file conflicts with the owner or with master's guide, they win; say so in the PR.
 
-Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`. Edit only the Status table; do not delete jobs.
+Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`; J24 and J25 against master `97e71ee`. Edit only the Status table; do not delete jobs.
 
 ## Status
 
@@ -26,13 +26,15 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J21 | Reject ambiguous parity shorthand under quantifiers | merged (PR #117) |
 | J22 | Centralize parser extension assembly | merged (PR #118) |
 | J23 | Expand informational relation and order proofs | merged (PR #119) |
+| J24 | Red-team Mutatis mutandis | todo |
+| J25 | Where stage 1 of Mutatis mutandis stops | todo |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
 ## Rules for every job
 
 1. **Branch and PR.** Branch from current master as `chatgpt/<job>-<slug>`. One job per PR, small (about 15 proofs or 400 changed lines at most). Open it as a draft; mark it ready when CI shows what the job's "Done when" says. The owner merges.
-2. **CI is your test run.** You cannot run code. Push early, read the run, fix, push again. Never state a result you did not read from a CI run. Every PR reports: tested commit, CI run link, Python tests (passed / failed / xfailed), coverage, enforced fixtures, informational fixtures, and the one known failing test (`test_zfc_remaining_axioms_fixture_all_pass`, see "One known failing test" in the live handoff) listed separately.
+2. **CI is your test run.** You cannot run code. Push early, read the run, fix, push again. Never state a result you did not read from a CI run. Every PR reports: tested commit, CI run link, Python tests (passed / failed / xfailed), coverage, enforced fixtures and informational fixtures. Since PR #121 no test is known to fail (see "No known failing test" in the live handoff), so a failure in your PR is yours to explain or fix; list it separately, never as known.
 3. **Off limits.** Do not edit `source/ProofLogic.py` or `source/ProofJustification.py`. Do not change an existing test, fixture or oracle case to make something pass. Do not start anything under "Not yet" below.
 4. **A checker problem is a finding, not a failed job.** Four kinds: (a) a valid proof is rejected, (b) an invalid proof is accepted, (c) a crash, (d) a message that points at the wrong thing. File one issue per finding, titled `[finding] <short>`, with: the smallest proof text that shows it (fenced), the exact message or the wrong acceptance, the rule or file you suspect, and `Owner: Claude` when the kernel is involved. Keep the PR green: leave an (a) proof out of the fixtures (it lives in the issue); record a (b) as a pytest marked `@pytest.mark.xfail(strict=True, reason="issue #n")` that asserts the proof is rejected. Claude fixes the kernel and removes the marker. Before you file (a), compare the proof with "Verified patterns" and its pitfalls: a rejected proof is far more often a mistake in the proof than a gap in the checker. File only when you are confident the proof is valid, and say what you tried. This replaces the older "report holes in a draft PR" rule.
 5. **Negative proofs fail for the intended reason.** A fixture marked invalid must be refused for the reason its title names, not for a parse error, an undeclared symbol or a scope slip. Pin the reason with a test that checks the refusal message, like `pytest_tests/test_uniqueness_red_team_reasons.py`.
@@ -243,9 +245,38 @@ Do:
 
 Done when: CI shows only the known failing test and the PR says, per item, what changed. Claude then runs the J7 tool as in J19: `DE-concl-first`, `PbC-target-pos` and `EE-outer` must be KILLED (all three survive on master).
 
+## J24. Red-team Mutatis mutandis
+
+Why: PR #121 added a kernel feature that repeats an argument for other names by expanding it and validating the expansion like any other line. Claude wrote 33 fixture cases and mutation-tested it, but an independent pass finds what its author did not think of, and an accepted bad proof is finding (b), the worst kind.
+
+Read first (read only): `docs/PROOF_FILE_FORMAT.md`, "Mutatis mutandis: the same argument for other names"; the header and the 30 cases of `tests/testProofs/mutatis_mutandis.txt` and the 3 of `tests/testSetTheory/mutatis_mutandis_sets.txt` (do not repeat their cases); `pytest_tests/test_mutatis_mutandis_reasons.py` (the pinning shape); and in `source/ProofLogic.py` `_expand_mutatis_mutandis`, `_mm_align`, `_mm_blocked_line`, `_mm_counterpart` and `_transform_wlog_entry`.
+
+Do: at least 15 new cases in `tests/testProofs/red_team_mutatis_mutandis.txt` (enforced). Each invalid case is refused for the reason its `## Invalid: <condition> — <why>` title names and has a valid twin that differs from it only in that condition. Pin each refusal (line, category, reason) in `pytest_tests/test_mutatis_mutandis_red_team_reasons.py` (rule 5). Starting points, because accepting any of them is unsound:
+
+1. The new name is one the argument itself makes arbitrary or fresh: the arbitrary constant of a `Universal Generalization` subproof, the witness of an `Existential Elimination`, a name declared inside the argument.
+2. The new name occurs in a hypothesis in force where the line stands (a premise, an enclosing assumption) that the argument's generalization or elimination needs it not to occur in.
+3. The argument cites a line that mentions a replaced name only inside a bundle premise, a quantified formula or a standalone subproof; a bundle that states the needed fact for one name but the old fact for the other.
+4. A hypothesis hidden in the argument: `Existence from`, a `Let ... such that` line, a declaration that states a fact, an axiom citation, at any depth and in each case block of a `Proof by Cases`.
+5. Replacements that are not names or not one-to-one in the way the doc says: two names to one (accepted), one name to two, a constant to a variable or a function term, a free variable renamed, a bound variable that does not correspond, another predicate or connective, an `and` or `or` with another number of parts, `A -> B` against `B -> A`.
+6. Citations: `A to B` with A after B, A not visible, A the same line as B; B a premise, a declaration or a WLOG step; three citations; a line inside a closed subproof; a line citing itself.
+7. Chains and interplay: a repeat of a repeat whose names drift (a by b, then b by c); three names rotated; a repeat inside a subproof of a line outside it, and the reverse; a repeat inside a WLOG region; two repeats of the same line with different names (both must be accepted).
+8. Equality and function terms: `Substitution` repeated for other names; a function term whose argument is replaced; an equation whose sides are exchanged.
+
+If an invalid proof is accepted, that is finding (b): an issue with `Owner: Claude`, a strict xfail in your pins, and a note in the PR. If a valid proof is refused, compare it with the doc first: the repeated argument is checked like any line, a name is replaced only if it occurs in both statements, and the lines between A and B are not replayed. A message that does not say why is finding (d).
+
+Done when: every point above has a case or a sentence in the PR saying why it cannot be written, none repeats an existing case, CI shows no failing test, and the PR lists every finding.
+
+## J25. Where stage 1 of Mutatis mutandis stops
+
+Why: the owner has not decided whether to extend the rule to a name replaced by a term (stage 2) or to relation and function symbols (stage 3). That decision needs examples from real proofs.
+
+Do (read only, except the new file): go through the proofs under `tests/` and `source/testProofs/` and find places where a proof repeats an argument with other names, objects or symbols: a second inclusion that is the first with the sets exchanged, a second case of a case split, the other half of a biconditional, a lemma used twice. For each place that stage 1 can express, write the shortened proof with `Mutatis mutandis` in the new informational file `tests/setTheoryProofs/mutatis_mutandis_examples.txt`, with the file test of rule 7 in the new `pytest_tests/test_mutatis_mutandis_examples.py`. For each place it cannot, say in the PR description which of three things is missing: (i) the replaced name occurs only inside the argument, in neither statement; (ii) a name must be replaced by a term; (iii) a relation or function symbol must be replaced (name both symbols and the rules that correspond). Leave the original proofs as they are.
+
+Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places that stage 1 can express, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, what is needed), and CI shows no failing test. The table is for the owner. Do not start stage 2 or 3.
+
 ## Not yet (needs owner approval; do not start)
 
-`Mutatis mutandis`; WLOG for arbitrary properties; the symbolic defining property; the Infinity follow-up in `todos.txt` §5; retiring the generic `(Axiom)` citation; declaring function symbols in proof text and set operations as terms (no design yet); new theory modules such as abstract algebra or topology. If you think of a job that is not here, put it in the live handoff as a proposal and wait.
+`Mutatis mutandis` beyond names replaced by names (a name replaced by a term; relation or function symbols replaced); WLOG for arbitrary properties; the symbolic defining property; the Infinity follow-up in `todos.txt` §5; retiring the generic `(Axiom)` citation; declaring function symbols in proof text and set operations as terms (no design yet); new theory modules such as abstract algebra or topology. If you think of a job that is not here, put it in the live handoff as a proposal and wait.
 
 ## What Claude does meanwhile
 
