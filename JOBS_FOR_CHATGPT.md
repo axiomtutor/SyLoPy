@@ -27,7 +27,7 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J22 | Centralize parser extension assembly | merged (PR #118) |
 | J23 | Expand informational relation and order proofs | merged (PR #119) |
 | J24 | Red-team Mutatis mutandis | in progress (PR #123) |
-| J25 | Where stage 1 of Mutatis mutandis stops | todo |
+| J25 | Where stage 1 of Mutatis mutandis stops | in progress (PR #124) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
