@@ -69,31 +69,24 @@ end subproof
 5. Y subseteq X. (Mutatis mutandis, 2 to 4)
 6. X = Y. (Set Equality from 4, 5)
 
-# 4: Related elements have equal equivalence classes
+# 4: Two sets with the same intersection-membership property are equal
 ## Proof that
-### if R is an equivalence relation and R(a, b), then the classes C and D of a and b are equal
-### then C = D.
+### if A and B are sets and X and Y contain exactly their common members
+### then X = Y.
 
-1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
-2. Let C and D be any sets. (Declaration)
-3. R(a, b). (Premise)
-4. R(b, a). (Relation Symmetry from 3)
-5. forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Premise)
-6. forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Premise)
-7. C subseteq D. (Subset proof below)
+1. Let A, B, X and Y be any sets. (Declaration)
+2. forall u, (In(u, X) iff (In(u, A) and In(u, B))). (Premise)
+3. forall u, (In(u, Y) iff (In(u, A) and In(u, B))). (Premise)
+4. X subseteq Y. (Subset proof below)
 begin subproof
- 7.1. Let u in C. (Assumption for subset proof)
- 7.2. In(u, X) and R(a, u). (Set property from 5, 7.1)
- 7.3. R(a, u). (Conjunction Elimination from 7.2)
- 7.4. R(b, u). (Relation Transitivity from 4, 7.3)
- 7.5. In(u, X). (Conjunction Elimination from 7.2)
- 7.6. In(u, X) and R(b, u). (Conjunction Introduction from 7.5, 7.4)
- 7.7. In(u, D). (Set property from 6, 7.6)
+ 4.1. Let x in X. (Assumption for subset proof)
+ 4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
+ 4.3. In(x, Y). (Set property from 3, 4.2)
 end subproof
-8. D subseteq C. (Mutatis mutandis, 5 to 7)
-9. C = D. (Set Equality from 7, 8)
+5. Y subseteq X. (Mutatis mutandis, 2 to 4)
+6. X = Y. (Set Equality from 4, 5)
 
-# 5: A common member makes the equivalence classes equal
+# 5: A common member lets us repeat the relation argument for reversed names
 ## Proof that
 ### if R is an equivalence relation and u belongs to both classes C and D of a and b
 ### then C = D.
@@ -110,19 +103,29 @@ end subproof
 10. R(b, u). (Conjunction Elimination from 8)
 11. R(u, b). (Relation Symmetry from 10)
 12. R(a, b). (Relation Transitivity from 9, 11)
-13. R(b, a). (Relation Symmetry from 12)
-14. C subseteq D. (Subset proof below)
+13. R(u, a). (Relation Symmetry from 9)
+14. R(b, a). (Mutatis mutandis, 12)
+15. C subseteq D. (Subset proof below)
 begin subproof
- 14.1. Let v in C. (Assumption for subset proof)
- 14.2. In(v, X) and R(a, v). (Set Property from 3, 14.1)
- 14.3. R(a, v). (Conjunction Elimination from 14.2)
- 14.4. R(b, v). (Relation Transitivity from 13, 14.3)
- 14.5. In(v, X). (Conjunction Elimination from 14.2)
- 14.6. In(v, X) and R(b, v). (Conjunction Introduction from 14.5, 14.4)
- 14.7. In(v, D). (Set property from 4, 14.6)
+ 15.1. Let v in C. (Assumption for subset proof)
+ 15.2. In(v, X) and R(a, v). (Set property from 3, 15.1)
+ 15.3. R(a, v). (Conjunction Elimination from 15.2)
+ 15.4. R(b, v). (Relation Transitivity from 14, 15.3)
+ 15.5. In(v, X). (Conjunction Elimination from 15.2)
+ 15.6. In(v, X) and R(b, v). (Conjunction Introduction from 15.5, 15.4)
+ 15.7. In(v, D). (Set property from 4, 15.6)
 end subproof
-15. D subseteq C. (Mutatis mutandis, 3 to 14)
-16. C = D. (Set Equality from 14, 15)
+16. D subseteq C. (Subset proof below)
+begin subproof
+ 16.1. Let v in D. (Assumption for subset proof)
+ 16.2. In(v, X) and R(b, v). (Set property from 4, 16.1)
+ 16.3. R(b, v). (Conjunction Elimination from 16.2)
+ 16.4. R(a, v). (Relation Transitivity from 12, 16.3)
+ 16.5. In(v, X). (Conjunction Elimination from 16.2)
+ 16.6. In(v, X) and R(a, v). (Conjunction Introduction from 16.5, 16.4)
+ 16.7. In(v, C). (Set property from 3, 16.6)
+end subproof
+17. C = D. (Set Equality from 15, 16)
 
 # 6: Opposite vertices in a partial-order four-cycle are equal
 ## Proof that
