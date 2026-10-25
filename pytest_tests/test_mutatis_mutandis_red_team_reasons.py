@@ -21,9 +21,10 @@ REFUSALS = {
     "10": ("5", BAD_REFERENCE, "no visible line says a = d"),
     "12": ("5", RULE_MISMATCH, "only names may change"),
     "17": ("3", RULE_MISMATCH, "only names may change"),
+    "20": ("3", RULE_MISMATCH, "only names may change"),
 }
 
-VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "18"]
+VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "18", "19"]
 SIBLINGS = {
     "2": "1",
     "4": "3",
@@ -32,6 +33,7 @@ SIBLINGS = {
     "10": "9",
     "12": "11",
     "17": "16",
+    "20": "19",
 }
 
 
