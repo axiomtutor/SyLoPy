@@ -1,0 +1,141 @@
+Use discrete math.
+
+(*
+Informational examples surveyed from existing proofs:
+1. tests/testSetTheory/unique_pairing_without_wlog.txt
+2. tests/setTheoryProofs/union_and_power_set_theorems.txt, proof 5
+3. tests/setTheoryProofs/union_and_power_set_theorems.txt, proof 6
+4. tests/testDiscreteMath/equivalence_classes.txt, proof 3
+5. tests/testDiscreteMath/equivalence_classes.txt, proof 5
+6. source/testProofs/informationalRelationOrderProofs.txt, proof 8
+
+Each Mutatis mutandis line replaces a repeated argument whose named objects
+occur in both the result and the relevant premises. The original proofs are
+left unchanged.
+*)
+
+# 1: Two sets with the same pair-membership property are equal
+## Proof that
+### if a and b are sets and X and Y have exactly the members a and b
+### then X = Y.
+
+1. Let a, b, X and Y be any sets. (Declaration)
+2. forall z, (In(z, X) iff (z = a or z = b)). (Premise)
+3. forall z, (In(z, Y) iff (z = a or z = b)). (Premise)
+4. X subseteq Y. (Subset proof below)
+begin subproof
+ 4.1. Let x in X. (Assumption for subset proof)
+ 4.2. In(x, X) iff (x = a or x = b). (Universal Instantiation from 2)
+ 4.3. In(x, X) -> (x = a or x = b). (Biconditional Elimination from 4.2)
+ 4.4. x = a or x = b. (Modus Ponens from 4.3, 4.1)
+ 4.5. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
+ 4.6. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 4.5)
+ 4.7. In(x, Y). (Modus Ponens from 4.6, 4.4)
+end subproof
+5. Y subseteq X. (Mutatis mutandis, 2 to 4)
+6. X = Y. (Set Equality from 4, 5)
+
+# 2: Two sets with the same union-membership property are equal
+## Proof that
+### if A is a set and X and Y contain exactly the elements belonging to a member of A
+### then X = Y.
+
+1. Let A, X and Y be any sets. (Declaration)
+2. forall z, (In(z, X) iff (exists v, (In(v, A) and In(z, v)))). (Premise)
+3. forall z, (In(z, Y) iff (exists v, (In(v, A) and In(z, v)))). (Premise)
+4. X subseteq Y. (Subset proof below)
+begin subproof
+ 4.1. Let x in X. (Assumption for subset proof)
+ 4.2. Exists v, (In(v, A) and In(x, v)). (Set property from 2, 4.1)
+ 4.3. In(x, Y). (Set property from 3, 4.2)
+end subproof
+5. Y subseteq X. (Mutatis mutandis, 2 to 4)
+6. X = Y. (Set Equality from 4, 5)
+
+# 3: Two sets with the same power-set membership property are equal
+## Proof that
+### if A is a set and X and Y contain exactly the subsets of A
+### then X = Y.
+
+1. Let A, X and Y be any sets. (Declaration)
+2. forall z, (In(z, X) iff z subset A). (Premise)
+3. forall z, (In(z, Y) iff z subset A). (Premise)
+4. X subseteq Y. (Subset proof below)
+begin subproof
+ 4.1. Let x in X. (Assumption for subset proof)
+ 4.2. x subset A. (Set property from 2, 4.1)
+ 4.3. In(x, Y). (Set property from 3, 4.2)
+end subproof
+5. Y subseteq X. (Mutatis mutandis, 2 to 4)
+6. X = Y. (Set Equality from 4, 5)
+
+# 4: Related elements have equal equivalence classes
+## Proof that
+### if R is an equivalence relation and R(a, b), then the classes C and D of a and b are equal
+### then C = D.
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, a). (Relation Symmetry from 2)
+4. forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Premise)
+5. forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Premise)
+6. C subseteq D. (Subset proof below)
+begin subproof
+ 6.1. Let u in C. (Assumption for subset proof)
+ 6.2. In(u, X) and R(a, u). (Set property from 4, 6.1)
+ 6.3. R(a, u). (Conjunction Elimination from 6.2)
+ 6.4. R(b, u). (Relation Transitivity from 3, 6.3)
+ 6.5. In(u, X). (Conjunction Elimination from 6.2)
+ 6.6. In(u, X) and R(b, u). (Conjunction Introduction from 6.5, 6.4)
+ 6.7. In(u, D). (Set property from 5, 6.6)
+end subproof
+7. D subseteq C. (Mutatis mutandis, 4 to 6)
+8. C = D. (Set Equality from 6, 7)
+
+# 5: A common member makes the equivalence classes equal
+## Proof that
+### if R is an equivalence relation and u belongs to both classes C and D of a and b
+### then C = D.
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, u be in X. (Declaration)
+2. forall v, (In(v, C) iff (In(v, X) and R(a, v))). (Premise)
+3. forall v, (In(v, D) iff (In(v, X) and R(b, v))). (Premise)
+4. In(u, C). (Premise)
+5. In(u, D). (Premise)
+6. In(u, X) and R(a, u). (Set property from 2, 4)
+7. In(u, X) and R(b, u). (Set property from 3, 5)
+8. R(a, u). (Conjunction Elimination from 6)
+9. R(b, u). (Conjunction Elimination from 7)
+10. R(u, b). (Relation Symmetry from 9)
+11. R(a, b). (Relation Transitivity from 8, 10)
+12. R(b, a). (Relation Symmetry from 11)
+13. C subseteq D. (Subset proof below)
+begin subproof
+ 13.1. Let v in C. (Assumption for subset proof)
+ 13.2. In(v, X) and R(a, v). (Set Property from 2, 13.1)
+ 13.3. R(a, v). (Conjunction Elimination from 13.2)
+ 13.4. R(b, v). (Relation Transitivity from 12, 13.3)
+ 13.5. In(v, X). (Conjunction Elimination from 13.2)
+ 13.6. In(v, X) and R(b, v). (Conjunction Introduction from 13.5, 13.4)
+ 13.7. In(v, D). (Set property from 3, 13.6)
+end subproof
+14. D subseteq C. (Mutatis mutandis, 2 to 13)
+15. C = D. (Set Equality from 13, 14)
+
+# 6: Opposite vertices in a partial-order four-cycle are equal
+## Proof that
+### if R is a partial order and R(a,b), R(b,c), R(c,d), and R(d,a)
+### then a = c and b = d.
+
+1. Let X be any set, R be a partial order on X, and a, b, c, d be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, c). (Premise)
+4. R(c, d). (Premise)
+5. R(d, a). (Premise)
+6. R(a, c). (Relation Transitivity from 2, 3)
+7. R(c, a). (Relation Transitivity from 4, 5)
+8. a = c. (Relation Antisymmetry from 6, 7)
+9. R(b, d). (Relation Transitivity from 3, 4)
+10. R(d, b). (Relation Transitivity from 5, 2)
+11. b = d. (Mutatis mutandis, 8)
+12. a = c and b = d. (Conjunction Introduction from 8, 11)
