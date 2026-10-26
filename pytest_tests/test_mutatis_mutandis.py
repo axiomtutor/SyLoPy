@@ -298,6 +298,159 @@ def test_the_line_is_accepted_exactly_when_the_argument_written_out_is(
 
 
 # --------------------------------------------------------------------------
+# A name replaced by a term
+# --------------------------------------------------------------------------
+
+TERM_ARGUMENT = """1. Let a be an object and P, Q be predicates and f be a unary function such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(f(a)). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(f(a)). (Mutatis mutandis, 4)
+"""
+
+
+def test_a_term_is_stated_and_cited_where_the_name_was(monkeypatch):
+    seen, ok, err = _validated(TERM_ARGUMENT, "5", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    assert pl._ast_eq(entry.phi, atom("Q", fn("f", c("a"))))
+    assert entry.justification[1].name == "UniversalModusPonens"
+    # line 1 says nothing of a, so it is cited as it is; line 2 says P(a), and line 3 says P(f(a))
+    assert entry.justification[2] == ["1", "3"]
+
+
+SIMULTANEOUS = """1. Let a, b, c be objects and R be a predicate and g be a binary function such that: forall x, forall y, (R(x, y) -> R(g(x, y), x)). (Premise)
+2. R(a, b) -> R(g(a, b), a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a, b). (Assumption for Conditional Introduction)
+ 2.2. forall y, (R(a, y) -> R(g(a, y), a)). (Universal Instantiation from 1)
+ 2.3. R(a, b) -> R(g(a, b), a). (Universal Instantiation from 2.2)
+ 2.4. R(g(a, b), a). (Modus Ponens from 2.3, 2.1)
+end subproof
+3. R(g(a, b), c) -> R(g(g(a, b), c), g(a, b)). (Mutatis mutandis, 2)
+"""
+
+
+def test_the_names_are_replaced_at_once_so_a_term_is_not_replaced_again(monkeypatch):
+    # a becomes g(a, b) and b becomes c: the a and b inside g(a, b) are what the term says, not names to replace
+    seen, ok, err = _validated(SIMULTANEOUS, "3", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    new_a = fn("g", c("a"), c("b"))
+    assert [item[0] for item in entry.nested_subproof] == ["2.1", "2.2", "2.3", "2.4"]
+    assert _same([item[1] for item in entry.nested_subproof], [
+        atom("R", new_a, c("c")),
+        fl.ForAll("y", fl.Implies(atom("R", new_a, v("y")), atom("R", fn("g", new_a, v("y")), new_a))),
+        fl.Implies(atom("R", new_a, c("c")), atom("R", fn("g", new_a, c("c")), new_a)),
+        atom("R", fn("g", new_a, c("c")), new_a),
+    ])
+    # the argument cites line 1 for what it says of every name, so line 1 is cited as it is
+    assert entry.nested_subproof[1][2][2] == ["1"]
+
+
+def test_a_repeat_for_a_term_can_be_repeated_for_a_term_of_that_term():
+    _accepted("""1. Let a be an object and P be a predicate and f be a unary function such that: forall x, (P(x) -> P(f(x))). (Premise)
+2. P(a) -> P(f(a)). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P(a). (Assumption for Conditional Introduction)
+ 2.2. P(f(a)). (Universal Modus Ponens from 1, 2.1)
+end subproof
+3. P(f(a)) -> P(f(f(a))). (Mutatis mutandis, 2)
+4. P(f(f(a))) -> P(f(f(f(a)))). (Mutatis mutandis, 3)
+""")
+
+
+PA_QA_RA = [PA_QA, QA_RA]
+PFA_QFA, QFA_RFA = "P(f(a)) -> Q(f(a)).", "Q(f(a)) -> R(f(a))."
+
+
+def _chain_for_a_term(premises, repeat):
+    """The chain of conditionals for a, with the premises given, then `repeat`."""
+    lines = ["1. Let a be an object. (Declare)", "2. Let P, Q and R be predicates. (Declare)",
+             "3. Let f be a unary function. (Declare)"]
+    lines.extend(f"{4 + index}. {premise} (Premise)" for index, premise in enumerate(premises))
+    first, second = 4 + premises.index(PA_QA), 4 + premises.index(QA_RA)
+    n = 4 + len(premises)
+    lines += [
+        f"{n}. P(a) -> R(a). (Conditional Introduction from subproof below)",
+        "begin subproof",
+        f" {n}.1. P(a). (Assumption for Conditional Introduction)",
+        f" {n}.2. Q(a). (Modus Ponens from {first}, {n}.1)",
+        f" {n}.3. R(a). (Modus Ponens from {second}, {n}.2)",
+        "end subproof",
+    ]
+    lines += repeat(n)
+    return "\n".join(lines) + "\n"
+
+
+def _term_by_mutatis_mutandis(n):
+    return [f"{n + 1}. P(f(a)) -> R(f(a)). (Mutatis mutandis, {n})"]
+
+
+def _term_written_out(first, second):
+    def repeat(n):
+        return [
+            f"{n + 1}. P(f(a)) -> R(f(a)). (Conditional Introduction from subproof below)",
+            "begin subproof",
+            f" {n + 1}.1. P(f(a)). (Assumption for Conditional Introduction)",
+            f" {n + 1}.2. Q(f(a)). (Modus Ponens from {first}, {n + 1}.1)",
+            f" {n + 1}.3. R(f(a)). (Modus Ponens from {second}, {n + 1}.2)",
+            "end subproof",
+        ]
+    return repeat
+
+
+@pytest.mark.parametrize("premises, written_first, written_second, accepted", [
+    # the facts about f(a) are there, in whatever order: the line and the written-out argument are both fine
+    ([PA_QA, QA_RA, PFA_QFA, QFA_RFA], 6, 7, True),
+    ([PFA_QFA, QFA_RFA, PA_QA, QA_RA], 4, 5, True),
+    ([PA_QA, PFA_QFA, QA_RA, QFA_RFA], 5, 7, True),
+    # one is missing, or both: the argument cannot be written out for the term, and the line is refused
+    ([PA_QA, QA_RA, PFA_QFA], 6, 5, False),
+    ([PA_QA, QA_RA, QFA_RFA], 4, 6, False),
+    ([PA_QA, QA_RA], 4, 5, False),
+])
+def test_the_line_is_accepted_exactly_when_the_argument_written_out_for_the_term_is(
+        premises, written_first, written_second, accepted):
+    by_the_line = _chain_for_a_term(premises, _term_by_mutatis_mutandis)
+    written = _chain_for_a_term(premises, _term_written_out(written_first, written_second))
+    _entries, (line_ok, line_err) = _check_text(by_the_line)
+    _entries, (written_ok, written_err) = _check_text(written)
+    assert line_ok == accepted, line_err
+    assert written_ok == accepted, written_err
+    if not accepted:
+        assert line_err.category == pl.CATEGORY_BAD_REFERENCE
+        assert "with a by f(a):" in line_err.detail, line_err
+
+
+def test_the_start_of_a_range_needs_a_counterpart_for_the_term():
+    start = """1. Let a be an object and P, Q, S be predicates and f be a unary function such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. S(a). (Premise)
+4. P(f(a)). (Premise)
+5. Q(a). (Universal Modus Ponens from 1, 2)
+"""
+    err = _refused(start + "6. Q(f(a)). (Mutatis mutandis, 3 to 5)\n")
+    assert err.label == "6"
+    assert err.category == pl.CATEGORY_BAD_REFERENCE
+    assert err.detail == ("Mutatis mutandis cannot start from line 3: it says S(a), and no visible line "
+                          "says S(f(a)), which is what it says with a by f(a)")
+    _accepted(start + "6. S(f(a)). (Premise)\n7. Q(f(a)). (Mutatis mutandis, 3 to 5)\n")
+
+
+def test_a_term_that_is_not_ground_cannot_reach_the_expansion_by_any_proof_text():
+    # a term with a variable is refused when the names are read off, before anything is repeated
+    err = _refused("""1. Let a be an object and R be a predicate and g be a unary function. (Declare)
+2. R(a, a). (Premise)
+3. exists x, R(x, a). (Existential Introduction from 2)
+4. exists x, R(x, g(x)). (Mutatis mutandis, 3)
+""")
+    assert err.label == "4"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert "which has the variable x in it" in err.detail
+
+
+# --------------------------------------------------------------------------
 # What is read from the statement, and what is not
 # --------------------------------------------------------------------------
 
@@ -351,7 +504,8 @@ def test_a_constant_cannot_become_a_bound_variable():
     assert err.category == pl.CATEGORY_RULE_MISMATCH
     assert err.detail == (
         "(∃x. R(x, x)) is not line 4, (∃x. R(x, a)), with names replaced: "
-        "only names may change, but a would have to become x")
+        "a would have to be replaced by x, which is a variable: only a term without variables "
+        "can replace a name")
 
 
 def test_the_claim_is_checked_like_any_line_so_it_cannot_use_an_undeclared_name():
@@ -641,7 +795,7 @@ def test_a_line_with_no_justification_cannot_be_repeated():
 def _align(model, claim):
     sigma = {}
     pl._mm_align(model, claim, sigma, {}, {}, 0)
-    return {old: new.name for old, new in sigma.items()}
+    return {old: repr(new) for old, new in sigma.items()}
 
 
 def _refuses_to_align(model, claim):
@@ -707,9 +861,40 @@ def test_a_variable_must_stay_the_same_when_free():
     assert "only names may change" in _refuses_to_align(free_x, free_y)
 
 
-def test_a_constant_cannot_become_a_term_that_is_not_a_constant():
-    assert "only names may change" in _refuses_to_align(_a("P", "a"), atom("P", fn("f", c("b"))))
-    assert "only names may change" in _refuses_to_align(_a("P", "a"), atom("P", v("x")))
+def test_a_constant_is_replaced_by_a_term_without_variables():
+    assert _align(_a("P", "a"), atom("P", fn("f", c("b")))) == {"a": "f(b)"}
+    assert _align(_a("P", "a"), atom("P", fn("f", fn("g", c("b")), c("c")))) == {"a": "f(g(b), c)"}
+    # a term may mention the name it replaces, or the other names that are replaced
+    assert _align(_a("R", "a", "b"), atom("R", fn("f", c("a"), c("b")), c("c"))) == {"a": "f(a, b)", "b": "c"}
+
+
+def test_a_name_is_replaced_by_one_term_wherever_it_occurs():
+    assert _refuses_to_align(_a("R", "a", "a"), atom("R", fn("f", c("b")), fn("f", c("c")))) == (
+        "a would have to be replaced by both f(b) and f(c)")
+    assert _refuses_to_align(_a("R", "a", "a"), atom("R", fn("f", c("b")), c("b"))) == (
+        "a would have to be replaced by both f(b) and b")
+
+
+def test_a_constant_cannot_become_a_term_that_has_a_variable_in_it():
+    message = _refuses_to_align(_a("P", "a"), atom("P", fn("f", c("b"), fn("g", v("x")))))
+    assert message == ("a would have to be replaced by f(b, g(x)), which has the variable x in it: "
+                       "only a term without variables can replace a name")
+    # with several, the first in alphabetical order is named, wherever it stands in the term
+    message = _refuses_to_align(_a("P", "a"), atom("P", fn("f", fn("g", v("y")), v("x"))))
+    assert message == ("a would have to be replaced by f(g(y), x), which has the variable x in it: "
+                       "only a term without variables can replace a name")
+
+
+def test_a_constant_cannot_become_a_variable():
+    message = _refuses_to_align(_a("P", "a"), atom("P", v("x")))
+    assert message == ("a would have to be replaced by x, which is a variable: only a term without "
+                       "variables can replace a name")
+
+
+def test_a_term_is_not_replaced_by_a_constant_or_by_a_term_of_another_shape():
+    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), _a("P", "a"))
+    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), atom("P", fn("g", c("a"))))
+    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), atom("P", fn("f", c("a"), c("b"))))
 
 
 def test_bound_variables_may_have_different_names_but_must_correspond():
@@ -757,8 +942,11 @@ def test_both_sides_of_a_biconditional_are_aligned():
 def test_both_sides_of_an_equation_are_aligned():
     equation = fl.Equals(c("a"), c("b"))
     assert _align(equation, fl.Equals(c("b"), c("a"))) == {"a": "b", "b": "a"}
-    assert "only names may change" in _refuses_to_align(equation, fl.Equals(fn("f", c("a")), c("a")))
-    assert "only names may change" in _refuses_to_align(equation, fl.Equals(c("b"), fn("f", c("a"))))
+    # a name may become a term on either side, but a term is not replaced by a name
+    assert _align(equation, fl.Equals(fn("f", c("a")), c("a"))) == {"a": "f(a)", "b": "a"}
+    assert _align(equation, fl.Equals(c("b"), fn("f", c("a")))) == {"a": "b", "b": "f(a)"}
+    assert "only names may change" in _refuses_to_align(fl.Equals(fn("f", c("a")), c("b")), equation)
+    assert "only names may change" in _refuses_to_align(fl.Equals(c("a"), fn("f", c("b"))), equation)
 
 
 def test_the_parts_of_a_connective_must_be_as_many_as_in_the_cited_line():
@@ -802,6 +990,7 @@ def test_the_replacement_is_described_in_words():
     assert pl._mm_renaming(sigma) == "a by b"
     assert pl._mm_renaming({"a": c("b"), "b": c("a")}) == "a by b and b by a"
     assert pl._mm_renaming({"a": c("b"), "b": c("c"), "c": c("a")}) == "a by b, b by c and c by a"
+    assert pl._mm_renaming({"a": fn("Plus", c("a"), c("b")), "b": c("c")}) == "a by Plus(a, b) and b by c"
 
 
 # --------------------------------------------------------------------------

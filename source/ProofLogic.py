@@ -4094,6 +4094,13 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
 # argument cites from outside: each one that says something about a name being
 # replaced (5.1 says it of X) needs a visible line that says the same of the
 # replacement (line 3 says it of Y), and that line is cited instead.
+#
+# A name may be replaced by a term as well as by a name: the argument for `a`
+# repeated for `Plus(a, b)` is that argument with `Plus(a, b)` wherever `a`
+# stood. The term has no variable in it, so nothing can capture it, and the
+# rules of the repeated argument refuse it wherever they need a name -- a
+# witness, or a name that is generalized over -- as they would if it had been
+# written out.
 # --------------------------------------------------------------------------
 
 _MUTATIS_MUTANDIS = "MutatisMutandis"
@@ -4125,20 +4132,31 @@ def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_clai
 
     Only names are replaced: the shapes, the predicate and function symbols
     and the free variables must agree, and bound variables must correspond
-    (they may be named differently). A name is replaced by one name, wherever
-    it occurs. Raises `ValueError` with the first disagreement.
+    (they may be named differently). A name is replaced by one name or one
+    term, wherever it occurs; the term has no variable in it, so nothing it
+    says can be captured by a quantifier of the line it is put into. Raises
+    `ValueError` with the first disagreement.
     """
     def differ() -> ValueError:
         return ValueError(f"only names may change, but {model!r} would have to become {claim!r}")
 
+    if isinstance(model, tl.ConstantTerm) and isinstance(claim, (tl.ConstantTerm, tl.FunctionTerm)):
+        variables = sorted(fl.term_free_variables(claim))
+        if variables:
+            raise ValueError(
+                f"{model.name} would have to be replaced by {claim!r}, which has the variable "
+                f"{variables[0]} in it: only a term without variables can replace a name")
+        known = sigma.setdefault(model.name, claim)
+        if not _ast_eq(known, claim):
+            raise ValueError(
+                f"{model.name} would have to be replaced by both {known!r} and {claim!r}")
+        return
+    if isinstance(model, tl.ConstantTerm) and isinstance(claim, tl.VariableTerm):
+        raise ValueError(
+            f"{model.name} would have to be replaced by {claim!r}, which is a variable: only a term "
+            "without variables can replace a name")
     if type(model) is not type(claim):
         raise differ()
-    if isinstance(model, tl.ConstantTerm):
-        known = sigma.setdefault(model.name, claim)
-        if known.name != claim.name:
-            raise ValueError(
-                f"{model.name} would have to be replaced by both {known.name} and {claim.name}")
-        return
     if isinstance(model, tl.VariableTerm):
         bound_model, bound_claim = model.name in env_model, claim.name in env_claim
         if bound_model or bound_claim:
@@ -4191,8 +4209,8 @@ def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_clai
 
 
 def _mm_renaming(sigma: Dict[str, tl.Term]) -> str:
-    """`sigma` in words: `X by Y and Y by X`."""
-    parts = [f"{old} by {new.name}" for old, new in sigma.items()]
+    """`sigma` in words: `X by Y and Y by X`, or `a by Plus(a, b)`."""
+    parts = [f"{old} by {new!r}" for old, new in sigma.items()]
     return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
@@ -4674,13 +4692,13 @@ class ProofValidator:
         """Expand a `Mutatis mutandis` line into the entry that stands for it.
 
         `P. (Mutatis mutandis, A to B)` repeats the argument of line B for
-        the names that make B say P: the names to replace are read off B's
-        statement and P (`_mm_align`), the argument -- B's justification and
-        the subproofs below it -- is rewritten with them, and each line it
-        cites from outside is replaced by the visible line that says the
-        same of the new names (`_transform_wlog_entry`). Line A, where the
-        argument starts, must itself have such a line. A single cited line
-        is B alone.
+        the names that make B say P: the names to replace, each by a name or
+        a term, are read off B's statement and P (`_mm_align`), the argument
+        -- B's justification and the subproofs below it -- is rewritten with
+        them, and each line it cites from outside is replaced by the visible
+        line that says the same of the new names (`_transform_wlog_entry`).
+        Line A, where the argument starts, must itself have such a line. A
+        single cited line is B alone.
 
         Returns `(entry, note, None)`: the entry to validate in the line's
         place, carrying its label and statement, and the beginning of the
@@ -4748,7 +4766,8 @@ class ProofValidator:
             return refuse(CATEGORY_RULE_MISMATCH,
                           f"{claim!r} is not line {model_label}, {model_value!r}, with names "
                           f"replaced: {exc}")
-        sigma = {old: new for old, new in sigma.items() if new.name != old}
+        sigma = {old: new for old, new in sigma.items()
+                 if not (isinstance(new, tl.ConstantTerm) and new.name == old)}
         if not sigma:
             return refuse(CATEGORY_RULE_MISMATCH,
                           f"nothing to change: {claim!r} says what line {model_label} says")

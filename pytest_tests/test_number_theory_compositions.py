@@ -8,7 +8,7 @@ from .support import mp
 def test_integer_closure_composition_proofs_all_pass():
     fixture_dir = Path(__file__).resolve().parents[1] / "tests" / "testNumberTheory"
     paths = sorted(fixture_dir.glob("integer_closure_*.txt"))
-    assert len(paths) == 7
+    assert len(paths) == 8
     failures = {}
     for path in paths:
         results = mp.run_multi_proof_file(path.read_text(encoding="utf-8"))

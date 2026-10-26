@@ -1,0 +1,21 @@
+# 1: A sum of three integers is an integer, the second sum by the argument of the first
+## Proof that
+### Int(a), Int(b), and Int(c) imply Int(Plus(Plus(a,b), c))
+
+1. Let a, b, c be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. Int(c). (Premise)
+5. forall x, forall y, ((Int(x) and Int(y)) -> Int(Plus(x, y))). (Axiom)
+6. (Int(a) and Int(b)) -> Int(Plus(a, b)). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. Int(a) and Int(b). (Assumption for Conditional Introduction)
+ 6.2. forall y, ((Int(a) and Int(y)) -> Int(Plus(a, y))). (Universal Instantiation from 5)
+ 6.3. (Int(a) and Int(b)) -> Int(Plus(a, b)). (Universal Instantiation from 6.2)
+ 6.4. Int(Plus(a, b)). (Modus Ponens from 6.3, 6.1)
+end subproof
+7. Int(a) and Int(b). (Conjunction Introduction from 2, 3)
+8. Int(Plus(a, b)). (Modus Ponens from 6, 7)
+9. (Int(Plus(a, b)) and Int(c)) -> Int(Plus(Plus(a, b), c)). (Mutatis mutandis, 6)
+10. Int(Plus(a, b)) and Int(c). (Conjunction Introduction from 8, 4)
+11. Int(Plus(Plus(a, b), c)). (Modus Ponens from 9, 10)

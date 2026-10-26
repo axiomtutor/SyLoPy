@@ -1,12 +1,13 @@
 (*
-Mutatis mutandis, stage 1: names replaced by names.
+Mutatis mutandis, stages 1 and 2: names replaced by names, and by terms.
 
 `P'. (Mutatis mutandis, A to B)` repeats the argument of line B for the names
 that make B say P'; a single citation `B` repeats the argument of line B alone.
-The validator expands the line into the repeated argument and checks that like
-any other, so each refusal below is an ordinary refusal at the Mutatis mutandis
-line. Every invalid case has a valid case that differs from it only in the
-point it names.
+A name may be replaced by another name or by a term with no variable in it
+(cases 31 to 40). The validator expands the line into the repeated argument and
+checks that like any other, so each refusal below is an ordinary refusal at the
+Mutatis mutandis line. Every invalid case has a valid case that differs from it
+only in the point it names.
 *)
 
 # 1: The same argument for b, citing the facts about b
@@ -421,3 +422,127 @@ end subproof
 6. Q(a). (Universal Modus Ponens from 2, 3)
 7. Q(b). (Mutatis mutandis, 6)
 8. exists y, Q(y). (Existential Introduction from 7)
+
+# 31: A name replaced by a term
+## Proof that
+### if P and Q are predicates and f is a function such that: forall x, (P(x) -> Q(x)). P(a). P(f(a)).
+### then Q(a) and Q(f(a)).
+
+1. Let a be an object and P, Q be predicates and f be a unary function such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(f(a)). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. Q(f(a)). (Mutatis mutandis, 4)
+6. Q(a) and Q(f(a)). (Conjunction Introduction from 4, 5)
+
+# 32: A conditional proof repeated for a term that mentions the name
+## Proof that
+### if P is a predicate and f is a function such that: forall x, (P(x) -> P(f(x))).
+### then (P(a) -> P(f(a))) and (P(f(a)) -> P(f(f(a)))).
+
+1. Let a be an object and P be a predicate and f be a unary function such that: forall x, (P(x) -> P(f(x))). (Premise)
+2. P(a) -> P(f(a)). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P(a). (Assumption for Conditional Introduction)
+ 2.2. P(f(a)). (Universal Modus Ponens from 1, 2.1)
+end subproof
+3. P(f(a)) -> P(f(f(a))). (Mutatis mutandis, 2)
+4. (P(a) -> P(f(a))) and (P(f(a)) -> P(f(f(a)))). (Conjunction Introduction from 2, 3)
+
+# 33: Two names replaced at once, one by a term that mentions the other
+## Proof that
+### if R is a predicate and g is a function such that: forall x, forall y, (R(x, y) -> R(g(x, y), x)).
+### then R(g(a, b), c) -> R(g(g(a, b), c), g(a, b)).
+
+1. Let a, b, c be objects and R be a predicate and g be a binary function such that: forall x, forall y, (R(x, y) -> R(g(x, y), x)). (Premise)
+2. R(a, b) -> R(g(a, b), a). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a, b). (Assumption for Conditional Introduction)
+ 2.2. forall y, (R(a, y) -> R(g(a, y), a)). (Universal Instantiation from 1)
+ 2.3. R(a, b) -> R(g(a, b), a). (Universal Instantiation from 2.2)
+ 2.4. R(g(a, b), a). (Modus Ponens from 2.3, 2.1)
+end subproof
+3. R(g(a, b), c) -> R(g(g(a, b), c), g(a, b)). (Mutatis mutandis, 2)
+
+# 34: A name replaced by a term under a quantifier
+## Proof that
+### if R is a predicate and g is a function such that: R(a, a). R(g(b), g(b)).
+### then exists x, R(x, g(b)).
+
+1. Let a, b be objects and R be a predicate and g be a unary function such that: R(a, a). (Premise)
+2. R(g(b), g(b)). (Premise)
+3. exists x, R(x, a). (Existential Introduction from 1)
+4. exists x, R(x, g(b)). (Mutatis mutandis, 3)
+
+# 35: A name cannot become a term that a quantifier would capture
+## Invalid: variable — a would have to be replaced by g(x), and the quantifier on x would capture it.
+### then exists x, R(x, g(x)).
+
+1. Let a, b be objects and R be a predicate and g be a unary function such that: R(a, a). (Premise)
+2. R(g(b), g(b)). (Premise)
+3. exists x, R(x, a). (Existential Introduction from 1)
+4. exists x, R(x, g(x)). (Mutatis mutandis, 3)
+
+# 36: One name replaced everywhere by one term
+## Proof that
+### if P and T are predicates and f is a function such that: forall x, (P(x) -> T(x, x)). P(a). P(f(b)).
+### then T(f(b), f(b)).
+
+1. Let a, b, c be objects and P, T be predicates and f be a unary function such that: forall x, (P(x) -> T(x, x)). (Premise)
+2. P(a). (Premise)
+3. P(f(b)). (Premise)
+4. T(a, a). (Universal Modus Ponens from 1, 2)
+5. T(f(b), f(b)). (Mutatis mutandis, 4)
+
+# 37: One name cannot be replaced by two terms
+## Invalid: one replacement — a would have to be replaced by both f(b) and f(c).
+### then T(f(b), f(c)).
+
+1. Let a, b, c be objects and P, T be predicates and f be a unary function such that: forall x, (P(x) -> T(x, x)). (Premise)
+2. P(a). (Premise)
+3. P(f(b)). (Premise)
+4. T(a, a). (Universal Modus Ponens from 1, 2)
+5. T(f(b), f(c)). (Mutatis mutandis, 4)
+
+# 38: An existential-elimination argument repeated for a term
+## Proof that
+### if P and Q are predicates and f is a function such that: exists x, P(x). forall x, (P(x) -> Q(a)). forall x, (P(x) -> Q(f(b))).
+### then Q(a) and Q(f(b)).
+
+1. Let a, b be objects and P, Q be predicates and f be a unary function such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. P(w) -> Q(a). (Universal Instantiation from 2)
+ 4.3. Q(a). (Modus Ponens from 4.2, 4.1)
+end subproof
+5. forall x, (P(x) -> Q(f(b))). (Premise)
+6. Q(f(b)). (Mutatis mutandis, 4)
+7. Q(a) and Q(f(b)). (Conjunction Introduction from 4, 6)
+
+# 39: The new term cannot mention the argument's own witness
+## Invalid: freshness — repeating the argument for f(w) makes its witness w occur in its conclusion Q(f(w)).
+### then Q(f(w)).
+
+1. Let a, b be objects and P, Q be predicates and f be a unary function such that: exists x, P(x). (Premise)
+2. forall x, (P(x) -> Q(a)). (Premise)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. P(w) -> Q(a). (Universal Instantiation from 2)
+ 4.3. Q(a). (Modus Ponens from 4.2, 4.1)
+end subproof
+5. forall x, (P(x) -> Q(f(w))). (Premise)
+6. Q(f(w)). (Mutatis mutandis, 4)
+
+# 40: The new term lacks what the argument used about the name
+## Invalid: cited line — line 3 cites line 2, which says P(a), and nothing says P(f(a)).
+### then Q(f(a)).
+
+1. Let a be an object and P, Q be predicates and f be a unary function such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. Q(a). (Universal Modus Ponens from 1, 2)
+4. Q(f(a)). (Mutatis mutandis, 3)

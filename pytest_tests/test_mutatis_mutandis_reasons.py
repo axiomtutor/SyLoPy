@@ -83,16 +83,31 @@ GENERIC_REFUSALS = {
     "30": ("7", BAD_REFERENCE,
            "Mutatis mutandis cannot repeat line 6 with a by c: line 6 cites line 3, which says P(a), and "
            "no visible line says P(c)", None),
+    "35": ("4", RULE_MISMATCH,
+           "(∃x. R(x, g(x))) is not line 3, (∃x. R(x, a)), with names replaced: a would have to be "
+           "replaced by g(x), which has the variable x in it: only a term without variables can replace "
+           "a name", None),
+    "37": ("5", RULE_MISMATCH,
+           "T(f(b), f(c)) is not line 4, T(a, a), with names replaced: a would have to be replaced by "
+           "both f(b) and f(c)", None),
+    "39": ("6", RULE_MISMATCH,
+           "Mutatis mutandis cannot repeat line 4 with a by f(w): 'ExistentialElimination' does not "
+           "justify Q(f(w)) from the cited line(s) ['1'] and attached subproofs",
+           "the witness w occurs in the conclusion"),
+    "40": ("4", BAD_REFERENCE,
+           "Mutatis mutandis cannot repeat line 3 with a by f(a): line 3 cites line 2, which says P(a), "
+           "and no visible line says P(f(a))", None),
 }
 
 # refused case -> the valid case that differs from it in the point the refusal names
 GENERIC_SIBLINGS = {
     "2": "1", "3": "1", "5": "4", "7": "6", "11": "10", "12": "6", "13": "6", "14": "6",
     "16": "15", "17": "6", "18": "6", "20": "19", "22": "21", "24": "23", "26": "25",
-    "27": "1", "28": "29", "30": "29",
+    "27": "1", "28": "29", "30": "29", "35": "34", "37": "36", "39": "38", "40": "31",
 }
 
-GENERIC_VALID = ["1", "4", "6", "8", "9", "10", "15", "19", "21", "23", "25", "29"]
+GENERIC_VALID = ["1", "4", "6", "8", "9", "10", "15", "19", "21", "23", "25", "29",
+                 "31", "32", "33", "34", "36", "38"]
 
 SETS_REFUSALS = {
     "3": ("6", BAD_REFERENCE,
