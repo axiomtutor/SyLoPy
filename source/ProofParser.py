@@ -81,7 +81,7 @@ Two things worth knowing before writing new proof text
 import re
 import sys
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
