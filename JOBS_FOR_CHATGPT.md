@@ -6,7 +6,39 @@ Completed job specifications and their original task instructions are preserved 
 
 ## Current queue
 
-No jobs are currently queued. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
+Start a job only after the pull request that adds it has been merged: both read the rule as implemented there. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
+
+| Job | Title | State |
+| --- | --- | --- |
+| J26 | Red-team Mutatis mutandis stages 2 and 3 | todo |
+| J27 | Where Mutatis mutandis stops, second look | todo |
+
+### J26. Red-team Mutatis mutandis stages 2 and 3
+
+Why: stages 2 and 3 let a name be replaced by a term with no variable in it, and a predicate or function symbol by another with the same number of arguments. The kernel does not trust the line: it expands it into the repeated argument and validates that like any other line, so a mistake in the matching should only ever cause a wrong refusal. An independent pass finds what the author did not think of, and an accepted bad proof is finding (b), the worst kind.
+
+Read first (read only): `docs/PROOF_FILE_FORMAT.md`, "Mutatis mutandis: the same argument for other names, terms and symbols"; the cases of `tests/testProofs/mutatis_mutandis.txt` (53), `tests/testProofs/red_team_mutatis_mutandis.txt` (23), `tests/testSetTheory/mutatis_mutandis_sets.txt` (5), `tests/testDiscreteMath/mutatis_mutandis_relations.txt` (5) and the two `tests/testNumberTheory/integer_closure_mutatis_mutandis*.txt` files (do not repeat any of them); `pytest_tests/test_mutatis_mutandis_reasons.py` and `pytest_tests/test_mutatis_mutandis_red_team_reasons.py` (the pinning shape); and in `source/ProofLogic.py` `_Replacement`, `_mm_align`, `_expand_mutatis_mutandis`, `_mm_blocked_line`, `_mm_counterpart`, `_mm_says`, `_transform_wlog_entry` and `_substitute_constants_in_formula`.
+
+Do: at least 15 new cases in `tests/testProofs/red_team_mutatis_mutandis_terms_symbols.txt` (enforced), plus at most 5 each in `tests/testDiscreteMath/red_team_mutatis_mutandis_relations.txt` and `tests/testSetTheory/red_team_mutatis_mutandis_sets.txt` for the rules that read a relation's declaration or are about `In`. Each invalid case is refused for the reason its `## Invalid: <condition> — <why>` title names and has a valid twin that differs from it only in that condition. Pin each refusal (line, category, reason) in `pytest_tests/test_mutatis_mutandis_red_team_terms_symbols_reasons.py` (rule 5). Starting points, because accepting any of them is unsound or wrong:
+
+1. A term that captures or is captured: the new term has a variable in it (one free in the line, or one that a quantifier binds where the term lands); it mentions the arbitrary constant of a `Universal Generalization` subproof, the witness of an `Existential Elimination`, or a name declared inside the argument.
+2. Terms that overlap the names: a name replaced by a term that contains it (`a` by `f(a)`), and the repeat repeated (`f(f(a))`); two names replaced by one term; `a` by `f(b)` and `b` by `f(a)` at once; an identity replacement beside a real one; a term replacing a name inside an equation, a negation, a biconditional, or under a quantifier.
+3. Symbols: a predicate replaced by a function symbol or the reverse; a symbol replaced by one with another number of arguments; `=`, a connective or a quantifier "replaced"; a symbol replaced in one place and kept in another, including inside a cited line; two symbols exchanged, and two replaced by one.
+4. Rules that read a declaration or are about one symbol: `Relation Reflexivity`, `Symmetry`, `Transitivity` and `Antisymmetry` with the new relation declared on another carrier, with other properties, or with the property only as a premise formula; two relations exchanged when only one has the property; `Set property`, `Set equality` and the axiom citations (Pairing, Union, Power Set, Separation) with `In` replaced, or with a set name replaced by a term.
+5. Citations: a cited line that mentions a replaced name or symbol only inside a bundle premise, a quantified formula or a closed subproof; a bundle that states the needed fact for one symbol and the old fact for the other; an argument that needs counterparts for a replaced name and a replaced symbol at once; `A to B` with symbols replaced.
+6. Chains and interplay: a repeat of a repeat whose symbols drift (`P` by `Q`, then `Q` by `R`); a repeat for a term followed by a repeat for a symbol of its result; a repeat inside a WLOG region and inside a case block of a `Proof by Cases`; a theorem proved with a repeat and cited later by its title.
+
+If an invalid proof is accepted, that is finding (b): an issue with `Owner: Claude`, a strict xfail in your pins, and a note in the PR. If a valid proof is refused, compare it with the doc first: the repeated argument is checked like any line, a name or symbol is replaced only if it occurs in the statement of line B, a compound term is never replaced as a whole, and the lines between A and B are not replayed. A message that does not say why is finding (d). Do not edit the cases of J24 or the earlier fixtures.
+
+Done when: every point above has a case or a sentence in the PR saying why it cannot be written, none repeats an existing case, CI shows no failing test, and the PR lists every finding.
+
+### J27. Where Mutatis mutandis stops, second look
+
+Why: the owner has not decided whether the rule should also repeat a closed block of several lines (the first case of a proof by cases, one direction of a biconditional proved in its own subproof), or accept a counterpart line that differs only by the symmetry of `=` or `<->`. That decision needs examples from real proofs, and J25 was written before stages 2 and 3.
+
+Do (read only, except the two new files): go through the proofs under `tests/` and `source/testProofs/` again and find places where a proof repeats an argument with other names, terms or symbols. For each place that the rule now expresses, write the shortened proof with `Mutatis mutandis` in the new informational file `tests/setTheoryProofs/mutatis_mutandis_terms_symbols_examples.txt`, with the file test of rule 7 in the new `pytest_tests/test_mutatis_mutandis_terms_symbols_examples.py`; skip a place that `tests/setTheoryProofs/mutatis_mutandis_examples.txt` already shortens. For each place it cannot express, say in the PR description which of three things is missing: (i) the repeated part is a closed block of several lines (say which kind, how many lines, whether the other block has exactly the same shape, and what is replaced); (ii) the counterpart line differs only by the symmetry of `=` or `<->` (give the two lines); (iii) the replaced name or symbol occurs only inside the argument, in neither statement. Leave the original proofs as they are.
+
+Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, number of lines, what is needed), and CI shows no failing test. The table is for the owner. Do not start anything the table suggests.
 
 ## Completed jobs
 
