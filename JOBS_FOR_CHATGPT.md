@@ -1,6 +1,6 @@
 # Delegated Jobs for ChatGPT
 
-This is the concise delegated-work tracker. Stable collaboration rules live in [`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md); current feature status, invariants, design decisions, and owner-gated work live in [`todos.txt`](todos.txt). Use PRs and issues for implementation details and discussion.
+This is the concise delegated-work tracker. Stable collaboration rules live in the [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md); current feature status, invariants, design decisions, and owner-gated work live in [master `todos.txt`](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt). The copies of those files on this coordination branch are historical snapshots, not authoritative current guidance. Use PRs and issues for implementation details and discussion.
 
 Completed job specifications and their original task instructions are preserved in [`docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`](docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md). That file is historical context, not an active work queue.
 
