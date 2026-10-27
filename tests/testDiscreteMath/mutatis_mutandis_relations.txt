@@ -1,0 +1,74 @@
+(*
+Mutatis mutandis with relations: the argument for one relation, repeated for
+another. Nothing says which rules of one relation correspond to which of the
+other. The argument is written out for the other relation and validated, and a
+rule that reads what a relation is declared to be (Relation Transitivity,
+Relation Symmetry) reads the declaration of the other one at that line. So the
+line is accepted when the new relation is declared to have the property the
+rule needs and refused, by the rule, when it is not. The facts the argument
+cites must be stated of the new relation too. Every invalid case has a valid
+case that differs from it only in the point it names.
+*)
+
+Use discrete math.
+
+# 1: A transitivity argument for one equivalence relation, repeated for another
+## Proof that
+### if R and S are equivalence relations on X, R(a,b), R(b,c), S(a,b) and S(b,c),
+### then R(a, c) and S(a, c).
+
+1. Let X be any set,
+ R and S be equivalence relations on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+3. S(a,c). (Mutatis mutandis, 2)
+4. R(a,c) and S(a,c). (Conjunction Introduction from 2, 3)
+
+# 2: A symmetry argument for one symmetric relation, repeated for another
+## Proof that
+### if R and S are symmetric relations on X, R(a,b) and S(a,b),
+### then R(b, a) and S(b, a).
+
+1. Let X be any set,
+ R and S be symmetric relations on X,
+ a, b be in X,
+ R(a,b) and S(a,b). (Declaration)
+2. R(b,a). (Relation Symmetry from 1)
+3. S(b,a). (Mutatis mutandis, 2)
+4. R(b,a) and S(b,a). (Conjunction Introduction from 2, 3)
+
+# 3: The new relation is not declared transitive
+## Invalid: rule — Relation Transitivity does not justify S(a, c): S is declared symmetric, not transitive.
+### then S(a, c).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a symmetric relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+3. S(a,c). (Mutatis mutandis, 2)
+
+# 4: The new relation is not declared symmetric
+## Invalid: rule — Relation Symmetry does not justify S(b, a): S is declared reflexive, not symmetric.
+### then S(b, a).
+
+1. Let X be any set,
+ R be a symmetric relation on X,
+ S be a reflexive relation on X,
+ a, b be in X,
+ R(a,b) and S(a,b). (Declaration)
+2. R(b,a). (Relation Symmetry from 1)
+3. S(b,a). (Mutatis mutandis, 2)
+
+# 5: The facts about the new relation are not stated
+## Invalid: cited line — line 2 cites line 1, which says R(a, b) and R(b, c), and nothing says S(a, b) and S(b, c).
+### then S(a, c).
+
+1. Let X be any set,
+ R and S be equivalence relations on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+3. S(a,c). (Mutatis mutandis, 2)

@@ -451,6 +451,206 @@ def test_a_term_that_is_not_ground_cannot_reach_the_expansion_by_any_proof_text(
 
 
 # --------------------------------------------------------------------------
+# A predicate or function symbol replaced by another
+# --------------------------------------------------------------------------
+
+SYMBOL_ARGUMENT = """1. Let a be an object and P, Q, S be predicates such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. forall x, (P(x) -> S(x)). (Premise)
+4. Q(a). (Universal Modus Ponens from 1, 2)
+5. S(a). (Mutatis mutandis, 4)
+"""
+
+
+def test_a_predicate_is_replaced_in_the_statement_and_in_the_line_that_is_cited(monkeypatch):
+    seen, ok, err = _validated(SYMBOL_ARGUMENT, "5", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    assert pl._ast_eq(entry.phi, _a("S", "a"))
+    assert entry.justification[1].name == "UniversalModusPonens"
+    # line 1 says it of Q and line 3 says it of S; line 2 says nothing of either, so it is cited as it is
+    assert entry.justification[2] == ["3", "2"]
+
+
+FUNCTION_ARGUMENT = """1. Let a be an object and P be a predicate and f, g be unary functions such that: forall x, P(f(x)). (Premise)
+2. forall x, P(g(x)). (Premise)
+3. P(f(a)). (Universal Instantiation from 1)
+4. P(g(a)). (Mutatis mutandis, 3)
+"""
+
+
+def test_a_function_symbol_is_replaced_in_the_statement_and_in_the_line_that_is_cited(monkeypatch):
+    seen, ok, err = _validated(FUNCTION_ARGUMENT, "4", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    assert pl._ast_eq(entry.phi, atom("P", fn("g", c("a"))))
+    assert entry.justification[1].name == "UniversalInstantiation"
+    assert entry.justification[2] == ["2"]
+
+
+EXCHANGED = """1. Let a be an object and P, Q be predicates. (Declare)
+2. P(a). (Premise)
+3. Q(a). (Premise)
+4. P(a) and Q(a). (Conjunction Introduction from 2, 3)
+5. Q(a) and P(a). (Mutatis mutandis, 4)
+"""
+
+
+def test_two_predicates_are_exchanged_at_once(monkeypatch):
+    # P becomes Q and Q becomes P: replacing one after the other would turn both into the same
+    seen, ok, err = _validated(EXCHANGED, "5", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    assert entry.justification[1].name == "ConjunctionIntroduction"
+    assert entry.justification[2] == ["3", "2"]
+
+
+NAME_AND_SYMBOL = """1. Let a be an object and P, Q, S be predicates and f be a unary function such that: forall x, (P(x) -> Q(x)). (Premise)
+2. P(a). (Premise)
+3. P(f(a)). (Premise)
+4. forall x, (P(x) -> S(x)). (Premise)
+5. Q(a). (Universal Modus Ponens from 1, 2)
+6. S(f(a)). (Mutatis mutandis, 5)
+"""
+
+
+def test_a_name_and_a_predicate_are_replaced_in_one_line(monkeypatch):
+    seen, ok, err = _validated(NAME_AND_SYMBOL, "6", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    assert entry.justification[2] == ["4", "3"]
+
+
+SYMBOLS_IN_A_SUBPROOF = """1. Let a, b be objects and R be a predicate and g, h be binary functions such that: forall x, forall y, (R(x, y) -> R(g(x, y), x)). (Premise)
+2. forall x, forall y, (R(x, y) -> R(h(x, y), x)). (Premise)
+3. R(a, b) -> R(g(a, b), a). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a, b). (Assumption for Conditional Introduction)
+ 3.2. forall y, (R(a, y) -> R(g(a, y), a)). (Universal Instantiation from 1)
+ 3.3. R(a, b) -> R(g(a, b), a). (Universal Instantiation from 3.2)
+ 3.4. R(g(a, b), a). (Modus Ponens from 3.3, 3.1)
+end subproof
+4. R(a, b) -> R(h(a, b), a). (Mutatis mutandis, 3)
+"""
+
+
+def test_a_symbol_is_replaced_in_every_line_of_a_repeated_subproof(monkeypatch):
+    seen, ok, err = _validated(SYMBOLS_IN_A_SUBPROOF, "4", monkeypatch)
+    assert ok, err
+    (entry,) = seen
+    # the lines of the repeated subproof keep the labels they have where they are written
+    assert [item[0] for item in entry.nested_subproof] == ["3.1", "3.2", "3.3", "3.4"]
+    ab = [c("a"), c("b")]
+    assert _same([item[1] for item in entry.nested_subproof], [
+        atom("R", *ab),
+        fl.ForAll("y", fl.Implies(atom("R", c("a"), v("y")), atom("R", fn("h", c("a"), v("y")), c("a")))),
+        fl.Implies(atom("R", *ab), atom("R", fn("h", *ab), c("a"))),
+        atom("R", fn("h", *ab), c("a")),
+    ])
+    # line 1 says it of g, so the lines that cite it cite line 2, which says it of h
+    assert entry.nested_subproof[1][2][2] == ["2"]
+
+
+SA_QA_RA_SA = ("P(a) -> Q(a).", "Q(a) -> R(a).", "Q(a) -> S(a).")
+
+
+def _chain_for_symbols(premises, repeat):
+    """The chain of conditionals for P, Q and R, with the premises given, then `repeat(n)`."""
+    pq, qr = SA_QA_RA_SA[0], SA_QA_RA_SA[1]
+    lines = ["1. Let a be an object. (Declare)", "2. Let P, Q, R and S be predicates. (Declare)"]
+    lines.extend(f"{3 + index}. {premise} (Premise)" for index, premise in enumerate(premises))
+    first, second = 3 + premises.index(pq), 3 + premises.index(qr)
+    n = 3 + len(premises)
+    lines += [
+        f"{n}. P(a) -> R(a). (Conditional Introduction from subproof below)",
+        "begin subproof",
+        f" {n}.1. P(a). (Assumption for Conditional Introduction)",
+        f" {n}.2. Q(a). (Modus Ponens from {first}, {n}.1)",
+        f" {n}.3. R(a). (Modus Ponens from {second}, {n}.2)",
+        "end subproof",
+    ]
+    lines += repeat(n)
+    return "\n".join(lines) + "\n"
+
+
+def _symbol_by_mutatis_mutandis(n):
+    return [f"{n + 1}. P(a) -> S(a). (Mutatis mutandis, {n})"]
+
+
+def _symbol_written_out(first, second):
+    def repeat(n):
+        return [
+            f"{n + 1}. P(a) -> S(a). (Conditional Introduction from subproof below)",
+            "begin subproof",
+            f" {n + 1}.1. P(a). (Assumption for Conditional Introduction)",
+            f" {n + 1}.2. Q(a). (Modus Ponens from {first}, {n + 1}.1)",
+            f" {n + 1}.3. S(a). (Modus Ponens from {second}, {n + 1}.2)",
+            "end subproof",
+        ]
+    return repeat
+
+
+@pytest.mark.parametrize("premises, written_first, written_second, accepted", [
+    # the fact about S is there, in whatever order: the line and the written-out argument are both fine
+    ([SA_QA_RA_SA[0], SA_QA_RA_SA[1], SA_QA_RA_SA[2]], 3, 5, True),
+    ([SA_QA_RA_SA[2], SA_QA_RA_SA[0], SA_QA_RA_SA[1]], 4, 3, True),
+    ([SA_QA_RA_SA[0], SA_QA_RA_SA[2], SA_QA_RA_SA[1]], 3, 4, True),
+    # it is missing, so the argument cannot be written out for S, and the line is refused
+    ([SA_QA_RA_SA[0], SA_QA_RA_SA[1]], 3, 4, False),
+])
+def test_the_line_is_accepted_exactly_when_the_argument_written_out_for_the_symbol_is(
+        premises, written_first, written_second, accepted):
+    by_the_line = _chain_for_symbols(premises, _symbol_by_mutatis_mutandis)
+    written = _chain_for_symbols(premises, _symbol_written_out(written_first, written_second))
+    _entries, (line_ok, line_err) = _check_text(by_the_line)
+    _entries, (written_ok, written_err) = _check_text(written)
+    assert line_ok == accepted, line_err
+    assert written_ok == accepted, written_err
+    if not accepted:
+        assert line_err.category == pl.CATEGORY_BAD_REFERENCE
+        assert "with R by S:" in line_err.detail, line_err
+        assert "no visible line says (Q(a) → S(a))" in line_err.detail, line_err
+
+
+def test_the_start_of_a_range_needs_a_counterpart_for_the_symbol():
+    start = """1. Let a be an object and P, Q, S be predicates. (Declare)
+2. Q(a). (Premise)
+3. P(a). (Premise)
+4. Q(a) or P(a). (Disjunction Introduction from 3)
+"""
+    err = _refused(start + "5. S(a) or P(a). (Mutatis mutandis, 2 to 4)\n")
+    assert err.label == "5"
+    assert err.category == pl.CATEGORY_BAD_REFERENCE
+    assert err.detail == ("Mutatis mutandis cannot start from line 2: it says Q(a), and no visible line "
+                          "says S(a), which is what it says with Q by S")
+    _accepted(start + "5. S(a). (Premise)\n6. S(a) or P(a). (Mutatis mutandis, 2 to 4)\n")
+
+
+def test_a_symbol_that_only_stays_is_not_a_replacement():
+    err = _refused("""1. Let a be an object and P, Q be predicates. (Declare)
+2. P(a). (Premise)
+3. Q(a). (Premise)
+4. P(a) and Q(a). (Conjunction Introduction from 2, 3)
+5. P(a) and Q(a). (Mutatis mutandis, 4)
+""")
+    assert err.label == "5"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert err.detail == "nothing to change: (P(a) ∧ Q(a)) says what line 4 says"
+
+
+def test_a_symbol_replaced_in_one_place_and_kept_in_another_is_refused():
+    err = _refused("""1. Let a be an object and P, Q be predicates. (Declare)
+2. P(a). (Premise)
+3. P(a) and P(a). (Conjunction Introduction from 2, 2)
+4. P(a) and Q(a). (Mutatis mutandis, 3)
+""")
+    assert err.label == "4"
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert err.detail == ("(P(a) ∧ Q(a)) is not line 3, (P(a) ∧ P(a)), with names or symbols replaced: "
+                          "P would have to be replaced by both P and Q")
+
+
+# --------------------------------------------------------------------------
 # What is read from the statement, and what is not
 # --------------------------------------------------------------------------
 
@@ -480,7 +680,8 @@ def test_a_name_is_replaced_by_one_name_wherever_it_occurs():
     assert err.label == "6"
     assert err.category == pl.CATEGORY_RULE_MISMATCH
     assert err.detail == (
-        "T(c, a) is not line 4, T(a, a), with names replaced: a would have to be replaced by both c and a")
+        "T(c, a) is not line 4, T(a, a), with names or symbols replaced: a would have to be replaced by both c "
+        "and a")
 
 
 def test_the_claim_may_name_a_bound_variable_differently_from_the_cited_line():
@@ -503,7 +704,7 @@ def test_a_constant_cannot_become_a_bound_variable():
     assert err.label == "5"
     assert err.category == pl.CATEGORY_RULE_MISMATCH
     assert err.detail == (
-        "(∃x. R(x, x)) is not line 4, (∃x. R(x, a)), with names replaced: "
+        "(∃x. R(x, x)) is not line 4, (∃x. R(x, a)), with names or symbols replaced: "
         "a would have to be replaced by x, which is a variable: only a term without variables "
         "can replace a name")
 
@@ -789,18 +990,32 @@ def test_a_line_with_no_justification_cannot_be_repeated():
 
 
 # --------------------------------------------------------------------------
-# Reading the names off the two statements
+# Reading the names and symbols off the two statements
 # --------------------------------------------------------------------------
 
-def _align(model, claim):
-    sigma = {}
+NOT_A_CHANGE = "only names and symbols may change"
+
+
+def _align_all(model, claim):
+    sigma = pl._Replacement()
     pl._mm_align(model, claim, sigma, {}, {}, 0)
-    return {old: repr(new) for old, new in sigma.items()}
+    return sigma
+
+
+def _align(model, claim):
+    """The names to replace, each with the term that replaces it."""
+    return {old: repr(new) for old, new in _align_all(model, claim).items()}
+
+
+def _align_symbols(model, claim):
+    """The function symbols and the predicate symbols to replace."""
+    sigma = _align_all(model, claim)
+    return dict(sigma.functions), dict(sigma.predicates)
 
 
 def _refuses_to_align(model, claim):
     with pytest.raises(ValueError) as raised:
-        _align(model, claim)
+        _align_all(model, claim)
     return str(raised.value)
 
 
@@ -827,38 +1042,42 @@ def test_two_constants_may_be_replaced_by_the_same_constant():
     assert _align(_a("R", "a", "b"), _a("R", "c", "c")) == {"a": "c", "b": "c"}
 
 
-def test_a_different_predicate_is_not_a_change_of_names():
-    message = _refuses_to_align(_a("P", "a"), _a("Q", "a"))
-    assert message == "only names may change, but P(a) would have to become Q(a)"
+def test_the_same_symbol_with_another_number_of_arguments_is_not_a_change():
+    assert _refuses_to_align(_a("P", "a"), _a("P", "a", "b")) == (
+        f"{NOT_A_CHANGE}, but P(a) would have to become P(a, b)")
+    assert _refuses_to_align(atom("P", fn("f", c("a"))), atom("P", fn("f", c("a"), c("b")))) == (
+        f"{NOT_A_CHANGE}, but f(a) would have to become f(a, b)")
 
 
-def test_a_different_arity_is_not_a_change_of_names():
-    assert "only names may change" in _refuses_to_align(_a("P", "a"), _a("P", "a", "b"))
-
-
-def test_a_different_connective_is_not_a_change_of_names():
+def test_a_different_connective_is_not_a_change():
     model = fl.And(_a("P", "a"), _a("Q", "a"))
     claim = fl.Or(_a("P", "b"), _a("Q", "b"))
-    assert "only names may change" in _refuses_to_align(model, claim)
+    assert _refuses_to_align(model, claim) == (
+        f"{NOT_A_CHANGE}, but (P(a) ∧ Q(a)) would have to become (P(b) ∨ Q(b))")
 
 
 def test_the_parts_of_a_connective_are_aligned_in_order():
     model = fl.And(_a("P", "a"), _a("Q", "b"))
     assert _align(model, fl.And(_a("P", "b"), _a("Q", "a"))) == {"a": "b", "b": "a"}
-    assert "only names may change" in _refuses_to_align(model, fl.And(_a("Q", "b"), _a("P", "a")))
+    # the first parts say that a is replaced by b, and the second that it is replaced by c
+    twice = fl.And(_a("P", "a"), _a("Q", "a"))
+    assert _refuses_to_align(twice, fl.And(_a("P", "b"), _a("Q", "c"))) == (
+        "a would have to be replaced by both b and c")
+    assert _refuses_to_align(twice, fl.And(_a("Q", "c"), _a("P", "b"))) == (
+        "a would have to be replaced by both c and b")
 
 
 def test_a_function_term_is_aligned_by_its_arguments():
     model = atom("P", fn("f", c("a"), c("b")))
     assert _align(model, atom("P", fn("f", c("b"), c("a")))) == {"a": "b", "b": "a"}
-    assert "only names may change" in _refuses_to_align(model, atom("P", fn("g", c("a"), c("b"))))
-    assert "only names may change" in _refuses_to_align(model, atom("P", fn("f", c("a"))))
+    assert _refuses_to_align(model, atom("P", fn("f", c("a")))) == (
+        f"{NOT_A_CHANGE}, but f(a, b) would have to become f(a)")
 
 
 def test_a_variable_must_stay_the_same_when_free():
     free_x, free_y = atom("P", v("x")), atom("P", v("y"))
     assert _align(free_x, free_x) == {}
-    assert "only names may change" in _refuses_to_align(free_x, free_y)
+    assert _refuses_to_align(free_x, free_y) == f"{NOT_A_CHANGE}, but x would have to become y"
 
 
 def test_a_constant_is_replaced_by_a_term_without_variables():
@@ -891,10 +1110,73 @@ def test_a_constant_cannot_become_a_variable():
                        "variables can replace a name")
 
 
-def test_a_term_is_not_replaced_by_a_constant_or_by_a_term_of_another_shape():
-    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), _a("P", "a"))
-    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), atom("P", fn("g", c("a"))))
-    assert "only names may change" in _refuses_to_align(atom("P", fn("f", c("a"))), atom("P", fn("f", c("a"), c("b"))))
+def test_a_term_is_not_replaced_by_a_constant():
+    assert _refuses_to_align(atom("P", fn("f", c("a"))), _a("P", "a")) == (
+        f"{NOT_A_CHANGE}, but f(a) would have to become a")
+
+
+def test_a_predicate_is_replaced_by_another_predicate():
+    assert _align_symbols(_a("P", "a"), _a("Q", "a")) == ({}, {"P": "Q"})
+    # wherever it occurs, and by one predicate
+    model = fl.And(_a("P", "a"), _a("P", "b"))
+    assert _align_symbols(model, fl.And(_a("Q", "a"), _a("Q", "b"))) == ({}, {"P": "Q"})
+    assert _refuses_to_align(model, fl.And(_a("Q", "a"), _a("R", "b"))) == (
+        "P would have to be replaced by both Q and R")
+
+
+def test_a_predicate_that_stays_is_recorded_as_replaced_by_itself():
+    model = fl.And(_a("P", "a"), _a("Q", "a"))
+    assert _align_symbols(model, fl.And(_a("P", "a"), _a("R", "a"))) == ({}, {"P": "P", "Q": "R"})
+    # so it cannot also be replaced somewhere else, whichever comes first
+    twice = fl.And(_a("P", "a"), _a("P", "a"))
+    assert _refuses_to_align(twice, fl.And(_a("P", "a"), _a("Q", "a"))) == (
+        "P would have to be replaced by both P and Q")
+    assert _refuses_to_align(twice, fl.And(_a("Q", "a"), _a("P", "a"))) == (
+        "P would have to be replaced by both Q and P")
+
+
+def test_two_predicates_can_be_exchanged_or_replaced_by_the_same_predicate():
+    model = fl.And(_a("P", "a"), _a("Q", "a"))
+    assert _align_symbols(model, fl.And(_a("Q", "a"), _a("P", "a"))) == ({}, {"P": "Q", "Q": "P"})
+    assert _align_symbols(model, fl.And(_a("R", "a"), _a("R", "a"))) == ({}, {"P": "R", "Q": "R"})
+
+
+def test_a_function_symbol_is_replaced_by_another_function_symbol():
+    model = atom("P", fn("f", c("a")))
+    assert _align_symbols(model, atom("P", fn("g", c("a")))) == ({"f": "g"}, {"P": "P"})
+    # wherever it occurs, and by one function symbol
+    nested = atom("P", fn("f", fn("f", c("a")), c("b")))
+    assert _align_symbols(nested, atom("P", fn("g", fn("g", c("a")), c("b")))) == ({"f": "g"}, {"P": "P"})
+    assert _refuses_to_align(nested, atom("P", fn("g", fn("h", c("a")), c("b")))) == (
+        "f would have to be replaced by both g and h")
+    # the symbols of the term that replaces a name are the claim's, not something to replace
+    assert _align_all(_a("P", "a"), atom("P", fn("f", c("b")))).functions == {}
+
+
+def test_a_symbol_is_replaced_by_one_with_the_same_number_of_arguments():
+    assert _refuses_to_align(_a("P", "a"), _a("Q", "a", "b")) == (
+        "P would have to be replaced by Q, but P(a) has 1 argument and Q(a, b) has 2 arguments: "
+        "a symbol can only be replaced by one with the same number of arguments")
+    assert _refuses_to_align(atom("P", fn("f", c("a"), c("b"))), atom("P", fn("g", c("a")))) == (
+        "f would have to be replaced by g, but f(a, b) has 2 arguments and g(a) has 1 argument: "
+        "a symbol can only be replaced by one with the same number of arguments")
+    # a symbol with no arguments is replaced by another with none
+    assert _align_symbols(fl.AtomicFormula("p", []), fl.AtomicFormula("q", [])) == ({}, {"p": "q"})
+    assert _refuses_to_align(fl.AtomicFormula("p", []), _a("q", "a")) == (
+        "p would have to be replaced by q, but p() has 0 arguments and q(a) has 1 argument: "
+        "a symbol can only be replaced by one with the same number of arguments")
+
+
+def test_names_and_symbols_are_read_off_together():
+    sigma = _align_all(_a("P", "a"), atom("Q", fn("f", c("b"))))
+    assert {old: repr(new) for old, new in sigma.items()} == {"a": "f(b)"}
+    assert (sigma.functions, sigma.predicates) == ({}, {"P": "Q"})
+    # f replaces a here and is replaced by g there: the two are not confused
+    model = fl.And(_a("P", "a"), atom("R", fn("f", c("c"))))
+    claim = fl.And(atom("P", fn("f", c("b"))), atom("R", fn("g", c("c"))))
+    sigma = _align_all(model, claim)
+    assert {old: repr(new) for old, new in sigma.items()} == {"a": "f(b)", "c": "c"}
+    assert (sigma.functions, sigma.predicates) == ({"f": "g"}, {"P": "P", "R": "R"})
 
 
 def test_bound_variables_may_have_different_names_but_must_correspond():
@@ -905,38 +1187,43 @@ def test_bound_variables_may_have_different_names_but_must_correspond():
     # forall x, forall y, R(x, y) against forall x, forall y, R(y, x): the variables do not correspond
     nested = fl.ForAll("x", fl.ForAll("y", atom("R", v("x"), v("y"))))
     crossed = fl.ForAll("x", fl.ForAll("y", atom("R", v("y"), v("x"))))
-    assert "only names may change" in _refuses_to_align(nested, crossed)
+    assert NOT_A_CHANGE in _refuses_to_align(nested, crossed)
     # a bound variable is not a free one of the same name
     bound = fl.ForAll("x", atom("P", v("x")))
-    assert "only names may change" in _refuses_to_align(bound, fl.ForAll("x", atom("P", c("x"))))
+    assert NOT_A_CHANGE in _refuses_to_align(bound, fl.ForAll("x", atom("P", c("x"))))
 
 
 def test_a_quantifier_is_not_another_quantifier():
     body = atom("P", v("x"))
-    assert "only names may change" in _refuses_to_align(fl.ForAll("x", body), fl.Exists("x", body))
+    assert NOT_A_CHANGE in _refuses_to_align(fl.ForAll("x", body), fl.Exists("x", body))
 
 
-def test_a_variable_bound_in_only_one_of_the_two_lines_is_not_a_change_of_names():
+def test_a_variable_bound_in_only_one_of_the_two_lines_is_not_a_change():
     bound = fl.ForAll("x", atom("P", v("x")))
     free_y = fl.ForAll("x", atom("P", v("y")))
     # the claim has a free variable where the cited line has a bound one, and the other way round
-    assert "only names may change" in _refuses_to_align(bound, free_y)
-    assert "only names may change" in _refuses_to_align(free_y, bound)
+    assert NOT_A_CHANGE in _refuses_to_align(bound, free_y)
+    assert NOT_A_CHANGE in _refuses_to_align(free_y, bound)
     # the cited line's x is bound; the claim's x is not, because the claim binds y
-    assert "only names may change" in _refuses_to_align(bound, fl.ForAll("y", atom("P", v("x"))))
+    assert NOT_A_CHANGE in _refuses_to_align(bound, fl.ForAll("y", atom("P", v("x"))))
 
 
 def test_a_negation_is_aligned_by_what_it_negates():
     assert _align(fl.Not(_a("P", "a")), fl.Not(_a("P", "b"))) == {"a": "b"}
-    assert "only names may change" in _refuses_to_align(fl.Not(_a("P", "a")), fl.Not(_a("Q", "a")))
+    assert _align_symbols(fl.Not(_a("P", "a")), fl.Not(_a("Q", "a"))) == ({}, {"P": "Q"})
+    assert _refuses_to_align(fl.Not(_a("P", "a")), fl.Not(fl.And(_a("P", "a"), _a("P", "a")))) == (
+        f"{NOT_A_CHANGE}, but P(a) would have to become (P(a) ∧ P(a))")
 
 
 def test_both_sides_of_a_biconditional_are_aligned():
     iff = fl.Iff(_a("P", "a"), _a("Q", "b"))
     # each side fixes one of the two names, so an exchange needs both
     assert _align(iff, fl.Iff(_a("P", "b"), _a("Q", "a"))) == {"a": "b", "b": "a"}
-    assert "only names may change" in _refuses_to_align(iff, fl.Iff(_a("R", "b"), _a("Q", "a")))
-    assert "only names may change" in _refuses_to_align(iff, fl.Iff(_a("P", "b"), _a("R", "a")))
+    assert _align_symbols(iff, fl.Iff(_a("R", "a"), _a("S", "b"))) == ({}, {"P": "R", "Q": "S"})
+    assert _refuses_to_align(iff, fl.Iff(fl.Not(_a("P", "b")), _a("Q", "a"))) == (
+        f"{NOT_A_CHANGE}, but P(a) would have to become ¬P(b)")
+    assert _refuses_to_align(iff, fl.Iff(_a("P", "b"), fl.Not(_a("Q", "a")))) == (
+        f"{NOT_A_CHANGE}, but Q(b) would have to become ¬Q(a)")
 
 
 def test_both_sides_of_an_equation_are_aligned():
@@ -945,17 +1232,24 @@ def test_both_sides_of_an_equation_are_aligned():
     # a name may become a term on either side, but a term is not replaced by a name
     assert _align(equation, fl.Equals(fn("f", c("a")), c("a"))) == {"a": "f(a)", "b": "a"}
     assert _align(equation, fl.Equals(c("b"), fn("f", c("a")))) == {"a": "b", "b": "f(a)"}
-    assert "only names may change" in _refuses_to_align(fl.Equals(fn("f", c("a")), c("b")), equation)
-    assert "only names may change" in _refuses_to_align(fl.Equals(c("a"), fn("f", c("b"))), equation)
+    assert NOT_A_CHANGE in _refuses_to_align(fl.Equals(fn("f", c("a")), c("b")), equation)
+    assert NOT_A_CHANGE in _refuses_to_align(fl.Equals(c("a"), fn("f", c("b"))), equation)
+
+
+def test_an_equation_is_not_a_relation():
+    # `=` is neither a predicate to replace nor one to replace another by
+    equation, related = fl.Equals(c("a"), c("b")), _a("R", "a", "b")
+    assert _refuses_to_align(equation, related) == f"{NOT_A_CHANGE}, but a = b would have to become R(a, b)"
+    assert _refuses_to_align(related, equation) == f"{NOT_A_CHANGE}, but R(a, b) would have to become a = b"
 
 
 def test_the_parts_of_a_connective_must_be_as_many_as_in_the_cited_line():
     both, only = fl.And(_a("P", "a"), _a("Q", "a")), fl.And(_a("P", "b"))
-    assert "only names may change" in _refuses_to_align(both, only)
-    assert "only names may change" in _refuses_to_align(only, both)
+    assert NOT_A_CHANGE in _refuses_to_align(both, only)
+    assert NOT_A_CHANGE in _refuses_to_align(only, both)
     either, one = fl.Or(_a("P", "a"), _a("Q", "a")), fl.Or(_a("P", "b"))
-    assert "only names may change" in _refuses_to_align(either, one)
-    assert "only names may change" in _refuses_to_align(one, either)
+    assert NOT_A_CHANGE in _refuses_to_align(either, one)
+    assert NOT_A_CHANGE in _refuses_to_align(one, either)
 
 
 def test_arguments_that_are_not_terms_have_to_be_equal_as_they_are():
@@ -963,9 +1257,17 @@ def test_arguments_that_are_not_terms_have_to_be_equal_as_they_are():
         return fl.AtomicFormula("P", [value])
 
     assert _align(raw(1), raw(1)) == {}
-    assert "only names may change" in _refuses_to_align(raw(1), raw(2))
-    assert "only names may change" in _refuses_to_align(raw(1), atom("P", c("a")))
-    assert "only names may change" in _refuses_to_align(atom("P", c("a")), raw(1))
+    assert NOT_A_CHANGE in _refuses_to_align(raw(1), raw(2))
+    assert NOT_A_CHANGE in _refuses_to_align(raw(1), atom("P", c("a")))
+    assert NOT_A_CHANGE in _refuses_to_align(atom("P", c("a")), raw(1))
+
+
+def test_a_predicate_that_is_not_a_name_has_to_be_equal_as_it_is():
+    one, other = fl.AtomicFormula(1, [c("a")]), fl.AtomicFormula(2, [c("a")])
+    assert _align(one, fl.AtomicFormula(1, [c("b")])) == {"a": "b"}
+    assert _refuses_to_align(one, other) == f"{NOT_A_CHANGE}, but 1(a) would have to become 2(a)"
+    assert NOT_A_CHANGE in _refuses_to_align(one, _a("P", "a"))
+    assert NOT_A_CHANGE in _refuses_to_align(_a("P", "a"), one)
 
 
 def test_a_kind_of_formula_that_is_not_known_is_refused_unless_it_is_the_same_object():
@@ -975,7 +1277,7 @@ def test_a_kind_of_formula_that_is_not_known_is_refused_unless_it_is_the_same_ob
 
     one = Odd()
     assert _align(one, one) == {}
-    assert "only names may change" in _refuses_to_align(one, Odd())
+    assert NOT_A_CHANGE in _refuses_to_align(one, Odd())
 
 
 def test_a_line_that_states_no_fact_is_described_as_a_subproof_in_a_message():
@@ -991,6 +1293,80 @@ def test_the_replacement_is_described_in_words():
     assert pl._mm_renaming({"a": c("b"), "b": c("a")}) == "a by b and b by a"
     assert pl._mm_renaming({"a": c("b"), "b": c("c"), "c": c("a")}) == "a by b, b by c and c by a"
     assert pl._mm_renaming({"a": fn("Plus", c("a"), c("b")), "b": c("c")}) == "a by Plus(a, b) and b by c"
+
+
+def test_symbols_are_described_after_the_names_and_functions_before_predicates():
+    sigma = pl._Replacement()
+    sigma.predicates["P"] = "Q"
+    assert pl._mm_renaming(sigma) == "P by Q"
+    sigma.predicates["Q"] = "P"
+    assert pl._mm_renaming(sigma) == "P by Q and Q by P"
+    sigma.functions["Plus"] = "Times"
+    assert pl._mm_renaming(sigma) == "Plus by Times, P by Q and Q by P"
+    sigma["a"] = c("b")
+    assert pl._mm_renaming(sigma) == "a by b, Plus by Times, P by Q and Q by P"
+
+
+def test_a_replacement_leaves_out_what_is_replaced_by_itself():
+    sigma = pl._Replacement()
+    sigma.update({"a": c("a"), "b": c("c"), "d": fn("f", c("d"))})
+    sigma.functions.update({"f": "f", "g": "h"})
+    sigma.predicates.update({"P": "P", "Q": "R"})
+    kept = sigma.without_identities()
+    # a term that mentions the name it replaces still replaces it
+    assert {old: repr(new) for old, new in kept.items()} == {"b": "c", "d": "f(d)"}
+    assert (kept.functions, kept.predicates) == ({"g": "h"}, {"Q": "R"})
+    assert not kept.is_empty()
+    # nothing is left of one that only has what stays
+    stays = pl._Replacement()
+    stays["a"] = c("a")
+    stays.functions["f"] = "f"
+    stays.predicates["P"] = "P"
+    assert not stays.is_empty() and stays.without_identities().is_empty()
+    assert pl._Replacement().is_empty()
+    for only in ("names", "functions", "predicates"):
+        one = pl._Replacement()
+        {"names": lambda: one.update(a=c("b")),
+         "functions": lambda: one.functions.update(f="g"),
+         "predicates": lambda: one.predicates.update(P="Q")}[only]()
+        assert not one.is_empty(), only
+
+
+def test_a_replacement_replaces_names_and_symbols_at_once():
+    sigma = pl._Replacement()
+    sigma["a"] = fn("f", c("b"))
+    sigma.functions["f"] = "g"
+    sigma.predicates["P"] = "Q"
+    formula = fl.And(_a("P", "a"), atom("R", fn("f", c("a"))))
+    # the f in the term that replaces a is what the term says: it is not replaced again
+    assert pl._ast_eq(
+        pl._substitute_constants_in_formula(formula, sigma),
+        fl.And(atom("Q", fn("f", c("b"))), atom("R", fn("g", fn("f", c("b"))))))
+
+
+def test_symbols_are_replaced_inside_every_kind_of_formula():
+    sigma = pl._Replacement()
+    sigma.functions["f"] = "g"
+    sigma.predicates["P"] = "Q"
+    inner, replaced = atom("P", fn("f", v("x"))), atom("Q", fn("g", v("x")))
+    for make in (fl.Not, lambda f: fl.And(f, f), lambda f: fl.Or(f, f), lambda f: fl.Implies(f, f),
+                 lambda f: fl.Iff(f, f), lambda f: fl.ForAll("x", f), lambda f: fl.Exists("x", f)):
+        assert pl._ast_eq(pl._substitute_constants_in_formula(make(inner), sigma), make(replaced))
+    equation = fl.Equals(fn("f", c("a")), fn("f", c("b")))
+    assert pl._ast_eq(pl._substitute_constants_in_formula(equation, sigma),
+                      fl.Equals(fn("g", c("a")), fn("g", c("b"))))
+
+
+def test_a_plain_mapping_replaces_names_and_nothing_else():
+    # what WLOG passes: the symbols stay
+    formula = fl.And(atom("P", fn("f", c("a"))), fl.AtomicFormula(1, [c("a")]))
+    assert pl._ast_eq(pl._substitute_constants_in_formula(formula, {"a": c("b")}),
+                      fl.And(atom("P", fn("f", c("b"))), fl.AtomicFormula(1, [c("b")])))
+    # a predicate that is not a name is never looked up
+    sigma = pl._Replacement()
+    sigma.predicates["P"] = "Q"
+    assert pl._ast_eq(pl._substitute_constants_in_formula(fl.AtomicFormula(1, [c("a")]), sigma),
+                      fl.AtomicFormula(1, [c("a")]))
 
 
 # --------------------------------------------------------------------------
@@ -1219,5 +1595,18 @@ def test_a_proof_that_repeats_a_line_is_promoted_to_the_theorem_the_same_proof_w
     assert len(repeated.premises) == 4
     assert pl._ast_eq(repeated.conclusion, written.conclusion)
     assert repeated.generalized_names == written.generalized_names == ["a", "b"]
+    assert _same(repeated.required_axioms, written.required_axioms)
+    assert len(repeated.required_rules) == len(written.required_rules)
+
+
+def test_a_proof_that_repeats_a_line_for_a_term_and_a_symbol_gives_the_written_out_theorem():
+    written_out = NAME_AND_SYMBOL.replace(
+        "6. S(f(a)). (Mutatis mutandis, 5)", "6. S(f(a)). (Universal Modus Ponens from 4, 3)")
+    assert written_out != NAME_AND_SYMBOL
+    repeated, written = _promoted(NAME_AND_SYMBOL), _promoted(written_out)
+    assert _same(repeated.premises, written.premises)
+    assert len(repeated.premises) == 4
+    assert pl._ast_eq(repeated.conclusion, written.conclusion)
+    assert repeated.generalized_names == written.generalized_names == ["a"]
     assert _same(repeated.required_axioms, written.required_axioms)
     assert len(repeated.required_rules) == len(written.required_rules)

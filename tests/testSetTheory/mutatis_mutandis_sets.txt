@@ -4,7 +4,9 @@ inclusion repeats the first with X and Y exchanged; the first inclusion contains
 a WLOG step, and that step is repeated along with the rest of the argument.
 Case 2 does the same for two sets that are each known to have exactly the
 members a and b, and case 3 shows what is refused when the second set is only
-known to contain a and b. The generic cases, with a refused twin for each valid
+known to contain a and b. Case 4 shows that a rule about one symbol (Set property
+is about In) is not repeated for another predicate, and case 5 is the same proof
+repeated for another set. The generic cases, with a refused twin for each valid
 one, are in tests/testProofs/mutatis_mutandis.txt.
 *)
 
@@ -64,3 +66,32 @@ one, are in tests/testProofs/mutatis_mutandis.txt.
  5.5. (x = a or x = b) -> In(x, Y). (Universal Instantiation from 4)
  5.6. In(x, Y). (Modus Ponens from 5.5, 5.4)
 6. Y subseteq X. (Mutatis mutandis, 3 to 5)
+
+# 4: The membership symbol is not replaced by another predicate
+## Invalid: rule — Set property is about In, and does not justify R(x, Y), whatever lines are cited.
+### then R(x, Y).
+
+1. Let a, b be any sets. (Declaration)
+2. Let Y be any set. (Declaration)
+3. Let R be a predicate. (Declaration)
+4. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+5. forall u, (R(u, Y) iff (u = a or u = b)). (Premise)
+6. Let x be any set. (Declaration)
+7. x = a. (Premise)
+8. In(x, Y). (Set property, 4, 7)
+9. R(x, Y). (Mutatis mutandis, 8)
+
+# 5: The same argument repeated for another set
+## Proof that
+### If Y and Z are sets that both have exactly a and b as their members, and x = a,
+### then In(x, Z).
+
+1. Let a, b be any sets. (Declaration)
+2. Let Y be any set. (Declaration)
+3. Let Z be any set. (Declaration)
+4. forall u, (In(u, Y) iff (u = a or u = b)). (Premise)
+5. forall u, (In(u, Z) iff (u = a or u = b)). (Premise)
+6. Let x be any set. (Declaration)
+7. x = a. (Premise)
+8. In(x, Y). (Set property, 4, 7)
+9. In(x, Z). (Mutatis mutandis, 8)

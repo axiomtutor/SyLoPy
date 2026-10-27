@@ -1,8 +1,9 @@
 """Pin each refused use of Mutatis mutandis to its line, its category and its reason.
 
-`tests/testProofs/mutatis_mutandis.txt` and
-`tests/testSetTheory/mutatis_mutandis_sets.txt` give every refused use a valid
-sibling that differs from it in the one point the refused case names. The pins
+`tests/testProofs/mutatis_mutandis.txt`,
+`tests/testSetTheory/mutatis_mutandis_sets.txt` and
+`tests/testDiscreteMath/mutatis_mutandis_relations.txt` give every refused use a
+valid sibling that differs from it in the one point the refused case names. The pins
 check the line the refusal is reported at, its category, and what it says, so
 that a proof that fails for some other reason (a parse error, a scope error, a
 rule that does not apply) cannot pass for the refusal it was written to show.
@@ -19,6 +20,7 @@ from .support import mp, pl
 PROJECT = Path(__file__).resolve().parents[1]
 GENERIC = PROJECT / "tests" / "testProofs" / "mutatis_mutandis.txt"
 SETS = PROJECT / "tests" / "testSetTheory" / "mutatis_mutandis_sets.txt"
+RELATIONS = PROJECT / "tests" / "testDiscreteMath" / "mutatis_mutandis_relations.txt"
 
 BAD_REFERENCE = pl.CATEGORY_BAD_REFERENCE
 RULE_MISMATCH = pl.CATEGORY_RULE_MISMATCH
@@ -47,12 +49,12 @@ GENERIC_REFUSALS = {
            "Mutatis mutandis repeats an argument, and line 2 is not a line that a rule derived from other "
            "lines", None),
     "13": ("5", RULE_MISMATCH,
-           "P(b) is not line 4, Q(a), with names replaced: only names may change, but Q(a) would have to "
-           "become P(b)", None),
+           "(P(b) ∧ Q(b)) is not line 4, Q(a), with names or symbols replaced: only names and symbols may "
+           "change, but Q(a) would have to become (P(b) ∧ Q(b))", None),
     "14": ("5", RULE_MISMATCH, "nothing to change: Q(a) says what line 4 says", None),
     "16": ("5", RULE_MISMATCH,
-           "T(b, c) is not line 4, T(a, a), with names replaced: a would have to be replaced by both b "
-           "and c", None),
+           "T(b, c) is not line 4, T(a, a), with names or symbols replaced: a would have to be replaced "
+           "by both b and c", None),
     "17": ("5", ARITY_MISMATCH,
            "Mutatis mutandis cites the line whose argument it repeats, or a range 'A to B' that ends at "
            "it; it was given ['2', '4', '3']", None),
@@ -84,12 +86,12 @@ GENERIC_REFUSALS = {
            "Mutatis mutandis cannot repeat line 6 with a by c: line 6 cites line 3, which says P(a), and "
            "no visible line says P(c)", None),
     "35": ("4", RULE_MISMATCH,
-           "(∃x. R(x, g(x))) is not line 3, (∃x. R(x, a)), with names replaced: a would have to be "
-           "replaced by g(x), which has the variable x in it: only a term without variables can replace "
-           "a name", None),
+           "(∃x. R(x, g(x))) is not line 3, (∃x. R(x, a)), with names or symbols replaced: a would have "
+           "to be replaced by g(x), which has the variable x in it: only a term without variables can "
+           "replace a name", None),
     "37": ("5", RULE_MISMATCH,
-           "T(f(b), f(c)) is not line 4, T(a, a), with names replaced: a would have to be replaced by "
-           "both f(b) and f(c)", None),
+           "T(f(b), f(c)) is not line 4, T(a, a), with names or symbols replaced: a would have to be "
+           "replaced by both f(b) and f(c)", None),
     "39": ("6", RULE_MISMATCH,
            "Mutatis mutandis cannot repeat line 4 with a by f(w): 'ExistentialElimination' does not "
            "justify Q(f(w)) from the cited line(s) ['1'] and attached subproofs",
@@ -97,6 +99,25 @@ GENERIC_REFUSALS = {
     "40": ("4", BAD_REFERENCE,
            "Mutatis mutandis cannot repeat line 3 with a by f(a): line 3 cites line 2, which says P(a), "
            "and no visible line says P(f(a))", None),
+    "42": ("4", BAD_REFERENCE,
+           "Mutatis mutandis cannot repeat line 3 with Q by S: line 3 cites line 1, which says "
+           "(∀x. (P(x) → Q(x))), and no visible line says (∀x. (P(x) → S(x)))", None),
+    "44": ("3", BAD_REFERENCE,
+           "Mutatis mutandis cannot repeat line 2 with f by g: line 2 cites line 1, which says "
+           "(∀x. P(f(x))), and no visible line says (∀x. P(g(x)))", None),
+    "47": ("6", RULE_MISMATCH,
+           "(Q(a) ∧ R(a)) is not line 5, (P(a) ∧ P(a)), with names or symbols replaced: P would have to "
+           "be replaced by both Q and R", None),
+    "48": ("6", RULE_MISMATCH,
+           "(P(a) ∧ Q(a)) is not line 5, (P(a) ∧ P(a)), with names or symbols replaced: P would have to "
+           "be replaced by both P and Q", None),
+    "49": ("5", RULE_MISMATCH,
+           "T(a, b) is not line 4, Q(a), with names or symbols replaced: Q would have to be replaced by "
+           "T, but Q(a) has 1 argument and T(a, b) has 2 arguments: a symbol can only be replaced by one "
+           "with the same number of arguments", None),
+    "51": ("3", RULE_MISMATCH,
+           "R(a, a) is not line 2, a = a, with names or symbols replaced: only names and symbols may "
+           "change, but a = a would have to become R(a, a)", None),
 }
 
 # refused case -> the valid case that differs from it in the point the refusal names
@@ -104,19 +125,39 @@ GENERIC_SIBLINGS = {
     "2": "1", "3": "1", "5": "4", "7": "6", "11": "10", "12": "6", "13": "6", "14": "6",
     "16": "15", "17": "6", "18": "6", "20": "19", "22": "21", "24": "23", "26": "25",
     "27": "1", "28": "29", "30": "29", "35": "34", "37": "36", "39": "38", "40": "31",
+    "42": "41", "44": "43", "47": "46", "48": "46", "49": "41", "51": "50",
 }
 
 GENERIC_VALID = ["1", "4", "6", "8", "9", "10", "15", "19", "21", "23", "25", "29",
-                 "31", "32", "33", "34", "36", "38"]
+                 "31", "32", "33", "34", "36", "38", "41", "43", "45", "46", "50", "52", "53"]
 
 SETS_REFUSALS = {
     "3": ("6", BAD_REFERENCE,
           "Mutatis mutandis cannot start from line 3: it says (∀u. (In(u, X) ↔ (u = a ∨ u = b))), and no "
           "visible line says (∀u. (In(u, Y) ↔ (u = a ∨ u = b))), which is what it says with X by Y and "
           "Y by X", None),
+    "4": ("9", RULE_MISMATCH,
+          "Mutatis mutandis cannot repeat line 8 with In by R: 'SetProperty' does not justify R(x, Y) "
+          "from the cited line(s) ['5', '7']",
+          "a cited line must characterize membership in a fixed set by a universal biconditional"),
 }
-SETS_SIBLINGS = {"3": "2"}
-SETS_VALID = ["1", "2"]
+SETS_SIBLINGS = {"3": "2", "4": "5"}
+SETS_VALID = ["1", "2", "5"]
+
+RELATIONS_REFUSALS = {
+    "3": ("3", RULE_MISMATCH,
+          "Mutatis mutandis cannot repeat line 2 with R by S: 'RelationTransitivity' does not justify "
+          "S(a, c) from the cited line(s) ['1', '1']", None),
+    "4": ("3", RULE_MISMATCH,
+          "Mutatis mutandis cannot repeat line 2 with R by S: 'RelationSymmetry' does not justify "
+          "S(b, a) from the cited line(s) ['1']", None),
+    "5": ("3", BAD_REFERENCE,
+          "Mutatis mutandis cannot repeat line 2 with R by S: line 2 cites line 1, which says "
+          "In(a, X); In(b, X); In(c, X); R(a, b); R(b, c), and no visible line says "
+          "In(a, X); In(b, X); In(c, X); S(a, b); S(b, c)", None),
+}
+RELATIONS_SIBLINGS = {"3": "1", "4": "2", "5": "1"}
+RELATIONS_VALID = ["1", "2"]
 
 
 def _cases(path):
@@ -159,14 +200,19 @@ def test_each_refused_set_theory_case_is_refused_at_its_line_for_its_reason(numb
     _assert_refused_as_pinned(SETS, number, SETS_REFUSALS)
 
 
+@pytest.mark.parametrize("number", sorted(RELATIONS_REFUSALS, key=int))
+def test_each_refused_relation_case_is_refused_at_its_line_for_its_reason(number):
+    _assert_refused_as_pinned(RELATIONS, number, RELATIONS_REFUSALS)
+
+
 def test_the_pins_cover_every_case_the_fixtures_declare_invalid():
-    for path, pins in ((GENERIC, GENERIC_REFUSALS), (SETS, SETS_REFUSALS)):
+    for path, pins in ((GENERIC, GENERIC_REFUSALS), (SETS, SETS_REFUSALS), (RELATIONS, RELATIONS_REFUSALS)):
         declared_invalid = {number for number, case in _cases(path).items() if not case.expected_valid}
         assert declared_invalid == set(pins), path.name
 
 
 def test_the_valid_lists_cover_every_case_the_fixtures_declare_valid():
-    for path, valid in ((GENERIC, GENERIC_VALID), (SETS, SETS_VALID)):
+    for path, valid in ((GENERIC, GENERIC_VALID), (SETS, SETS_VALID), (RELATIONS, RELATIONS_VALID)):
         declared_valid = [number for number, case in _cases(path).items() if case.expected_valid]
         assert declared_valid == valid, path.name
 
@@ -183,6 +229,15 @@ def test_each_valid_generic_case_is_accepted_and_derives_its_stated_conclusion(n
 @pytest.mark.parametrize("number", SETS_VALID)
 def test_each_valid_set_theory_case_is_accepted_and_derives_its_stated_conclusion(number):
     case = _cases(SETS)[number]
+    ok, error = _check(case)
+    assert ok, error
+    assert case.stated_conclusion is not None
+    assert mp.conclusion_is_derived(case.entries, case.stated_conclusion)
+
+
+@pytest.mark.parametrize("number", RELATIONS_VALID)
+def test_each_valid_relation_case_is_accepted_and_derives_its_stated_conclusion(number):
+    case = _cases(RELATIONS)[number]
     ok, error = _check(case)
     assert ok, error
     assert case.stated_conclusion is not None
@@ -209,8 +264,18 @@ def test_each_refused_set_theory_case_has_a_valid_sibling(twin):
     assert ok, error
 
 
-def test_the_runner_agrees_with_the_pins_on_both_fixtures():
-    for path in (GENERIC, SETS):
+@pytest.mark.parametrize("twin", sorted(RELATIONS_SIBLINGS, key=int))
+def test_each_refused_relation_case_has_a_valid_sibling(twin):
+    cases = _cases(RELATIONS)
+    control = RELATIONS_SIBLINGS[twin]
+    assert not cases[twin].expected_valid
+    assert cases[control].expected_valid
+    ok, error = _check(cases[control])
+    assert ok, error
+
+
+def test_the_runner_agrees_with_the_pins_on_all_the_fixtures():
+    for path in (GENERIC, SETS, RELATIONS):
         results = mp.run_multi_proof_file(
             path.read_text(encoding="utf-8"),
             axioms=mp.BARE_PROOF_AXIOMS,

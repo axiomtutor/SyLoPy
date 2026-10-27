@@ -2963,19 +2963,24 @@ def _substitute_constants_in_term(term: tl.Term, mapping: Dict[str, tl.Term]) ->
     """Term-level counterpart of `FormulaLogic.substitute_in_term`, keyed
     on constant names rather than a single variable name -- replace every
     `ConstantTerm` whose name is a key of `mapping` with the corresponding
-    term, recursively.
+    term, recursively. A `_Replacement` also replaces function symbols
+    (its `functions`); a plain dict only replaces names.
     """
     if isinstance(term, tl.ConstantTerm):
         return mapping.get(term.name, term)
     if isinstance(term, tl.FunctionTerm):
-        return tl.FunctionTerm(term.symbol, [_substitute_constants_in_term(a, mapping) for a in term.args])
+        symbol = getattr(mapping, "functions", {}).get(term.symbol, term.symbol)
+        return tl.FunctionTerm(symbol, [_substitute_constants_in_term(a, mapping) for a in term.args])
     return term
 
 
 def _substitute_constants_in_formula(formula: fl.Formula, mapping: Dict[str, tl.Term]) -> fl.Formula:
     """Formula-level counterpart of `_substitute_constants_in_term`."""
     if isinstance(formula, fl.AtomicFormula):
-        return fl.AtomicFormula(formula.predicate, [
+        predicate = formula.predicate
+        if isinstance(predicate, str):
+            predicate = getattr(mapping, "predicates", {}).get(predicate, predicate)
+        return fl.AtomicFormula(predicate, [
             _substitute_constants_in_term(a, mapping) if isinstance(a, tl.Term) else a for a in formula.args
         ])
     if isinstance(formula, fl.And):
@@ -4101,6 +4106,16 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
 # rules of the repeated argument refuse it wherever they need a name -- a
 # witness, or a name that is generalized over -- as they would if it had been
 # written out.
+#
+# A function or predicate symbol may be replaced by another that takes the
+# same number of arguments: the argument for `Plus` repeated for `Times`, or
+# for the relation `R` repeated for the relation `S`. The same holds here. No
+# table says which rules of `R` correspond to which of `S`: the argument is
+# written out with `S` and validated, so a rule that reads what is declared
+# about its relation (`Relation Symmetry`) reads the declaration of `S` at
+# this line, a rule that is about one symbol (`In`) refuses the other, and a
+# line the argument cites from outside needs a visible line that says the same
+# of `S`. Connectives, quantifiers and `=` are never replaced.
 # --------------------------------------------------------------------------
 
 _MUTATIS_MUTANDIS = "MutatisMutandis"
@@ -4125,20 +4140,67 @@ def _is_mm_entry(entry: _ParsedEntry) -> bool:
     )
 
 
-def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_claim: dict,
-              depth: int) -> None:
-    """Fill `sigma` with the names that must be replaced for `model` to say
-    what `claim` says, walking the two together.
+class _Replacement(dict):
+    """What a repeated argument changes, all at once.
 
-    Only names are replaced: the shapes, the predicate and function symbols
-    and the free variables must agree, and bound variables must correspond
-    (they may be named differently). A name is replaced by one name or one
-    term, wherever it occurs; the term has no variable in it, so nothing it
-    says can be captured by a quantifier of the line it is put into. Raises
-    `ValueError` with the first disagreement.
+    The dict itself maps each name to the term that replaces it (a name, or a
+    term with no variable in it). `functions` and `predicates` map each
+    function symbol and each predicate symbol to the symbol that replaces it,
+    which takes the same number of arguments. While two statements are read
+    together, a name or symbol that stays is recorded as replaced by itself,
+    so that it cannot also be replaced somewhere else; `without_identities`
+    leaves those out afterwards.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.functions: Dict[str, str] = {}
+        self.predicates: Dict[str, str] = {}
+
+    def without_identities(self) -> "_Replacement":
+        kept = _Replacement()
+        kept.update({old: new for old, new in self.items()
+                     if not (isinstance(new, tl.ConstantTerm) and new.name == old)})
+        kept.functions = {old: new for old, new in self.functions.items() if new != old}
+        kept.predicates = {old: new for old, new in self.predicates.items() if new != old}
+        return kept
+
+    def is_empty(self) -> bool:
+        return not (self or self.functions or self.predicates)
+
+
+def _mm_arguments(count: int) -> str:
+    return f"{count} argument" if count == 1 else f"{count} arguments"
+
+
+def _mm_align(model, claim, sigma: _Replacement, env_model: dict, env_claim: dict,
+              depth: int) -> None:
+    """Fill `sigma` with what must be replaced for `model` to say what
+    `claim` says, walking the two together.
+
+    A name is replaced by a name or by a term with no variable in it,
+    wherever it occurs (nothing the term says can be captured by a quantifier
+    of the line it is put into). A function or predicate symbol is replaced
+    by another that takes the same number of arguments, wherever it occurs.
+    Nothing else changes: the shapes (connectives, quantifiers, `=`) and the
+    free variables must agree, and bound variables must correspond (they may
+    be named differently). Raises `ValueError` with the first disagreement.
     """
     def differ() -> ValueError:
-        return ValueError(f"only names may change, but {model!r} would have to become {claim!r}")
+        return ValueError(
+            f"only names and symbols may change, but {model!r} would have to become {claim!r}")
+
+    def replace_symbol(table: Dict[str, str], old: str, new: str) -> None:
+        if len(model.args) != len(claim.args):
+            if old == new:
+                raise differ()
+            raise ValueError(
+                f"{old} would have to be replaced by {new}, but {model!r} has "
+                f"{_mm_arguments(len(model.args))} and {claim!r} has {_mm_arguments(len(claim.args))}: "
+                "a symbol can only be replaced by one with the same number of arguments")
+        known = table.setdefault(old, new)
+        if known != new:
+            raise ValueError(f"{old} would have to be replaced by both {known} and {new}")
 
     if isinstance(model, tl.ConstantTerm) and isinstance(claim, (tl.ConstantTerm, tl.FunctionTerm)):
         variables = sorted(fl.term_free_variables(claim))
@@ -4167,13 +4229,14 @@ def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_clai
             raise differ()
         return
     if isinstance(model, tl.FunctionTerm):
-        if model.symbol != claim.symbol or len(model.args) != len(claim.args):
-            raise differ()
+        replace_symbol(sigma.functions, model.symbol, claim.symbol)
         for x, y in zip(model.args, claim.args):
             _mm_align(x, y, sigma, env_model, env_claim, depth)
         return
     if isinstance(model, fl.AtomicFormula):
-        if model.predicate != claim.predicate or len(model.args) != len(claim.args):
+        if isinstance(model.predicate, str) and isinstance(claim.predicate, str):
+            replace_symbol(sigma.predicates, model.predicate, claim.predicate)
+        elif model.predicate != claim.predicate or len(model.args) != len(claim.args):
             raise differ()
         for x, y in zip(model.args, claim.args):
             if isinstance(x, tl.Term) and isinstance(y, tl.Term):
@@ -4208,9 +4271,12 @@ def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_clai
         raise differ()
 
 
-def _mm_renaming(sigma: Dict[str, tl.Term]) -> str:
-    """`sigma` in words: `X by Y and Y by X`, or `a by Plus(a, b)`."""
+def _mm_renaming(sigma: _Replacement) -> str:
+    """`sigma` in words: names and terms first, then function symbols, then
+    predicate symbols -- `X by Y and Y by X`, `a by Plus(a, b)`, `R by S`."""
     parts = [f"{old} by {new!r}" for old, new in sigma.items()]
+    parts += [f"{old} by {new}" for old, new in getattr(sigma, "functions", {}).items()]
+    parts += [f"{old} by {new}" for old, new in getattr(sigma, "predicates", {}).items()]
     return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
@@ -4692,11 +4758,13 @@ class ProofValidator:
         """Expand a `Mutatis mutandis` line into the entry that stands for it.
 
         `P. (Mutatis mutandis, A to B)` repeats the argument of line B for
-        the names that make B say P: the names to replace, each by a name or
-        a term, are read off B's statement and P (`_mm_align`), the argument
-        -- B's justification and the subproofs below it -- is rewritten with
-        them, and each line it cites from outside is replaced by the visible
-        line that says the same of the new names (`_transform_wlog_entry`).
+        the names and symbols that make B say P: the names to replace, each
+        by a name or a term, and the function and predicate symbols to
+        replace, each by another, are read off B's statement and P
+        (`_mm_align`), the argument -- B's justification and the subproofs
+        below it -- is rewritten with them, and each line it cites from
+        outside is replaced by the visible line that says the same of the new
+        names and symbols (`_transform_wlog_entry`).
         Line A, where the argument starts, must itself have such a line. A
         single cited line is B alone.
 
@@ -4759,16 +4827,15 @@ class ProofValidator:
                           f"{where} is part of it, and {why}; a repeated argument may not add "
                           "a hypothesis")
 
-        sigma: Dict[str, tl.Term] = {}
+        sigma = _Replacement()
         try:
             _mm_align(model_value, claim, sigma, {}, {}, 0)
         except ValueError as exc:
             return refuse(CATEGORY_RULE_MISMATCH,
-                          f"{claim!r} is not line {model_label}, {model_value!r}, with names "
-                          f"replaced: {exc}")
-        sigma = {old: new for old, new in sigma.items()
-                 if not (isinstance(new, tl.ConstantTerm) and new.name == old)}
-        if not sigma:
+                          f"{claim!r} is not line {model_label}, {model_value!r}, with names or "
+                          f"symbols replaced: {exc}")
+        sigma = sigma.without_identities()
+        if sigma.is_empty():
             return refuse(CATEGORY_RULE_MISMATCH,
                           f"nothing to change: {claim!r} says what line {model_label} says")
         renaming = _mm_renaming(sigma)
