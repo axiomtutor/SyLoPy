@@ -1,4 +1,4 @@
-# Guidance for Coding Agents
+# Live Collaboration Handoff
 
 This file contains stable collaboration rules. The current task handoff is kept on the [coordination branch](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/AGENT_COLLABORATION.md); the [TODO](todos.txt) is the design ledger, and PRs/issues hold implementation details. The owner has final authority over priorities and semantics.
 
@@ -11,7 +11,7 @@ Do not read the full TODO and every architecture document for each task. Start h
 - Read `ELABORATION_ARCHITECTURE.md` or `TYPE_SYSTEM_DESIGN.md` only when working in those areas.
 - Prefer targeted search or line-range reads over loading long design-history sections. Recheck PR state and CI; handoffs and status snapshots can become stale.
 
-## Preserve the architecture
+`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` failed until [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121) implemented `Mutatis mutandis` for names replaced by names; its proof stopped at line 5.3 after [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix) had fixed #75's replay defect. The test and the fixture were not changed and it passes now, so a failing test in CI is new: explain it or fix it, and do not describe it as known. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
 
 The intended pipeline is surface proof text → parsing/surface AST → elaboration → core proof entries → `ProofLogic` validation. `ProofContext` owns elaboration-time lexical scope; kernel `LabelScope` and `DeclarationScope` remain separate validation-time trust boundaries.
 

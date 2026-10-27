@@ -1,0 +1,332 @@
+(*
+First-order logic classics, entries 1 to 18: verified on master fec7051 in the
+enforced suite tests/testProofs (13 valid proofs, then 5 invalid twins). The
+invalid twins are refused for the reason their title names; the messages are in
+JOBS_FOR_CHATGPT.md under J16.
+*)
+
+# 1: Nothing satisfies P when no object does
+## Proof that
+### if P is a predicate such that: not (exists x, P(x)).
+### then forall x, not P(x).
+
+1. Let P be a predicate such that: not (exists x, P(x)). (Premise)
+2. forall x, not P(x). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let c be arbitrary. (Arbitrary)
+ 2.1. not P(c). (Proof by Contradiction from subproof below)
+ begin subproof
+  2.1.1. P(c). (Assumption for Contradiction)
+  2.1.2. exists x, P(x). (Existential Introduction from 2.1.1)
+  2.1.3. (exists x, P(x)) and not (exists x, P(x)). (Conjunction Introduction from 2.1.2, 1)
+ end subproof
+end subproof
+
+# 2: If every object fails P then nothing satisfies P
+## Proof that
+### if P is a predicate such that: forall x, not P(x).
+### then not (exists x, P(x)).
+
+1. Let P be a predicate such that: forall x, not P(x). (Premise)
+2. not (exists x, P(x)). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. exists x, P(x). (Assumption for Contradiction)
+ 2.2. Let w be an object. (Declare)
+ 2.3. (exists x, P(x)) and not (exists x, P(x)). (Existential Elimination from 2.1, subproof below)
+ begin subproof
+  2.3.1. P(w). (Assumption for Existential Elimination)
+  2.3.2. not P(w). (Universal Instantiation from 1)
+  2.3.3. (exists x, P(x)) and not (exists x, P(x)). (Explosion from 2.3.1, 2.3.2)
+ end subproof
+end subproof
+
+# 3: If P does not hold of everything, some object fails P
+## Proof that
+### if P is a predicate such that: not (forall x, P(x)).
+### then exists x, not P(x).
+
+1. Let P be a predicate such that: not (forall x, P(x)). (Premise)
+2. exists x, not P(x). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. not (exists x, not P(x)). (Assumption for Contradiction)
+ 2.2. forall x, P(x). (Universal Generalization from subproof below)
+ begin subproof
+  2.2.0. let c be arbitrary. (Arbitrary)
+  2.2.1. P(c). (Proof by Contradiction from subproof below)
+  begin subproof
+   2.2.1.1. not P(c). (Assumption for Contradiction)
+   2.2.1.2. exists x, not P(x). (Existential Introduction from 2.2.1.1)
+   2.2.1.3. (exists x, not P(x)) and not (exists x, not P(x)). (Conjunction Introduction from 2.2.1.2, 2.1)
+  end subproof
+ end subproof
+ 2.3. (forall x, P(x)) and not (forall x, P(x)). (Conjunction Introduction from 2.2, 1)
+end subproof
+
+# 4: If some object fails P then P does not hold of everything
+## Proof that
+### if P is a predicate such that: exists x, not P(x).
+### then not (forall x, P(x)).
+
+1. Let P be a predicate such that: exists x, not P(x). (Premise)
+2. not (forall x, P(x)). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. forall x, P(x). (Assumption for Contradiction)
+ 2.2. Let w be an object. (Declare)
+ 2.3. (forall x, P(x)) and not (forall x, P(x)). (Existential Elimination from 1, subproof below)
+ begin subproof
+  2.3.1. not P(w). (Assumption for Existential Elimination)
+  2.3.2. P(w). (Universal Instantiation from 2.1)
+  2.3.3. (forall x, P(x)) and not (forall x, P(x)). (Explosion from 2.3.2, 2.3.1)
+ end subproof
+end subproof
+
+# 5: A universal statement about a conjunction splits
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) and Q(x)).
+### then (forall x, P(x)) and (forall x, Q(x)).
+
+1. Let P and Q be predicates. (Declare)
+2. forall x, (P(x) and Q(x)). (Premise)
+3. forall x, P(x). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let c be arbitrary. (Arbitrary)
+ 3.1. P(c) and Q(c). (Universal Instantiation from 2)
+ 3.2. P(c). (Conjunction Elimination from 3.1)
+end subproof
+4. forall x, Q(x). (Universal Generalization from subproof below)
+begin subproof
+ 4.0. let c be arbitrary. (Arbitrary)
+ 4.1. P(c) and Q(c). (Universal Instantiation from 2)
+ 4.2. Q(c). (Conjunction Elimination from 4.1)
+end subproof
+5. (forall x, P(x)) and (forall x, Q(x)). (Conjunction Introduction from 3, 4)
+
+# 6: Two universal statements combine into one about a conjunction
+## Proof that
+### if P and Q are predicates such that: (forall x, P(x)) and (forall x, Q(x)).
+### then forall x, (P(x) and Q(x)).
+
+1. Let P and Q be predicates. (Declare)
+2. (forall x, P(x)) and (forall x, Q(x)). (Premise)
+3. forall x, (P(x) and Q(x)). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let c be arbitrary. (Arbitrary)
+ 3.1. forall x, P(x). (Conjunction Elimination from 2)
+ 3.2. forall x, Q(x). (Conjunction Elimination from 2)
+ 3.3. P(c). (Universal Instantiation from 3.1)
+ 3.4. Q(c). (Universal Instantiation from 3.2)
+ 3.5. P(c) and Q(c). (Conjunction Introduction from 3.3, 3.4)
+end subproof
+
+# 7: An existential statement about a disjunction splits
+## Proof that
+### if P and Q are predicates such that: exists x, (P(x) or Q(x)).
+### then (exists x, P(x)) or (exists x, Q(x)).
+
+1. Let P and Q be predicates. (Declare)
+2. exists x, (P(x) or Q(x)). (Premise)
+3. Let w be an object. (Declare)
+4. (exists x, P(x)) or (exists x, Q(x)). (Existential Elimination from 2, subproof below)
+begin subproof
+ 4.1. P(w) or Q(w). (Assumption for Existential Elimination)
+ 4.2. (exists x, P(x)) or (exists x, Q(x)). (Proof by Cases from 4.1, subproofs below)
+ begin subproof
+  4.2.1.l. P(w). (Case)
+  4.2.2.l. exists x, P(x). (Existential Introduction from 4.2.1.l)
+  4.2.3.l. (exists x, P(x)) or (exists x, Q(x)). (Disjunction Introduction from 4.2.2.l)
+ end subproof
+ begin subproof
+  4.2.1.r. Q(w). (Case)
+  4.2.2.r. exists x, Q(x). (Existential Introduction from 4.2.1.r)
+  4.2.3.r. (exists x, P(x)) or (exists x, Q(x)). (Disjunction Introduction from 4.2.2.r)
+ end subproof
+end subproof
+
+# 8: An existential statement about a conjunction splits
+## Proof that
+### if P and Q are predicates such that: exists x, (P(x) and Q(x)).
+### then (exists x, P(x)) and (exists x, Q(x)).
+
+1. Let P and Q be predicates. (Declare)
+2. exists x, (P(x) and Q(x)). (Premise)
+3. Let w be an object. (Declare)
+4. (exists x, P(x)) and (exists x, Q(x)). (Existential Elimination from 2, subproof below)
+begin subproof
+ 4.1. P(w) and Q(w). (Assumption for Existential Elimination)
+ 4.2. P(w). (Conjunction Elimination from 4.1)
+ 4.3. Q(w). (Conjunction Elimination from 4.1)
+ 4.4. exists x, P(x). (Existential Introduction from 4.2)
+ 4.5. exists x, Q(x). (Existential Introduction from 4.3)
+ 4.6. (exists x, P(x)) and (exists x, Q(x)). (Conjunction Introduction from 4.4, 4.5)
+end subproof
+
+# 9: Universal quantifiers commute
+## Proof that
+### if R is a predicate such that: forall x, forall y, R(x, y).
+### then forall y, forall x, R(x, y).
+
+1. Let R be a predicate such that: forall x, forall y, R(x, y). (Premise)
+2. forall y, forall x, R(x, y). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let b be arbitrary. (Arbitrary)
+ 2.1. forall x, R(x, b). (Universal Generalization from subproof below)
+ begin subproof
+  2.1.0. let a be arbitrary. (Arbitrary)
+  2.1.1. forall y, R(a, y). (Universal Instantiation from 1)
+  2.1.2. R(a, b). (Universal Instantiation from 2.1.1)
+ end subproof
+end subproof
+
+# 10: Existential quantifiers commute
+## Proof that
+### if R is a predicate such that: exists x, exists y, R(x, y).
+### then exists y, exists x, R(x, y).
+
+1. Let R be a predicate such that: exists x, exists y, R(x, y). (Premise)
+2. Let a be an object. (Declare)
+3. Let b be an object. (Declare)
+4. exists y, exists x, R(x, y). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. exists y, R(a, y). (Assumption for Existential Elimination)
+ 4.2. exists y, exists x, R(x, y). (Existential Elimination from 4.1, subproof below)
+ begin subproof
+  4.2.1. R(a, b). (Assumption for Existential Elimination)
+  4.2.2. exists x, R(x, b). (Existential Introduction from 4.2.1)
+  4.2.3. exists y, exists x, R(x, y). (Existential Introduction from 4.2.2)
+ end subproof
+end subproof
+
+# 11: A closed antecedent passes through a universal quantifier
+## Proof that
+### if A is a closed formula and P is a predicate such that: forall x, (A -> P(x)).
+### then A -> (forall x, P(x)).
+
+1. Let A be a closed formula. (Declare)
+2. Let P be a predicate. (Declare)
+3. forall x, (A -> P(x)). (Premise)
+4. A -> (forall x, P(x)). (Conditional Introduction from subproof below)
+begin subproof
+ 4.1. A. (Assumption for Conditional Introduction)
+ 4.2. forall x, P(x). (Universal Generalization from subproof below)
+ begin subproof
+  4.2.0. let c be arbitrary. (Arbitrary)
+  4.2.1. A -> P(c). (Universal Instantiation from 3)
+  4.2.2. P(c). (Modus Ponens from 4.2.1, 4.1)
+ end subproof
+end subproof
+
+# 12: An existential antecedent becomes a universal statement
+## Proof that
+### if A is a closed formula and P is a predicate such that: (exists x, P(x)) -> A.
+### then forall x, (P(x) -> A).
+
+1. Let A be a closed formula. (Declare)
+2. Let P be a predicate. (Declare)
+3. (exists x, P(x)) -> A. (Premise)
+4. forall x, (P(x) -> A). (Universal Generalization from subproof below)
+begin subproof
+ 4.0. let c be arbitrary. (Arbitrary)
+ 4.1. P(c) -> A. (Conditional Introduction from subproof below)
+ begin subproof
+  4.1.1. P(c). (Assumption for Conditional Introduction)
+  4.1.2. exists x, P(x). (Existential Introduction from 4.1.1)
+  4.1.3. A. (Modus Ponens from 3, 4.1.2)
+ end subproof
+end subproof
+
+# 13: No barber shaves exactly those who do not shave themselves
+## Proof that
+### if S is a predicate.
+### then not (exists b, forall x, (S(b, x) iff not S(x, x))).
+
+1. Let S be a predicate. (Declare)
+2. not (exists b, forall x, (S(b, x) iff not S(x, x))). (Proof by Contradiction from subproof below)
+begin subproof
+ 2.1. exists b, forall x, (S(b, x) iff not S(x, x)). (Assumption for Contradiction)
+ 2.2. Let w be an object. (Declare)
+ 2.3. (exists b, forall x, (S(b, x) iff not S(x, x))) and not (exists b, forall x, (S(b, x) iff not S(x, x))). (Existential Elimination from 2.1, subproof below)
+ begin subproof
+  2.3.1. forall x, (S(w, x) iff not S(x, x)). (Assumption for Existential Elimination)
+  2.3.2. S(w, w) iff not S(w, w). (Universal Instantiation from 2.3.1)
+  2.3.3. S(w, w) -> not S(w, w). (Biconditional Elimination from 2.3.2)
+  2.3.4. not S(w, w) -> S(w, w). (Biconditional Elimination from 2.3.2)
+  2.3.5. not S(w, w). (Proof by Contradiction from subproof below)
+  begin subproof
+   2.3.5.1. S(w, w). (Assumption for Contradiction)
+   2.3.5.2. not S(w, w). (Modus Ponens from 2.3.3, 2.3.5.1)
+   2.3.5.3. S(w, w) and not S(w, w). (Conjunction Introduction from 2.3.5.1, 2.3.5.2)
+  end subproof
+  2.3.6. S(w, w). (Modus Ponens from 2.3.4, 2.3.5)
+  2.3.7. (exists b, forall x, (S(b, x) iff not S(x, x))) and not (exists b, forall x, (S(b, x) iff not S(x, x))). (Explosion from 2.3.6, 2.3.5)
+ end subproof
+end subproof
+
+# 14: Two existential statements do not share a witness (the same witness used twice)
+## Invalid: witness reuse -- the second elimination reuses the witness of the first
+### if P and Q are predicates such that: (exists x, P(x)) and (exists x, Q(x)).
+### then exists x, (P(x) and Q(x)).
+
+1. Let P and Q be predicates. (Declare)
+2. (exists x, P(x)) and (exists x, Q(x)). (Premise)
+3. exists x, P(x). (Conjunction Elimination from 2)
+4. exists x, Q(x). (Conjunction Elimination from 2)
+5. Let w be an object. (Declare)
+6. exists x, (P(x) and Q(x)). (Existential Elimination from 3, subproof below)
+begin subproof
+ 6.1. P(w). (Assumption for Existential Elimination)
+ 6.2. exists x, (P(x) and Q(x)). (Existential Elimination from 4, subproof below)
+ begin subproof
+  6.2.1. Q(w). (Assumption for Existential Elimination)
+  6.2.2. P(w) and Q(w). (Conjunction Introduction from 6.1, 6.2.1)
+  6.2.3. exists x, (P(x) and Q(x)). (Existential Introduction from 6.2.2)
+ end subproof
+end subproof
+
+# 15: A witness may not escape into the conclusion
+## Invalid: witness escape -- the eliminated conclusion mentions the witness
+### if R is a predicate such that: forall x, exists y, R(x, y).
+### then exists y, forall x, R(x, y).
+
+1. Let R be a predicate such that: forall x, exists y, R(x, y). (Premise)
+2. Let b be an object. (Declare)
+3. forall x, R(x, b). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let c be arbitrary. (Arbitrary)
+ 3.1. exists y, R(c, y). (Universal Instantiation from 1)
+ 3.2. R(c, b). (Existential Elimination from 3.1, subproof below)
+ begin subproof
+  3.2.1. R(c, b). (Assumption for Existential Elimination)
+ end subproof
+end subproof
+4. exists y, forall x, R(x, y). (Existential Introduction from 3)
+
+# 16: Affirming the consequent
+## Invalid: affirming the consequent -- Modus Ponens cited backwards
+### if P and Q are predicates and a is an object such that: forall x, (P(x) -> Q(x)). Q(a).
+### then P(a).
+
+1. Let P and Q be predicates. (Declare)
+2. Let a be an object. (Declare)
+3. forall x, (P(x) -> Q(x)). (Premise)
+4. Q(a). (Premise)
+5. P(a) -> Q(a). (Universal Instantiation from 3)
+6. P(a). (Modus Ponens from 5, 4)
+
+# 17: Instantiating with a variable the quantifier binds
+## Invalid: variable capture -- the instance exists y, not (y = y) captures the instantiated term
+### if a is an object such that: forall x, exists y, not (x = y).
+### then exists y, not (y = y).
+
+1. Let a be an object. (Declare)
+2. forall x, exists y, not (x = y). (Premise)
+3. exists y, not (y = y). (Universal Instantiation from 2)
+
+# 18: Existential introduction cannot merge two different terms
+## Invalid: Existential Introduction -- one term must stand for the variable in every place
+### if R is a predicate and a, b are objects such that: R(a, b).
+### then exists x, R(x, x).
+
+1. Let R be a predicate. (Declare)
+2. Let a, b be objects. (Declare)
+3. R(a, b). (Premise)
+4. exists x, R(x, x). (Existential Introduction from 3)
