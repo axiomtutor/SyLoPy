@@ -89,10 +89,12 @@ Constraints and open decisions:
   membership characterization does not yet have a symbolic property usable by
   `Set property`.
 - **Infinity semantics:** the citation-shape rule exists, but the broader
-  treatment of finite/infinite sets is not implemented. The design describes
-  finite sets using a metatheoretic natural number and a bijection; the risk of
-  metatheoretic integer quantification not being object-language quantification
-  remains. Do not implement without owner approval.
+  treatment of finite/infinite sets is not implemented. The intended set I has
+  an abstract membership property P; being infinite is a separate property of
+  I, not its defining membership condition. Finite means bijective with
+  {0, ..., n-1} for a metatheoretic natural number n. Quantifying over those
+  Python integers is not object-language quantification, a risk to resolve
+  before implementation. Do not implement without owner approval.
 - **Witnesses:** `Existence from L` names a witness from an existing existential
   through the ordinary scoped declaration path. The axiom citation itself does
   not introduce the witness. The older direct Pairing-witness form remains for
@@ -102,10 +104,12 @@ Constraints and open decisions:
 
 Equality-case replay is implemented ([PR #63](https://github.com/axiomtutor/SyLoPy/pull/63),
 with the later replay fixes in [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86)
-and [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110)). The validator checks
-the selected case, transforms and revalidates the rest of the current proof
-block for every alternative, and remaps citations without mutating the original
-proof. Outside citations need a visible counterpart unless exchanging the case
+and [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110)). The cited line must
+be a disjunction and the asserted WLOG formula must be one of its disjuncts;
+currently, alternatives must be equalities differing in exactly one constant
+term. The validator checks the selected case, transforms and revalidates the
+rest of the current proof block for every alternative, and remaps citations
+without mutating the original proof. Outside citations need a visible counterpart unless exchanging the case
 constants leaves the cited fact invariant (up to commutative ordering of
 `and`/`or`). Nested case blocks are included.
 
@@ -159,6 +163,13 @@ lines. See `pytest_tests/test_hypotheses_and_promotion.py`,
 `pytest_tests/test_promotion_requirements.py`,
 `pytest_tests/test_rule_configuration_identity.py`, and
 `pytest_tests/test_theorem_surface_citations.py`.
+
+Uniqueness's arbitrary object c and equality target d must be distinct
+constants; c must be genuinely arbitrary, absent from the existence line and
+from every hypothesis in force, and not constrained by declaration metadata.
+The rule explains refusals through those conditions. Regression coverage is in
+\`pytest_tests/test_uniqueness_rule.py\` and
+\`tests/testProofs/uniqueness_red_team.txt\`.
 
 Two policy/design questions remain:
 
