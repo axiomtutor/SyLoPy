@@ -2,45 +2,20 @@
 
 ## Project status
 
-The latest recorded full run is
-[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
-at commit [`62374be`](https://github.com/axiomtutor/SyLoPy/commit/62374beb42378dc2e3ec89a0087c1b545594fb7c),
-on 2026-10-10. The canonical `./run_tests.sh` run reported:
+The latest recorded full-suite verification is the run reported for [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121), commit [`ee45eb5`](https://github.com/axiomtutor/SyLoPy/commit/ee45eb55a26174ed98b9c4747a550bf6c5e6fc55), on Python 3.12 and 3.13:
 
-- 896 Python tests; 895 passed and 1 known failure (see "Known issues" below).
-  This includes the 159-case parser oracle in `parse_oracle/`.
-- enforced proof fixture corpus: 78/78 passed.
-- informational proof fixtures: 51/52 passed; the one failure is the same
-  known ZFC fixture issue.
+- Python tests: 1,743 passed, 1 xfailed.
+- Coverage passed.
+- Enforced proof fixtures: 272/272.
+- Informational proof fixtures: 88/88.
 
-These figures are a snapshot of that run, not a promise that counts will stay
-fixed as tests and fixtures are added.
+These are PR-reported results for the tested branch commit, not a separate run on the merge commit. No failure is reported.
 
-The current work is no longer about making the basics work. The remaining work
-is about making the system cleaner, easier to extend, and easier to use.
+The main parser/elaboration/kernel pipeline, set theory, natural-number reasoning, and discrete-mathematics layer are in place. Current improvement work should prioritize maintainability, disciplined theory extension, and useful examples and documentation.
 
 ## Known issues
 
-- [ ] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`
-      is out of sync with its fixture, `tests/setTheoryProofs/zfc_remaining_axioms.txt`.
-      The fixture used to hold six short demonstration proofs, one per ZFC
-      axiom; it has since been rewritten -- axioms are now declared, not
-      proved, plus one worked "Unique pairing" proof that cites them -- as
-      part of designing the axiom-citation rules below, and the test still
-      expects the old shape. The fixture now parses in full (header, every
-      line, every citation). It introduces its two sets explicitly (`Let Y be
-      such a set. (Existence from 2)` and `Let X be any set. (Declaration)`,
-      the same way pairing proof 5 does) and now fails only at validation, at
-      line 5.2.3, because `WLOG` is not a registered rule. `Mutatis mutandis`
-      (line 5.3) is the other rule it needs that doesn't exist yet.
-      `Uniqueness` (line 6) now exists; the proof stops at its first missing
-      rule, so line 6 is not reached here. Its last step was checked by
-      replacing `WLOG` and `Mutatis mutandis` with stand-ins, and the same
-      proof written without either is the enforced fixture
-      `tests/testSetTheory/unique_pairing_without_wlog.txt`. Update the test
-      once "ZFC axiom citations and derived rules" (below) lands -- not
-      before; the fixture is deliberately ahead of the implementation right
-      now.
+- [x] `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` was the sole reported failure. It was reported as issue [#75](https://github.com/axiomtutor/SyLoPy/issues/75): equality-case WLOG replay substituted into an invariant outer citation. That defect was fixed (see the WLOG entry below), after which the proof stopped at line 5.3, which uses `Mutatis mutandis`. Stage 1 of that rule is implemented (see its entry below) and the test passes. The test was not weakened and the fixture was not altered.
 
 ## Design principles
 
@@ -101,9 +76,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 - [x] Verify the parser/elaboration/kernel pipeline against the full regression
       suite.
 - [x] Provide the canonical test command and proof-corpus workflow in the README.
-- [ ] Document the recommended public APIs and usage patterns more explicitly.
-- [ ] Ensure project documentation explains the intended theory boundaries and
-      extension model.
+- [x] Document the recommended public APIs and usage patterns in the README's “Recommended Python API” section.
+- [x] Explain the surface-proof versus core-entry APIs, selected theory environments,
+      and explicit theory-resource composition in the README.
 
 ### 3. Continue theory expansion
 
@@ -118,8 +93,9 @@ kept equivalent by regression tests rather than by making the kernel depend on
 
 - [x] Maintain the enforced fixture corpus as the minimum correctness gate.
 - [ ] Grow the informational examples to cover more user-facing proof patterns.
-- [ ] Add smaller end-to-end examples that showcase the theorem-promotion and
-      subproof features.
+- [x] Add smaller end-to-end examples that showcase theorem promotion and
+      subproofs in the README's recommended Python API section; all three marked
+      examples execute in `pytest_tests/test_readme_python_api.py`.
 - [x] Parser oracle: `parse_oracle/*.txt` holds independent surface -> plain-logic
       cases (`id` / `context` / `surface` / `expect` / `why`; `REJECT` for
       malformed input), and `pytest_tests/test_parse_oracle.py` checks the
@@ -131,11 +107,10 @@ kept equivalent by regression tests rather than by making the kernel depend on
 
 ### 5. ZFC axiom citations and derived rules for set theory
 
-Design agreed while working through the user's own "Unique pairing" proof
-(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). The unchecked items below
-are not implemented yet -- this is the agreed design, written down so
-implementation can proceed later without re-litigating it. Do not start
-implementing the rules without an explicit go-ahead.
+Design and status notes from the user's "Unique pairing" proof
+(`tests/setTheoryProofs/zfc_remaining_axioms.txt`). Checked items are implemented;
+unchecked items remain open. This ledger is not blanket authorization: follow
+any explicit owner-approval gate on the remaining work.
 
 - [x] Witness naming for axiom instances (decided: sugar, not a context-aware
       citation). `Let Y be such a set. (Existence from L)` extends the
@@ -156,7 +131,7 @@ implementing the rules without an explicit go-ahead.
       implicitly (the axiom citation introducing Y, the conditional
       introducing X).
 
-- [ ] Axiom citations as named, shape-checking rules.
+- [x] Axiom citations as named, shape-checking rules.
       Replace the `SET_AXIOMS` formula list plus generic "(Axiom)" citation
       (which requires restating the axiom verbatim) for Pairing, Union, Power
       Set, and Infinity with four named, zero-premise `InferenceRule`
@@ -181,166 +156,114 @@ implementing the rules without an explicit go-ahead.
       `PairingAxiomRule(witness_name=...)` and rule-introduced declarations).
       It stays on master for now but is not the design, and it is not to be
       extended to Union, Power Set or Infinity.
+      Built (owner go-ahead: "Implement the next todo", 2026-10-17). The four
+      rules were already in `SetTheory.py` and cited by name; what was missing
+      was "a specific instance shape". `UnionAxiomRule` and `PowerSetAxiomRule`
+      accepted only the axiom stated in full (`forall X, exists Y, ...`), so a
+      proof had to state the whole axiom and then instantiate it. They now also
+      accept the instance for a set S of the proof, which is what a proof
+      cites -- `exists Y, forall u, (In(u, Y) iff u subset A). (Axiom of power
+      set)` -- as `PairingAxiomRule` already did. Side conditions, with the
+      reasons in the rules' docstrings: the bound names must all differ, and
+      in an instance S must have no free variable that one of the rule's own
+      binders would capture (with S := u the power set instance would say
+      every set is a member of Y; with S := u the union instance would be a
+      comprehension with no bounding set). A constant is never captured,
+      whatever it is called. `PowerSetAxiomRule` also takes any name for the
+      subset clause's variable now, not only the one `u subset X` builds, so
+      `POWER_SET_AXIOM` as the module states it is accepted; each entry of
+      `SET_AXIOMS` is accepted by exactly its own named rule. Infinity has no
+      parameter, so its one shape is its instance. Tests:
+      `pytest_tests/test_axiom_citation_rules.py` (shape near misses, name
+      collisions, capture, citation from proof text, wrong citations rejected
+      at the cited line) and the informational fixture
+      `tests/setTheoryProofs/union_and_power_set_theorems.txt` (six proofs
+      citing Union and Power Set by name, including "Unique union" and
+      "Unique power set" in the shape of "Unique pairing").
+- [ ] Retire the generic `(Axiom)` citation of the four set axioms. This is
+      the "replace" half of the item above and is not done: `SET_AXIOMS` is
+      still the theory's `axioms`, so a proof can still cite one of the four
+      with `(Axiom)` and the axiom restated in full, alongside the named
+      citation. Removing that path would stop it working, so it is the
+      owner's call.
 
-- [ ] WLOG as a proof-region replay rule.
-      Surface form: WLOG is not a special subproof. It is an ordinary
-      asserted formula whose justification is a WLOG citation, e.g.
-      `a = x. (WLOG from 1)`. The cited line must be a disjunction, and the
-      asserted formula must be exactly one of its disjuncts. The WLOG region
-      begins at that line and runs to the end of the current proof block
-      (ending at the enclosing subproof's boundary, if any).
-      Decided (owner, 2026-10-08): the region is the WLOG line and everything
-      after it in that block, so WLOG needs no surface syntax of its own to
-      delimit a subproof. Implementation still waits for an explicit
-      go-ahead.
+- [x] WLOG equality-case replay as a proof-region rule (PR #63).
 
-      WLOG is therefore a validator-level structural construct rather than a
-      normal backward-only `InferenceRule`: its justification depends on the
-      suffix of the current proof block. When the validator reaches WLOG, it
-      should take control of the remainder of that block: validate the
-      author's chosen case normally, then replay the same region once for each
-      other disjunct and require every replayed line to validate.
-      
-      Current implementation target: equality cases such as
-      `a = x or a = y or a = z`. Derive a constant-term substitution by
-      comparing the chosen disjunct with each alternative; for the first
-      implementation require that the two equalities differ in exactly one
-      constant term, e.g. `x -> y`. Use
-      `_substitute_constants_in_formula` for formulas and add corresponding
-      substitution for declarations/structured declaration metadata. Only the
-      WLOG region is transformed. Lines before WLOG are not mutated.
-      
-      Citation remapping is part of the replay, not a post-processing step.
-      Maintain a map from every original region label already replayed to the
-      corresponding replay value. If a replayed line cites an earlier line
-      inside the WLOG region, use that replayed counterpart. If it cites a
-      line outside the region, transform the cited line's *formula* with the
-      current substitution and search the visible pre-WLOG proof state for an
-      already-established line with that transformed value. The original outer
-      line is never changed. This is what turns, for example, a citation of
-      `P(x)) into a citation of an existing `P(y)) when the latter is
-      available. Search only lines visible at the corresponding point in the
-      original proof; never use a future line or a line from a closed sibling
-      scope. When several matching lines exist, choose the earliest visible
-      match deterministically. If no matching line exists, the WLOG replay
-      fails.
-      
-      The replay should preserve dependency structure: transform a line's
-      formula and declarations, resolve its transformed citations, then call
-      the same rule's `applies()` on the transformed candidate values.
-      Replayed nested subproofs are transformed recursively; a citation to an
-      outer subproof requires an already-validated corresponding outer
-      subproof with the transformed assumption/conclusion, rather than
-      retroactively transforming the old subproof.
-      
-      Suggested implementation skeleton:
-      
-      ```python
-      @dataclass(frozen=True)
-      class WLOGReplayRef:
-          source_label: str
-          value: Union[fl.Formula, SubproofRecord]
-          origin: str                 # "replay" or "outer"
-      
-      
-      def _wlog_substitution(chosen: fl.Formula,
-                             alternative: fl.Formula) -> Dict[str, tl.Term]:
-          """Derive the equality-case substitution x -> y."""
-          if not isinstance(chosen, fl.Equals) or not isinstance(alternative, fl.Equals):
-              raise WLOGError("current WLOG form requires equality disjuncts")
-      
-          differences = []
-          for left, right in (
-              (chosen.left, alternative.left),
-              (chosen.right, alternative.right),
-          ):
-              if not _ast_eq(left, right):
-                  differences.append((left, right))
-      
-          if len(differences) != 1:
-              raise WLOGError("WLOG alternatives must differ in exactly one term")
-          source, target = differences[0]
-          if not isinstance(source, tl.ConstantTerm):
-              raise WLOGError("the changing WLOG term must be a constant")
-          return {source.name: target}
-      
-      
-      def _resolve_wlog_citation(
-          label: str,
-          *,
-          region_labels: set[str],
-          replayed: Dict[str, WLOGReplayRef],
-          outer_visible: Iterable[Tuple[str, Any]],
-          substitution: Dict[str, tl.Term],
-      ) -> WLOGReplayRef:
-          # References into the replay region follow the replayed dependency
-          # graph exactly.
-          if label in region_labels:
-              return replayed[label]
-      
-          # References outside the region are not transformed in place. Find
-          # an already-visible fact that is the transformed counterpart.
-          original = lookup_visible_outer(label)
-          expected = _substitute_wlog_value(original, substitution)
-          for visible_label, value in outer_visible:
-              if _wlog_value_matches(value, expected):
-                  return WLOGReplayRef(visible_label, value, "outer")
-          raise WLOGError(
-              f"no visible counterpart for {label!r} after WLOG substitution"
-          )
-      
-      
-      def _replay_wlog_region(block, wlog_index, visible_before, disjunction,
-                              selected):
-          """Validate the chosen suffix normally, then replay it for every
-          other disjunct.
-      
-          The actual validator should call this when it encounters a WLOG
-          line, because the line's justification depends on the suffix of the
-          current block.
-          """
-          alternatives = list(disjunction.disjuncts)
-          for alternative in alternatives:
-              substitution = _wlog_substitution(selected, alternative)
-              replayed = {}
-              # The WLOG line itself is the seed of the replay.
-              replayed[block[wlog_index].label] = WLOGReplayRef(
-                  block[wlog_index].label,
-                  alternative,
-                  "replay",
-              )
-              for entry in block[wlog_index + 1:]:
-                  transformed = _transform_wlog_entry(entry, substitution)
-                  candidates = [
-                      _resolve_wlog_citation(
-                          ref, region_labels=..., replayed=replayed,
-                          outer_visible=..., substitution=substitution,
-                      ).value
-                      for ref in transformed.cited_labels
-                  ]
-                  _validate_transformed_entry(transformed, candidates)
-                  replayed[transformed.label] = WLOGReplayRef(
-                      transformed.label, transformed.value, "replay"
-                  )
-      ```
-      
-      The skeleton is deliberately split into substitution, citation
-      resolution, and rule validation so that line correspondence is explicit
-      rather than hidden inside formula matching.
-      
-      Acceptance tests should cover: two and three disjuncts; a correct WLOG
-      proof and an incorrect symmetric case; remapping a citation from
-      `P(x)` to an already-visible `P(y)`; failure when that counterpart is
-      absent; substitution of declarations; nested subproofs; prevention of
-      future-line/cross-sibling references; and preservation of the original
-      proof when the WLOG region is not replayed.
-      
-      Future generalization: replace equality-specific substitution with a
-      theory-independent transformation between arbitrary WLOG properties
-      `phi` and `psi`. Equality cases such as `a = x` / `a = y` then
-      become one particular transformation mechanism.
+      Surface form: WLOG is an ordinary asserted formula justified by a WLOG
+      citation, e.g. `a = x. (WLOG from 1)`. The cited line must be a
+      disjunction, and the asserted formula must be exactly one of its
+      disjuncts. The WLOG region is that line and the remainder of the current
+      proof block, ending at the enclosing subproof boundary if any.
 
-- [x] (Partly done.) General `Set property` -- `SetPropertyRule`, cited as
+      The validator checks the chosen case normally, then replays the region
+      for each alternative. The first implementation handles equality cases
+      whose alternatives differ in exactly one constant term. It transforms
+      formulas, declarations and structured metadata only inside the replay
+      region, leaves the original proof unchanged, and validates replayed
+      entries through the normal rule checks. Region-local citations point to
+      replayed counterparts; citations outside the region are remapped to the
+      earliest already-visible line whose formula matches the transformed
+      citation. Future lines and closed sibling scopes are not eligible.
+      When there is no visible counterpart, the original citation is kept if
+      exchanging the two case constants leaves the cited line unchanged (up
+      to the order of `and` and `or`); otherwise replay fails.
+
+      Tests include two and three disjuncts, successful and rejected cases,
+      citation remapping, absent counterparts, declaration/metadata
+      substitution, nested subproofs, prevention of future-line and
+      cross-sibling references, and preservation of the original proof.
+
+      Invariant outer citations ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75);
+      Claude, branch `claude/wlog-symmetric-citations`). The first version
+      looked for a counterpart of every outside citation and failed when there
+      was none. That refused the usual proof: after `x = a`, a line such as the
+      pair characterization `forall u, (In(u, Y) iff (u = a or u = b))` is
+      cited, and the replay for `x = b` needs that line itself, not one that
+      says `u = b or u = b`. A cited outside line with no counterpart is now
+      kept if exchanging the two case constants leaves it unchanged. The
+      exchange swaps both at once, so `a -> b` and `b -> a` do not chain. A
+      line that favours one case (`P(a)`, `P(a) and R(b)`, `P(a) and P(c)`)
+      still needs its counterpart, and a kept line is still judged by the rule
+      that cites it. A counterpart is always preferred, so a replay that was
+      accepted before is unchanged; the new path only applies where replay
+      used to fail. The same decision is made inside the region's subproofs.
+      Soundness rests on the ordinary check of each replayed line, not on the
+      transformation; the exchange test keeps WLOG meaning that the same
+      argument serves for the other case, and the earlier negative test
+      (`P(x)` with no `P(y)`) still refuses. Tests:
+      `pytest_tests/test_wlog_symmetric_citations.py` (14) and the enforced
+      fixture `tests/testSetTheory/unique_pairing_with_wlog.txt`, unique
+      pairing with WLOG in both inclusions (the informational
+      `tests/setTheoryProofs/zfc_remaining_axioms.txt` uses `Mutatis mutandis`
+      for the second). 16 deliberate changes to the new code were each caught
+      by a test. The informational proof then passed line 5.2.4 and stopped at
+      line 5.3, on `Mutatis mutandis`, which is implemented since (see its
+      entry below).
+
+      Case blocks (Claude, branch `claude/wlog-case-blocks`). A
+      `Proof by Cases ... (subproofs below)` line keeps one block of lines per
+      case, and the replay used to leave those blocks as written: their
+      formulas kept the chosen case's constant and their citations were not
+      remapped, so a case line that depends on the chosen case, such as
+      `P(x). (Substitution from 13, 8)` with line 13 reading `x = a`, was read
+      against `x = b` and refused. Case blocks written as standalone subproofs
+      for `Disjunction Elimination` were already transformed. Every case block
+      is now transformed like the rest of the region. That also holds a case
+      line to the rule for any other line: a citation outside the region needs
+      a counterpart for the new case or must say the same of both. A proof
+      whose case lines cited a line that favours the chosen case was accepted
+      only because its blocks were never replayed; it is now refused, as the
+      standalone form always was. No enforced fixture changed. Tests:
+      `pytest_tests/test_wlog_case_blocks.py` (9); 12 deliberate changes to the
+      code that walks the subproofs were each caught by a test.
+
+      Limitations: arbitrary-property transformations are not implemented;
+      equality cases are the supported form. `Mutatis mutandis` is a separate
+      rule (see its entry) and is not part of WLOG. Additional changes to
+      either feature require coordination; this status note does not authorize
+      expansion beyond the implemented equality-case replay.
+
+- [x] General `Set property` -- `SetPropertyRule`, cited as
       `Set property from N, M` or `Set property, N, M` (bare `Set property`
       is still the empty-set rule). From a membership characterization
       `forall u, (In(u, S) <-> P(u))` and an instance of one side at a term
@@ -350,23 +273,37 @@ implementing the rules without an explicit go-ahead.
       in `pytest_tests/test_set_property.py`, and used in four realistic
       proofs in `tests/setTheoryProofs/pairing_theorems.txt`. Bare
       zero-citation names like `(Axiom of pairing)` now resolve through the
-      alias/placeholder table. Still open: the optional equality citation M
-      (substituting an equality while instantiating), and the witness-naming
-      axiom citation (see the first item). Note `PairingAxiomRule`,
-      `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` already
-      exist in `SetTheory.py` as formula-shape rules; what is not built is
-      the form that introduces the named set directly off the citation.
-      Original design note, kept for the open part:
-- [ ] Generalize `Set property` to `Set property, N[, M]`.
-      `EmptySetPropertyRule` only knows the empty set's defining property.
-      The general form needs to look up a membership-defining biconditional
-      from a cited line N (an axiom citation, or an elaborated "contains
-      exactly P and Q" assumption) and instantiate it, optionally
-      substituting an equality from a cited line M. The citation should name
-      the instantiation witness explicitly; the checker shouldn't guess it.
-      Decided: every set has a defining property, which `Set property`
-      checks. For a set with no stated property (e.g. "Let X be any set"),
-      the property is symbolic, i.e. just its own membership predicate.
+      alias/placeholder table.
+      Equality. A cited disjunct of a membership property's disjunction
+      establishes membership (ordinary Disjunction Introduction followed by
+      the biconditional), and nonmembership gives the negated disjunct. That
+      case runs one way only: membership does not give a disjunct, and a
+      negated disjunct does not give nonmembership. The first version, as
+      merged, accepted those two as well -- from `In(x, Y)` for a pair set it
+      derived `x = a` and `x = b`, so `a = b` was provable for any two sets --
+      and was fixed in `SetPropertyRule._derives` (tests: "runs one way only"
+      in `pytest_tests/test_set_property.py`). A line that is just an equality
+      may be written either way round, cited or concluded, positive or
+      negated, matching a disjunct or the whole property: `a = x` does what
+      `x = a` does, as it does for `Substitution` (tests: "either way
+      round"). An equality inside a larger formula is not turned round.
+      Decided (owner, 2026-10-16, issue #69): equality is handled to this
+      extent. No separate form of the rule that also takes an equality to
+      substitute is added; an explicit `Substitution` step does the
+      replacing. The instantiation term is never guessed: the cited line and
+      the concluded line must name the same one (tests: "must still name the
+      membership element"). Witness naming and the named axiom-citation rules
+      are separate items above. Note `PairingAxiomRule`,
+      `UnionAxiomRule`, `PowerSetAxiomRule` and `InfinityAxiomRule` exist in
+      `SetTheory.py` as formula-shape rules. A form that introduces the named
+      set directly off the citation is not built, by the owner's decision of
+      2026-10-08 above: naming the set is `Let Y be such a set. (Existence
+      from L)`.
+- [ ] A symbolic defining property for a set with no stated one. Decided:
+      every set has a defining property, which `Set property` checks. For a
+      set with no stated property (e.g. "Let X be any set"), the property is
+      symbolic, i.e. just its own membership predicate. Not built: `Set
+      property` still needs the characterization cited.
 
 - [x] `Uniqueness, N, M`. Implemented as `UniquenessRule` in `ProofLogic.py`.
       It concludes the ordinary `exists W, (B(W) and forall V, (B(V) -> V = W))`
@@ -438,10 +375,11 @@ implementing the rules without an explicit go-ahead.
       of gap, found in review: the rule once read every string in a
       relation's metadata as a name, property labels included, so it refused
       a sound proof whose constant was merely spelled `reflexive`. Lesson for
-      any rule that generalizes a constant (`WLOG` and `Mutatis mutandis`
-      will probably need a similar view of the proof around them; that
-      design is not written yet): list everything the proof relies on, not
-      only the lines that mention the constant.
+      any rule that generalizes a constant must account for every hypothesis and
+      declaration-structure dependency, not only lines that mention the
+      constant. WLOG replay revalidates its transformed suffix and remaps
+      citations; `Mutatis mutandis` expands into a repeated argument that is
+      revalidated the same way.
 
 - [x] Plain syntax gaps surfaced by the same proof, and the parsing pass that
       followed. All of it is sugar that desugars to ordinary formulas (nothing
@@ -469,8 +407,9 @@ implementing the rules without an explicit go-ahead.
         not already in use; the braces in "a unique set {a, b} that ..." only label the witness;
       - citations written `Rule, 3, 3.2.1` and `Rule, 3.1 to 3.2` (a range
         gives its two endpoints) beside `Rule from 3, 3.2.1`; the names of
-        planned rules (`WLOG`, `Mutatis mutandis`) resolve to named
-        placeholders (`Uniqueness` is now a real rule);
+        rule names are recognized in citations: WLOG and `Mutatis mutandis`
+        are handled by the validator's contextual replay path (`Uniqueness` is
+        real);
       - a fixture's stated conclusion (`### then ...`) is compared with what
         the proof derived up to the names of bound variables
         (`ProofLogic._alpha_eq`).
@@ -484,11 +423,12 @@ implementing the rules without an explicit go-ahead.
       "x is a or b" is read greedily; parenthesize to end the phrase. A
       natural-language existential after `and`/`or` takes the rest of the
       formula (up to a `then`), while a symbolic `exists x, BODY` there still
-      stops at the next connective, as before. Existentials accept one-word
-      kinds only ("an integer n"); "a natural number n" is refused with the
-      list of supported forms, since no phrase for it exists yet. Found but
-      deliberately left alone: declaration descriptors swallow a following
-      " a ..." (`Let X be any set, a in X` gives X a garbage `type_name`), and
+      stops at the next connective, as before. Existentials support multi-word kinds when the active theory
+      environment defines the corresponding predicate phrase (e.g. "a natural
+      number n" through Number Theory); unsupported phrases fail with guidance
+      to state the condition explicitly. Found but deliberately left alone:
+      declaration descriptors swallow a following " a ..." (`Let X be any set,
+      a in X` gives X a garbage `type_name`), and
       the `type_name` wording differs between declaration paths.
 
 - [x] Bounded quantifiers (ChatGPT, PR #4). Found by checking the nine
@@ -509,6 +449,12 @@ implementing the rules without an explicit go-ahead.
       property with parameter p", "choice function"), and Axiom 4's
       `{u in U: U in X}` leaves U free, so it cannot stand for the union as
       written.
+
+      Fixed: a following membership premise in a coordinated declaration
+      (e.g. `Let X be any set, a in X`) is now split from the declaration
+      descriptor, so X keeps type text `any set` and `In(a, X)` is retained
+      as a premise. The separate difference in `type_name` wording between
+      declaration paths remains a documentation/API consistency question.
 
 - [ ] Infinity axiom. Decided: the axiom introduces a set I whose defining
       property is an abstract, unspecified property P(x) -- x is in I iff
@@ -537,56 +483,282 @@ implementing the rules without an explicit go-ahead.
       then the axiom rules. Do not start the rules until given an explicit
       go-ahead.
 
-- [ ] Mutatis mutandis (deferred -- larger, separate project).
-      Confirmed to be a real, checkable rule: given two parallel subproofs of
-      the same shape, it swaps *which cited line plays which role* (e.g. the
-      line supplying the disjunct fact and the line supplying the membership
-      conclusion trade places), rather than substituting terms. Bigger and
-      less well-specified than the items above; needs its own design pass and
-      does not block them.
+- [x] Mutatis mutandis, stage 1: names replaced by names (Claude, branch
+      `claude/mutatis-mutandis`). `P'. (Mutatis mutandis, B)` repeats the
+      argument of line B for the names that make B say P'. `P'. (Mutatis
+      mutandis, A to B)` does the same and also requires that line A have a
+      counterpart for the new names: `A to B` reads as "the argument from A
+      to B", where A is checked and not repeated. The owner agreed that
+      reading, and that the new names must have whatever property the old ones
+      were cited as having, on 2026-10-21; stages 2 and 3 below were not
+      approved.
+      Design: the validator expands the line into the argument it stands for
+      (`ProofValidator._expand_mutatis_mutandis`) and validates that like any
+      other line, so it is not a trusted rule of its own. `_mm_align` reads the
+      names to replace off B's statement and the new statement; the
+      transformation WLOG uses (`_transform_wlog_entry`, now taking a
+      `_ReplayPolicy`) rewrites B's justification and the subproofs below it,
+      and replaces each citation from outside the argument by the earliest
+      visible line that says the same of the new names. A bundle premise
+      stands for a line when it states every fact the line does. A cited line
+      that says nothing about a replaced name stays cited. Whatever the
+      expansion cites, derives or declares is checked by the kernel as if it
+      had been written out, so a new name that the argument's own witness
+      would capture is refused by the ordinary freshness check. `LabelScope`
+      records the entry that justified each label (`set_source`,
+      `source_of`) for this.
+      Refused, each at the Mutatis mutandis line with its reason: a line B that
+      no rule derived (a premise, an assumption, a declaration), a WLOG step as
+      B (an argument that contains one can be repeated), an argument that
+      contains a hypothesis (a premise, an axiom, a witness named with
+      `Existence from`, a declaration that states a fact or records
+      structure, and any justification not known to be safe to repeat), a
+      statement that is not B with names replaced (another predicate, shape,
+      free variable or quantifier), nothing replaced, one name replaced by two,
+      a cited line or a start line A with no counterpart, more than `B` or
+      `A to B`, a backwards range, a cited line that is not in scope.
+      WLOG is unchanged apart from one thing: the matcher that finds a
+      counterpart line now also ignores the names of bound variables, as it
+      ignored the order of and/or, so WLOG accepts what it accepted and some
+      replays it used to refuse. The kernel's rules still match by `_ast_eq`.
+      The informational `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose
+      second inclusion uses the rule, passes, and with it
+      `pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass`.
+      Tests: enforced fixtures `tests/testProofs/mutatis_mutandis.txt` (30
+      cases, each invalid one with a valid twin that differs in the one point
+      it names) and `tests/testSetTheory/mutatis_mutandis_sets.txt` (3);
+      `pytest_tests/test_mutatis_mutandis.py` (91) and
+      `pytest_tests/test_mutatis_mutandis_reasons.py` (56), which pin every
+      refusal to its line, category and reason. 89 deliberate changes to the
+      new code (`tools/mutation_check.py`): 86 were each caught by a test, and
+      the other three are redundant guards (two overlapping size checks in the
+      existing and/or matcher, which are caught together, and a scan of
+      declaration slots that an earlier check already covers). Running them,
+      and the coverage report, found gaps that are now tested: WLOG's refusal
+      of a replay that needs a bundle premise, the alignment of negations,
+      biconditionals, equations and the size of and/or, the statement of the
+      line kept as written down to the name of a bound variable, and the
+      matcher's negation.
+      Limitations: the repeated argument is line B with the subproofs attached
+      to it; the lines between A and B are not replayed. A name is replaced only
+      if it occurs in B's statement and the new statement, so two sets that
+      appear in neither cannot be exchanged. An argument with a witness line, a
+      premise, an axiom or a structure declaration is refused rather than
+      repeated. The finder accepts a counterpart whose and/or are in another
+      order, but a kernel rule that needs the exact formula still refuses it.
+- [ ] Mutatis mutandis, stage 2: a name replaced by a term, which asks
+      whether an argument about `a` is an argument about `f(c)` (no rule
+      depends on `a` being a constant) and which freshness conditions apply.
+      Stage 3: a relation or function symbol replaced by another, with the
+      rules that correspond to each. Neither is designed in detail or
+      approved; both need an owner decision before any work.
 
 ### 6. Typed declarations: `Let X be an integer` should type X
 
-- [ ] Decided (owner, 2026-10-10): `Let X be an integer.` should eventually
-      type `X`. Not to be implemented now; how it should work is open, and
-      the agents are discussing the options in the agent discussion file.
-      Today a type word is only a label: `Declaration.type_name` is read by no
-      rule, no shipped theory registers descriptors, and `Let n be a natural
-      number.` states no `Nat(n)`. Fixtures that need `Int(a)` state it by
-      hand (`Let a, b, c be integers such that: Int(a). Int(b). Int(c). ...`).
-      Fact found while discussing it: the machinery for a typed declaration
-      already exists. `Type(..., descriptors=[...]).as_declaration_recipe()`
-      makes `Let x be a <descriptor>` state `Type.holds(x)` on the
-      declaration's own line, and the validator already records a declaration
-      line that states a formula as a hypothesis. As an experiment (not
-      committed), registering descriptors for `NAT_TYPE` and `INT_TYPE` in the
-      default environment changed exactly one of the 130 fixture proofs and
-      one of the 896 Python tests: red-team case 5 (and its reasons test),
-      which is then refused for conditions 3 and 4 (`X occurs in a hypothesis
-      in force, Int(X)`). So the soundness side already works, and nothing
-      else in the repository depends on a type word being only a label. What
-      is open is the design around it:
-      - does a type only state a formula (a typed declaration is the
-        hypothesis `Int(X)`), or is it also checked (ill-typed terms
-        rejected, as the refinement-type proposal in PR #22 has it)? If both,
-        the checking layer may reject but must never justify;
-      - generalizing over a typed constant needs sugar, since `forall n,
-        (Nat(n) -> P(n))` has to come from somewhere ("for every natural
-        number n");
-      - subtypes (`Nat` inside `Int`): an explicit inclusion theorem, not
-        metadata;
-      - theorem promotion with a typing line (verified in the experiment: it
-        becomes a premise, so a proof that starts `Let n be a natural number.`
-        and ends `Nat(Succ(n))` promotes to the theorem "from `Nat(n)`,
-        `Nat(Succ(n))`, with n generalized", which is the textbook statement
-        for free; today a proof that cites the declaration line for `Nat(n)`
-        does not validate, because that line states nothing a later line can
-        cite).
-      Constraint on every option: a typing fact the proof relies on must reach
-      `RuleContext` as a recorded formula or as declaration metadata (the
-      Uniqueness lesson above), or case 5 turns from refused into unsound.
-      When this is implemented, case 5 of
-      `tests/testProofs/uniqueness_red_team.txt` becomes an Invalid case.
+- [x] Owner authorized implementation (2026-10-11): declarations such as
+      `Let X be an integer.` and `Let n be a natural number.` now state the
+      corresponding ordinary formulas `Int(X)` and `Nat(n)` on their
+      declaration lines, using the existing `Type.as_declaration_recipe()`
+      mechanism. This is not refinement type checking: it does not reject
+      ill-typed expressions, and it does not infer arbitrary type facts.
+      The type predicate remains an ordinary citable logical fact.
+      Regression tests cover singular and plural integer/natural-number
+      declarations. The recipes are registered by
+      `NUMBER_THEORY_ENVIRONMENT`, so direct users of that environment get
+      the same declaration behavior as users of the default environment.
+      Scope-local declarations remain subject to the separate lexical-scope
+      contract below.
+
+      Soundness invariant for future typing work: every typing fact a proof
+      relies on must reach `RuleContext` as an ordinary recorded formula or
+      explicit declaration metadata. A separate type-checking layer may reject
+      ill-typed expressions, but must never independently justify a proof step.
+      Item 8 applies the same invariant to `UniversalGeneralization`,
+      `ExistentialElimination` and theorem promotion.
+
+
+### 7. Relation declarations and inference rules respect subproof scope
+
+- [x] Implemented in master commit [`e00f3cc`](https://github.com/axiomtutor/SyLoPy/commit/e00f3ccc888f4053cc3760493926bd24888b2d2f) (2026-10-12). The seven relation-property rules consult `RuleContext.declaration(name)`, backed by the validator's active `DeclarationScope`, instead of a proof-wide snapshot of relation metadata. The scope is passed explicitly through ordinary, hybrid, and below-subproof rule evaluation, including rejection explanations. Nested declarations are visible in descendants, while closed and sibling scopes do not leak.
+- Regression coverage: `pytest_tests/test_relation_scope_rules.py` and `pytest_tests/test_rule_context_declarations.py` cover property mismatches, carriers, nesting, siblings, shadowing, proof-by-cases branches, fresh-variable subproofs, and every rule-citation path. The current master run reports 979 passed plus the known deferred ZFC fixture failure; enforced fixtures remain 79/79.
+
+### 8. Hypotheses reach every rule that treats a constant as arbitrary; promoted theorems carry what the proof assumed
+
+Found by the theorem-promotion audit (AGENT_COLLABORATION.md, section 5.A).
+All of these held before this change, and each is now a test in
+`pytest_tests/test_hypotheses_and_promotion.py` (the first four) or
+`pytest_tests/test_promotion_requirements.py` (the rest, which ChatGPT's PR #38
+probes reproduced).
+
+- [x] Universal generalization and existential elimination looked only at what
+      was visible before their subproof opened. A `(Premise)` stated inside the
+      subproof is a premise of the whole proof, so `forall c, In(c, X)` was
+      accepted from a `Fresh Variable` subproof that merely stated the premise
+      `In(c, X)`, and `exists x, (P(x) and R(x))` from `exists x, P(x)` plus a
+      premise `R(m)` stated inside the elimination subproof. Both rules now also
+      ask the `RuleContext` (`_hypothesis_reasons`): the constant must occur in
+      no hypothesis in force (premises, `(Axiom)` lines, formula-stating
+      declarations, witness lines, enclosing assumptions -- at any depth) and
+      must not be a name some declaration's structure refers to, the same two
+      conditions `Uniqueness` applies. A refusal says which hypothesis blocked
+      it.
+- [x] Structure recorded on a declaration is a hypothesis about the names it
+      refers to. "R is asymmetric and reflexive on X" holds only when X is
+      empty, so generalizing over X proved that any formula follows from `a`
+      being in some set. Covered by the constrained-names condition above
+      (kernel-level test: the surface language cannot declare a relation on the
+      flag of a `Fresh Variable`, only on a set a `Let` introduced).
+- [x] Promotion kept only top-level `(Premise)` lines. A theorem proved from a
+      premise in a subproof, from a `(Declare)` line that states a formula, or
+      from a witness line (a rule line that declares a constant, like the
+      Pairing witness) was promoted as if it had no hypotheses, so a later proof
+      could cite it for anything. `promote_theorem` now takes its premises from
+      the validator (`ProofValidator.own_givens`, recorded where the validator
+      decides what each line rests on), not from a second walk over the
+      entries, so there is one notion of "taken for granted". A theory's own
+      axioms are not premises (see the requirements item below); when a proof
+      was checked without an axiom list, so that any formula was accepted as an
+      axiom, its `(Axiom)` lines are.
+- [x] Promotion refuses a proof whose declarations carry structure no formula
+      states (a relation's carrier and properties; only `membership`, which
+      `Let a be in X` also states as `In(a, X)`, is exempt -- see
+      `FORMULA_BACKED_METADATA_KEYS`). Before, a theorem proved for a symmetric
+      `R` was promoted about the *name* `R` and could be cited for a relation
+      with no properties: proof 2 of
+      `tests/testDiscreteMath/...`-style files proved `R(a,b) -> R(b,a)` for a
+      plain relation. The refusal is a warning in a multi-proof file ("was not
+      promoted"), and its message says to state the property as a premise
+      formula instead (declare a plain `binary predicate` with `such that:
+      forall a, forall b, ...`), which the theorem then carries.
+- [x] An explicit `conclusion=` was never compared with what the proof
+      derived, so `promote_theorem(name, proof, conclusion=Q)` built a
+      zero-premise rule asserting `Q` from a proof that never mentioned it. It
+      must now be a formula the proof derived at the top level (not a premise,
+      not a line inside a subproof).
+- [x] `generalized_names=` was never compared with what the proof declared, so
+      `["x", "EmptySet"]` turned "`x` is not in the empty set" into a rule for
+      every set. It must now name only objects the proof declares at its top
+      level; anything else the theorem mentions stays fixed.
+- [x] A theorem is a theorem of the theory its proof was written in. What the
+      proof used that every proof in that theory has cannot be a premise, so it
+      is a requirement: `TheoremRule.required_axioms` (axioms cited with
+      `(Axiom)` under an axiom list) and `required_rules` (every rule that
+      justified a line except the standard logical ones in `default_rules()`),
+      plus whatever the theorems it cited required (a chain of theorems asks for
+      what the first asked for, not for the first). The theorem is citable only
+      in a proof that lists those axioms and allows those rules
+      (`RuleContext.lists_axiom`, `RuleContext.allows_rule`); a proof given no
+      axiom list does not "have every axiom" for this purpose. Before, a
+      theorem proved from a caller's own axiom, or by a caller's own rule, was
+      promoted as a zero-premise rule, so citing it made that axiom or rule part
+      of every theory. Inside a multi-proof file nothing changes for proofs
+      written in the file's theories: every proof there has the theory's axioms
+      and rules. A required axiom may not mention a constant the theorem
+      generalizes (it would be a hypothesis about it).
+- [x] A rule is registered by its configuration, not by its Python class --
+      the soundness issue reproduced in [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41),
+      whose probes in `pytest_tests/test_parameterized_rule_registration.py`
+      now pass unweakened. Before, `ProofValidator._rule_is_registered` (every
+      citation, including the `rule_below` and `rule_hybrid` branches) and
+      `RuleContext.allows_rule` (a theorem's requirements) authorized a rule
+      with `isinstance(rule, type(allowed))`, and `Proof.__init__` and
+      `_promotion_requirements` merged rules by type and name. So induction
+      over `Int` authorized induction over `Nat`; any registered `TheoremRule`
+      authorized every other one; an unregistered subclass that overrides
+      `applies` was authorized by its parent (and a theorem that needed the
+      subclass was citable with only the parent); and induction over `Nat` and
+      over `Int`, one class and one name, collapsed into one rule or one
+      requirement.
+      Now one predicate, `_rule_among(rule, rules)`, backs all four places. It
+      asks `InferenceRule.same_configuration(other)` of the *registered* rule,
+      with the *cited* rule as the argument, so a cited subclass cannot approve
+      itself by overriding the method. The default is exactly the same class,
+      right for every stateless rule (a freshly built `ModusPonensRule()` is
+      the registered one). `InductionRule` compares its type predicate, zero
+      term and successor symbol: two separate objects with the same parameters
+      are the same rule (the positive control), induction over another type is
+      not. `PairingAxiomRule` compares its witness name. `TheoremRule` is
+      matched by identity: a theorem is registered by being the object
+      `promote_theorem` made. (Comparing contents would also be sound, but it
+      needs the premises, the conclusion, the generalized names and both
+      requirement lists compared, and nothing copies theorems.) A rule whose
+      instances can differ by how they were built must override
+      `same_configuration`; the `InferenceRule` checklist says so.
+      Behavior change: a registered rule authorizes exactly its own class and
+      configuration; to use a subclass, register it. No test or fixture in the
+      repository relied on subclass matching.
+      The direct Pairing witness form is kept, not extended (owner decision,
+      above): `elaborate_pairing_witness` registers the
+      `PairingAxiomRule(witness_name=...)` it embeds, through the same
+      `add_extra_rule` path as other rules an elaboration adds, so it reaches
+      `ElaboratedEntries.required_rules` and `Proof.rules`; no class bypass.
+      A theorem proved through such a line asks its citer for the generic
+      `PairingAxiomRule` (`InferenceRule.as_requirement`), not for a rule named
+      after a witness of the proof it came from: the line's defining property is
+      already one of the theorem's premises, no other proof has that name, and
+      master already allowed this reuse.
+      Tests: `pytest_tests/test_rule_configuration_identity.py` -- the
+      comparison for each rule type; self-approving subclasses on the `rule`,
+      `rule_below`, `rule_hybrid` and theorem-requirement paths; merging in
+      `Proof.__init__` and in promotion; the Pairing witness registration;
+      reuse of a theorem proved through a witness line. Each mechanism was
+      reverted in turn (14 mutations) and each reversion fails a test.
+- [x] Rule authorization ([Issue #49](https://github.com/axiomtutor/SyLoPy/issues/49)),
+      parameter-aware requirement deduplication ([Issue #50](https://github.com/axiomtutor/SyLoPy/issues/50))
+      and Pairing witness requirements ([Issue #51](https://github.com/axiomtutor/SyLoPy/issues/51))
+      -- all three are the item above (PR #56), which made the probes from
+      [PR #41](https://github.com/axiomtutor/SyLoPy/pull/41) pass unweakened.
+- [ ] Policy, not a soundness question, left as it is: a witness named by an
+      `Existence from L` line is a top-level object declaration, so it is
+      generalized by default (its defining formula is carried as a premise, so
+      the theorem is about any object satisfying it). Not generalizing it would
+      make the theorem citable only where an object literally named the same
+      exists. Owner may prefer otherwise.
+- [ ] Not done, needs an owner decision: promoting theorems *about declared
+      relations* in the useful form -- "for any equivalence relation R on X,
+      ..." cited for a specific relation S that was declared an equivalence
+      relation. That needs two things the kernel does not have: generalizing
+      over a declared predicate symbol (today only objects generalize), and a
+      requirement on the citing line that the instance's declaration has the
+      properties the theorem used (read through `RuleContext.declaration`, with
+      the carrier mapped through the generalization). Until then
+      `tests/testDiscreteMath/transitive-irreflexive-implies-asymmetric.txt`
+      still checks, but its theorem is not promoted.
+- [x] A theorem with premises is cited from proof text by its title and the
+      lines that state its premises: `(Pair transport from 4, 5)`. Before,
+      `parse_justification` knew only the built-in rule names, so `Title from
+      L` was a parse error and only a bare title (a theorem with no premises)
+      could be cited; citing through the kernel API always worked. The probe
+      `pytest_tests/test_theorem_surface_citations.py::test_premise_carrying_theorem_can_be_cited_from_proof_text`
+      was an expected failure and is now an ordinary test.
+      The parser cannot tell a title from a misspelled rule name, so it is told
+      the titles: `parse_justification(text, theorem_names)`. The multi-proof
+      runner gives it the titles in the file's headers (every header is read
+      before any proof is parsed); `check_proof_text` gives it the
+      `TheoremRule`s among its `rules` plus any `theorem_names`;
+      `parse_proof_text` and `elaborate_proof` take `theorem_names`. A known
+      title becomes a `NamedRulePlaceholder` carrying the title as it was
+      promoted, and is resolved against the proof's rules as a bare title
+      always was. Titles are matched like rule names (case, hyphens, spacing),
+      except that two titles differing only in such spelling must each be
+      written exactly. A built-in rule name is never taken for a title.
+      An unknown name followed by citations is still a parse error: two
+      existing tests pin that (`test_an_unknown_rule_with_citations_is_an_error_not_a_mangled_placeholder`,
+      `test_invalid_justification`), and a placeholder fallback would have
+      silently turned a misspelled rule into a "no rule named" validation
+      error, so that option was not taken. The lines go in the order the
+      theorem's premises were taken; a wrong count gets the kernel's arity
+      message. Knowing a title only lets the proof be parsed: citing a title
+      promoted later in the file, or whose proof failed, is a validation error
+      ("no rule named ...").
+      Rough edge, not changed: that message's hint, "check that the relevant
+      Type was combined in", is misleading for a theorem title.
+      Tests: `pytest_tests/test_theorem_surface_citations.py` -- the parser,
+      multi-proof files (the lines, their order and count, a misspelled title,
+      a later title, a chain of theorems) and the Python API. Each piece of the
+      plumbing and of the matching was undone in turn (11 mutations) and each
+      reversion fails a test. Documented in `docs/PROOF_FILE_FORMAT.md`
+      ("Citing a theorem"), whose example `test_proof_format_doc.py` runs.
 
 ## Short version
 
@@ -616,4 +788,53 @@ What matters now is not "can we get proof checking to work at all?" It is:
 
 ## Collaboration note
 
-This WLOG section is a design proposal intended to help other coding agents coordinate with the project's ongoing development. Claude Code or Microsoft Copilot should read it as the current discussion state, not as permission to implement WLOG immediately. Before changing code, communicate any proposed deviation from this design and avoid duplicating work already in progress. In particular, preserve the distinction between the settled semantic decisions (WLOG begins at its assertion and extends to the end of the current proof block; replay is checked by substitution and revalidation; citations must be remapped through the replay) and the still-open implementation details (especially the precise line-correspondence algorithm and the eventual generalization from equality substitutions to arbitrary properties). The goal is to make the reasoning and design state legible across agents, not to replace normal code review.
+Agent workflow and ownership rules live in
+[`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md). Equality-case WLOG replay
+is implemented (PR #63); the citation-remapping defect in
+[issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is fixed, and the
+informational ZFC proof now passes, its `Mutatis mutandis` line included.
+`Mutatis mutandis` is implemented for names replaced by names. Arbitrary-property
+WLOG, and `Mutatis mutandis` beyond names, remain deferred; this note is not
+authorization to expand either feature.
+
+## Soundness audit: variable capture and schema side conditions (2026-10-14)
+
+Found by running proofs the checker should refuse (Claude, branch `claude/capture-soundness-fixes`). Each was a proof the checker accepted that is false in some model of its premises. Two reached a contradiction outright: `Q and not Q` from the satisfiable premises `not Q` and `forall x, exists y, not (x = y)`, and an arbitrary `Q` from the set-theory axioms alone. All of them are one mistake: an instance of a quantified formula is matched or built without checking that no variable of the substituted term, or of the set being defined, is captured by a binder.
+
+- [x] `FormulaMatcher` (Universal Instantiation, Existential Introduction, Universal Modus Ponens) and `ConstantGeneralizingMatcher` (promoted theorems) bound the variable to any term, so `forall x, exists y, R(x, y)` gave `exists y, R(y, y)`. A term with a free variable that a quantifier enclosing a matched occurrence binds is now refused: the usual "the term must be free for the variable" side condition.
+- [x] `SeparationSchemaRule` placed no condition on B, X or the binders. B may now not mention the new set Y (`B := u not in Y` makes `Y = {u in X : u not in Y}`, contradictory for any X with an element), X may mention neither `u` nor `Y`, and `u` and `Y` must be distinct. The old docstring's claim that any B gives a sound instance was wrong.
+- [x] `ReplacementSchemaRule`: the image set C and the uniqueness clause's z may not occur in B, A may not mention x, y, z or C (with `f(x) = {x}`, `A := f(x)` asserts the universal set), and the four names must be distinct.
+- [x] `InductionRule`: the step's variable name may not occur in P (bound, or free as a parameter) unless it is the induction variable itself. `substitute_in_formula` does not rename bound variables, so a P that binds `n` captured the step's `n`: base `exists n, R(Zero, n)` and step `forall n, ((Nat(n) and exists n, R(n, n)) -> exists n, R(Succ(n), n))` "proved" `forall x, (Nat(x) -> exists n, R(x, n))`, false on the naturals with `R(a, b) := (a = 0 and b = 1)`.
+- Design choice: side conditions, not capture-avoiding renaming, consistent with the standing no-alpha-equivalence discipline (`_ast_eq`, `InductionRule`, `ReplacementSchemaRule`).
+- Regression coverage: `pytest_tests/test_capture_and_schema_side_conditions.py`. Every negative test checks the refusing line, the rule and the `rule_mismatch` category, and was confirmed to fail on the master it was written against (19 of the 31 tests fail there; the other 12 are positive controls).
+- [x] Audit the remaining elaboration-time substitution and binder-construction sites:
+  - Set-builder equality expansion could capture an enclosing variable when
+    the builder binder reused its name (`forall x, Y = {x in x: P(x)}`);
+    replacement-builder expansion could do the same when a generated
+    existential binder captured the outer range set
+    (`forall x, Y = {F(x): x in x}`). These are fixed in `source/SetTheory.py`
+    by choosing a fresh display binder or alpha-renaming the generated
+    comprehension binder while leaving range sets in the surrounding scope.
+  - Bounded quantifiers had the analogous issue: `forall x, forall x in x, P(x)`
+    confused the outer range variable with the inner bounded variable.
+    The universal and existential expansion paths now alpha-rename a shadowing
+    binder and its body.
+  - Regression tests are in `pytest_tests/test_set_phrase_parsing.py`.
+  - Unique-existence phrasing in `ProofParserPolicy` already picks its
+    competitor name outside `formula_names(condition)` and surrounding
+    `bound_vars`, so its substitution is capture-safe.
+  - `Existence from L` substitutes a `ConstantTerm` witness, which quantifiers
+    do not bind as `VariableTerm` occurrences; no change was needed there.
+
+
+## Owner decision: quotient uniqueness requires a nonzero denominator (2026-10-14)
+
+The owner approved requiring the divisor `a` to be nonzero in the quotient-uniqueness axiom. When `a = Zero`, the equation `n = a*m` does not uniquely determine `m`; at `n = a = Zero`, the unguarded axiom incorrectly yields `Zero/Zero = m` for every integer `m`.
+
+Implemented in [PR #45](https://github.com/axiomtutor/SyLoPy/pull/45):
+- Axiom 6 includes the side condition `not (a = Zero)`.
+- `QuotientUniquenessRule` requires that condition as its third cited premise, after `Int(m)` and `n = Times(a,m)`.
+- The `divisibility_iff_quotient_integer.txt` example explicitly assumes a nonzero divisor; its converse direction is false at zero.
+- Unit tests cover the changed axiom and rule shape, and `invalid_quotient_uniqueness_zero_divisor.txt` checks that the checker refuses to derive `Zero/Zero = m` without the guard.
+
+This preserves the project's partial-division model rather than defining division by zero.

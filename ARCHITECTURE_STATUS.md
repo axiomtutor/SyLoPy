@@ -40,6 +40,39 @@ A theory should provide, as appropriate:
 Adding a structure should therefore normally mean adding a recipe and core
 rules to a theory module rather than modifying generic elaboration logic.
 
+## Surface sugar versus inference implementation
+
+"Prefer sugar" is a design principle, not a claim that every mathematical
+inference currently expands into primitive logical steps. Keep two questions
+separate:
+
+1. **Surface lowering:** what formula, term, declaration, or core proof entries
+   does the user's notation become?
+2. **Inference checking:** does the validator use ordinary logical rules and
+   formulas, or a theory-specific `InferenceRule` / axiom implementation?
+
+Examples from the current code:
+
+| Feature | Surface/elaboration behavior | Inference implementation |
+| --- | --- | --- |
+| Divisibility, `a\|n` | Expands at parse time to `exists m, (Int(m) and n = a * m)`. | Ordinary existential introduction/elimination are used; there is no separate divisibility rule. |
+| `Subset proof below` | Elaborates into universal generalization and conditional introduction, concluding `forall x, (In(x,S) -> In(x,T))`. | The generated core proof is validated using existing proof rules. |
+| Relation declarations | `RelationDeclarationRecipe` creates predicate declarations carrying the relation's carrier and property metadata. | `DiscreteMathCore.py` provides specialized rules such as relation symmetry, transitivity, and reflexivity; they check the declared property and, where needed, the carrier. |
+| Set equality | The conclusion is the ordinary formula `X = Y`. | `SetEqualityRule` directly checks for subset formulas in opposite directions; the current implementation does not expand this citation into a subproof of more primitive steps. |
+| Uniqueness | The conclusion is ordinary first-order logic: `exists W, (B(W) and forall V, (B(V) -> V = W))`. | `UniquenessRule` is a specialized, context-sensitive rule because soundness depends on whether the candidate constant is genuinely arbitrary. It is not a new `ExistsUnique` connective. |
+| Quotient notation, `n/a` | Parses as the term `Quotient(n, a)`. | Its mathematical behavior is governed by the theory's quotient defining-property and uniqueness axioms; the term itself is not expanded away into a formula. |
+
+Thus, a feature can use surface sugar and still rely on a specialized theory
+rule or axiom. Conversely, a specialized rule can conclude an ordinary core
+formula without creating a new formula-AST connective.
+
+When adding mathematical syntax or inference, document these points separately:
+(a) its surface-to-core lowering, (b) the checking mechanism and side conditions,
+and (c) whether its mathematical force is definitional, derived by existing
+rules, or axiomatic. Prefer formula/proof-entry expansion when it remains clear
+and efficient, but do not describe a specialized rule as "desugared to logic"
+unless the implementation actually constructs and validates that derivation.
+
 ## Rules that look at the proof around them
 
 A rule normally sees only the lines it cites. A rule that is sound only
@@ -53,7 +86,23 @@ plain declaration or as the flag of a Fresh Variable subproof, minus any name
 that a declaration's metadata refers to, such as a relation's carrier). Rules
 that do not opt in are unchanged. A rule that refuses can also implement
 `explain_in_context`, and the validator appends its reason to the message.
-`Uniqueness` is the first user; a rule asked without a context never applies.
+`Uniqueness`, `UniversalGeneralization` and `ExistentialElimination` use the
+hypotheses to check that the constant they treat as arbitrary occurs in none of
+them -- including a premise stated inside the subproof they consume, which no
+earlier check could see -- and that no declaration's structure names it; the
+relation rules read `declaration(name)`. `Uniqueness` never applies without a
+context; the other two keep their context-free checks when asked directly.
+Theorem promotion takes its premises from the same record the validator keeps
+(`ProofValidator.own_givens`). What a theorem cannot carry as a premise -- the
+theory's axioms the proof cited and the non-standard rules it used
+(`used_axioms`, `used_rules`) -- becomes the theorem's `required_axioms` and
+`required_rules`, which `TheoremRule` checks at the citation through
+`RuleContext.lists_axiom` and `RuleContext.allows_rule`. A rule counts as
+allowed there, and for every citation the validator checks, when it is the same
+rule, configuration included, as one the proof was configured with
+(`InferenceRule.same_configuration`, asked of the registered rule): induction
+over `Int` is not induction over `Nat`, and an unregistered subclass is not its
+parent. `Proof` and promotion merge rule lists by the same test.
 
 The invariant for such a rule: whatever the proof relies on that says
 something about a constant must reach the context, as a recorded formula or as
@@ -65,10 +114,18 @@ the relation carrier -- are in `tests/testProofs/uniqueness_red_team.txt`.
 
 ## Remaining consolidation work
 
-The main remaining architectural work is to identify and remove any duplicated
-parser/elaboration paths that are still reachable, then move additional
-theory-specific syntax behind `TheoryEnvironment` and its declaration recipes.
-The same pattern should be used for future order-theory and algebraic syntax.
+Declaration-justification `Let` statements now have one recipe-dispatch
+path: `parse_surface_declaration_statement` builds the surface AST, and
+`elaborate_compound_declaration` offers each contiguous run of declaration
+clauses to registered recipes, including recipes that consume multiple clauses.
+The redundant `elaborate_typed_declaration` dispatcher has been removed.
+`parse_declaration_prefix` remains for the distinct generic premise/fallback
+path, notably declaration-like premises that use `such that`; it is not a
+second route for ordinary `(Declaration)` `Let` statements.
+
+Further consolidation should target demonstrated duplication rather than move
+theory-specific syntax indiscriminately. New theory-specific syntax should
+continue to use `TheoryEnvironment` and declaration recipes where appropriate.
 
 `ProofContext` is the lexical scope for declarations, assumptions, labels and
 arbitrary bindings during elaboration; the elaborator no longer keeps a

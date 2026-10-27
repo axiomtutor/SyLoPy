@@ -610,15 +610,40 @@ class FormulaMatcher:
 
     which stops a match from silently reaching past a shadowing inner
     quantifier and binding the wrong (shadowed) `x`.
+
+    Finally, a match is refused when it would *capture* a variable: the term
+    `var_name` stands for may not have a free variable that a quantifier
+    enclosing a matched occurrence (inside the pattern body) binds. So
+    `forall x, exists y, R(x, y)` never instantiates to `exists y, R(y, y)`,
+    which is not a consequence of it, and Existential Introduction never takes
+    `forall y, R(y, y)` to `exists x, forall y, R(x, y)`. This is the usual
+    "the term must be free for the variable" side condition on Universal
+    Instantiation and Existential Introduction; `_is_capture_free` checks it.
     """
-    __slots__ = ("var_name", "mapping")
+    __slots__ = ("var_name", "mapping", "_bound")
 
     def __init__(self, var_name: str):
         self.var_name = var_name
         self.mapping = {}
+        # Names bound by the quantifiers *inside the pattern body* that enclose
+        # the position being matched (the target's spelling of them).
+        self._bound = []
+
+    def _is_capture_free(self, term: tl.Term) -> bool:
+        """True unless a variable free in `term` would be captured by one of
+        the quantifiers the matched position sits under.
+
+        `forall x, exists y, R(x, y)` must not instantiate x := y: the result
+        `exists y, R(y, y)` is not a consequence. Standard side condition on
+        Universal Instantiation / Existential Introduction: the substituted
+        term must be free for the variable.
+        """
+        return not (fl.term_free_variables(term) & set(self._bound))
 
     def match_term(self, pattern: tl.Term, target: tl.Term) -> bool:
         if isinstance(pattern, tl.VariableTerm) and pattern.name == self.var_name:
+            if not self._is_capture_free(target):
+                return False
             if self.var_name not in self.mapping:
                 self.mapping[self.var_name] = target
                 return True
@@ -669,7 +694,11 @@ class FormulaMatcher:
             return self.match_term(pattern.left, target.left) and self.match_term(pattern.right, target.right)
         if isinstance(pattern, (fl.ForAll, fl.Exists)):
             if pattern.var == self.var_name or target.var == self.var_name: return False
-            return self.match_formula(pattern.body, target.body)
+            self._bound.append(target.var)
+            try:
+                return self.match_formula(pattern.body, target.body)
+            finally:
+                self._bound.pop()
 
         return False
 
@@ -683,9 +712,10 @@ class FormulaMatcher:
 class RuleContext:
     """What a rule may learn about the proof around the line it justifies.
 
-    A rule that generalizes a constant -- today only `UniquenessRule` -- has
-    to know that the constant is *arbitrary*: that nothing the proof took for
-    granted says anything about it. The context answers that with two things.
+    A rule that generalizes a constant -- `UniversalGeneralizationRule`,
+    `ExistentialEliminationRule` and `UniquenessRule` -- has to know that the
+    constant is *arbitrary*: that nothing the proof took for granted says
+    anything about it. The context answers that with two things.
 
     `hypotheses` are the formulas in force at that line that were taken for
     granted rather than derived: every premise line, every axiom cited so far
@@ -719,19 +749,69 @@ class RuleContext:
     it neither helps nor hurts. The set is empty unless the validator fills
     it, so a rule asked outside a proof finds nothing arbitrary and says no.
 
+    `declaration(name)` is the declaration that `name` has at the line being
+    justified, or None. A rule that rests on what a declaration says about a
+    symbol -- the relation rules, which read a relation's carrier and the
+    properties it was declared to have from the declaration's metadata --
+    asks here, and never keeps a table of declarations made beforehand: the
+    answer depends on where in the proof the line is. A declaration made in a
+    subproof is visible in that subproof and in the subproofs nested in it,
+    and nowhere else, so two sibling subproofs can each declare their own `R`
+    and neither lends its properties to the other. The scope is the
+    validator's own `DeclarationScope`, the one the kernel checks the proof's
+    symbols against, not anything the elaborator built. Outside a proof there
+    is no scope and no name is declared, so a rule that needs a declaration
+    says no.
+
+    `lists_axiom(formula)` and `allows_rule(rule)` say what the proof being
+    checked has available: the axioms it was given and the rules it allows. A
+    rule that stands for a proved theorem asks, because a theorem is only a
+    theorem where what its proof used is available (`TheoremRule`). Outside a
+    proof nothing is available, and an empty list of axioms is not "every
+    axiom" here -- the validator accepts any formula as an axiom of a proof
+    that was given none, but a theorem that rests on an axiom is only
+    citable in a proof that names it.
+
     The validator builds one of these per rule citation and hands it to
     `InferenceRule.applies_in_context`. It holds references to the
-    validator's own lists, not copies, so creating one costs nothing for the
-    many rules that never look at it -- and it is only good for the call it
-    was made for: a rule reads it while deciding and does not keep it.
+    validator's own lists and scope, not copies, so creating one costs
+    nothing for the many rules that never look at it -- and it is only good
+    for the call it was made for: a rule reads it while deciding and does not
+    keep it.
     """
-    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained")
+    __slots__ = ("_given", "_assumptions", "_arbitrary", "_constrained", "_declarations",
+                 "_axioms", "_rules")
 
-    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=()):
+    def __init__(self, given=(), assumptions=(), arbitrary_constants=(), constrained_names=(),
+                 declarations: Optional["DeclarationScope"] = None, axioms=(), rules=()):
         self._given = given
         self._assumptions = assumptions
         self._arbitrary = arbitrary_constants
         self._constrained = constrained_names
+        self._declarations = declarations
+        self._axioms = axioms
+        self._rules = rules
+
+    def lists_axiom(self, formula: fl.Formula) -> bool:
+        """Does the proof being checked list `formula` among its axioms?"""
+        return any(_ast_eq(formula, axiom) for axiom in self._axioms)
+
+    def allows_rule(self, rule: "InferenceRule") -> bool:
+        """Is `rule` one the proof being checked allows -- the same rule,
+        configuration included, as one it was configured with: the test the
+        validator applies to every citation
+        (`ProofValidator._rule_is_registered`)? Induction over `Int` is not
+        induction over `Nat`, and an unregistered subclass of a registered
+        rule is not that rule."""
+        return _rule_among(rule, self._rules)
+
+    def declaration(self, name: str) -> Optional[Declaration]:
+        """The declaration `name` has at the line being justified: the nearest
+        one in this subproof or an enclosing one, or None if there is none
+        (or there is no proof around the rule at all)."""
+        if self._declarations is None:
+            return None
+        return self._declarations.lookup(name)
 
     @property
     def hypotheses(self) -> Tuple[Any, ...]:
@@ -740,6 +820,13 @@ class RuleContext:
     @property
     def arbitrary_constants(self) -> frozenset:
         return frozenset(self._arbitrary) - frozenset(self._constrained)
+
+    @property
+    def constrained_names(self) -> frozenset:
+        """The names some declaration's structure refers to (see
+        `_metadata_names`): whatever that declaration says about them, no
+        line of the proof does."""
+        return frozenset(self._constrained)
 
 
 class InferenceRule:
@@ -764,12 +851,19 @@ class InferenceRule:
         must have -- `len(indices) != rule.premise_arity` is rejected
         before `applies` is ever consulted
       * implement `applies(candidates, phi) -> bool`
+      * if two instances of the class can mean different things -- because
+        they were built with different parameters -- override
+        `same_configuration`, so that a proof registers, and a citation is
+        authorized by, exactly the configuration it means (see below)
 
-    A rule whose soundness also depends on the rest of the proof -- today
-    only `UniquenessRule`, which generalizes a constant and so needs to know
-    the constant is arbitrary (see `RuleContext`) -- overrides
-    `applies_in_context` as well. The validator always calls that one; the
-    default simply forwards to `applies`, so every other rule is unaffected.
+    A rule whose soundness also depends on the rest of the proof -- the
+    `UniquenessRule`, which generalizes a constant and so needs to know the
+    constant is arbitrary, the discrete-math relation rules, which need the
+    declaration a relation has at that line, and a `TheoremRule`, which needs
+    the axioms and rules its proof was written with (see `RuleContext`) --
+    overrides `applies_in_context` as well. The validator always calls that
+    one; the default simply forwards to `applies`, so every other rule is
+    unaffected.
 
     A rule with several independent side conditions can also override
     `explain_in_context`, which the validator asks, after the rule has said
@@ -790,6 +884,63 @@ class InferenceRule:
         """Why `applies_in_context` said no, in a sentence, if the rule can
         tell; None otherwise. Only called after a refusal."""
         return None
+
+    def same_configuration(self, other: Any) -> bool:
+        """Is `other` this very rule, configuration included?
+
+        This is how a proof's rule list authorizes a citation. Sharing a
+        Python class is not enough: a subclass can override `applies`, and a
+        rule built with other parameters -- induction over another type -- is a
+        different schema, not an instance of the registered one. So the
+        default is *exactly the same class*, which is right for every stateless
+        rule (`ModusPonensRule()` means the same wherever it is built, so a
+        freshly built instance is the registered one). A rule whose instances
+        differ by how they were configured overrides this to compare that
+        configuration (`InductionRule`, `PairingAxiomRule`), or to demand the
+        registered object itself (`TheoremRule`).
+
+        Always call it on the *registered* rule with the cited one as the
+        argument -- `_rule_among` does -- because the cited rule is what an
+        unsound proof would forge, and a subclass that answered for itself
+        could approve itself. An override should compare `type(other)` exactly
+        before it reads anything else of `other`.
+        """
+        return type(other) is type(self)
+
+    def as_requirement(self) -> "InferenceRule":
+        """The rule a theorem proved using this one asks the proof that cites
+        the theorem to have (`_promotion_requirements`). The rule itself,
+        unless it is a configuration made for one line of the proof whose
+        availability is what the theorem really rests on: the Pairing rule a
+        direct witness line cites is configured with the name of its witness,
+        but the theorem already carries what that line stated as a premise, so
+        it asks only for the Pairing rule. Authorizing a *citation* is
+        stricter, and stays so (`same_configuration`)."""
+        return self
+
+
+def _rule_among(rule: Any, rules: Iterable[Any]) -> bool:
+    """Is `rule` the same rule, configuration included, as one of `rules`?
+
+    The one test behind every "is this rule available here?" in the kernel:
+    the proof's rule list authorizing a citation
+    (`ProofValidator._rule_is_registered`); a promoted theorem asking what its
+    proof used of the proof that cites it (`RuleContext.allows_rule`); and the
+    two places that merge rule lists without losing a configuration
+    (`Proof.__init__`, `_promotion_requirements`). Keeping them on one
+    predicate means they cannot disagree about whether two rules are the
+    same one.
+
+    Each registered rule is asked (`allowed.same_configuration(rule)`), never
+    the other way round -- see `InferenceRule.same_configuration`. An object
+    that does not derive from `InferenceRule` has no such method and counts as
+    the same only when it has exactly the same class.
+    """
+    for allowed in rules:
+        same = getattr(allowed, "same_configuration", None)
+        if same(rule) if same is not None else type(allowed) is type(rule):
+            return True
+    return False
 
 
 class ExplosionRule(InferenceRule):
@@ -947,16 +1098,38 @@ class LabelScope:
             ...
         KeyError: '1'
     """
-    __slots__ = ("_local", "_parent")
+    __slots__ = ("_local", "_parent", "_sources")
 
     def __init__(self, parent: Optional["LabelScope"] = None):
         self._local: Dict[str, Any] = {}
         self._parent = parent
+        # The proof entry that justified each label bound at this level,
+        # kept so that `Mutatis mutandis` can repeat a visible line's
+        # argument. It follows the same scoping as the labels themselves.
+        self._sources: Dict[str, Any] = {}
 
     def __setitem__(self, label: str, value: Any) -> None:
         if label in self:
             raise KeyError(label)
         self._local[label] = value
+
+    def set_source(self, label: str, entry: Any) -> None:
+        """Record `entry`, the proof entry that justified `label`, at this
+        level. Nothing is recorded for a label that is not bound here (a
+        declaration that states no formula binds none)."""
+        if label in self._local:
+            self._sources[label] = entry
+
+    def source_of(self, label: str) -> Any:
+        """The entry recorded for `label` by `set_source`, looked up through
+        the enclosing scopes like the label itself, or None when the label
+        was bound without one (a standalone subproof, a replayed case)."""
+        scope = self
+        while scope is not None:
+            if label in scope._sources:
+                return scope._sources[label]
+            scope = scope._parent
+        return None
 
     def __getitem__(self, label: str) -> Any:
         scope = self
@@ -1378,13 +1551,41 @@ class ExistentialEliminationRule(InferenceRule):
     actually occur free in `exists_form.body` (a vacuous quantifier), no
     constant is introduced by instantiation and these freshness checks are
     skipped, since nothing was actually generalized away.
+
+    Inside a proof the rule also asks the `RuleContext` (see
+    `_hypothesis_reasons`): `c` must occur in no hypothesis in force --
+    including one stated *inside* the subproof, which is a hypothesis of the
+    whole proof although it was not visible before the subproof opened -- and
+    must not be a name some declaration's structure refers to. From the
+    premises `exists x, P(x)` and `R(c)`, "assume `P(c)`, derive `P(c) and
+    R(c)`" does not give `exists x, (P(x) and R(x))`: the witness of the
+    first premise need not be the `c` of the second. Asked with `applies`,
+    outside a proof, there is no context and only the checks above are made.
     """
     name = "ExistentialElimination"
     premise_arity = 2
 
     def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        return self.applies_in_context(candidates, phi, RuleContext())
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> bool:
+        return self._judge(candidates, phi, context)[0]
+
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> Optional[str]:
+        accepted, reasons = self._judge(candidates, phi, context)
+        return None if accepted or not reasons else "; ".join(reasons)
+
+    @staticmethod
+    def _judge(candidates: List[fl.Formula], phi: fl.Formula,
+               context: "RuleContext") -> Tuple[bool, List[str]]:
+        """`(accepted, reasons)`: `reasons` has a sentence for each freshness
+        condition the witness fails, and is empty when the lines do not have
+        the form of an existential elimination at all."""
+        refused: Tuple[bool, List[str]] = (False, [])
         if len(candidates) != 2:
-            return False
+            return refused
 
         c1, c2 = candidates
         if isinstance(c1, fl.Exists) and isinstance(c2, SubproofRecord):
@@ -1392,30 +1593,34 @@ class ExistentialEliminationRule(InferenceRule):
         elif isinstance(c2, fl.Exists) and isinstance(c1, SubproofRecord):
             exists_form, sp = c2, c1
         else:
-            return False
+            return refused
 
         if sp.conclusion is None or not _ast_eq(sp.conclusion, phi):
-            return False
+            return refused
 
         matcher = FormulaMatcher(exists_form.var)
         if not matcher.match_formula(exists_form.body, sp.assumption):
-            return False
+            return refused
 
+        reasons: List[str] = []
         if exists_form.var in matcher.mapping:
             instantiated_term = matcher.mapping[exists_form.var]
             if not isinstance(instantiated_term, tl.ConstantTerm):
-                return False
+                return refused
 
             # Freshness constraints for Existential Elimination
             if _term_occurs_in_formula(instantiated_term, phi):
-                return False
+                reasons.append(f"the witness {instantiated_term} occurs in the conclusion")
             if _term_occurs_in_formula(instantiated_term, exists_form):
-                return False
+                reasons.append(f"the witness {instantiated_term} occurs in the existential formula")
             for outer_formula in sp.get_outer_context():
                 if _term_occurs_in_formula(instantiated_term, outer_formula):
-                    return False
+                    reasons.append(f"the witness {instantiated_term} occurs in {outer_formula!r}, "
+                                   f"which was visible before the subproof opened")
+                    break
+            reasons.extend(_hypothesis_reasons(instantiated_term, context, "the witness"))
 
-        return True
+        return not reasons, reasons
 
 
 class UniversalInstantiationRule(InferenceRule):
@@ -1555,6 +1760,42 @@ def _term_occurs_in_formula(needle: tl.Term, formula) -> bool:
     return False
 
 
+def _hypothesis_reasons(constant: tl.ConstantTerm, context: "RuleContext", role: str) -> List[str]:
+    """Why `constant`, which a rule is about to treat as arbitrary (the
+    generalized constant of a universal generalization, the witness of an
+    existential elimination), is not -- one sentence per reason, empty when it
+    is. `role` names what the rule calls it, for the sentence.
+
+    Two things make a constant non-arbitrary beyond where it occurs in lines
+    the rule can see (the lines visible before its subproof opened):
+
+      * a hypothesis in force that mentions it (`RuleContext.hypotheses`): a
+        premise, an `(Axiom)` line, a declaration line that states a formula,
+        a witness line, or the assumption of an enclosing subproof. That
+        includes a hypothesis stated *inside* the subproof being consumed --
+        a `(Premise)` line there is a premise of the whole proof, so what the
+        subproof derived may depend on it -- and one stated in a nested
+        subproof or an enclosing one, which `get_outer_context` does not
+        reach;
+      * a declaration whose structure names it (`constrained_names`): the
+        carrier `X` of `Let R be a reflexive, irreflexive relation on X` is
+        constrained by what the declaration says -- here, that X has no
+        elements -- though no line says so, and the relation rules read it.
+
+    A context made without a proof has neither, so this finds nothing; the
+    validator always supplies the real one.
+    """
+    reasons: List[str] = []
+    offending = next((h for h in context.hypotheses if _term_occurs_in_formula(constant, h)), None)
+    if offending is not None:
+        reasons.append(f"{role} {constant} occurs in a hypothesis in force, {offending!r}, "
+                       f"so what the subproof derived may depend on it")
+    if constant.name in context.constrained_names:
+        reasons.append(f"{role} {constant} is named by the structure of a declaration "
+                       f"(a relation's carrier, say), which no line of the proof states")
+    return reasons
+
+
 class UniversalGeneralizationRule(InferenceRule):
     """Universal Generalization (UG): from a subproof that introduces an
     arbitrary constant `c` ("Let c be in the domain.") and concludes
@@ -1591,35 +1832,65 @@ class UniversalGeneralizationRule(InferenceRule):
          smuggling a constraint from outside the subproof into a
          conclusion that's supposed to hold for every object in the
          domain.
+      5. Inside a proof, the hypotheses (`_hypothesis_reasons`): `c` must
+         occur in no premise, `(Axiom)` line, formula-stating declaration,
+         witness line or enclosing assumption in force -- including a
+         premise stated *inside* the subproof, which condition 4 cannot see:
+         `forall c, In(c, X)` does not follow from a subproof that merely
+         states the premise `In(c, X)`. And `c` must not be a name some
+         declaration's structure refers to. Asked with `applies`, outside a
+         proof, there is no context and conditions 1-4 are all there is.
     """
     name = "UniversalGeneralization"
     premise_arity = 1
 
     def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        return self.applies_in_context(candidates, phi, RuleContext())
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: RuleContext) -> bool:
+        return self._judge(candidates, phi, context)[0]
+
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: RuleContext) -> Optional[str]:
+        accepted, reasons = self._judge(candidates, phi, context)
+        return None if accepted or not reasons else "; ".join(reasons)
+
+    @staticmethod
+    def _judge(candidates: List[fl.Formula], phi: fl.Formula,
+               context: RuleContext) -> Tuple[bool, List[str]]:
+        """`(accepted, reasons)`: `reasons` has a sentence for each freshness
+        condition the generalized constant fails, and is empty when the lines
+        do not have the form of a universal generalization at all."""
+        refused: Tuple[bool, List[str]] = (False, [])
         if len(candidates) != 1 or not isinstance(candidates[0], SubproofRecord) or not isinstance(phi, fl.ForAll):
-            return False
+            return refused
 
         sp_record = candidates[0]
-        if sp_record.conclusion is None: return False
+        if sp_record.conclusion is None: return refused
 
         matcher = FormulaMatcher(phi.var)
         if not matcher.match_formula(phi.body, sp_record.conclusion) or phi.var not in matcher.mapping:
-            return False
+            return refused
 
         generalizing_term = matcher.mapping[phi.var]
 
         if not isinstance(generalizing_term, tl.ConstantTerm):
-            return False
+            return refused
 
         flag = sp_record.assumption
         if not isinstance(flag, fl.AtomicFormula) or len(flag.args) != 0 or flag.predicate != generalizing_term.name:
-            return False
+            return refused
 
+        reasons: List[str] = []
         for outer_formula in sp_record.get_outer_context():
             if _term_occurs_in_formula(generalizing_term, outer_formula):
-                return False
+                reasons.append(f"{generalizing_term} occurs in {outer_formula!r}, "
+                               f"which was visible before the subproof opened")
+                break
+        reasons.extend(_hypothesis_reasons(generalizing_term, context, "the generalized constant"))
 
-        return True
+        return not reasons, reasons
 
 
 class UniquenessRule(InferenceRule):
@@ -2532,7 +2803,13 @@ class InductionRule(AxiomSchemaRule):
     candidate rather than invented by this rule -- `_ast_eq` requires
     literal name equality on `ForAll`, so a proof that names its induction
     variable `n` (or anything else) must be compared against a formula
-    built using that same name, not a name this rule happens to pick.
+    built using that same name, not a name this rule happens to pick. That
+    name must not occur in `P` (bound, or free as a parameter) unless it is
+    the induction variable itself: `substitute_in_formula` does not rename
+    bound variables, so for `P(x) := exists n, R(x, n)` and a step over `n` the
+    "step" it builds is `forall n, ((Nat(n) and exists n, R(n, n)) -> exists n,
+    R(Succ(n), n))`, whose hypothesis no longer mentions the `n` being
+    inducted on. `_expected` refuses such a citation instead of building it.
 
     Scoped deliberately to this single-successor shape: a future
     inductively-defined type with more than one constructor (e.g. a tree
@@ -2547,6 +2824,17 @@ class InductionRule(AxiomSchemaRule):
         self.type_predicate = type_predicate
         self.zero_term = zero_term
         self.succ_symbol = succ_symbol
+
+    def same_configuration(self, other: Any) -> bool:
+        """Induction over the same type, from the same base, by the same
+        successor. Induction over `Int` is not induction over `Nat`: the rule
+        proves `forall x, (T(x) -> P(x))` for *its* `T`, and that is a theorem
+        only when its base and step are the ones that generate `T`. Two
+        separate objects with the same parameters are the same rule."""
+        return (type(other) is type(self)
+                and self.type_predicate == other.type_predicate
+                and self.succ_symbol == other.succ_symbol
+                and _ast_eq(self.zero_term, other.zero_term))
 
     def _guarded(self, atom: fl.Formula, var_name: str) -> bool:
         return (isinstance(atom, fl.AtomicFormula) and atom.predicate == self.type_predicate
@@ -2565,6 +2853,11 @@ class InductionRule(AxiomSchemaRule):
 
         step_candidate = candidates[1] if len(candidates) > 1 else None
         n_name = step_candidate.var if isinstance(step_candidate, fl.ForAll) else x_name
+        # The step instantiates Q at n and at Succ(n) with a substitution that does not
+        # rename bound variables. If Q binds n (or has n free as a parameter), the
+        # substituted n is captured and the "step" is no longer Q's induction step.
+        if n_name != x_name and n_name in (fl.bound_variable_names(Q) | fl.free_variables(Q)):
+            return None
 
         step = fl.ForAll(n_name, fl.Implies(
             fl.And(fl.AtomicFormula(self.type_predicate, [tl.VariableTerm(n_name)]),
@@ -2592,15 +2885,25 @@ class ConstantGeneralizingMatcher:
     `match_formula`/`match_term` once; on success, `.mapping` holds what
     each generalized name matched to. See `TheoremRule` for how this is
     used to promote a proved theorem into a citable rule.
+
+    As in `FormulaMatcher`, a name is never generalized to a term whose free
+    variable a quantifier enclosing that occurrence would capture: a theorem
+    about `exists y, not (y = a)` for an arbitrary `a` does not become a
+    theorem about `exists y, not (y = y)`.
     """
-    __slots__ = ("names", "mapping")
+    __slots__ = ("names", "mapping", "_bound")
 
     def __init__(self, names):
         self.names = set(names)
         self.mapping: Dict[str, tl.Term] = {}
+        # Names bound by the quantifiers enclosing the position being matched
+        # (the target's spelling of them); see `FormulaMatcher._is_capture_free`.
+        self._bound = []
 
     def match_term(self, pattern: tl.Term, target: tl.Term) -> bool:
         if isinstance(pattern, tl.ConstantTerm) and pattern.name in self.names:
+            if fl.term_free_variables(target) & set(self._bound):
+                return False
             if pattern.name not in self.mapping:
                 self.mapping[pattern.name] = target
                 return True
@@ -2648,7 +2951,11 @@ class ConstantGeneralizingMatcher:
             # case to guard against here; both sides just need the same
             # bound name, exactly as plain _ast_eq requires.
             if pattern.var != target.var: return False
-            return self.match_formula(pattern.body, target.body)
+            self._bound.append(target.var)
+            try:
+                return self.match_formula(pattern.body, target.body)
+            finally:
+                self._bound.pop()
         return False
 
 
@@ -2732,6 +3039,17 @@ class TheoremRule(AxiomSchemaRule):
         ...
          1.3. The empty set is a subset of X. (The empty set subset theorem)
 
+    A theorem is a theorem of the theory its proof was written in. What the
+    proof used that every proof in that theory has -- the axioms it cited with
+    `(Axiom)`, and the rules beyond the standard logical ones (the set theory
+    rules, a rule a caller supplied) -- cannot be carried as a premise, so
+    `required_axioms` and `required_rules` record it, and the theorem is only
+    citable in a proof that lists those axioms and allows those rules
+    (`RuleContext.lists_axiom`, `RuleContext.allows_rule`). Without that, a
+    theorem proved from an axiom, or by a rule, that one proof supplied for
+    itself would be citable everywhere, which would make that axiom or rule
+    part of every theory.
+
     `promote_theorem` builds the `TheoremRule` for a case like this from
     an already-checked `Proof` plus the name of whichever top-level
     declared objects should generalize.
@@ -2739,18 +3057,61 @@ class TheoremRule(AxiomSchemaRule):
     premise_arity = 0  # overwritten per instance in __init__
 
     def __init__(self, name: str, premises: List[fl.Formula], conclusion: fl.Formula,
-                 generalized_names: List[str]):
+                 generalized_names: List[str], required_axioms: Iterable[fl.Formula] = (),
+                 required_rules: Iterable[InferenceRule] = ()):
         self.name = name
         self.premises = list(premises)
         self.conclusion = conclusion
         self.generalized_names = list(generalized_names)
+        self.required_axioms = list(required_axioms)
+        self.required_rules = list(required_rules)
         self.premise_arity = len(self.premises)
+
+    def same_configuration(self, other: Any) -> bool:
+        """A theorem is registered by being the promoted object itself.
+        Another `TheoremRule` is another claim, however much it looks like this
+        one: what makes a theorem citable is that `promote_theorem` checked the
+        proof it came from, and a hand-built rule with a different conclusion
+        never had that. Identity is the strictest test and the easiest to
+        reason about; nothing in the kernel copies a `TheoremRule`, so a proof
+        that registers a theorem and cites it always holds the same object.
+        (Comparing contents instead would also be sound -- equal contents are
+        the same claim -- but it would have to compare the premises, the
+        conclusion, the generalized names and both requirement lists, and buys
+        nothing until something copies theorems.)"""
+        return self is other
 
     def _expected(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[List[fl.Formula]]:
         matcher = ConstantGeneralizingMatcher(self.generalized_names)
         if not matcher.match_formula(self.conclusion, phi):
             return None
         return [_substitute_constants_in_formula(p, matcher.mapping) for p in self.premises]
+
+    def _unavailable(self, context: "RuleContext") -> List[str]:
+        """What this theorem's proof used that the proof around `context`
+        does not have, one phrase each."""
+        missing = [f"the rule '{rule.name}'" for rule in self.required_rules if not context.allows_rule(rule)]
+        missing += [f"the axiom {axiom!r}" for axiom in self.required_axioms if not context.lists_axiom(axiom)]
+        return missing
+
+    def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
+        # No proof around the call, so nothing is available: a theorem that
+        # needs an axiom or a rule cannot be cited here.
+        return self.applies_in_context(candidates, phi, RuleContext())
+
+    def applies_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> bool:
+        if self._unavailable(context):
+            return False
+        return super().applies(candidates, phi)
+
+    def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
+                           context: "RuleContext") -> Optional[str]:
+        missing = self._unavailable(context)
+        if not missing:
+            return None
+        return (f"the theorem {self.name!r} was proved using {' and '.join(missing)}, "
+                f"which this proof does not have")
 
 
 def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[str]] = None,
@@ -2765,34 +3126,177 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
 
     `conclusion` defaults to the last top-level formula the proof actually
     *derived* (see `validate_all_proofs._top_level_formulas`'s docstring for
-    why "derived", not "premised", is the right notion); pass it
-    explicitly for a proof whose intended theorem isn't simply its final
-    line (e.g. one proving several things and stating the one that matters
-    via a multi-proof file's `### then ...` line).
+    why "derived", not "premised", is the right notion). Pass it explicitly
+    for a proof whose intended theorem isn't simply its final line (e.g. one
+    proving several things and stating the one that matters via a multi-proof
+    file's `### then ...` line) -- but it must be one of the formulas the
+    proof derived at the top level: naming anything else would manufacture a
+    rule from a formula nothing proved.
+
+    The theorem's premises are every hypothesis the proof took for granted,
+    wherever it stated it: premise lines at any depth (a `(Premise)` inside a
+    subproof is a premise of the whole proof), declaration lines that state a
+    formula, witness lines, and -- when the proof was checked without a list
+    of axioms, so any formula was accepted as an axiom -- its `(Axiom)` lines.
+    The validator records them (`ProofValidator.own_givens`) as it decides
+    what each line rests on, so this is the same notion `UniquenessRule` and
+    the other rules that generalize a constant use, not a second walk over the
+    entries. A theorem proved from a hypothesis cannot be cited where that
+    hypothesis is not supplied.
+
+    What the proof used that every proof in its theory has is not a premise
+    but a requirement: the axioms it cited with `(Axiom)` under a list of
+    axioms, and every rule that justified a line other than the standard
+    logical rules (`default_rules`). `required_axioms` and `required_rules`
+    record them -- together with whatever the theorems it cited required -- and
+    the theorem is only citable in a proof that lists those axioms and allows
+    those rules (see `TheoremRule`). A required axiom may not mention a
+    constant the theorem generalizes: the axiom would then be a hypothesis
+    about it, and the constant would not be arbitrary.
+
+    Promotion refuses a proof that relied on structure recorded in a
+    declaration and stated by no formula -- a relation declared symmetric, a
+    carrier -- because the theorem would lose it and could then be cited for a
+    relation that is not symmetric (see `_structure_no_formula_states`). State
+    the property as a premise formula instead.
 
     `generalized_names` defaults to every symbol the proof's own top-level
     entries declare as an `OBJECT` (typically via `Let X be any ....`,
     outside of any subproof) -- the natural reading of "any X" in a
     theorem statement. Pass an explicit list to generalize over fewer
     names, or none at all for a theorem that isn't "for any X" but a
-    single fixed fact.
+    single fixed fact. It may only name those objects: anything else the
+    theorem mentions -- `EmptySet`, a predicate, an object declared inside a
+    subproof -- was proved about specifically, and generalizing it would
+    state the theorem for things the proof said nothing about.
     """
-    ok, err = proof.check_detailed()
+    validator, ok, err = proof._validate()
     if not ok:
         raise ValueError(f"cannot promote a proof that does not validate: {err}")
 
+    derived = _top_level_derived_formulas(proof.entries)
     if conclusion is None:
-        derived = _top_level_derived_formulas(proof.entries)
         if not derived:
             raise ValueError("proof derives nothing at the top level to promote as a conclusion")
         conclusion = derived[-1]
+    elif not any(_ast_eq(conclusion, formula) for formula in derived):
+        raise ValueError(
+            f"cannot promote {conclusion!r} as the theorem's conclusion: the proof never derived it "
+            f"at the top level (it derived "
+            + (", ".join(repr(formula) for formula in derived) if derived else "nothing") + ")"
+        )
 
-    premises = _top_level_premise_formulas(proof.entries)
+    uncarried = _structure_no_formula_states(validator.own_declarations)
+    if uncarried:
+        raise ValueError(
+            "cannot promote a proof that relies on structure recorded in its declarations, "
+            "which a theorem would lose: " + "; ".join(uncarried)
+            + ". State the property as a premise formula instead (todos.txt, item 8)"
+        )
 
+    premises: List[fl.Formula] = []
+    for given in validator.own_givens:
+        if not any(_ast_eq(given, kept) for kept in premises):
+            premises.append(given)
+
+    declared_objects = _top_level_object_declarations(proof.entries)
     if generalized_names is None:
-        generalized_names = _top_level_object_declarations(proof.entries)
+        generalized_names = declared_objects
+    else:
+        foreign = [n for n in dict.fromkeys(generalized_names) if n not in declared_objects]
+        if foreign:
+            raise ValueError(
+                f"cannot generalize over {', '.join(map(repr, foreign))}: only an object the proof declares "
+                f"at its top level can be generalized (here: "
+                + (", ".join(map(repr, declared_objects)) if declared_objects else "none") + ")"
+            )
+        generalized_names = list(dict.fromkeys(generalized_names))
 
-    return TheoremRule(name, premises, conclusion, generalized_names)
+    required_axioms, required_rules = _promotion_requirements(validator)
+    for axiom in required_axioms:
+        entangled = next((n for n in generalized_names
+                          if _term_occurs_in_formula(tl.ConstantTerm(n, n), axiom)), None)
+        if entangled is not None:
+            raise ValueError(
+                f"cannot generalize over {entangled!r}: the theorem requires the axiom {axiom!r}, "
+                f"which mentions it, so {entangled!r} is not arbitrary"
+            )
+
+    return TheoremRule(name, premises, conclusion, generalized_names, required_axioms, required_rules)
+
+
+def _promotion_requirements(validator: "ProofValidator") -> Tuple[List[fl.Formula], List[InferenceRule]]:
+    """The axioms and rules a theorem built from the validated proof needs
+    its citing proof to have: what the proof used itself, plus what each
+    theorem it cited required. The standard logical rules (`default_rules`)
+    are not listed -- they are the kernel's own, always sound -- and neither
+    is a cited `TheoremRule`, whose own requirements are listed in its place,
+    so a chain of theorems asks for no more than the first of them did."""
+    standard = {type(rule) for rule in default_rules()}
+    axioms: List[fl.Formula] = []
+    rules: List[InferenceRule] = []
+
+    def need_axiom(axiom: fl.Formula) -> None:
+        if not any(_ast_eq(axiom, kept) for kept in axioms):
+            axioms.append(axiom)
+
+    def need_rule(rule: InferenceRule) -> None:
+        # By configuration, not by type and name: induction over `Nat` and
+        # over `Int` have the same type and the same name, and a theorem that
+        # used both needs both.
+        as_requirement = getattr(rule, "as_requirement", None)
+        if as_requirement is not None:
+            rule = as_requirement()
+        if not _rule_among(rule, rules):
+            rules.append(rule)
+
+    for axiom in validator.used_axioms:
+        need_axiom(axiom)
+    for rule in validator.used_rules:
+        if isinstance(rule, TheoremRule):
+            for axiom in rule.required_axioms:
+                need_axiom(axiom)
+            for required in rule.required_rules:
+                need_rule(required)
+        elif type(rule) not in standard:
+            need_rule(rule)
+    return axioms, rules
+
+
+# Metadata keys whose entries a promoted theorem loses nothing by dropping,
+# because a formula on the declaration's own line says the same thing:
+# `Let a be in X` records `("membership", "X")` and states `In(a, X)`. Every
+# other entry -- a relation's carrier and properties, today -- is read by some
+# rule, and the kernel cannot tell which (it does not interpret metadata), so
+# it counts as something the theorem would lose. Adding a key here is a
+# soundness decision, like `DESCRIPTIVE_METADATA_KEYS`: a key belongs only if
+# no rule reads it and the surface language always states the formula.
+FORMULA_BACKED_METADATA_KEYS = frozenset({"membership"})
+
+
+def _structure_no_formula_states(declarations: Iterable[Declaration]) -> List[str]:
+    """One sentence per declaration among `declarations` whose metadata says
+    something that no formula states, so a theorem built from the proof would
+    not carry it. The relation rules read a relation's carrier and properties
+    from its declaration; a proof that used `Relation Symmetry` on `R` relied
+    on `R` having been declared symmetric. A theorem that dropped that could be
+    cited for any relation named `R`, symmetric or not."""
+    sentences: List[str] = []
+    for declaration in declarations:
+        described: List[str] = []
+        for entry in getattr(declaration, 'metadata', None) or ():
+            if isinstance(entry, tuple) and len(entry) == 2:
+                key, value = entry
+                if isinstance(key, str) and key in FORMULA_BACKED_METADATA_KEYS:
+                    continue
+                if isinstance(value, (tuple, list, set, frozenset)):
+                    value = ", ".join(str(item) for item in value)
+                described.append(f"{key} {value}")
+            else:
+                described.append(repr(entry))
+        if described:
+            sentences.append(f"the declaration of {declaration.name!r} records " + " and ".join(described))
+    return sentences
 
 
 def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
@@ -2809,28 +3313,6 @@ def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
             continue
         justification = parsed.justification
         if not isinstance(justification, tuple) or not justification or justification[0] not in derived_tags:
-            continue
-        phi = parsed.phi
-        if isinstance(phi, list):
-            result.extend(f for f in phi if isinstance(f, fl.Formula))
-        elif isinstance(phi, fl.Formula):
-            result.append(phi)
-    return result
-
-
-def _top_level_premise_formulas(entries: list) -> List[fl.Formula]:
-    """Every formula a top-level `'premise'`-tagged entry asserts, in
-    order -- what a promoted theorem needs a later citation to still
-    supply.
-    """
-    result: List[fl.Formula] = []
-    for e in entries:
-        parsed = _classify_entry(e)
-        if isinstance(parsed, str) or parsed.is_subproof_block:
-            continue
-        justification = parsed.justification
-        tag = justification[0] if isinstance(justification, tuple) and justification else None
-        if tag != 'premise':
             continue
         phi = parsed.phi
         if isinstance(phi, list):
@@ -3218,6 +3700,606 @@ def _classify_entry(e: Any) -> Union[_ParsedEntry, str]:
     return "invalid entry shape"
 
 
+
+class _WLOGReplayError(Exception):
+    """A source-located failure while transforming a WLOG replay."""
+
+    def __init__(self, label, block_label, sidx, category, detail):
+        super().__init__(detail)
+        self.label = label
+        self.block_label = block_label
+        self.sidx = sidx
+        self.category = category
+        self.detail = detail
+
+
+def _clone_label_scope(scope: LabelScope) -> LabelScope:
+    """Clone a label-scope chain, retaining its already-validated values."""
+    chain = []
+    current = scope
+    while current is not None:
+        chain.append(current)
+        current = current._parent
+    clone = None
+    for original in reversed(chain):
+        clone = LabelScope(parent=clone)
+        clone._local.update(original._local)
+        clone._sources.update(original._sources)
+    return clone if clone is not None else LabelScope()
+
+
+def _clone_declaration_scope(scope: DeclarationScope) -> DeclarationScope:
+    """Clone a declaration-scope chain; Declaration values are immutable."""
+    chain = []
+    current = scope
+    while current is not None:
+        chain.append(current)
+        current = current._parent
+    clone = None
+    for original in reversed(chain):
+        clone = DeclarationScope(parent=clone)
+        clone._local.update(original._local)
+    return clone if clone is not None else DeclarationScope()
+
+
+def _visible_label_items(scope: LabelScope):
+    """Yield visible labels oldest-first, for deterministic replay remapping."""
+    chain = []
+    current = scope
+    while current is not None:
+        chain.append(current)
+        current = current._parent
+    for level in reversed(chain):
+        yield from level._local.items()
+
+
+def _wlog_formula_matches(left, right) -> bool:
+    """Match formulas modulo commutativity of And and Or, and modulo the names
+    of bound variables.
+
+    A substitution can reverse the order of disjuncts in an external
+    characterization, and two lines that say the same thing may name their
+    bound variable differently (`forall z, ...` and `forall u, ...`).
+    Reordering disjunctions/conjunctions and renaming a bound variable are
+    both harmless for citation reuse; no other propositional equivalences are
+    assumed here.
+    """
+    return _wlog_matches_in(left, right, {}, {}, 0)
+
+
+def _wlog_matches_in(left, right, env_left: dict, env_right: dict, depth: int) -> bool:
+    """`_wlog_formula_matches` below `depth` quantifiers: `env_left` and
+    `env_right` give each variable the quantifier level that binds it (as in
+    `_alpha_eq_in`), so two variables correspond when they have the same level."""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, (fl.And, fl.Or)):
+        xs = left.conjuncts if isinstance(left, fl.And) else left.disjuncts
+        ys = right.conjuncts if isinstance(right, fl.And) else right.disjuncts
+        if len(xs) != len(ys):
+            return False
+        unmatched = list(ys)
+        for item in xs:
+            for index, candidate in enumerate(unmatched):
+                if _wlog_matches_in(item, candidate, env_left, env_right, depth):
+                    unmatched.pop(index)
+                    break
+            else:
+                return False
+        return not unmatched
+    if isinstance(left, fl.Not):
+        return _wlog_matches_in(left.sub, right.sub, env_left, env_right, depth)
+    if isinstance(left, fl.Implies):
+        return (_wlog_matches_in(left.antecedent, right.antecedent, env_left, env_right, depth)
+                and _wlog_matches_in(left.consequent, right.consequent, env_left, env_right, depth))
+    if isinstance(left, fl.Iff):
+        return (_wlog_matches_in(left.left, right.left, env_left, env_right, depth)
+                and _wlog_matches_in(left.right, right.right, env_left, env_right, depth))
+    if isinstance(left, (fl.ForAll, fl.Exists)):
+        return _wlog_matches_in(
+            left.body, right.body,
+            {**env_left, left.var: depth}, {**env_right, right.var: depth}, depth + 1)
+    return _alpha_eq_in(left, right, env_left, env_right, depth)
+
+
+def _wlog_value_matches(actual, expected) -> bool:
+    """Compare visible formulas, bundles, or validated subproofs."""
+    if isinstance(actual, fl.Formula) and isinstance(expected, fl.Formula):
+        return _wlog_formula_matches(actual, expected)
+    if isinstance(actual, list) and isinstance(expected, list):
+        return (len(actual) == len(expected)
+                and all(_wlog_value_matches(a, b) for a, b in zip(actual, expected)))
+    if isinstance(actual, SubproofRecord) and isinstance(expected, SubproofRecord):
+        actual_outer = list(actual.get_outer_context())
+        expected_outer = list(expected.get_outer_context())
+        return (
+            _wlog_value_matches(actual.assumption, expected.assumption)
+            and _wlog_value_matches(actual.inner, expected.inner)
+            and _wlog_value_matches(actual_outer, expected_outer)
+        )
+    return False
+
+
+def _wlog_changed_terms(chosen: fl.Formula, alternative: fl.Formula) -> Tuple[tl.ConstantTerm, tl.ConstantTerm]:
+    """The one constant the chosen case has and the alternative replaces, as
+    `(chosen's constant, alternative's constant)`. The supported equality
+    cases differ in exactly one term, and it must be a constant."""
+    if not isinstance(chosen, fl.Equals) or not isinstance(alternative, fl.Equals):
+        raise ValueError("this WLOG implementation requires equality disjuncts")
+    differences = []
+    for source, target in (
+        (chosen.left, alternative.left),
+        (chosen.right, alternative.right),
+    ):
+        if not _ast_eq(source, target):
+            differences.append((source, target))
+    if len(differences) != 1:
+        raise ValueError("WLOG alternatives must differ in exactly one term")
+    source, target = differences[0]
+    if not isinstance(source, tl.ConstantTerm) or not isinstance(target, tl.ConstantTerm):
+        raise ValueError("the changing WLOG terms must be constants")
+    return source, target
+
+
+def _wlog_substitution(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
+    """Derive the first supported equality-case constant substitution."""
+    source, target = _wlog_changed_terms(chosen, alternative)
+    return {source.name: target}
+
+
+def _wlog_exchange(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
+    """The substitution that trades the two case constants, both replaced at
+    once (`_substitute_constants_in_formula` looks each constant up once, so
+    `a -> b` and `b -> a` do not chain). A line that this leaves unchanged,
+    up to the order of `and` and `or`, says the same thing of both cases:
+    `forall u, (In(u, Y) iff (u = a or u = b))` is such a line for the cases
+    `x = a` and `x = b`, and `P(a)` is not."""
+    source, target = _wlog_changed_terms(chosen, alternative)
+    return {source.name: target, target.name: source}
+
+
+def _substitute_wlog_metadata(value, mapping):
+    """Substitute symbol references inside structured declaration metadata."""
+    if isinstance(value, str):
+        target = mapping.get(value)
+        return target.name if isinstance(target, tl.ConstantTerm) else value
+    if isinstance(value, tuple):
+        return tuple(_substitute_wlog_metadata(item, mapping) for item in value)
+    if isinstance(value, list):
+        return [_substitute_wlog_metadata(item, mapping) for item in value]
+    if isinstance(value, dict):
+        return {key: _substitute_wlog_metadata(item, mapping) for key, item in value.items()}
+    if isinstance(value, set):
+        return {_substitute_wlog_metadata(item, mapping) for item in value}
+    if isinstance(value, frozenset):
+        return frozenset(_substitute_wlog_metadata(item, mapping) for item in value)
+    return value
+
+
+def _substitute_wlog_declaration(declaration: Declaration, mapping) -> Declaration:
+    name = declaration.name
+    if declaration.kind == DeclarationKind.OBJECT and name in mapping:
+        target = mapping[name]
+        if isinstance(target, tl.ConstantTerm):
+            name = target.name
+    metadata = []
+    for item in declaration.metadata:
+        if not (isinstance(item, tuple) and len(item) == 2
+                and isinstance(item[0], str)):
+            metadata.append(_substitute_wlog_metadata(item, mapping))
+        elif item[0] in DESCRIPTIVE_METADATA_KEYS:
+            metadata.append(item)
+        else:
+            metadata.append((
+                item[0],
+                _substitute_wlog_metadata(item[1], mapping),
+            ))
+    return Declaration(
+        name=name,
+        kind=declaration.kind,
+        arity=declaration.arity,
+        type_name=declaration.type_name,
+        metadata=tuple(metadata),
+    )
+
+
+def _substitute_wlog_value(value, mapping):
+    if isinstance(value, fl.Formula):
+        return _substitute_constants_in_formula(value, mapping)
+    if isinstance(value, list):
+        return [_substitute_wlog_value(item, mapping) for item in value]
+    if isinstance(value, SubproofRecord):
+        transformed_inner = [_substitute_wlog_value(item, mapping) for item in value.inner]
+        transformed_outer = [
+            _substitute_wlog_value(item, mapping)
+            for item in value.get_outer_context()
+        ]
+        return SubproofRecord(
+            _substitute_wlog_value(value.assumption, mapping),
+            transformed_inner,
+            outer_context_ref=transformed_outer,
+            boundary_index=len(transformed_outer),
+        )
+    return value
+
+
+def _is_wlog_entry(entry: _ParsedEntry) -> bool:
+    justification = entry.justification
+    return (
+        not entry.is_subproof_block
+        and isinstance(justification, tuple)
+        and len(justification) >= 2
+        and justification[0] == "rule"
+        and isinstance(justification[1], NamedRulePlaceholder)
+        and justification[1].name == "WLOG"
+    )
+
+
+def _visible_counterpart(original_labels: LabelScope, expected) -> Optional[str]:
+    """The label of the earliest visible line whose value is `expected` (see
+    `_wlog_value_matches`), or None."""
+    return next(
+        (
+            candidate_label
+            for candidate_label, candidate_value
+            in _visible_label_items(original_labels)
+            if _wlog_value_matches(candidate_value, expected)
+        ),
+        None,
+    )
+
+
+class _ReplayPolicy(NamedTuple):
+    """How a replay of part of a proof looks for the line to cite in place of
+    a line outside the replay, and what it says when there is none.
+
+    `find(labels, expected)` is the label of a visible line that says what
+    `expected` says, or None. `refusal(citing_label, cited_label, cited_value,
+    expected)` is the detail of the refusal; None keeps the wording of WLOG.
+    """
+    find: Any
+    refusal: Any = None
+
+
+_WLOG_POLICY = _ReplayPolicy(_visible_counterpart)
+
+
+def _transform_wlog_block(entries, mapping, original_labels: LabelScope,
+                          block_label, exchange, policy=_WLOG_POLICY):
+    """Transform the entries of one subproof, in order."""
+    return [
+        _transform_wlog_entry(item, mapping, original_labels, block_label,
+                              index, exchange, policy)
+        for index, item in enumerate(entries or [])
+    ]
+
+
+def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
+                          block_label, sidx, exchange, policy=_WLOG_POLICY):
+    """Transform one region entry and remap only its citations outside WLOG.
+
+    A citation outside the region is replaced by the earliest visible line
+    that says what the cited line says once `mapping` is applied (`P(a)` for
+    `P(b)`). When there is no such line, the citation is kept as it is if
+    `exchange` -- the mapping that trades the two case constants -- leaves
+    the cited line unchanged: it is background that holds equally in both
+    cases, and the replayed line is checked against it like any other.
+    Otherwise the replay fails here. The second step only ever applies where
+    the first fails, so a replay that was accepted before is unchanged.
+
+    A line may carry subproofs, and each is transformed the same way: a
+    standalone block, the one block below a `rule_below` line, and each of the
+    case blocks below a `rule_hybrid` line such as `Proof by Cases`.
+
+    `Mutatis mutandis` uses this transformation too, with its own `policy`
+    (`_ReplayPolicy`) for what counts as a line that says the same and for the
+    wording of the refusal.
+    """
+    classified = _classify_entry(raw_entry)
+    if isinstance(classified, str):
+        return raw_entry
+
+    if classified.is_subproof_block:
+        nested = _transform_wlog_block(
+            classified.subproof_entries, mapping, original_labels,
+            classified.label, exchange, policy)
+        if len(raw_entry) == 3:
+            return (raw_entry[0], "subproof", nested)
+        return ("subproof", nested)
+
+    label = classified.label
+    phi = classified.phi
+    if isinstance(phi, fl.Formula):
+        phi = _substitute_constants_in_formula(phi, mapping)
+    elif isinstance(phi, list):
+        phi = [_substitute_constants_in_formula(item, mapping)
+               if isinstance(item, fl.Formula) else item for item in phi]
+
+    justification = classified.justification
+    if isinstance(justification, tuple):
+        parts = list(justification)
+        tag = parts[0] if parts else None
+        for index, value in enumerate(parts):
+            if (isinstance(value, list)
+                    and all(isinstance(item, Declaration) for item in value)):
+                parts[index] = [
+                    _substitute_wlog_declaration(item, mapping) for item in value
+                ]
+                continue
+            if tag in ("rule", "rule_hybrid") and index == 2 and isinstance(value, list):
+                remapped = []
+                for reference in value:
+                    if reference not in original_labels:
+                        # A label created in the replay region will be rebound
+                        # in order; future and out-of-scope labels remain
+                        # absent and are rejected by the ordinary validator.
+                        remapped.append(reference)
+                        continue
+                    original_value = original_labels[reference]
+                    expected = _substitute_wlog_value(original_value, mapping)
+                    counterpart = policy.find(original_labels, expected)
+                    if counterpart is None and _wlog_value_matches(
+                            original_value, _substitute_wlog_value(original_value, exchange)):
+                        remapped.append(reference)
+                        continue
+                    if counterpart is None:
+                        detail = (
+                            policy.refusal(label, reference, original_value, expected)
+                            if policy.refusal is not None else
+                            f"WLOG replay has no visible counterpart for cited line "
+                            f"'{reference}' after substituting the chosen case"
+                        )
+                        raise _WLOGReplayError(
+                            label, block_label, sidx, CATEGORY_BAD_REFERENCE, detail,
+                        )
+                    remapped.append(counterpart)
+                parts[index] = remapped
+        justification = tuple(parts)
+
+    if len(raw_entry) == 2:
+        transformed = (phi, justification)
+    elif len(raw_entry) == 3:
+        transformed = (label, phi, justification)
+    elif len(raw_entry) == 4:
+        if isinstance(justification, tuple) and justification[:1] == ("rule_hybrid",):
+            # One list of entries per case block.
+            nested = [
+                _transform_wlog_block(block, mapping, original_labels, label, exchange,
+                                      policy)
+                for block in classified.nested_subproof or []
+            ]
+        else:
+            nested = _transform_wlog_block(
+                classified.nested_subproof, mapping, original_labels, label, exchange,
+                policy)
+        transformed = (label, phi, justification, nested)
+    else:
+        return raw_entry
+    return transformed
+
+
+# --------------------------------------------------------------------------
+# Mutatis mutandis
+#
+#     5.2. X subseteq Y. (Subset proof below)
+#      ...
+#     5.3. Y subseteq X. (Mutatis mutandis, 5.1 to 5.2)
+#
+# repeats the argument of an earlier line for different names. The validator
+# does not trust it as a rule of its own: it *expands* the line -- the
+# argument of line 5.2 with X and Y exchanged, which is read off the two
+# statements -- and validates that expansion like any other line, so a refusal
+# is always an ordinary refusal and nothing is accepted that could not have
+# been written out. What the expansion has to take care of is the lines the
+# argument cites from outside: each one that says something about a name being
+# replaced (5.1 says it of X) needs a visible line that says the same of the
+# replacement (line 3 says it of Y), and that line is cited instead.
+# --------------------------------------------------------------------------
+
+_MUTATIS_MUTANDIS = "MutatisMutandis"
+
+# The justification tags a repeated argument may contain. A premise, an axiom
+# or a declaration that states a formula is a hypothesis of the whole proof:
+# repeating it would add a hypothesis that nobody wrote. Anything not listed
+# here is refused for the same reason, so a tag added later is refused until
+# someone decides it is safe to repeat.
+_MM_REPEATABLE_TAGS = ("rule", "rule_below", "rule_hybrid", "assume", "arbitrary", "declare")
+
+
+def _is_mm_entry(entry: _ParsedEntry) -> bool:
+    justification = entry.justification
+    return (
+        not entry.is_subproof_block
+        and isinstance(justification, tuple)
+        and len(justification) >= 2
+        and justification[0] == "rule"
+        and isinstance(justification[1], NamedRulePlaceholder)
+        and justification[1].name == _MUTATIS_MUTANDIS
+    )
+
+
+def _mm_align(model, claim, sigma: Dict[str, tl.Term], env_model: dict, env_claim: dict,
+              depth: int) -> None:
+    """Fill `sigma` with the names that must be replaced for `model` to say
+    what `claim` says, walking the two together.
+
+    Only names are replaced: the shapes, the predicate and function symbols
+    and the free variables must agree, and bound variables must correspond
+    (they may be named differently). A name is replaced by one name, wherever
+    it occurs. Raises `ValueError` with the first disagreement.
+    """
+    def differ() -> ValueError:
+        return ValueError(f"only names may change, but {model!r} would have to become {claim!r}")
+
+    if type(model) is not type(claim):
+        raise differ()
+    if isinstance(model, tl.ConstantTerm):
+        known = sigma.setdefault(model.name, claim)
+        if known.name != claim.name:
+            raise ValueError(
+                f"{model.name} would have to be replaced by both {known.name} and {claim.name}")
+        return
+    if isinstance(model, tl.VariableTerm):
+        bound_model, bound_claim = model.name in env_model, claim.name in env_claim
+        if bound_model or bound_claim:
+            if bound_model and bound_claim and env_model[model.name] == env_claim[claim.name]:
+                return
+            raise differ()
+        if model.name != claim.name:
+            raise differ()
+        return
+    if isinstance(model, tl.FunctionTerm):
+        if model.symbol != claim.symbol or len(model.args) != len(claim.args):
+            raise differ()
+        for x, y in zip(model.args, claim.args):
+            _mm_align(x, y, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.AtomicFormula):
+        if model.predicate != claim.predicate or len(model.args) != len(claim.args):
+            raise differ()
+        for x, y in zip(model.args, claim.args):
+            if isinstance(x, tl.Term) and isinstance(y, tl.Term):
+                _mm_align(x, y, sigma, env_model, env_claim, depth)
+            elif x != y:
+                raise differ()
+        return
+    if isinstance(model, (fl.And, fl.Or)):
+        xs = model.conjuncts if isinstance(model, fl.And) else model.disjuncts
+        ys = claim.conjuncts if isinstance(claim, fl.And) else claim.disjuncts
+        if len(xs) != len(ys):
+            raise differ()
+        for x, y in zip(xs, ys):
+            _mm_align(x, y, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.Not):
+        _mm_align(model.sub, claim.sub, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, fl.Implies):
+        _mm_align(model.antecedent, claim.antecedent, sigma, env_model, env_claim, depth)
+        _mm_align(model.consequent, claim.consequent, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, (fl.Iff, fl.Equals)):
+        _mm_align(model.left, claim.left, sigma, env_model, env_claim, depth)
+        _mm_align(model.right, claim.right, sigma, env_model, env_claim, depth)
+        return
+    if isinstance(model, (fl.ForAll, fl.Exists)):
+        _mm_align(model.body, claim.body,
+                  sigma, {**env_model, model.var: depth}, {**env_claim, claim.var: depth}, depth + 1)
+        return
+    if model != claim:
+        raise differ()
+
+
+def _mm_renaming(sigma: Dict[str, tl.Term]) -> str:
+    """`sigma` in words: `X by Y and Y by X`."""
+    parts = [f"{old} by {new.name}" for old, new in sigma.items()]
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def _mm_show(value) -> str:
+    """A visible line's value, for a message."""
+    if isinstance(value, fl.Formula):
+        return repr(value)
+    if isinstance(value, list):
+        return "; ".join(_mm_show(item) for item in value)
+    return "a subproof"
+
+
+def _mm_facts(value) -> Optional[List[fl.Formula]]:
+    """The formulas a line's value states: the formula itself, or the members
+    of a bundle. None for a value that is not a statement of facts (a
+    standalone subproof)."""
+    if isinstance(value, fl.Formula):
+        return [value]
+    if isinstance(value, list):
+        facts: List[fl.Formula] = []
+        for item in value:
+            inner = _mm_facts(item)
+            if inner is None:
+                return None
+            facts.extend(inner)
+        return facts
+    return None
+
+
+def _mm_says(candidate, expected, needed: Optional[List[fl.Formula]]) -> bool:
+    """Whether a visible line whose value is `candidate` says what `expected`
+    says: it is that value (`_wlog_value_matches`), or it states every one of
+    its facts (`needed`, from `_mm_facts`).
+
+    The second is what lets a premise written as one bundle -- `Let P, Q and
+    R be such that: A. B. C. (Premise)` -- stand in for a single fact, or for
+    another bundle that is part of it. Which of a bundle's facts a rule then
+    uses is for the rule to find, as it is wherever a line cites a bundle.
+    """
+    if _wlog_value_matches(candidate, expected):
+        return True
+    stated = _mm_facts(candidate)
+    return bool(needed) and stated is not None and all(
+        any(_wlog_formula_matches(have, want) for have in stated) for want in needed)
+
+
+def _mm_counterpart(labels: LabelScope, expected) -> Optional[str]:
+    """The label of the earliest visible line that says what `expected` says
+    (`_mm_says`), or None."""
+    needed = _mm_facts(expected)
+    return next(
+        (label for label, value in _visible_label_items(labels)
+         if _mm_says(value, expected, needed)),
+        None,
+    )
+
+
+def _mm_blocked_line(raw_entry) -> Optional[Tuple[Optional[str], str]]:
+    """The first line of `raw_entry` -- a line and the subproofs below it --
+    that `Mutatis mutandis` may not repeat, as `(label, reason)`, or None.
+
+    Repeating a derivation is sound because the repeated lines are validated;
+    repeating a hypothesis would not be, since it would add a premise, an
+    axiom, a declared fact or declared structure to what the whole proof
+    takes for granted. See `_MM_REPEATABLE_TAGS`.
+    """
+    classified = _classify_entry(raw_entry)
+    if isinstance(classified, str):
+        return None, classified
+    if classified.is_subproof_block:
+        for item in classified.subproof_entries or []:
+            found = _mm_blocked_line(item)
+            if found is not None:
+                return found
+        return None
+
+    label, justification = classified.label, classified.justification
+    if not isinstance(justification, tuple) or not justification:
+        return label, "it has no justification"
+    tag = justification[0]
+    declarations = [
+        item for part in justification[1:] if isinstance(part, list)
+        for item in part if isinstance(item, Declaration)
+    ]
+    if tag == "premise":
+        return label, "it is a premise (so is a witness named with 'Existence from')"
+    if tag == "axiom":
+        return label, "it is an axiom"
+    if tag not in _MM_REPEATABLE_TAGS:
+        return label, f"its justification '{tag}' is not one that can be repeated"
+    if tag == "declare" and classified.phi is not None:
+        return label, "it declares names and states a fact about them"
+    if tag == "rule" and len(justification) >= 4 and justification[3]:
+        return label, "it declares names and states a fact about them"
+    if any(declaration.metadata for declaration in declarations):
+        return label, "it declares structure"
+
+    nested = classified.nested_subproof
+    if nested:
+        for block in (nested if tag == "rule_hybrid" else [nested]):
+            for item in block:
+                found = _mm_blocked_line(item)
+                if found is not None:
+                    return found
+    return None
+
+
 class ProofValidator:
     """Walks a list of proof entries and checks that every line is
     justified: a premise or axiom that's actually in scope, an assumption
@@ -3239,9 +4321,9 @@ class ProofValidator:
         _validate_membership            tag: 'premise' / 'axiom'
         _validate_rule_below            tag: 'rule_below'
         _validate_rule                  tag: 'rule'
-        _rule_is_registered              shared "is this rule instance one
-                                         of the ones this Proof allows?"
-                                         check
+        _rule_is_registered              shared "is this rule one of the
+                                         ones this Proof allows, its
+                                         configuration included?" check
 
     Every one of the five per-tag branches ends the same way on success --
     append `phi` to `seen`, and if the line has a `label`, register it in
@@ -3285,16 +4367,57 @@ class ProofValidator:
         # the names that some declaration's structure metadata refers to; it
         # only grows, since what a closed subproof's declaration said about a
         # name was still used to derive lines that may be visible afterwards.
+        #
+        # Four more lists are read after validation, by `promote_theorem`, and
+        # describe what a theorem built from this proof would owe:
+        # `own_givens` is `_given_lines` without the theory's axioms -- what
+        # *this proof* assumed, at any depth, which a theorem built from it
+        # must carry as premises; `own_declarations` is every declaration
+        # this proof made, at any depth, whose structure metadata a theorem
+        # cannot carry; `used_axioms` is the theory's axioms the proof cited
+        # with `(Axiom)`, and `used_rules` every rule that justified a line.
+        # A theorem cannot carry those as premises -- every proof in the
+        # theory has them -- so it records that it needs them and is only
+        # citable where they are available (`TheoremRule`). They live here,
+        # next to `_given_lines`, so that what counts as taken-for-granted is
+        # decided in one place.
         self._given_lines: list = []
         self._assumption_stack: list = []
         self._arbitrary_names: list = []
         self._constrained_names: set = set()
+        self.own_givens: list = []
+        self.own_declarations: list = []
+        self.used_axioms: list = []
+        self.used_rules: list = []
+
+    def _take_for_granted(self, *formulas: fl.Formula, theory_axiom: bool = False) -> None:
+        """Record `formulas` as hypotheses of the rest of the proof.
+
+        `theory_axiom` marks a line cited with `(Axiom)` when the proof was
+        given a list of axioms to check it against: that line asserts one of
+        the theory's axioms, which every proof in the theory has, so it is
+        recorded as an axiom the proof used rather than as something this
+        proof assumed. Without such a list the validator accepts any formula
+        as an axiom, so the line is only something this proof assumed and is
+        recorded like a premise.
+        """
+        self._given_lines.extend(formulas)
+        if theory_axiom:
+            for formula in formulas:
+                if not any(_ast_eq(formula, used) for used in self.used_axioms):
+                    self.used_axioms.append(formula)
+        else:
+            self.own_givens.extend(formulas)
 
     def validate(self, entries: list) -> Tuple[bool, Optional[ValidationError], Optional[SubproofRecord]]:
         self._given_lines = []
         self._assumption_stack = []
         self._arbitrary_names = []
         self._constrained_names = _metadata_names(self.initial_declarations)
+        self.own_givens = []
+        self.own_declarations = []
+        self.used_axioms = []
+        self.used_rules = []
         seen: list = []
         labels = LabelScope()
         declarations = DeclarationScope(initial=self.initial_declarations)
@@ -3337,10 +4460,45 @@ class ProofValidator:
             if opening_detail:
                 return False, _mk_error(opening_label, block_label, 0, CATEGORY_BAD_OPENING, opening_detail), None
 
+        wlog_snapshot = None
         for sidx, e in enumerate(block_entries):
             entry = _classify_entry(e)
             if isinstance(entry, str):
                 return False, _mk_error(None, block_label, sidx, CATEGORY_MALFORMED_ENTRY, entry), None
+
+            # A `Mutatis mutandis` line is validated as the argument it
+            # repeats, with the line's own label and statement.
+            repeating = None
+            if _is_mm_entry(entry):
+                e, repeating, err = self._expand_mutatis_mutandis(entry, sidx, block_label, labels)
+                if err:
+                    return False, err, None
+                entry = _classify_entry(e)
+
+            if _is_wlog_entry(entry):
+                if wlog_snapshot is not None:
+                    return False, _mk_error(
+                        entry.label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                        "only one WLOG line per proof block is supported",
+                    ), None
+                wlog_snapshot = {
+                    "index": sidx,
+                    "entry": entry,
+                    "block_label": block_label,
+                    "outer_is_seen": outer_context is seen,
+                    "seen": list(seen),
+                    "labels": _clone_label_scope(labels),
+                    "declarations": _clone_declaration_scope(declarations),
+                    "outer_context": list(outer_context),
+                    "given_lines": list(self._given_lines),
+                    "assumption_stack": list(self._assumption_stack),
+                    "arbitrary_names": list(self._arbitrary_names),
+                    "constrained_names": set(self._constrained_names),
+                    "own_givens": list(self.own_givens),
+                    "own_declarations": list(self.own_declarations),
+                    "used_axioms": list(self.used_axioms),
+                    "used_rules": list(self.used_rules),
+                }
 
             if entry.is_subproof_block:
                 ok, err, sp_rec = self._validate_block(
@@ -3356,6 +4514,26 @@ class ProofValidator:
                 continue
 
             err = self._validate_line(entry, sidx, block_label, is_subproof, seen, labels, declarations, outer_context)
+            if err and repeating is not None:
+                # The repeated line's own refusal reads as the line's; a
+                # refusal inside the repeated argument says which of its lines.
+                inside = "" if err.label == entry.label else f"{err.location}, in the repeated argument: "
+                err = _mk_error(entry.label, block_label, sidx, err.category,
+                                repeating + inside + err.detail)
+            if err:
+                return False, err, None
+            if entry.label:
+                labels.set_source(entry.label, e)
+
+            if wlog_snapshot is not None and sidx == wlog_snapshot["index"]:
+                reference = entry.justification[2][0]
+                wlog_snapshot["selected"] = entry.phi
+                wlog_snapshot["disjunction"] = wlog_snapshot["labels"][reference]
+
+        if wlog_snapshot is not None:
+            err = self._validate_wlog_replays(
+                wlog_snapshot, block_entries, seen[-1] if seen else None,
+            )
             if err:
                 return False, err, None
 
@@ -3366,6 +4544,243 @@ class ProofValidator:
             return True, None, SubproofRecord(seen[0], seen, outer_context_ref=outer_context, boundary_index=boundary)
 
         return True, None, None
+
+    def _validate_wlog_replays(
+        self, snapshot: dict, block_entries: list, chosen_final,
+    ) -> Optional[ValidationError]:
+        """Replay a validated WLOG suffix for every alternative disjunct.
+
+        Each replay starts from a private snapshot of the lexical scopes and
+        validator bookkeeping immediately before the WLOG line. The original
+        proof, its scopes, and the chosen-case results are never rewritten.
+        """
+        wlog_entry = snapshot["entry"]
+        disjunction = snapshot.get("disjunction")
+        chosen = snapshot.get("selected")
+        if not isinstance(disjunction, fl.Or) or not isinstance(chosen, fl.Formula):
+            return _mk_error(
+                wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                CATEGORY_RULE_MISMATCH, "WLOG requires a cited disjunction and a selected disjunct",
+            )
+
+        suffix = block_entries[snapshot["index"] + 1:]
+        for alternative in disjunction.disjuncts:
+            if _ast_eq(chosen, alternative):
+                continue
+            try:
+                mapping = _wlog_substitution(chosen, alternative)
+                exchange = _wlog_exchange(chosen, alternative)
+            except ValueError as exc:
+                return _mk_error(
+                    wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                    CATEGORY_RULE_MISMATCH, f"WLOG cannot replay this case: {exc}",
+                )
+
+            try:
+                transformed_suffix = [
+                    _transform_wlog_entry(
+                        item, mapping, snapshot["labels"],
+                        snapshot["block_label"], snapshot["index"] + offset + 1,
+                        exchange,
+                    )
+                    for offset, item in enumerate(suffix)
+                ]
+            except _WLOGReplayError as exc:
+                return _mk_error(
+                    exc.label, exc.block_label, exc.sidx, exc.category, exc.detail,
+                )
+
+            replay_seen = list(snapshot["seen"])
+            replay_seen.append(alternative)
+            replay_labels = _clone_label_scope(snapshot["labels"])
+            replay_declarations = _clone_declaration_scope(snapshot["declarations"])
+            if wlog_entry.label:
+                try:
+                    replay_labels[wlog_entry.label] = alternative
+                except KeyError:
+                    return _mk_error(
+                        wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                        CATEGORY_LABEL_SHADOWING,
+                        f"WLOG replay cannot bind label '{wlog_entry.label}'",
+                    )
+
+            replay = ProofValidator(
+                self.rules, self.premises, self.axioms,
+                declarations=self.initial_declarations,
+            )
+            replay._given_lines = list(snapshot["given_lines"])
+            replay._assumption_stack = list(snapshot["assumption_stack"])
+            replay._arbitrary_names = list(snapshot["arbitrary_names"])
+            replay._constrained_names = set(snapshot["constrained_names"])
+            replay.own_givens = list(snapshot["own_givens"])
+            replay.own_declarations = list(snapshot["own_declarations"])
+            replay.used_axioms = list(snapshot["used_axioms"])
+            replay.used_rules = list(snapshot["used_rules"])
+
+            # In an ordinary block the block's seen list is its own outer
+            # context. In a subproof it is the enclosing block's snapshot.
+            # For the replayed suffix, nested subproofs must see the replay's
+            # accumulated facts rather than formulas from the original case.
+            replay_outer_context = (
+                replay_seen if snapshot["outer_is_seen"]
+                else list(snapshot["outer_context"])
+            )
+            if transformed_suffix:
+                ok, err, _ = replay._validate_block(
+                    transformed_suffix,
+                    snapshot["block_label"],
+                    replay_seen,
+                    replay_labels,
+                    replay_declarations,
+                    replay_outer_context,
+                    is_subproof=False,
+                )
+                if not ok:
+                    return err
+
+            replay_final = replay_seen[-1] if replay_seen else None
+            if not _wlog_value_matches(chosen_final, replay_final):
+                return _mk_error(
+                    wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                    CATEGORY_RULE_MISMATCH,
+                    "WLOG replay does not establish the same final result for every case",
+                )
+
+            # Replayed cases can introduce additional proof obligations (for
+            # example, a premise or axiom instance inside the WLOG region).
+            # Preserve those dependencies for later context-sensitive rules
+            # and theorem promotion, without copying the chosen case's
+            # duplicate bookkeeping into the original validator.
+            for formula in replay._given_lines:
+                if not any(_ast_eq(formula, existing) for existing in self._given_lines):
+                    self._given_lines.append(formula)
+            for formula in replay.own_givens:
+                if not any(_ast_eq(formula, existing) for existing in self.own_givens):
+                    self.own_givens.append(formula)
+            for declaration in replay.own_declarations:
+                if declaration not in self.own_declarations:
+                    self.own_declarations.append(declaration)
+            self._constrained_names.update(replay._constrained_names)
+            for axiom in replay.used_axioms:
+                if not any(_ast_eq(axiom, existing) for existing in self.used_axioms):
+                    self.used_axioms.append(axiom)
+            for rule in replay.used_rules:
+                if not any(rule is existing for existing in self.used_rules):
+                    self.used_rules.append(rule)
+        return None
+
+    def _expand_mutatis_mutandis(self, entry: _ParsedEntry, sidx: int, block_label: Optional[str],
+                                 labels: LabelScope):
+        """Expand a `Mutatis mutandis` line into the entry that stands for it.
+
+        `P. (Mutatis mutandis, A to B)` repeats the argument of line B for
+        the names that make B say P: the names to replace are read off B's
+        statement and P (`_mm_align`), the argument -- B's justification and
+        the subproofs below it -- is rewritten with them, and each line it
+        cites from outside is replaced by the visible line that says the
+        same of the new names (`_transform_wlog_entry`). Line A, where the
+        argument starts, must itself have such a line. A single cited line
+        is B alone.
+
+        Returns `(entry, note, None)`: the entry to validate in the line's
+        place, carrying its label and statement, and the beginning of the
+        message to give if that validation fails; or `(None, None, error)`.
+        """
+        label, claim, justification = entry.label, entry.phi, entry.justification
+
+        def refuse(category: str, detail: str):
+            return None, None, _mk_error(label, block_label, sidx, category, detail)
+
+        if len(justification) != 3 or entry.nested_subproof is not None:
+            return refuse(CATEGORY_MALFORMED_JUSTIFICATION,
+                          "Mutatis mutandis cites lines and nothing else: it takes no subproofs "
+                          "and declares nothing")
+        refs = justification[2]
+        if not isinstance(claim, fl.Formula) or not isinstance(refs, list):
+            return refuse(CATEGORY_MALFORMED_ENTRY,
+                          "Mutatis mutandis needs a formula and a list of cited lines")
+        if not 1 <= len(refs) <= 2:
+            return refuse(CATEGORY_ARITY_MISMATCH,
+                          "Mutatis mutandis cites the line whose argument it repeats, or a range "
+                          f"'A to B' that ends at it; it was given {refs}")
+        missing = [reference for reference in refs if reference not in labels]
+        if missing:
+            return refuse(CATEGORY_BAD_REFERENCE,
+                          f"Mutatis mutandis cites {missing}, which {'is' if len(missing) == 1 else 'are'} "
+                          "not defined or not in scope at this point in the proof")
+
+        if len(refs) == 2:
+            order = [visible for visible, _ in _visible_label_items(labels)]
+            if order.index(refs[0]) > order.index(refs[1]):
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cites the range '{refs[0]} to {refs[1]}' backwards: "
+                              f"line {refs[0]} comes after line {refs[1]}")
+
+        start = refs[0] if len(refs) == 2 else None
+        model_label = refs[-1]
+        model_value = labels[model_label]
+        model_entry = labels.source_of(model_label)
+        model = _classify_entry(model_entry) if model_entry is not None else None
+        if (not isinstance(model_value, fl.Formula) or not isinstance(model, _ParsedEntry)
+                or model.is_subproof_block or not isinstance(model.justification, tuple)
+                or model.justification[0] not in ("rule", "rule_below", "rule_hybrid")):
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis repeats an argument, and line {model_label} is not a line "
+                          "that a rule derived from other lines")
+        if _is_wlog_entry(model):
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis cannot repeat line {model_label}: it is a WLOG step, "
+                          "which has no argument of its own to repeat (an argument that contains "
+                          "a WLOG step can be repeated)")
+        blocked = _mm_blocked_line(model_entry)
+        if blocked is not None:
+            blocked_label, why = blocked
+            where = f"line {blocked_label}" if blocked_label else "an unlabeled line"
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"Mutatis mutandis cannot repeat the argument of line {model_label}: "
+                          f"{where} is part of it, and {why}; a repeated argument may not add "
+                          "a hypothesis")
+
+        sigma: Dict[str, tl.Term] = {}
+        try:
+            _mm_align(model_value, claim, sigma, {}, {}, 0)
+        except ValueError as exc:
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"{claim!r} is not line {model_label}, {model_value!r}, with names "
+                          f"replaced: {exc}")
+        sigma = {old: new for old, new in sigma.items() if new.name != old}
+        if not sigma:
+            return refuse(CATEGORY_RULE_MISMATCH,
+                          f"nothing to change: {claim!r} says what line {model_label} says")
+        renaming = _mm_renaming(sigma)
+
+        if start is not None:
+            start_value = labels[start]
+            expected_start = _substitute_wlog_value(start_value, sigma)
+            if _mm_counterpart(labels, expected_start) is None:
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cannot start from line {start}: it says "
+                              f"{_mm_show(start_value)}, and no visible line says "
+                              f"{_mm_show(expected_start)}, which is what it says with {renaming}")
+
+        def no_counterpart(citing_label, reference, original, expected):
+            where = f"line {citing_label}" if citing_label else "an unlabeled line"
+            return (f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: "
+                    f"{where} cites line {reference}, which says {_mm_show(original)}, "
+                    f"and no visible line says {_mm_show(expected)}")
+
+        try:
+            transformed = _transform_wlog_entry(
+                model_entry, sigma, labels, block_label, sidx, sigma,
+                _ReplayPolicy(_mm_counterpart, no_counterpart))
+        except _WLOGReplayError as exc:
+            return refuse(exc.category, exc.detail)
+
+        if len(model_entry) == 4:
+            repeated = (label, claim, transformed[2], transformed[3])
+        else:
+            repeated = (label, claim, transformed[2])
+        return repeated, f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: ", None
 
     def _check_opens_with_assumption(self, first_entry: Any) -> Tuple[Optional[str], Optional[str]]:
         """A subproof must open with an assumption ("... (Assumption for
@@ -3416,6 +4831,7 @@ class ProofValidator:
         if err:
             return err
         self._constrained_names |= _metadata_names(explicit_declarations)
+        self.own_declarations.extend(explicit_declarations)
 
         if tag == 'declare':
             if phi is None:
@@ -3448,7 +4864,7 @@ class ProofValidator:
                 return _mk_error(label, block_label, sidx, CATEGORY_NOT_CLOSED,
                                  "formula is not closed (has a free variable)")
 
-            self._given_lines.append(phi)
+            self._take_for_granted(phi)
             seen.append(phi)
             err = self._bind_label(labels, label, phi, block_label, sidx)
             if err:
@@ -3485,7 +4901,7 @@ class ProofValidator:
                 if err:
                     return err
 
-            self._given_lines.extend(phi)
+            self._take_for_granted(*phi)
             seen.extend(phi)
             err = self._bind_label(labels, label, list(phi), block_label, sidx)
             if err:
@@ -3538,7 +4954,7 @@ class ProofValidator:
             err = self._validate_rule_hybrid(phi, justification, nested_subproof, label, sidx,
                                              block_label, labels, declarations, seen)
         elif tag == 'rule':
-            err = self._validate_rule(phi, justification, label, sidx, block_label, labels)
+            err = self._validate_rule(phi, justification, label, sidx, block_label, labels, declarations)
         else:
             err = _mk_error(label, block_label, sidx, CATEGORY_UNKNOWN_TAG,
                             f"unknown justification tag '{tag}'")
@@ -3547,7 +4963,7 @@ class ProofValidator:
             return err
 
         if tag in ('premise', 'axiom'):
-            self._given_lines.append(phi)
+            self._take_for_granted(phi, theory_axiom=(tag == 'axiom' and bool(self.axioms)))
         elif tag == 'rule' and explicit_declarations:
             # A rule line that declares constants names an object *and* says
             # what it satisfies (the direct Pairing witness: `There is a set
@@ -3556,7 +4972,7 @@ class ProofValidator:
             # chose an object for the existential -- so it is the witness
             # assumption of an existential elimination, exactly like the
             # bundle `Existence from L` makes, and constrains a and b.
-            self._given_lines.append(phi)
+            self._take_for_granted(phi)
         elif tag == 'assume':
             self._assumption_stack.append(phi)
         elif tag == 'arbitrary' and isinstance(phi, fl.AtomicFormula) and not phi.args and isinstance(phi.predicate, str):
@@ -3758,6 +5174,10 @@ class ProofValidator:
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed hybrid rule justification")
         rule, indices = justification[1], justification[2]
+        if isinstance(rule, NamedRulePlaceholder) and rule.name == _MUTATIS_MUTANDIS:
+            return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
+                             "Mutatis mutandis cites lines and nothing else: it takes no subproofs "
+                             "and declares nothing")
         if nested_subproof is None or not isinstance(nested_subproof, list):
             return _mk_error(label, block_label, sidx, CATEGORY_MISSING_SUBPROOF,
                              "hybrid rule requires subproofs below the cited line")
@@ -3818,7 +5238,7 @@ class ProofValidator:
             candidates = [available[i] for i in candidate_indices]
             tried.append(candidates)
             try:
-                if self._applies(rule, candidates, phi):
+                if self._applies(rule, candidates, phi, declarations):
                     return None
             except Exception as raised:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3826,7 +5246,7 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices} and attached subproofs"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
     def _validate_rule_below(self, phi: fl.Formula, justification: tuple, nested_subproof: Optional[list],
                               label: Optional[str], sidx: int, block_label: Optional[str],
@@ -3850,19 +5270,46 @@ class ProofValidator:
 
         if not self._rule_is_registered(rule):
             return _mk_error(label, block_label, sidx, CATEGORY_UNRECOGNIZED_RULE, f"rule '{rule.name}' is not one of the rules this proof allows")
-        if not self._applies(rule, [sp_rec], phi):
+        if not self._applies(rule, [sp_rec], phi, declarations):
             return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                              f"'{rule.name}' does not justify {phi!r} from the subproof immediately below this line"
-                             + self._why_not(rule, [[sp_rec]], phi))
+                             + self._why_not(rule, [[sp_rec]], phi, declarations))
         return None
 
     def _validate_rule(self, phi: fl.Formula, justification: tuple, label: Optional[str],
-                       sidx: int, block_label: Optional[str], labels: LabelScope) -> Optional[ValidationError]:
-        """Validate a rule citation, including labels that denote bundled premises."""
+                       sidx: int, block_label: Optional[str], labels: LabelScope,
+                       declarations: DeclarationScope) -> Optional[ValidationError]:
+        """Validate a rule citation, including labels that denote bundled premises.
+
+        `declarations` is the scope of the block the line is in, with everything
+        the line itself declared already registered: what the rule is told a
+        symbol was declared to be (`RuleContext.declaration`).
+        """
         if len(justification) not in (3, 4):
             return _mk_error(label, block_label, sidx, CATEGORY_MALFORMED_JUSTIFICATION,
                              "malformed rule justification (expected a rule and a list of cited lines)")
         rule, indices = justification[1], justification[2]
+
+        if isinstance(rule, NamedRulePlaceholder) and rule.name == "WLOG":
+            if len(justification) != 3 or not isinstance(indices, list) or len(indices) != 1:
+                return _mk_error(label, block_label, sidx, CATEGORY_ARITY_MISMATCH,
+                                 "WLOG requires exactly one cited disjunction")
+            missing = [reference for reference in indices if reference not in labels]
+            if missing:
+                return _mk_error(label, block_label, sidx, CATEGORY_BAD_REFERENCE,
+                                 f"WLOG cites {missing}, which are not defined or not in scope at this point in the proof")
+            disjunction = labels[indices[0]]
+            if not isinstance(disjunction, fl.Or) or len(disjunction.disjuncts) < 2:
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "WLOG must cite a disjunction with at least two cases")
+            if not all(isinstance(disjunct, fl.Equals) for disjunct in disjunction.disjuncts):
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "this WLOG implementation requires equality disjuncts")
+            selected_count = sum(1 for disjunct in disjunction.disjuncts if _ast_eq(disjunct, phi))
+            if selected_count != 1:
+                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
+                                 "the WLOG assertion must match exactly one disjunct")
+            return None
 
         if isinstance(rule, NamedRulePlaceholder):
             resolved = next((r for r in self.rules if r.name == rule.name), None)
@@ -3923,7 +5370,7 @@ class ProofValidator:
                 candidates = [available[i] for i in candidate_indices]
                 tried.append(candidates)
                 try:
-                    if self._applies(rule, candidates, phi):
+                    if self._applies(rule, candidates, phi, declarations):
                         return None
                 except Exception as raised:
                     return _mk_error(label, block_label, sidx, CATEGORY_RULE_RAISED,
@@ -3931,21 +5378,38 @@ class ProofValidator:
 
         return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
-                         + self._why_not(rule, tried, phi))
+                         + self._why_not(rule, tried, phi, declarations))
 
-    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula) -> bool:
+    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula,
+                 declarations: DeclarationScope) -> bool:
         """Ask `rule` whether it justifies `phi` from `candidates`, giving
         it the `RuleContext` of this point in the proof if it wants one
         (`applies_in_context`). The one place the validator calls a rule, so
-        a context-aware rule sees the same context however it was cited."""
+        a context-aware rule sees the same context however it was cited.
+
+        `declarations` is the scope of the line being justified. It is a
+        required argument, not an optional one, so that a call site that
+        forgets it fails loudly instead of quietly telling a rule that no
+        symbol is declared.
+        """
         in_context = getattr(rule, 'applies_in_context', None)
         if in_context is None:
-            return rule.applies(candidates, phi)
-        return in_context(candidates, phi, RuleContext(
-            self._given_lines, self._assumption_stack, self._arbitrary_names,
-            self._constrained_names))
+            accepted = rule.applies(candidates, phi)
+        else:
+            accepted = in_context(candidates, phi, self._context(declarations))
+        if accepted and not any(rule is used for used in self.used_rules):
+            self.used_rules.append(rule)
+        return accepted
 
-    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula) -> str:
+    def _context(self, declarations: DeclarationScope) -> RuleContext:
+        """The `RuleContext` of the line being justified: the one place the
+        validator builds it, so `_applies` and `_why_not` cannot disagree."""
+        return RuleContext(
+            self._given_lines, self._assumption_stack, self._arbitrary_names,
+            self._constrained_names, declarations, self.axioms, self.rules)
+
+    def _why_not(self, rule: InferenceRule, tried: list, phi: fl.Formula,
+                 declarations: DeclarationScope) -> str:
         """`": <reason>"` to append to a refusal, when `rule` can say why it
         refused one of the `tried` candidate groups; otherwise the empty
         string. Never raises: an explanation is a courtesy, and a rule that
@@ -3953,8 +5417,7 @@ class ProofValidator:
         explain = getattr(rule, 'explain_in_context', None)
         if explain is None:
             return ""
-        context = RuleContext(self._given_lines, self._assumption_stack, self._arbitrary_names,
-                              self._constrained_names)
+        context = self._context(declarations)
         for candidates in tried:
             try:
                 reason = explain(candidates, phi, context)
@@ -3965,12 +5428,16 @@ class ProofValidator:
         return ""
 
     def _rule_is_registered(self, rule: InferenceRule) -> bool:
-        """Is `rule` an instance of one of the rule *types* this `Proof`
-        was configured with? (A `Proof` built with a restricted `rules=`
-        list -- see `default_rules` -- rejects citations of rules outside
-        that list, even if the rule class exists in this module.)
+        """Is `rule` one of the rules this `Proof` was configured with -- the
+        same rule, configuration included (`InferenceRule.same_configuration`)?
+        An instance of a registered rule's *class* is not enough: a subclass
+        can override `applies`, an `InductionRule` built for another type is a
+        different schema, and a `TheoremRule` the proof never registered is an
+        unproved claim. (A `Proof` built with a restricted `rules=` list --
+        see `default_rules` -- rejects citations of rules outside that list,
+        even if the rule class exists in this module.)
         """
-        return any(isinstance(rule, type(r)) for r in self.rules)
+        return _rule_among(rule, self.rules)
 
 
 # ==========================================================================
@@ -4010,8 +5477,12 @@ class Proof:
 
         self.rules = list(rules if rules is not None else default_rules())
         for rule in required_rules:
-            if not any(type(rule) is type(existing) and getattr(rule, 'name', None) == getattr(existing, 'name', None)
-                       for existing in self.rules):
+            # Merge by configuration (see `InferenceRule.same_configuration`),
+            # the test that authorizes a citation: a required rule that is
+            # only the same *kind* of rule as one the caller supplied -- a
+            # second induction schema, a witness-specific Pairing rule -- is a
+            # different rule and must not be dropped for it.
+            if not _rule_among(rule, self.rules):
                 self.rules.append(rule)
 
         self.declarations = list(declarations or [])
@@ -4050,6 +5521,13 @@ class Proof:
         for an example that uses `err.label` to find the offending source
         line without any message-text parsing.
         """
+        _, ok, err = self._validate()
+        return ok, err
+
+    def _validate(self) -> Tuple["ProofValidator", bool, Optional[ValidationError]]:
+        """`check_detailed`, plus the validator that did the work, for a
+        caller that needs what it recorded while checking (`promote_theorem`
+        reads `own_givens` and `own_declarations`)."""
         validator = ProofValidator(
             self.rules, self.premises, self.axioms,
             declarations=self.declarations,
@@ -4063,7 +5541,7 @@ class Proof:
             if origin.synthetic:
                 detail = f"Invalid {origin.construct}: {detail}"
             err = ValidationError(location, surface_label, err.category, detail)
-        return ok, err
+        return validator, ok, err
 
 
 if __name__ == "__main__":

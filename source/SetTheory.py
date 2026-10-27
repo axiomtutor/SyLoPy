@@ -217,7 +217,10 @@ def _parse_builder(text: str, bound_vars: set) -> Optional[_SetDisplay]:
                 fl.substitute_in_formula(predicate, variable, element),
             ),
             bound=fl.bound_variable_names(predicate),
-            variable=variable,
+            # If this binder shadows an enclosing variable, let the equality
+            # expansion choose a fresh display-element name. Otherwise the
+            # generated forall can capture an outer occurrence in the range set.
+            variable=None if variable in bound_vars else variable,
         )
 
     if re.fullmatch(_NAME, head):  # {y: P(y)}
@@ -227,7 +230,10 @@ def _parse_builder(text: str, bound_vars: set) -> Optional[_SetDisplay]:
             fl.formula_names(predicate) | {variable},
             lambda element: fl.substitute_in_formula(predicate, variable, element),
             bound=fl.bound_variable_names(predicate),
-            variable=variable,
+            # If this binder shadows an enclosing variable, let the equality
+            # expansion choose a fresh display-element name. Otherwise the
+            # generated forall can capture an outer occurrence in the range set.
+            variable=None if variable in bound_vars else variable,
         )
 
     return _parse_replacement_builder(head, body, bound_vars)  # {F(x): x in X}
@@ -265,20 +271,56 @@ def _parse_replacement_builder(head: str, body: str, bound_vars: set) -> Optiona
     inner_bound = bound_vars | set(variables)
     head_term = pp.parse_term(head, inner_bound)
     extra_formulas = [pp.parse_formula(text, inner_bound) for text in extras]
-    names = set(variables) | fl.term_names(head_term)
-    bound = set(variables)
+
+    # Range sets are parsed in the surrounding scope, before the comprehension
+    # variables bind. If a range set mentions an outer variable whose name is
+    # also used as a comprehension variable, the generated Exists would capture
+    # that occurrence. Alpha-rename those local binders (and their body
+    # occurrences) before assembling the formula; keep the source terms intact.
+    source_free_variables = set().union(
+        *(fl.term_free_variables(source) for _name, source in ranges)
+    )
+    captured_names = set(variables) & source_free_variables
+    used_names = set(bound_vars) | set(variables) | fl.term_names(head_term)
     for _name, source in ranges:
+        used_names |= fl.term_names(source)
+    for formula in extra_formulas:
+        used_names |= fl.formula_names(formula)
+
+    renamed = {}
+    for name in variables:
+        if name in captured_names and name not in renamed:
+            fresh = _fresh_generated_variable_name(used_names, f"__set_builder_{name}")
+            renamed[name] = fresh
+            used_names.add(fresh)
+
+    for original, fresh in renamed.items():
+        replacement = tl.VariableTerm(fresh)
+        head_term = fl.substitute_in_term(head_term, original, replacement)
+        extra_formulas = [
+            fl.substitute_in_formula(formula, original, replacement)
+            for formula in extra_formulas
+        ]
+
+    binding_ranges = [(renamed.get(name, name), source) for name, source in ranges]
+    binding_variables = [renamed.get(name, name) for name in variables]
+    names = set(binding_variables) | fl.term_names(head_term)
+    bound = set(binding_variables)
+    for _name, source in binding_ranges:
         names |= fl.term_names(source)
     for formula in extra_formulas:
         names |= fl.formula_names(formula)
         bound |= fl.bound_variable_names(formula)
 
     def condition(element: tl.Term) -> fl.Formula:
-        conjuncts = [membership_formula(tl.VariableTerm(name), source) for name, source in ranges]
+        conjuncts = [
+            membership_formula(tl.VariableTerm(name), source)
+            for name, source in binding_ranges
+        ]
         conjuncts += extra_formulas
         conjuncts.append(fl.Equals(element, head_term))
         result = conjuncts[0] if len(conjuncts) == 1 else fl.And(*conjuncts)
-        for name in reversed(variables):
+        for name in reversed(binding_variables):
             result = fl.Exists(name, result)
         return result
 
@@ -379,6 +421,223 @@ _CONTAINS_EXACTLY_CANDIDATE = re.compile(
 )
 
 
+_SET_OPERATION_NAME = _NAME
+_SET_OPERATION_SPAN_PATTERNS = tuple(
+    re.compile(pattern, re.I)
+    for pattern in (
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+in\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+{_SET_OPERATION_NAME}\s+union\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+not\s+in\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+not\s+disjoint(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+disjoint(?![\w.])",
+        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+disjoint\s+from\s+{_SET_OPERATION_NAME}(?![\w.])",
+        rf"(?<![\w.])the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+is\s+empty(?![\w.])",
+        rf"(?<![\w.])the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+is\s+nonempty(?![\w.])",
+    )
+)
+
+
+def _parse_set_operation_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Read union/intersection/disjointness wording as ordinary first-order logic."""
+    s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+
+    def term(name: str) -> Optional[tl.Term]:
+        return try_parse_set_term(name, bound_vars)
+
+    # Membership in the union/intersection: explicit English forms are phrases
+    # because their internal "and" is not a logical connective.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+in\s+the\s+union\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Or(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+({_SET_OPERATION_NAME})\s+union\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Or(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.And(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+not\s+in\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        element, left, right = match.groups()
+        element_term, left_term, right_term = term(element), term(left), term(right)
+        if None not in (element_term, left_term, right_term):
+            return fl.Not(fl.And(
+                membership_formula(element_term, left_term),
+                membership_formula(element_term, right_term),
+            ))
+
+    # "A is the union/intersection of B and C" characterizes A by membership.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+the\s+(union|intersection)\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        target, operation, left, right = match.groups()
+        target_term, left_term, right_term = term(target), term(left), term(right)
+        if None not in (target_term, left_term, right_term):
+            used = set(bound_vars or ())
+            for candidate in (target_term, left_term, right_term):
+                used |= fl.term_names(candidate)
+            element_name = _fresh_generated_variable_name(
+                used, "__set_operation_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            rhs = fl.Or if operation.lower() == "union" else fl.And
+            return fl.ForAll(
+                element_name,
+                fl.Iff(
+                    membership_formula(element, target_term),
+                    rhs(
+                        membership_formula(element, left_term),
+                        membership_formula(element, right_term),
+                    ),
+                ),
+            )
+
+    # Disjointness is universal non-overlap; its negation is witnessed overlap.
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+are\s+not\s+disjoint",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__intersection_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.Exists(
+                element_name,
+                fl.And(membership_formula(element, left), membership_formula(element, right)),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+are\s+disjoint",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__disjoint_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.And(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    match = re.fullmatch(
+        rf"({_SET_OPERATION_NAME})\s+is\s+disjoint\s+from\s+({_SET_OPERATION_NAME})",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__disjoint_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.And(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    # Empty union / nonempty intersection are also formula-level statements.
+    match = re.fullmatch(
+        rf"the\s+union\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+is\s+empty",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__empty_union_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.ForAll(
+                element_name,
+                fl.Not(fl.Or(
+                    membership_formula(element, left),
+                    membership_formula(element, right),
+                )),
+            )
+
+    match = re.fullmatch(
+        rf"the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})\s+is\s+nonempty",
+        s, flags=re.I,
+    )
+    if match:
+        left, right = map(term, match.groups())
+        if left is not None and right is not None:
+            used = set(bound_vars or ()) | fl.term_names(left) | fl.term_names(right)
+            element_name = _fresh_generated_variable_name(
+                used, "__nonempty_intersection_element", _ELEMENT_NAME_CANDIDATES
+            )
+            element = tl.VariableTerm(element_name)
+            return fl.Exists(
+                element_name,
+                fl.And(membership_formula(element, left), membership_formula(element, right)),
+            )
+
+    return None
+
+
+def find_set_operation_spans(text: str) -> List[Tuple[int, int]]:
+    """Protect set-operation phrases containing connective-looking words."""
+    spans = []
+    for pattern in _SET_OPERATION_SPAN_PATTERNS:
+        for match in pattern.finditer(text):
+            if _parse_set_operation_phrase(match.group(0), set()) is not None:
+                spans.append(match.span())
+    return spans
+
+
 def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
     """Spans of `text` that are one set-theory phrase although they contain
     "or"/"and"/commas: "x is a, b, or c" and "S contains exactly a, b and c".
@@ -394,6 +653,7 @@ def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
         for match in pattern.finditer(text):
             if _try_parse_display_expression(match.group(0), match.group(0), set()) is not None:
                 spans.append(match.span())
+    spans.extend(find_set_operation_spans(text))
     return spans
 
 
@@ -405,6 +665,22 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
     display = _try_parse_display_expression(s, text, bound_vars)
     if display is not None:
         return display
+
+    operation = _parse_set_operation_phrase(s, bound_vars)
+    if operation is not None:
+        return SurfaceExpression("core", operation, text)
+
+    # Negative subset phrasing must be recognized before the generic connective
+    # grammar sees "not". Expand it to the negation of the ordinary subset formula.
+    m = re.match(
+        r"^(.+?)\s+(?:is\s+not\s+(?:(?:a\s+)?subset\s+of|subseteq)|not\s+(?:subseteq|subset\s+of))\s+(.+)$",
+        s, flags=re.I,
+    )
+    if m:
+        left = try_parse_set_term(m.group(1), bound_vars)
+        right = try_parse_set_term(m.group(2), bound_vars)
+        if left is not None and right is not None:
+            return SurfaceExpression("core", fl.Not(subset_formula(left, right)), text)
 
     m = re.match(r"^(.+?)\s+(?:is\s+(?:a\s+)?subset\s+of|subseteq|subset)\s+(.+)$", s, flags=re.I)
     if m:
@@ -428,6 +704,81 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
                 text,
             )
 
+    # Empty and nonempty claims desugar to ordinary quantifiers. Generated binders
+    # must not capture the name of the set or variables from the surrounding scope.
+    m = re.match(r"^(.+?)\s+is\s+not\s+nonempty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__nonempty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Not(fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term))), text
+            )
+
+    m = re.match(r"^(.+?)\s+is\s+(?:not\s+)?empty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__empty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            if re.search(r"\s+is\s+not\s+empty$", s, flags=re.I):
+                return SurfaceExpression(
+                    "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+                )
+            return SurfaceExpression(
+                "core", fl.ForAll(witness, fl.Not(membership_formula(tl.VariableTerm(witness), set_term))), text
+            )
+
+    m = re.match(r"^(.+?)\s+is\s+nonempty$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__nonempty_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+            )
+
+    m = re.match(r"^(.+?)\s+has\s+an?\s+element$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            used_names = set(bound_vars or ()) | fl.term_names(set_term)
+            witness = _fresh_generated_variable_name(
+                used_names, "__element_witness", _ELEMENT_NAME_CANDIDATES
+            )
+            return SurfaceExpression(
+                "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
+            )
+
+    m = re.match(r"^(.+?)\s+does\s+not\s+belong\s+to\s+(.+)$", s, flags=re.I)
+    if m:
+        element = try_parse_set_term(m.group(1), bound_vars)
+        set_term = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", fl.Not(membership_formula(element, set_term)), text)
+
+    m = re.match(r"^(.+?)\s+does\s+not\s+contain\s+(.+)$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        element = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", fl.Not(membership_formula(element, set_term)), text)
+
+    m = re.match(r"^(.+?)\s+is\s+an?\s+element\s+of\s+(.+)$", s, flags=re.I)
+    if m:
+        element = try_parse_set_term(m.group(1), bound_vars)
+        set_term = try_parse_set_term(m.group(2), bound_vars)
+        if element is not None and set_term is not None:
+            return SurfaceExpression("core", membership_formula(element, set_term), text)
+
     m = re.match(r"^(.+?)\s+is\s+not\s+in\s+(.+)$", s, flags=re.I)
     if m:
         element = try_parse_set_term(m.group(1), bound_vars)
@@ -448,7 +799,7 @@ def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpr
 _BOUNDED_QUANTIFIER_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 
 _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
-    rf"(?<![\w.])(?:for\s+all|forall|there\s+exists|exists)\s+"
+    rf"(?<![\w.])(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+"
     rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
     flags=re.I,
 )
@@ -465,7 +816,7 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
             depth += 1
         elif ch in ")}":
             depth = max(0, depth - 1)
-    for match in re.finditer(r"\b(?:for\s+all|forall|there\s+exists|exists)\s+", text, flags=re.I):
+    for match in re.finditer(r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+", text, flags=re.I):
         start = match.start()
         if start > 0 and depths[start] != 0:
             continue
@@ -474,6 +825,16 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
             absolute = match.end() + then.start()
             if depths[absolute] == 0:
                 end = absolute
+                # A comma before the enclosing "then" belongs to the
+                # conditional syntax, not to the bounded quantifier's body.
+                boundary = end
+                while boundary > start and text[boundary - 1].isspace():
+                    boundary -= 1
+                if boundary > start and text[boundary - 1] == ",":
+                    boundary -= 1
+                    while boundary > start and text[boundary - 1].isspace():
+                        boundary -= 1
+                end = boundary
                 break
         candidate = text[start:end]
         if _BOUNDED_QUANTIFIER_SPAN_RE.fullmatch(candidate.strip()):
@@ -486,7 +847,7 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
 
     forall = re.fullmatch(
-        rf"(?:for\s+all|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
+        rf"(?:for\s+all|for\s+every|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
         rf"\s*(?:,\s*|we\s+have\s+)(.+)",
         s, flags=re.I,
     )
@@ -497,8 +858,16 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
             return None
         import SyLoPy.source.ProofParser as pp
         body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
-        return fl.ForAll(variable, fl.Implies(
-            membership_formula(tl.VariableTerm(variable), source), body))
+        binder = variable
+        if variable in bound_vars:
+            # The range set is parsed outside this binder, but the body is
+            # inside it. Use a fresh internal name so a same-named outer
+            # variable in the range set remains free relative to this quantifier.
+            used_names = set(bound_vars) | fl.formula_names(body) | fl.term_names(source)
+            binder = _fresh_generated_variable_name(used_names, f"__bounded_{variable}")
+            body = fl.substitute_in_formula(body, variable, tl.VariableTerm(binder))
+        return fl.ForAll(binder, fl.Implies(
+            membership_formula(tl.VariableTerm(binder), source), body))
 
     exists = re.fullmatch(
         rf"(?:there\s+exists|exists)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
@@ -512,8 +881,13 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
             return None
         import SyLoPy.source.ProofParser as pp
         body = pp.parse_formula(body_text.strip(), bound_vars | {variable})
-        return fl.Exists(variable, fl.And(
-            membership_formula(tl.VariableTerm(variable), source), body))
+        binder = variable
+        if variable in bound_vars:
+            used_names = set(bound_vars) | fl.formula_names(body) | fl.term_names(source)
+            binder = _fresh_generated_variable_name(used_names, f"__bounded_{variable}")
+            body = fl.substitute_in_formula(body, variable, tl.VariableTerm(binder))
+        return fl.Exists(binder, fl.And(
+            membership_formula(tl.VariableTerm(binder), source), body))
 
     return None
 
@@ -550,6 +924,19 @@ class EmptySetPropertyRule(pl.InferenceRule):
             and pl._ast_eq(atom.args[1], EMPTY_SET)
         )
 
+    def explain_in_context(self, candidates, phi, context):
+        if candidates:
+            return "EmptySetProperty takes no cited premises."
+        if not isinstance(phi, fl.Not):
+            return "EmptySetProperty must conclude nonmembership, not membership."
+        atom = phi.sub
+        if not (isinstance(atom, fl.AtomicFormula)
+                and atom.predicate == MEMBERSHIP_SYMBOL and len(atom.args) == 2):
+            return "EmptySetProperty must negate an In(element, set) atom."
+        if not pl._ast_eq(atom.args[1], EMPTY_SET):
+            return "the target must be nonmembership in the empty set"
+        return None
+
 
 def _membership_parts(formula: fl.Formula) -> Optional[Tuple[tl.Term, tl.Term]]:
     """`(element, set)` if `formula` is exactly `In(element, set)`; else `None`."""
@@ -585,6 +972,15 @@ def match_membership_characterization(formula: fl.Formula) -> Optional[Tuple[str
     return None
 
 
+def _orientations(formula: fl.Formula):
+    """`formula`, and also its mirror image when it is an equality: `s = t`
+    and `t = s` say the same thing, so an equality may be written either way
+    round (as `LeibnizSubstitutionRule` already allows)."""
+    yield formula
+    if isinstance(formula, fl.Equals):
+        yield fl.Equals(formula.right, formula.left)
+
+
 class SetPropertyRule(pl.InferenceRule):
     """General `Set property`: use a set's defining membership property.
 
@@ -610,6 +1006,30 @@ class SetPropertyRule(pl.InferenceRule):
     Elimination, so the kernel gains no new logical power. The citation
     order is free: the rule recognizes the characterization wherever it
     appears among the two cited lines.
+
+    One more case: when the property is a disjunction, a cited line that is
+    one of its disjuncts gives membership (Disjunction Introduction, then the
+    biconditional), and nonmembership gives the negated disjunct::
+
+        1. forall u, (In(u, Y) iff (u = a or u = b)). (...)
+        2. x = a. (...)
+        3. In(x, Y). (Set property from 1, 2)
+
+    That case runs one way. Membership does not say which disjunct holds,
+    and `not x = a` does not exclude `x = b`, so `In(x, Y)` does not give
+    `x = a`, and `not x = a` does not give `not In(x, Y)`.
+
+    A line that is just an equality may be written either way round, whether
+    it is cited or concluded, positive or negated, and whether it matches a
+    disjunct of the property or the whole property. `a = x` does what
+    `x = a` does::
+
+        3. a = x. (...)
+        4. In(x, Y). (Set property from 1, 3)
+
+    The mirror image is the same statement, so this adds no inference and
+    leaves the one-way case one-way. An equality inside a larger formula is
+    not turned round; it must match as written.
     """
 
     name = "SetProperty"
@@ -629,27 +1049,120 @@ class SetPropertyRule(pl.InferenceRule):
         if matched is None:
             return False
         var, set_term, prop = matched
-        # Peel matching negations off both sides (nonmembership <-> negated property).
+        # Peel matching negations off both sides (nonmembership <-> negated
+        # property). An odd number of them reverses the direction of the
+        # one-way case below.
+        negated = False
         while isinstance(instance, fl.Not) and isinstance(phi, fl.Not):
             instance, phi = instance.sub, phi.sub
+            negated = not negated
         # One of instance/phi must be the membership atom; the other is the property instance.
-        for membership, other in ((instance, phi), (phi, instance)):
+        for membership_is_conclusion in (False, True):
+            membership, other = (phi, instance) if membership_is_conclusion else (instance, phi)
             parts = _membership_parts(membership)
             if parts is None:
                 continue
             element, member_of = parts
             if not pl._ast_eq(member_of, set_term):
                 continue
-            matcher = pl.FormulaMatcher(var)
-            if not matcher.match_formula(prop, other):
-                continue
-            bound_to = matcher.mapping.get(var)
-            if bound_to is not None and not pl._ast_eq(bound_to, element):
-                continue
-            # If P does not mention u, the match is vacuous; the instance must
-            # then still agree exactly with P, which match_formula already checked.
-            return True
+            for oriented in _orientations(other):
+                matcher = pl.FormulaMatcher(var)
+                if matcher.match_formula(prop, oriented):
+                    bound_to = matcher.mapping.get(var)
+                    if bound_to is None or pl._ast_eq(bound_to, element):
+                        # If P does not mention u, the match is vacuous; the
+                        # instance must still agree exactly with P.
+                        return True
+
+            # Equality can supply one disjunct of the membership property.
+            # From A (one disjunct of A or B), Disjunction Introduction gives
+            # the full property instance, which the biconditional turns into
+            # membership. Do not generalize this to conjunctions or arbitrary
+            # subformulas: one true conjunct/subformula does not establish a
+            # whole defining property.
+            #
+            # This runs one way only. A disjunct gives membership, and so
+            # nonmembership gives the negated disjunct. Membership does not
+            # say *which* disjunct holds, and a negated disjunct does not rule
+            # out the others, so those directions are not derived. (The
+            # whole-property match above is an equivalence: both ways.)
+            if isinstance(prop, fl.Or) and membership_is_conclusion != negated:
+                for disjunct in prop.disjuncts:
+                    for oriented in _orientations(other):
+                        disjunct_matcher = pl.FormulaMatcher(var)
+                        if not disjunct_matcher.match_formula(disjunct, oriented):
+                            continue
+                        bound_to = disjunct_matcher.mapping.get(var)
+                        if bound_to is None or pl._ast_eq(bound_to, element):
+                            return True
         return False
+
+    def explain_in_context(self, candidates, phi, context):
+        if len(candidates) != 2 or not all(isinstance(c, fl.Formula) for c in candidates):
+            return "SetProperty requires two cited formulas."
+        matched_chars = [
+            (candidate, match_membership_characterization(candidate))
+            for candidate in candidates
+        ]
+        matched_chars = [(candidate, matched) for candidate, matched in matched_chars if matched]
+        if not matched_chars:
+            for candidate in candidates:
+                if (isinstance(candidate, fl.ForAll)
+                        and isinstance(candidate.body, fl.Implies)):
+                    implication = candidate.body
+                    parts = _membership_parts(implication.antecedent)
+                    if parts is not None:
+                        return "the membership characterization must be a biconditional, not a one-way conditional"
+            return "a cited line must characterize membership in a fixed set by a universal biconditional"
+
+        for _characterization, (var, set_term, prop) in matched_chars:
+            # A membership atom anywhere among the cited/target formulas must
+            # refer to the same set named by the characterization.
+            membership_locations = []
+            for candidate in candidates:
+                membership_locations.append(_membership_parts(candidate))
+            membership_locations.append(_membership_parts(phi))
+            for parts in membership_locations:
+                if parts is not None and not pl._ast_eq(parts[1], set_term):
+                    return "the membership instance must refer to the set named by its characterization"
+
+            # Determine which side is the membership instance and test the
+            # same-element and one-way-disjunction boundaries explicitly.
+            for membership_is_conclusion in (False, True):
+                membership, other = (phi, candidates[0]) if membership_is_conclusion else (candidates[0], phi)
+                # Consider either citation order, without depending on it.
+                for candidate in candidates:
+                    if candidate is not _characterization:
+                        membership, other = (
+                            (phi, candidate) if membership_is_conclusion
+                            else (candidate, phi)
+                        )
+                        parts = _membership_parts(membership)
+                        if parts is None or not pl._ast_eq(parts[1], set_term):
+                            continue
+                        element = parts[0]
+                        for oriented in _orientations(other):
+                            matcher = pl.FormulaMatcher(var)
+                            if matcher.match_formula(prop, oriented):
+                                bound_to = matcher.mapping.get(var)
+                                if bound_to is not None and not pl._ast_eq(bound_to, element):
+                                    return "the property instance must use the same element as the membership atom"
+                            if isinstance(prop, fl.Or):
+                                for disjunct in prop.disjuncts:
+                                    disjunct_matcher = pl.FormulaMatcher(var)
+                                    if not disjunct_matcher.match_formula(disjunct, oriented):
+                                        continue
+                                    bound_to = disjunct_matcher.mapping.get(var)
+                                    if bound_to is not None and not pl._ast_eq(bound_to, element):
+                                        return "a property disjunct must use the same element as the membership atom"
+                                    allowed = membership_is_conclusion != (
+                                        isinstance(other, fl.Not) and isinstance(phi, fl.Not)
+                                    )
+                                    if not allowed:
+                                        return "membership alone does not identify one disjunct of a disjunctive property"
+                        if isinstance(prop, fl.Or):
+                            return "a disjunct may establish membership, but membership alone cannot establish that disjunct"
+        return "the cited instance must match the full defining property or a permitted disjunct in the allowed direction"
 
 
 def _extract_subset_operands(formula: fl.Formula) -> Optional[Tuple[tl.Term, tl.Term]]:
@@ -707,6 +1220,25 @@ class SetEqualityRule(pl.InferenceRule):
             return False
         return (pl._ast_eq(phi.left, a1) and pl._ast_eq(phi.right, b1)) or \
                (pl._ast_eq(phi.left, b1) and pl._ast_eq(phi.right, a1))
+
+    def explain_in_context(self, candidates, phi, context):
+        if not isinstance(phi, fl.Equals):
+            return "SetEquality must conclude equality of the two set terms."
+        if len(candidates) != 2:
+            return "SetEquality requires both subset directions."
+        first = _extract_subset_operands(candidates[0]) if isinstance(candidates[0], fl.Formula) else None
+        second = _extract_subset_operands(candidates[1]) if isinstance(candidates[1], fl.Formula) else None
+        if first is None or second is None:
+            return "both cited premises must be subset facts of the form forall u, (In(u, A) -> In(u, B))"
+        (a1, b1), (a2, b2) = first, second
+        if pl._ast_eq(a1, a2) or pl._ast_eq(b1, b2):
+            return "the two subset facts must point in opposite directions"
+        if not (pl._ast_eq(a1, b2) and pl._ast_eq(b1, a2)):
+            return "the inclusions must concern the same two sets in opposite directions"
+        if not ((pl._ast_eq(phi.left, a1) and pl._ast_eq(phi.right, b1))
+                or (pl._ast_eq(phi.left, b1) and pl._ast_eq(phi.right, a1))):
+            return "the conclusion must equate exactly the two sets in the cited inclusions"
+        return None
 
 
 def _parse_subset_assumption(text: str) -> Optional[Tuple[str, tl.Term]]:
@@ -907,8 +1439,9 @@ POWER_SET_AXIOM = fl.ForAll('X', fl.Exists('Y', fl.ForAll(
 """For any X, there is a set Y = P(X) = {u : u subset X}. Jech's Axiom 5.
 Reuses `subset_formula` directly rather than re-deriving subset notation,
 overriding its default (synthetic, `__subset_element`) bound-variable name
-to the natural `v` -- citing this axiom means writing it out verbatim, and
-nobody should have to type the synthetic name to do that.
+to the natural `v`. This full formula remains the form used by the generic
+`(Axiom)` citation, which requires the axiom to be restated verbatim; the
+named `PowerSetAxiomRule` also accepts the intended instance form.
 """
 
 INFINITY_AXIOM = fl.Exists('X', fl.And(
@@ -955,11 +1488,23 @@ class SeparationSchemaRule(pl.InferenceRule):
 
         exists Y, forall u, (u in Y <-> (u in X and B(u)))
 
-    for some term X and some formula B. B is not checked for any particular
-    shape beyond being a formula at all -- *any* B gives a sound instance,
-    which is the schema's entire content. X is likewise unconstrained here
-    (that it is actually a set already in scope is `ProofValidator`'s job,
-    not this rule's).
+    for some term X and some formula B(u). B may be any formula about `u` and
+    whatever parameters it mentions freely -- that is the schema's content --
+    but the instance is only an instance of Separation, rather than an
+    unbounded or self-referential comprehension, under three side conditions,
+    all checked here:
+
+      * `u` and `Y` are distinct variables;
+      * X is a term outside both binders (no free `u` or `Y`). An X that
+        mentioned `u` would let the "bounding" set vary with the element, so
+        the instance could define `{u : B(u)}` outright;
+      * `Y` is not free in B. Otherwise B can refer to the set being defined:
+        with `B := u not in Y`, any X that has an element gives
+        `Y = {u in X : u not in Y}`, which is contradictory and makes the
+        whole theory inconsistent.
+
+    That X is actually a set already in scope is `ProofValidator`'s job, not
+    this rule's.
 
     Example::
 
@@ -967,10 +1512,9 @@ class SeparationSchemaRule(pl.InferenceRule):
         2. exists Y, forall u, (u in Y <-> (u in X and u is not in X)).
            (Separation)
 
-    (a deliberately trivial B, to show any formula qualifies -- this
-    instance asserts the existence of a subset of X cut out by a condition
-    no element can satisfy, i.e. the empty set; true, but not the point.
-    The point is that `applies` places no constraint on B at all.)
+    (a deliberately trivial B -- this instance asserts the existence of a
+    subset of X cut out by a condition no element can satisfy, i.e. the empty
+    set; true, but not the point. The point is that B ranges over formulas.)
     """
     name = "Separation"
     premise_arity = 0
@@ -993,9 +1537,57 @@ class SeparationSchemaRule(pl.InferenceRule):
             return False
         if not (isinstance(right, fl.And) and len(right.conjuncts) == 2):
             return False
-        membership_in_X, _B = right.conjuncts
-        return (isinstance(membership_in_X, fl.AtomicFormula) and membership_in_X.predicate == MEMBERSHIP_SYMBOL
-                and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u))
+        membership_in_X, B = right.conjuncts
+        if not (isinstance(membership_in_X, fl.AtomicFormula) and membership_in_X.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_X.args) == 2 and pl._ast_eq(membership_in_X.args[0], u)):
+            return False
+        # Side conditions that make this Separation rather than a self-referential
+        # or unbounded comprehension: u and Y are distinct binders, the bounding
+        # set X lies outside both binders, and the new set Y is not free in B
+        # (otherwise B can say "u is not in Y" and the instance is contradictory).
+        if u.name == Y.name:
+            return False
+        X_term = membership_in_X.args[1]
+        if fl.term_free_variables(X_term) & {u.name, Y.name}:
+            return False
+        return Y.name not in fl.free_variables(B)
+
+    def explain_in_context(self, candidates, phi, context):
+        if candidates:
+            return "Separation takes no cited premises."
+        if not isinstance(phi, fl.Exists) or not isinstance(phi.body, fl.ForAll):
+            return "Separation requires exists Y, forall u, (In(u, Y) iff (In(u, X) and B(u)))"
+        Y = tl.VariableTerm(phi.var)
+        inner = phi.body
+        u = tl.VariableTerm(inner.var)
+        if not isinstance(inner.body, fl.Iff):
+            return "Separation requires a membership biconditional."
+        membership_in_Y, right = inner.body.left, inner.body.right
+        if not (isinstance(membership_in_Y, fl.AtomicFormula)
+                and membership_in_Y.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_Y.args) == 2
+                and pl._ast_eq(membership_in_Y.args[0], u)
+                and pl._ast_eq(membership_in_Y.args[1], Y)):
+            return "the left side of the Separation biconditional must be In(u, Y)"
+        if not (isinstance(right, fl.And) and len(right.conjuncts) == 2):
+            return "the right side of Separation must be In(u, X) and B(u)"
+        membership_in_X, B = right.conjuncts
+        if not (isinstance(membership_in_X, fl.AtomicFormula)
+                and membership_in_X.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_in_X.args) == 2
+                and pl._ast_eq(membership_in_X.args[0], u)):
+            return "the first conjunct must be In(u, X)"
+        if u.name == Y.name:
+            return "u and Y must be distinct variables"
+        X_term = membership_in_X.args[1]
+        free_in_X = fl.term_free_variables(X_term)
+        if u.name in free_in_X:
+            return "the bounding set X must not mention u"
+        if Y.name in free_in_X:
+            return "the bounding set X must not mention Y"
+        if Y.name in fl.free_variables(B):
+            return "the defining property B must not mention Y"
+        return "formula does not have the exact Separation instance shape"
 
 
 class PairingAxiomRule(pl.InferenceRule):
@@ -1018,6 +1610,21 @@ class PairingAxiomRule(pl.InferenceRule):
 
     def __init__(self, witness_name: Optional[str] = None):
         self.witness_name = witness_name
+
+    def same_configuration(self, other: object) -> bool:
+        """The ordinary axiom-instance rule, or the rule for one particular
+        direct witness line (`There is a set Y = {a, b}`): not interchangeable.
+        The witness form checks the defining property of the constant it names,
+        so it is registered by that name -- the elaborator registers the one it
+        builds for each such line (`elaborate_pairing_witness`)."""
+        return type(other) is type(self) and self.witness_name == other.witness_name
+
+    def as_requirement(self) -> "PairingAxiomRule":
+        """A theorem proved through a direct witness line asks for the Pairing
+        rule, not for a rule named after that line's witness: the line's
+        defining property is already one of the theorem's premises, and the
+        proof that cites the theorem has its own witness, or none."""
+        return PairingAxiomRule() if self.witness_name is not None else self
 
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
@@ -1186,14 +1793,77 @@ class PairingAxiomRule(pl.InferenceRule):
 
 
 
+def _split_defined_set(phi: fl.Formula) -> Optional[Tuple[Optional[str], str, str, fl.Formula]]:
+    """Split ``[forall x,] exists y, forall u, (u in y <-> R)`` into
+    ``(x, y, u, R)``, or return `None` if `phi` is not of that shape.
+
+    `x` is the variable the leading ``forall`` binds, and `None` when there is
+    no leading ``forall`` -- the form of an axiom already instantiated at a set
+    of the proof. Union and Power Set both define the new set `y` by what `u`
+    must satisfy to belong to it, and differ only in `R`.
+    """
+    parameter = None
+    if isinstance(phi, fl.ForAll):
+        parameter, phi = phi.var, phi.body
+    if not isinstance(phi, fl.Exists) or not isinstance(phi.body, fl.ForAll):
+        return None
+    y_name, u_name = phi.var, phi.body.var
+    iff = phi.body.body
+    if not isinstance(iff, fl.Iff):
+        return None
+    parts = _membership_parts(iff.left)
+    if parts is None or not (pl._ast_eq(parts[0], tl.VariableTerm(u_name))
+                             and pl._ast_eq(parts[1], tl.VariableTerm(y_name))):
+        return None
+    return parameter, y_name, u_name, iff.right
+
+
+def _is_the_axioms_set(parameter: Optional[str], binders: List[str], term: tl.Term) -> bool:
+    """Is `term` the set a Union or Power Set formula is about, with `binders`
+    (the names its quantifiers bind, apart from the leading ``forall x``)?
+
+    The names bound anywhere in the formula must all differ. In the axiom in
+    full the set is the variable `parameter`, the leading ``forall`` binds. In
+    an instance there is no such variable and the set is any term, provided no
+    binder captures it: a free `y`, `u` or the like in the term would make the
+    formula say something else (see the two rules' docstrings). A constant is
+    never captured, whatever it is called.
+    """
+    names = ([parameter] if parameter is not None else []) + binders
+    if len(set(names)) != len(names):
+        return False
+    if parameter is not None:
+        return pl._ast_eq(term, tl.VariableTerm(parameter))
+    return not (fl.term_free_variables(term) & set(binders))
+
+
 class UnionAxiomRule(pl.InferenceRule):
     """Axiom of union: for any X, there is a set Y = union(X) whose members
     are exactly those objects that belong to some member of X.
-    
-    This is a zero-premise rule, cited as "(Axiom of union)".
-    
-    `phi` must have the exact shape:
+
+    This is a zero-premise rule, cited as "(Axiom of union)". Like
+    `PairingAxiomRule` and `SeparationSchemaRule` it checks the shape of the
+    formula its line states and introduces nothing; naming the set it
+    provides is `Let Y be such a set. (Existence from L)`.
+
+    `phi` has one of two shapes::
+
         forall X, exists Y, forall u, (u in Y <-> exists v, (v in X and u in v))
+        exists Y, forall u, (u in Y <-> exists v, (v in S and u in v))
+
+    The first is the axiom in full. The second is the axiom already
+    instantiated at a set S of the proof, which is how a proof usually cites
+    it::
+
+        1. Let A be any set. (Declaration)
+        2. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, A) and In(u, v)))).
+           (Axiom of union)
+
+    The bound variables may have any names, but the names must all differ.
+    In the second form S is any term the binders do not capture, so it has no
+    free `Y`, `u` or `v`. That is what keeps the instance an instance: with
+    S := u it would say that the objects u with some v in u and u in v form a
+    set, a comprehension with no bounding set that the axiom does not give.
     """
     name = "UnionAxiom"
     premise_arity = 0
@@ -1201,70 +1871,58 @@ class UnionAxiomRule(pl.InferenceRule):
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
-        
-        if not isinstance(phi, fl.ForAll):
+        split = _split_defined_set(phi)
+        if split is None:
             return False
-        X_name = phi.var
-        inner1 = phi.body
-        
-        if not isinstance(inner1, fl.Exists):
+        parameter, y_name, u_name, members = split
+
+        # R is `exists v, (v in S and u in v)`.
+        if not isinstance(members, fl.Exists):
             return False
-        Y_name = inner1.var
-        if Y_name == X_name:
+        v_name, body = members.var, members.body
+        if not (isinstance(body, fl.And) and len(body.conjuncts) == 2):
             return False
-        inner2 = inner1.body
-        
-        if not isinstance(inner2, fl.ForAll):
+        v_in_set = _membership_parts(body.conjuncts[0])
+        u_in_v = _membership_parts(body.conjuncts[1])
+        if v_in_set is None or u_in_v is None:
             return False
-        u_name = inner2.var
-        if u_name in (X_name, Y_name):
+        V, U = tl.VariableTerm(v_name), tl.VariableTerm(u_name)
+        if not (pl._ast_eq(v_in_set[0], V)
+                and pl._ast_eq(u_in_v[0], U) and pl._ast_eq(u_in_v[1], V)):
             return False
-        biconditional = inner2.body
-        
-        if not isinstance(biconditional, fl.Iff):
-            return False
-        membership_u_Y, right = biconditional.left, biconditional.right
-        
-        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
-                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_Y.args) == 2 and
-                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
-            return False
-        
-        if not isinstance(right, fl.Exists):
-            return False
-        v_name = right.var
-        if v_name in (X_name, Y_name, u_name):
-            return False
-        body = right.body
-        
-        if not isinstance(body, fl.And) or len(body.conjuncts) != 2:
-            return False
-        membership_v_X, membership_u_v = body.conjuncts
-        
-        return (isinstance(membership_v_X, fl.AtomicFormula) and
-                membership_v_X.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_v_X.args) == 2 and
-                pl._ast_eq(membership_v_X.args[0], tl.VariableTerm(v_name)) and
-                pl._ast_eq(membership_v_X.args[1], tl.VariableTerm(X_name)) and
-                isinstance(membership_u_v, fl.AtomicFormula) and
-                membership_u_v.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_v.args) == 2 and
-                pl._ast_eq(membership_u_v.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_v.args[1], tl.VariableTerm(v_name)))
+        return _is_the_axioms_set(parameter, [y_name, u_name, v_name], v_in_set[1])
 
 
 class PowerSetAxiomRule(pl.InferenceRule):
     """Axiom of power set: for any X, there is a set Y = P(X) whose members
     are exactly the subsets of X.
-    
-    This is a zero-premise rule, cited as "(Axiom of power set)".
-    
-    `phi` must have the exact shape:
+
+    This is a zero-premise rule, cited as "(Axiom of power set)". Like
+    `PairingAxiomRule` and `SeparationSchemaRule` it checks the shape of the
+    formula its line states and introduces nothing; naming the set it
+    provides is `Let Y be such a set. (Existence from L)`.
+
+    `phi` has one of two shapes::
+
         forall X, exists Y, forall u, (u in Y <-> u subset X)
-    
-    where "u subset X" is the standard subset formula (forall v, (v in u -> v in X)).
+        exists Y, forall u, (u in Y <-> u subset S)
+
+    The first is the axiom in full. The second is the axiom already
+    instantiated at a set S of the proof, which is how a proof usually cites
+    it::
+
+        1. Let A be any set. (Declaration)
+        2. exists Y, forall u, (In(u, Y) iff u subset A). (Axiom of power set)
+
+    "u subset X" is the standard subset formula, `forall w, (w in u -> w in
+    X)`, whether it comes from the `subset` syntax or is written out; `w` may
+    have any name the other binders do not use.
+
+    The bound variables may have any names, but the names must all differ.
+    In the second form S is any term the binders do not capture, so it has no
+    free `Y`, `u` or `w`. That is what keeps the instance an instance: with
+    S := u it would say that every set u is a member of Y, a set of all sets,
+    which the axiom does not give and which Separation refutes.
     """
     name = "PowerSetAxiom"
     premise_arity = 0
@@ -1272,40 +1930,26 @@ class PowerSetAxiomRule(pl.InferenceRule):
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
         if candidates:
             return False
-        
-        if not isinstance(phi, fl.ForAll):
+        split = _split_defined_set(phi)
+        if split is None:
             return False
-        X_name = phi.var
-        inner1 = phi.body
-        
-        if not isinstance(inner1, fl.Exists):
+        parameter, y_name, u_name, subset_clause = split
+
+        # R is the subset formula `forall w, (w in u -> w in S)`.
+        if not isinstance(subset_clause, fl.ForAll):
             return False
-        Y_name = inner1.var
-        if Y_name == X_name:
+        w_name, implication = subset_clause.var, subset_clause.body
+        if not isinstance(implication, fl.Implies):
             return False
-        inner2 = inner1.body
-        
-        if not isinstance(inner2, fl.ForAll):
+        w_in_u = _membership_parts(implication.antecedent)
+        w_in_set = _membership_parts(implication.consequent)
+        if w_in_u is None or w_in_set is None:
             return False
-        u_name = inner2.var
-        if u_name in (X_name, Y_name):
+        W, U = tl.VariableTerm(w_name), tl.VariableTerm(u_name)
+        if not (pl._ast_eq(w_in_u[0], W) and pl._ast_eq(w_in_u[1], U)
+                and pl._ast_eq(w_in_set[0], W)):
             return False
-        biconditional = inner2.body
-        
-        if not isinstance(biconditional, fl.Iff):
-            return False
-        membership_u_Y, subset_clause = biconditional.left, biconditional.right
-        
-        if not (isinstance(membership_u_Y, fl.AtomicFormula) and
-                membership_u_Y.predicate == MEMBERSHIP_SYMBOL and
-                len(membership_u_Y.args) == 2 and
-                pl._ast_eq(membership_u_Y.args[0], tl.VariableTerm(u_name)) and
-                pl._ast_eq(membership_u_Y.args[1], tl.VariableTerm(Y_name))):
-            return False
-        
-        u_term = tl.VariableTerm(u_name)
-        X_term = tl.VariableTerm(X_name)
-        return pl._ast_eq(subset_clause, subset_formula(u_term, X_term))
+        return _is_the_axioms_set(parameter, [y_name, u_name, w_name], w_in_set[1])
 
 
 class InfinityAxiomRule(pl.InferenceRule):
@@ -1441,8 +2085,17 @@ class ReplacementSchemaRule(pl.InferenceRule):
         exists C, forall y, (y in C <-> exists x, (x in A and B(x,y)))
 
     B is read off the antecedent (the conjunct of the witnessed existential
-    that is not itself the uniqueness clause) and is otherwise unconstrained
-    -- any formula qualifies, exactly as for Separation.
+    that is not itself the uniqueness clause). As for Separation, it ranges
+    over formulas but is not a free-for-all: the instance is only a
+    Replacement instance when
+
+      * x, y, z and C are four distinct variables;
+      * C -- the image set being asserted -- is not free in B (else B
+        refers to the set it defines), and z -- bound by the uniqueness
+        clause -- is not free in B (else the clause captures it);
+      * A is a term outside every binder it sits under (no free x, y, z or
+        C). An A mentioning x would be a different set for each x, and the
+        image of "the set of all x" is not a set.
 
     Two structural requirements tie the pieces together, and both follow
     this codebase's standing no-alpha-equivalence discipline (see
@@ -1544,7 +2197,102 @@ class ReplacementSchemaRule(pl.InferenceRule):
                 and pl._ast_eq(membership_x2.args[0], tl.VariableTerm(x_name))
                 and pl._ast_eq(membership_x2.args[1], A_term)):
             return False
-        return pl._ast_eq(B_xy_again, B_xy)
+        if not pl._ast_eq(B_xy_again, B_xy):
+            return False
+        # Side conditions (as for Separation): the image set C may not occur free in B,
+        # z (bound by the uniqueness clause) may not occur free in B, and A must lie
+        # outside every binder it sits under.
+        if len({x_name, y_name, z_name, C_name}) != 4:
+            return False
+        if {C_name, z_name} & fl.free_variables(B_xy):
+            return False
+        return not (fl.term_free_variables(A_term) & {x_name, y_name, z_name, C_name})
+
+    def explain_in_context(self, candidates, phi, context):
+        if candidates:
+            return "Replacement takes no cited premises."
+        if not isinstance(phi, fl.Implies):
+            return "Replacement requires a functionality hypothesis implying an image-set conclusion"
+        antecedent, consequent = phi.antecedent, phi.consequent
+        if not isinstance(antecedent, fl.ForAll):
+            return "the functionality hypothesis must universally quantify x"
+        x_name = antecedent.var
+        functionality = antecedent.body
+        if not isinstance(functionality, fl.Implies):
+            return "the functionality hypothesis must have the form In(x, A) -> exists y, ..."
+        membership_x = functionality.antecedent
+        if not (isinstance(membership_x, fl.AtomicFormula)
+                and membership_x.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_x.args) == 2
+                and pl._ast_eq(membership_x.args[0], tl.VariableTerm(x_name))):
+            return "the functionality hypothesis must be guarded by In(x, A)"
+        A_term = membership_x.args[1]
+        unique_exists = functionality.consequent
+        if not isinstance(unique_exists, fl.Exists):
+            return "the functionality hypothesis must assert existence and uniqueness of an image y"
+        y_name = unique_exists.var
+        if y_name == x_name:
+            return "the variables x and y must be distinct"
+        body = unique_exists.body
+        if not (isinstance(body, fl.And) and len(body.conjuncts) == 2):
+            return "the functionality hypothesis must give both B(x, y) and a uniqueness clause"
+        B_xy, uniqueness = body.conjuncts
+        if not isinstance(uniqueness, fl.ForAll):
+            return "the uniqueness clause must universally quantify a fresh variable z"
+        z_name = uniqueness.var
+        if z_name in (x_name, y_name):
+            return "the variables x, y, and z must be distinct"
+        step = uniqueness.body
+        if not isinstance(step, fl.Implies):
+            return "the uniqueness clause must have the form B(x, z) -> z = y"
+        expected_B_xz = fl.substitute_in_formula(B_xy, y_name, tl.VariableTerm(z_name))
+        if not pl._ast_eq(step.antecedent, expected_B_xz):
+            return "the uniqueness clause must use B(x, z), obtained by substituting z for y in B(x, y)"
+        if not pl._ast_eq(step.consequent, fl.Equals(tl.VariableTerm(z_name), tl.VariableTerm(y_name))):
+            return "the uniqueness clause must conclude z = y"
+        if not isinstance(consequent, fl.Exists):
+            return "the consequent must existentially quantify the image set C"
+        C_name = consequent.var
+        outer = consequent.body
+        if not isinstance(outer, fl.ForAll) or outer.var != y_name:
+            return "the consequent must reuse the antecedent's y variable"
+        if C_name in (x_name, y_name, z_name):
+            return "the variables x, y, z, and C must be distinct"
+        if not isinstance(outer.body, fl.Iff):
+            return "the image-set conclusion must characterize membership by a biconditional"
+        membership_y, image = outer.body.left, outer.body.right
+        if not (isinstance(membership_y, fl.AtomicFormula)
+                and membership_y.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_y.args) == 2
+                and pl._ast_eq(membership_y.args[0], tl.VariableTerm(y_name))
+                and pl._ast_eq(membership_y.args[1], tl.VariableTerm(C_name))):
+            return "the image-set conclusion must begin with In(y, C)"
+        if not isinstance(image, fl.Exists) or image.var != x_name:
+            return "the image-set definition must reuse the antecedent's x variable"
+        image_body = image.body
+        if not (isinstance(image_body, fl.And) and len(image_body.conjuncts) == 2):
+            return "the image-set definition must have In(x, A) and B(x, y)"
+        membership_x2, B_xy_again = image_body.conjuncts
+        if not (isinstance(membership_x2, fl.AtomicFormula)
+                and membership_x2.predicate == MEMBERSHIP_SYMBOL
+                and len(membership_x2.args) == 2
+                and pl._ast_eq(membership_x2.args[0], tl.VariableTerm(x_name))):
+            return "the image-set definition must reuse In(x, A)"
+        if not pl._ast_eq(membership_x2.args[1], A_term):
+            return "the same bounding set A must appear in both halves of Replacement"
+        if not pl._ast_eq(B_xy_again, B_xy):
+            return "the image-set definition must reuse the same B(x, y)"
+        free_in_B = fl.free_variables(B_xy)
+        if C_name in free_in_B:
+            return "the image-set variable C must not occur free in B(x, y)"
+        if z_name in free_in_B:
+            return "the uniqueness variable z must not occur free in B(x, y)"
+        free_in_A = fl.term_free_variables(A_term)
+        if x_name in free_in_A:
+            return "the bounding set A must not mention x"
+        if y_name in free_in_A or z_name in free_in_A or C_name in free_in_A:
+            return "the bounding set A must not mention y, z, or C"
+        return "formula does not have the exact Replacement instance shape"
 
 
 def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
@@ -1604,6 +2352,10 @@ def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
 
     context.register_declaration(declaration, entry.span)
     context.register_origin(entry.label, entry.span)
+    # The line cites this exact rule, so the proof must register it: a rule is
+    # authorized by its configuration, not by sharing a class with the generic
+    # `PairingAxiomRule()` the theory registers (`InferenceRule.same_configuration`).
+    context.add_extra_rule(rule)
     return (entry.label, defining_property, ("rule", rule, [], [declaration]))
 
 

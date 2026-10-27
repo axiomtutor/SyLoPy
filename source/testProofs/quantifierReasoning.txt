@@ -1,0 +1,21 @@
+(*
+A compact example of quantified reasoning:
+instantiate two universal premises at an arbitrary object, apply modus ponens,
+then generalize the result.
+*)
+
+# 1: Universal modus ponens
+## Proof that
+### if P and Q are predicates such that: forall x, (P(x) -> Q(x)). forall x, P(x).
+### then forall x, Q(x).
+
+1. Let P and Q be predicates. (Declare)
+2. forall x, (P(x) -> Q(x)). (Premise)
+3. forall x, P(x). (Premise)
+4. forall x, Q(x). (Universal Generalization from subproof below)
+begin subproof
+ 4.0. let c be arbitrary. (Arbitrary)
+ 4.1. P(c). (Universal Instantiation from 3)
+ 4.2. P(c) -> Q(c). (Universal Instantiation from 2)
+ 4.3. Q(c). (Modus Ponens from 4.1, 4.2)
+end subproof

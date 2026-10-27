@@ -1,0 +1,15 @@
+# 1: The negation of a sum of integers is an integer
+## Proof that
+### Int(a) and Int(b) imply Int(Neg(Plus(a,b)))
+
+1. Let a, b be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. forall x, forall y, ((Int(x) and Int(y)) -> Int(Plus(x, y))). (Axiom)
+5. forall y, ((Int(a) and Int(y)) -> Int(Plus(a, y))). (Universal Instantiation from 4)
+6. (Int(a) and Int(b)) -> Int(Plus(a, b)). (Universal Instantiation from 5)
+7. Int(a) and Int(b). (Conjunction Introduction from 2, 3)
+8. Int(Plus(a, b)). (Modus Ponens from 6, 7)
+9. forall x, (Int(x) -> Int(Neg(x))). (Axiom)
+10. Int(Plus(a, b)) -> Int(Neg(Plus(a, b))). (Universal Instantiation from 9)
+11. Int(Neg(Plus(a, b))). (Modus Ponens from 10, 8)

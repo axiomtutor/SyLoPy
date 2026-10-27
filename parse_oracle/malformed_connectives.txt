@@ -1,0 +1,32 @@
+# Malformed formulas and terms must be rejected, not silently truncated.
+# These are plain-syntax rejection cases, independent of inference validity.
+
+id: reject-dangling-conjunction
+context: nested
+surface: P and
+expect: REJECT
+why: A binary conjunction requires a right-hand formula.
+
+id: reject-dangling-disjunction
+context: nested
+surface: P or
+expect: REJECT
+why: A binary disjunction requires a right-hand formula.
+
+id: reject-dangling-implication
+context: nested
+surface: P -> 
+expect: REJECT
+why: An implication requires both an antecedent and a consequent.
+
+id: reject-dangling-biconditional
+context: nested
+surface: P iff
+expect: REJECT
+why: A biconditional requires both sides.
+
+id: reject-trailing-function-argument
+context: nested
+surface: P(f(a,))
+expect: REJECT
+why: A function argument list may not end with an empty argument.

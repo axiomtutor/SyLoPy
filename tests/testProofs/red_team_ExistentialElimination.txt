@@ -1,0 +1,88 @@
+# 1: Existential elimination with a matching witness assumption and independent conclusion
+## Proof that
+### then exists x, P(x).
+
+1. Let P be a predicate such that: exists x, P(x). (Premise)
+2. Let w be an object. (Declare)
+3. exists x, P(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 3.1. P(w). (Assumption for Existential Elimination)
+ 3.2. exists x, P(x). (Existential Introduction from 3.1)
+end subproof
+
+# 2: The existential-elimination assumption must instantiate the cited body
+## Invalid: witness-assumption shape — the subproof assumes Q(w), not the cited existential body P(w).
+### then Q(a).
+
+1. Let P and Q be predicates such that: exists x, P(x). (Premise)
+2. Let a be an object. (Declare)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. Q(w). (Assumption for Existential Elimination)
+ 4.2. Q(a). (Premise)
+end subproof
+
+# 3: Existential elimination requires its conclusion to be the subproof conclusion
+## Invalid: subproof-conclusion shape — the subproof concludes P(w), not Q(a).
+### then Q(a).
+
+1. Let P and Q be predicates such that: exists x, P(x). (Premise)
+2. Let a be an object. (Declare)
+3. Let w be an object. (Declare)
+4. Q(a). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. P(w). (Reiteration from 4.1)
+end subproof
+
+# 4: Existential elimination cannot cite an ordinary formula as its existential premise
+## Invalid: existential-premise shape — the cited line is P(a), not an existential formula.
+### then Q(a).
+
+1. Let a be an object. (Declare)
+2. Let w be an object. (Declare)
+3. Let P and Q be predicates such that: P(a). (Premise)
+4. Q(a). (Existential Elimination from 3, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. Q(a). (Premise)
+end subproof
+
+# 5: A witness named in the cited existential cannot be reused as the fresh witness
+## Invalid: existential-witness freshness — the constant w already occurs in the cited existential formula.
+### then a = a.
+
+1. Let w be an object and R be a predicate such that: exists x, R(x, w). (Premise)
+2. Let a be an object. (Declare)
+3. a = a. (Existential Elimination from 1, subproof below)
+begin subproof
+ 3.1. R(w, w). (Assumption for Existential Elimination)
+ 3.2. a = a. (Reflexivity)
+end subproof
+
+# 6: The witness cannot occur in a line visible before the subproof
+## Invalid: outer-context freshness — w occurs in line 3, which is visible before the subproof opens, though no hypothesis mentions w.
+### then exists x, P(x).
+
+1. Let P be a predicate such that: exists x, P(x). (Premise)
+2. Let w be an object. (Declare)
+3. w = w. (Reflexivity)
+4. exists x, P(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 4.1. P(w). (Assumption for Existential Elimination)
+ 4.2. exists x, P(x). (Existential Introduction from 4.1)
+end subproof
+
+# 7: The witness cannot occur in a premise stated inside its own subproof
+## Invalid: hypothesis in force — the existential-elimination subproof assumes R(w), so its conclusion may depend on witness w.
+### then exists x, R(x).
+
+1. Let P and R be predicates such that: exists x, P(x). (Premise)
+2. Let w be an object. (Declare)
+3. exists x, R(x). (Existential Elimination from 1, subproof below)
+begin subproof
+ 3.1. P(w). (Assumption for Existential Elimination)
+ 3.2. R(w). (Premise)
+ 3.3. exists x, R(x). (Existential Introduction from 3.2)
+end subproof

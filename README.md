@@ -5,29 +5,29 @@ proofs written in a human-readable surface syntax, elaborates them into a core
 proof representation, and validates the result with the kernel in
 `source/ProofLogic.py`.
 
-The project currently has some implementations for first-order logic, set theory, order theory, arithmetic, and number theory.
-It should soon develop features for more mathematical subjects.
+It includes first-order logic, set theory, natural-number and integer reasoning,
+quotient and divisibility notation, and discrete-mathematics and order-theory
+rules. See the sections below for current support and `todos.txt` for open
+work and design constraints.
 
 ## Current status
 
-The latest recorded full run is
-[GitHub Actions run #38096042218](https://github.com/axiomtutor/SyLoPy/actions/runs/38096042218),
-from 2026-10-10. It has one known, tracked exception (see `todos.txt`).
+Equality-case WLOG replay is implemented, and so is `Mutatis mutandis` for
+names replaced by names. Replacing a name by a term, or one relation or
+function symbol by another, is deferred pending owner approval. The
+informational ZFC proof `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose
+second inclusion uses `Mutatis mutandis`, passes.
 
-- 896 Python tests; 895 passed and 1 known failure.
-- Enforced proof fixture corpus: 78/78 passed.
-- Informational proof fixtures: 51/52 passed; the failure is the same deferred
-  ZFC fixture.
+The [development TODO](todos.txt) is the source of truth for the latest
+reported test/fixture counts, remaining issues, and open design decisions.
 
-These numbers describe that specific run and will change as tests and fixtures
-are added.
+The named Pairing, Union, Power Set, and Infinity axiom-citation rules are
+implemented, including the Union and Power Set instance forms. The remaining
+owner decision is whether to retire generic `(Axiom)` citations. `Mutatis
+mutandis` is implemented for names replaced by names; its extensions are
+deferred.
 
-This is the key fact to keep in mind for planning: the core parser,
-elaboration pipeline, and kernel rule set are working as a coherent system.
-The remaining work is mostly consolidation, cleanup, and feature expansion,
-not repairing a broken proof engine. See `todos.txt` for the detailed,
-living task list, including design decisions that are agreed but not yet
-implemented.
+See `todos.txt` for the design ledger and remaining work.
 
 ## Proof-processing pipeline
 
@@ -76,10 +76,11 @@ there exists a unique set {a, b} that contains exactly a and b
 
 Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
-Set theory is the active frontier: the ZFC axiom-citation design (named
-axiom rules, WLOG, unique existence) is written up in `todos.txt`; the syntax
-above is implemented, and so is the rule `Uniqueness`. The rules `WLOG` and
-`Mutatis mutandis` are not.
+Set theory is the active frontier. Named axiom-citation rules for Pairing,
+Union, Power Set, and Infinity are implemented, including the Union and Power
+Set instance forms. The informational ZFC fixture, whose second inclusion repeats
+the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG and
+`Mutatis mutandis` beyond names replaced by names remain deferred.
 
 ### Number theory
 
@@ -98,10 +99,24 @@ partial orders and equivalence relations.
 `ProofLogic.promote_theorem(...)` converts a checked proof into a reusable
 inference rule. The multi-proof file runner in `source/validate_all_proofs.py`
 automatically promotes titled proofs within a file, which allows later proofs to
-cite earlier results by name without inheriting local proof structure.
+cite earlier results by name without inheriting local proof structure. A theorem
+with premises is cited with the lines that state them, as in
+`(Pair transport from 4, 5)`; see `docs/PROOF_FILE_FORMAT.md`.
 
 This is deliberate: proof reuse across proofs is explicit and theory-scoped,
 not a shared lexical environment.
+
+A promoted theorem carries every hypothesis its proof took for granted -- premise
+lines at any depth, declarations that state a formula, witness lines -- as
+premises, so it cannot be cited where they are not supplied. It also records
+the axioms its proof cited and the rules it used beyond the standard logical
+ones, and can only be cited in a proof that lists those axioms and allows those
+rules: a theorem is a theorem of the theory it was proved in. An explicit
+conclusion must be a formula the proof derived at the top level, and generalized
+names must be objects the proof declared at its top level. Promotion refuses a
+proof that relied on structure recorded in a declaration and stated by no
+formula (a relation declared symmetric); state the property as a premise
+formula instead. See `todos.txt`, item 8.
 
 ### Proof context and lexical scoping
 
@@ -149,9 +164,9 @@ make it easier to extend and maintain.
      existing core logic.
    - Prefer theory-local syntax and declaration recipes over generic ad hoc
      elaboration hacks.
-   - Implement the agreed set-theory design backlog (named axiom-citation
-     rules, a checked WLOG rule, and more) — see `todos.txt` for the full,
-     current design.
+   - Extend proofs within the agreed scope. Named axiom-citation rules and
+     `Mutatis mutandis` for names are implemented; replacing names by terms, or
+     relation and function symbols, remains deferred pending owner approval.
 
 3. Continue proof-corpus growth.
    - Add more examples and end-to-end fixtures for edge cases, not just the core
@@ -185,6 +200,111 @@ make it easier to extend and maintain.
   work whatever the checkout directory is called.
 - `completion/run_tests.bash` — shell completion for the test runner.
 
+## Recommended Python API
+
+For ordinary surface-language proofs, `ProofParser.check_proof_text` is the direct entry point. It parses the proof text, elaborates its notation, validates the resulting proof, and returns `(ok, error)`; `error` is a structured `ValidationError` when checking fails and `None` on success.
+
+<!-- python-api-test: surface-check -->
+```python
+import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.SetTheory as st
+
+proof_text = """1. Let P be a closed formula. (Declaration)
+2. P -> P. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. P. (Assumption for Conditional Introduction)
+ 2.2. P. (Reiteration from 2.1)
+end subproof
+"""
+
+ok, error = pp.check_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+if not ok:
+    print(error)
+```
+
+Pass the theory environment deliberately when you want a specific theory boundary. Examples include `SET_THEORY_ENVIRONMENT`, `NUMBER_THEORY_ENVIRONMENT`, and `DISCRETE_MATH_ENVIRONMENT`. Omitting `environment` selects `ProofParser.default_theory_environment()`, which combines the built-in environments that are available. The chosen environment's axioms, rules, and declarations are carried in `ElaboratedEntries` and merged by `ProofLogic.Proof` during checking.
+
+For source inspection, structured diagnostics, or theorem promotion, use the pipeline stages directly:
+
+<!-- python-api-test: theorem-promotion -->
+```python
+import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.SetTheory as st
+
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.TermLogic as tl
+
+proof_text = """1. Let a be any object. (Declaration)
+2. a = a. (Reflexivity)
+"""
+
+entries, raw_lines = pp.parse_proof_text(
+    proof_text,
+    environment=st.SET_THEORY_ENVIRONMENT,
+)
+proof = pl.Proof(entries)
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+
+identity = pl.promote_theorem("Identity", proof)
+
+b = tl.ConstantTerm("b", "b")
+b_equals_b = fl.Equals(b, b)
+use_entries = [
+    ("1", None, ("declare", [
+        pl.Declaration("b", pl.DeclarationKind.OBJECT),
+    ])),
+    ("2", b_equals_b, ("rule", identity, [])),
+]
+use = pl.Proof(use_entries, rules=pl.default_rules() + [identity])
+ok, error = use.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+```
+
+`parse_proof_text` returns elaborated entries plus the original raw lines. `Proof.check_detailed()` returns the same structured result shape as `check_proof_text`; `Proof.check()` is the compatibility option when a string message is enough. Promotion validates the source proof and creates a reusable `TheoremRule`; its hypotheses and nonstandard rule / axiom requirements are carried with it. Only formulas derived at the top level can be selected as theorem conclusions, and only top-level object declarations can be generalized.
+
+For surface-language proof reuse across titled proof blocks, see the informational example [`source/testProofs/theoremPromotion.txt`](source/testProofs/theoremPromotion.txt). Its first proof establishes identity for an arbitrary object; the following proof cites that title for a different object.
+
+For a compact quantifier example that instantiates universal premises at an arbitrary object and then generalizes the result, see [`source/testProofs/quantifierReasoning.txt`](source/testProofs/quantifierReasoning.txt).
+
+When constructing a proof directly from core entries rather than from surface text, supply its theory resources explicitly. The `Type` helper provides a reusable package for fixed type vocabularies:
+
+<!-- python-api-test: core-type-resources -->
+```python
+import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.ProofLogic as pl
+import SyLoPy.source.TermLogic as tl
+from SyLoPy.source.NatThry import NAT_TYPE
+
+axioms, schema_rules = pl.combine_types(NAT_TYPE)
+declarations = pl.combine_type_declarations(NAT_TYPE)
+
+zero_is_nat = fl.AtomicFormula(
+    "Nat", [tl.ConstantTerm("Zero", "Zero")]
+)
+entries = [
+    ("1", zero_is_nat, ("axiom",)),
+    ("2", zero_is_nat, ("rule", pl.ReiterationRule(), ["1"])),
+]
+proof = pl.Proof(
+    entries,
+    axioms=axioms,
+    rules=pl.default_rules() + schema_rules,
+    declarations=declarations,
+)
+ok, error = proof.check_detailed()
+if not ok:
+    raise ValueError(str(error))
+```
+
+Use the `ElaboratedEntries` path for natural-language proofs and the explicit core-resource path when you are building validator entries yourself.
+
 ## Running the project
 
 ```bash
@@ -206,5 +326,6 @@ source completion/run_tests.bash
 
 ## Summary
 
-SyLoPy is a working proof-language checker with a mature core, a validated proof
-corpus, and a clear next phase: architecture cleanup and extension. After that, develop the set theory features until it can prove core set theory theorems.
+SyLoPy is a working proof-language checker with a mature core and an established
+regression corpus. See `todos.txt` for current maintenance priorities and
+design decisions.

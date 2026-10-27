@@ -1,0 +1,266 @@
+Use discrete math.
+
+(*
+Equivalence classes, entries 1 and 2: verified on master fec7051 in the enforced
+suite tests/testDiscreteMath. A class is a set introduced by Separation and
+named with `Let C be such a set. (Existence from L)`; set-builder notation is
+not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
+*)
+
+# 1: An element lies in its own equivalence class
+## Proof that
+### then a is in the class of a
+
+1. Let X be any set, R be an equivalence relation on X, and a be in X. (Declaration)
+2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+3. Let C be such a set. (Existence from 2)
+4. R(a, a). (Relation Reflexivity from 1)
+5. In(a, X) and R(a, a). (Conjunction Introduction from 1, 4)
+6. In(a, C). (Set property, 3, 5)
+
+# 2: Related elements have nested classes
+## Proof that
+### if R(a, b) then the class of a is a subset of the class of b
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+4. Let C be such a set. (Existence from 3)
+5. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+6. Let D be such a set. (Existence from 5)
+7. C subseteq D. (Subset proof below)
+ begin subproof
+  7.1. Let u in C. (Assumption for subset proof)
+  7.2. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  7.3. In(u, C) -> (In(u, X) and R(a, u)). (Biconditional Elimination from 7.2)
+  7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
+  7.5. R(a, u). (Conjunction Elimination from 7.4)
+  7.6. R(b, a). (Relation Symmetry from 2)
+  7.7. R(b, u). (Relation Transitivity from 7.6, 7.5)
+  7.8. In(u, X). (Conjunction Elimination from 7.4)
+  7.9. In(u, X) and R(b, u). (Conjunction Introduction from 7.8, 7.7)
+  7.10. In(u, D) iff (In(u, X) and R(b, u)). (Universal Instantiation from 6)
+  7.11. (In(u, X) and R(b, u)) -> In(u, D). (Biconditional Elimination from 7.10)
+  7.12. In(u, D). (Modus Ponens from 7.11, 7.9)
+ end subproof
+
+
+# 3: Related elements have equal equivalence classes
+## Proof that
+### if R(a, b) then the class of a equals the class of b
+### then C = D.
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+4. Let C be such a set. (Existence from 3)
+5. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+6. Let D be such a set. (Existence from 5)
+7. C subseteq D. (Subset proof below)
+  7.1. Let u in C. (Assumption for subset proof)
+  7.2. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  7.3. In(u, C) -> (In(u, X) and R(a, u)). (Biconditional Elimination from 7.2)
+  7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
+  7.5. R(a, u). (Conjunction Elimination from 7.4)
+  7.6. R(b, a). (Relation Symmetry from 2)
+  7.7. R(b, u). (Relation Transitivity from 7.6, 7.5)
+  7.8. In(u, X). (Conjunction Elimination from 7.4)
+  7.9. In(u, X) and R(b, u). (Conjunction Introduction from 7.8, 7.7)
+  7.10. In(u, D) iff (In(u, X) and R(b, u)). (Universal Instantiation from 6)
+  7.11. (In(u, X) and R(b, u)) -> In(u, D). (Biconditional Elimination from 7.10)
+  7.12. In(u, D). (Modus Ponens from 7.11, 7.9)
+8. D subseteq C. (Subset proof below)
+  8.1. Let u in D. (Assumption for subset proof)
+  8.2. In(u, D) iff (In(u, X) and R(b, u)). (Universal Instantiation from 6)
+  8.3. In(u, D) -> (In(u, X) and R(b, u)). (Biconditional Elimination from 8.2)
+  8.4. In(u, X) and R(b, u). (Modus Ponens from 8.3, 8.1)
+  8.5. R(b, u). (Conjunction Elimination from 8.4)
+  8.6. R(a, b). (Reiteration from 2)
+  8.7. R(a, u). (Relation Transitivity from 8.6, 8.5)
+  8.8. In(u, X). (Conjunction Elimination from 8.4)
+  8.9. In(u, X) and R(a, u). (Conjunction Introduction from 8.8, 8.7)
+  8.10. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  8.11. (In(u, X) and R(a, u)) -> In(u, C). (Biconditional Elimination from 8.10)
+  8.12. In(u, C). (Modus Ponens from 8.11, 8.9)
+9. C = D. (Set Equality from 7, 8)
+
+# 4: Equal equivalence classes imply related representatives
+## Proof that
+### if the class of a equals the class of b then R(a, b)
+### then R(a, b).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+3. Let C be such a set. (Existence from 2)
+4. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+5. Let D be such a set. (Existence from 4)
+6. C = D. (Premise)
+7. R(a, a). (Relation Reflexivity from 1)
+8. In(a, X) and R(a, a). (Conjunction Introduction from 1, 7)
+9. In(a, C). (Set property from 3, 8)
+10. In(a, D). (Substitution from 6, 9)
+11. In(a, X) and R(b, a). (Set property from 5, 10)
+12. R(b, a). (Conjunction Elimination from 11)
+13. R(a, b). (Relation Symmetry from 12)
+
+# 5: Two equivalence classes with a common member are equal
+## Proof that
+### if a member belongs to the class of a and the class of b then the classes are equal
+### then C = D.
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, u be in X. (Declaration)
+2. exists C, forall v, (In(v, C) iff (In(v, X) and R(a, v))). (Separation)
+3. Let C be such a set. (Existence from 2)
+4. exists D, forall v, (In(v, D) iff (In(v, X) and R(b, v))). (Separation)
+5. Let D be such a set. (Existence from 4)
+6. In(u, C). (Premise)
+7. In(u, D). (Premise)
+8. In(u, X) and R(a, u). (Set property from 3, 6)
+9. In(u, X) and R(b, u). (Set property from 5, 7)
+10. R(a, u). (Conjunction Elimination from 8)
+11. R(b, u). (Conjunction Elimination from 9)
+12. R(u, b). (Relation Symmetry from 11)
+13. R(a, b). (Relation Transitivity from 10, 12)
+14. C subseteq D. (Subset proof below)
+  14.1. Let v in C. (Assumption for subset proof)
+  14.2. In(v, C) iff (In(v, X) and R(a, v)). (Universal Instantiation from 3)
+  14.3. In(v, C) -> (In(v, X) and R(a, v)). (Biconditional Elimination from 14.2)
+  14.4. In(v, X) and R(a, v). (Modus Ponens from 14.3, 14.1)
+  14.5. R(a, v). (Conjunction Elimination from 14.4)
+  14.6. R(b, a). (Relation Symmetry from 13)
+  14.7. R(b, v). (Relation Transitivity from 14.6, 14.5)
+  14.8. In(v, X). (Conjunction Elimination from 14.4)
+  14.9. In(v, X) and R(b, v). (Conjunction Introduction from 14.8, 14.7)
+  14.10. In(v, D) iff (In(v, X) and R(b, v)). (Universal Instantiation from 5)
+  14.11. (In(v, X) and R(b, v)) -> In(v, D). (Biconditional Elimination from 14.10)
+  14.12. In(v, D). (Modus Ponens from 14.11, 14.9)
+15. D subseteq C. (Subset proof below)
+  15.1. Let v in D. (Assumption for subset proof)
+  15.2. In(v, D) iff (In(v, X) and R(b, v)). (Universal Instantiation from 5)
+  15.3. In(v, D) -> (In(v, X) and R(b, v)). (Biconditional Elimination from 15.2)
+  15.4. In(v, X) and R(b, v). (Modus Ponens from 15.3, 15.1)
+  15.5. R(b, v). (Conjunction Elimination from 15.4)
+  15.6. R(a, b). (Reiteration from 13)
+  15.7. R(a, v). (Relation Transitivity from 15.6, 15.5)
+  15.8. In(v, X). (Conjunction Elimination from 15.4)
+  15.9. In(v, X) and R(a, v). (Conjunction Introduction from 15.8, 15.7)
+  15.10. In(v, C) iff (In(v, X) and R(a, v)). (Universal Instantiation from 3)
+  15.11. (In(v, X) and R(a, v)) -> In(v, C). (Biconditional Elimination from 15.10)
+  15.12. In(v, C). (Modus Ponens from 15.11, 15.9)
+16. C = D. (Set Equality from 14, 15)
+
+# 6: Every object in the carrier belongs to a named equivalence class
+## Proof that
+### then exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)).
+
+1. Let X be any set, R be an equivalence relation on X, and a be in X. (Declaration)
+2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+3. Let C be such a set. (Existence from 2)
+4. R(a, a). (Relation Reflexivity from 1)
+5. In(a, X) and R(a, a). (Conjunction Introduction from 1, 4)
+6. In(a, C). (Set property from 3, 5)
+7. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C). (Conjunction Introduction from 3, 6)
+8. exists C, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and In(a, C)). (Existential Introduction from 7)
+
+# 7: Symmetry cannot be used when the relation has not been declared symmetric
+## Invalid: undeclared symmetry — the relation is reflexive and transitive, but not declared symmetric.
+### then R(b, a).
+
+
+1. Let X be any set, R be a reflexive and transitive relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(b, a). (Relation Symmetry from 2)
+
+# 8: The subset proof cannot reverse the direction required for transitivity
+## Invalid: transitivity direction — R(a,b) and R(a,u) do not chain to R(b,u).
+### then C subseteq D.
+
+1. Let X be any set, R be a transitive relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+4. Let C be such a set. (Existence from 3)
+5. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+6. Let D be such a set. (Existence from 5)
+7. C subseteq D. (Subset proof below)
+  7.1. Let u in C. (Assumption for subset proof)
+  7.2. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  7.3. In(u, C) -> (In(u, X) and R(a, u)). (Biconditional Elimination from 7.2)
+  7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
+  7.5. R(a, u). (Conjunction Elimination from 7.4)
+  7.6. R(b, u). (Relation Transitivity from 2, 7.5)
+  7.7. In(u, D). (Set property from 6, 7.6)
+
+# 9: Set property needs the carrier-membership conjunct
+## Invalid: missing carrier membership — R(b,u) alone does not establish u belongs to the class of b.
+### then C subseteq D.
+
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+3. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+4. Let C be such a set. (Existence from 3)
+5. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+6. Let D be such a set. (Existence from 5)
+7. C subseteq D. (Subset proof below)
+  7.1. Let u in C. (Assumption for subset proof)
+  7.2. In(u, C) iff (In(u, X) and R(a, u)). (Universal Instantiation from 4)
+  7.3. In(u, C) -> (In(u, X) and R(a, u)). (Biconditional Elimination from 7.2)
+  7.4. In(u, X) and R(a, u). (Modus Ponens from 7.3, 7.1)
+  7.5. R(a, u). (Conjunction Elimination from 7.4)
+  7.6. R(b, a). (Relation Symmetry from 2)
+  7.7. R(b, u). (Relation Transitivity from 7.6, 7.5)
+  7.8. In(u, D). (Set property from 6, 7.7)
+
+# 10: Any two equivalence classes are equal or disjoint
+## Proof that
+### then exists C, exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b be in X. (Declaration)
+2. exists C, forall u, (In(u, C) iff (In(u, X) and R(a, u))). (Separation)
+3. Let C be such a set. (Existence from 2)
+4. exists D, forall u, (In(u, D) iff (In(u, X) and R(b, u))). (Separation)
+5. Let D be such a set. (Existence from 4)
+6. C = D or not exists u, (In(u, C) and In(u, D)). (Proof by Contradiction from subproof below)
+ 6.1. not (C = D or not exists u, (In(u, C) and In(u, D))). (Assumption for Contradiction)
+ 6.2. not (C = D) and not not exists u, (In(u, C) and In(u, D)). (De Morgans from 6.1)
+ 6.3. not (C = D). (Conjunction Elimination from 6.2)
+ 6.4. not not exists u, (In(u, C) and In(u, D)). (Conjunction Elimination from 6.2)
+ 6.5. exists u, (In(u, C) and In(u, D)). (Proof by Contradiction from subproof below)
+  6.5.1. not exists u, (In(u, C) and In(u, D)). (Assumption for Contradiction)
+  6.5.2. not exists u, (In(u, C) and In(u, D)) and not not exists u, (In(u, C) and In(u, D)). (Conjunction Introduction from 6.5.1, 6.4)
+ 6.6. Let w be an object. (Declare)
+ 6.7. C = D. (Existential Elimination from 6.5, subproof below)
+  6.7.1. In(w, C) and In(w, D). (Assumption for Existential Elimination)
+  6.7.2. In(w, C). (Conjunction Elimination from 6.7.1)
+  6.7.3. In(w, D). (Conjunction Elimination from 6.7.1)
+  6.7.4. In(w, X) and R(a, w). (Set property from 3, 6.7.2)
+  6.7.5. In(w, X) and R(b, w). (Set property from 5, 6.7.3)
+  6.7.6. R(a, w). (Conjunction Elimination from 6.7.4)
+  6.7.7. R(b, w). (Conjunction Elimination from 6.7.5)
+  6.7.8. R(w, b). (Relation Symmetry from 6.7.7)
+  6.7.9. R(a, b). (Relation Transitivity from 6.7.6, 6.7.8)
+  6.7.10. C subseteq D. (Subset proof below)
+   6.7.10.1. Let v in C. (Assumption for subset proof)
+   6.7.10.2. In(v, X) and R(a, v). (Set property from 3, 6.7.10.1)
+   6.7.10.3. R(a, v). (Conjunction Elimination from 6.7.10.2)
+   6.7.10.4. R(b, a). (Relation Symmetry from 6.7.9)
+   6.7.10.5. R(b, v). (Relation Transitivity from 6.7.10.4, 6.7.10.3)
+   6.7.10.6. In(v, X). (Conjunction Elimination from 6.7.10.2)
+   6.7.10.7. In(v, X) and R(b, v). (Conjunction Introduction from 6.7.10.6, 6.7.10.5)
+   6.7.10.8. In(v, D). (Set property from 5, 6.7.10.7)
+  6.7.11. D subseteq C. (Subset proof below)
+   6.7.11.1. Let v in D. (Assumption for subset proof)
+   6.7.11.2. In(v, X) and R(b, v). (Set property from 5, 6.7.11.1)
+   6.7.11.3. R(b, v). (Conjunction Elimination from 6.7.11.2)
+   6.7.11.4. R(a, b). (Reiteration from 6.7.9)
+   6.7.11.5. R(a, v). (Relation Transitivity from 6.7.11.4, 6.7.11.3)
+   6.7.11.6. In(v, X). (Conjunction Elimination from 6.7.11.2)
+   6.7.11.7. In(v, X) and R(a, v). (Conjunction Introduction from 6.7.11.6, 6.7.11.5)
+   6.7.11.8. In(v, C). (Set property from 3, 6.7.11.7)
+  6.7.12. C = D. (Set Equality from 6.7.10, 6.7.11)
+ 6.8. (C = D) and not (C = D). (Conjunction Introduction from 6.7, 6.3)
+
+7. (forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))). (Conjunction Introduction from 5, 6)
+8. (forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D)))). (Conjunction Introduction from 3, 7)
+9. exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 8)
+10. exists C, exists D, ((forall u, (In(u, C) iff (In(u, X) and R(a, u)))) and ((forall u, (In(u, D) iff (In(u, X) and R(b, u)))) and (C = D or not exists u, (In(u, C) and In(u, D))))). (Existential Introduction from 9)

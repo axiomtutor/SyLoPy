@@ -1,0 +1,147 @@
+Use discrete math.
+
+# 1: Least elements of a partial order are unique
+## Proof that
+### two least elements of a partial order are equal
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. forall x, R(a,x). (Premise)
+3. forall x, R(b,x). (Premise)
+4. R(a,b). (Universal Instantiation from 2)
+5. R(b,a). (Universal Instantiation from 3)
+6. a = b. (Relation Antisymmetry from 4, 5)
+
+# 2: Greatest elements of a partial order are unique
+## Proof that
+### two greatest elements of a partial order are equal
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. forall x, R(x,a). (Premise)
+3. forall x, R(x,b). (Premise)
+4. R(b,a). (Universal Instantiation from 2)
+5. R(a,b). (Universal Instantiation from 3)
+6. a = b. (Relation Antisymmetry from 5, 4)
+
+# 3: A least element of a partial order is minimal
+## Proof that
+### if a is least, then every predecessor of a equals a
+
+1. Let X be any set, R be a partial order on X, and a, x be in X. (Declaration)
+2. forall y, R(a,y). (Premise)
+3. R(x,a) -> x = a. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(x,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,x). (Universal Instantiation from 2)
+ 3.3. x = a. (Relation Antisymmetry from 3.1, 3.2)
+end subproof
+
+# 4: An equivalence relation has the three-point transitivity consequence
+## Proof that
+### if R(a,b) and R(a,c), then R(b,c)
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(a,c). (Premise)
+4. R(b,a). (Relation Symmetry from 2)
+5. R(b,c). (Relation Transitivity from 4, 3)
+
+# 5: A symmetric antisymmetric relation relates only equal elements
+## Proof that
+### if R(a,b), then a = b when R is symmetric and antisymmetric
+
+1. Let X be any set, R be a symmetric, antisymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(b,a). (Relation Symmetry from 2)
+4. a = b. (Relation Antisymmetry from 2, 3)
+
+# 6: An asymmetric relation is antisymmetric on mutually related points
+## Proof that
+### R(a,b) and R(b,a) imply a = b when R is asymmetric
+
+1. Let X be any set, R be an asymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. R(b,a). (Premise)
+4. not R(b,a). (Relation Asymmetry from 2)
+5. a = b. (Explosion from 3, 4)
+
+# 7: A total relation is reflexive
+## Proof that
+### every element a of a carrier relates to itself when R is total
+
+1. Let X be any set, R be a total relation on X, and a be in X. (Declaration)
+2. R(a,a) or R(a,a). (Relation Totality from 1, 1)
+3. R(a,a). (Proof by Cases from 2, subproofs below)
+begin subproof
+ 3.1.case1. R(a,a). (Case)
+ 3.2.case1. R(a,a). (Reiteration from 3.1.case1)
+end subproof
+begin subproof
+ 3.1.case2. R(a,a). (Case)
+ 3.2.case2. R(a,a). (Reiteration from 3.1.case2)
+end subproof
+
+# 8: Antisymmetry and inequality exclude the reverse pair
+## Proof that
+### if R(a,b) and a is not b, then not R(b,a)
+
+1. Let X be any set, R be an antisymmetric relation on X, and a, b be in X. (Declaration)
+2. R(a,b). (Premise)
+3. not (a = b). (Premise)
+4. not R(b,a). (Proof by Contradiction from subproof below)
+begin subproof
+ 4.1. R(b,a). (Assumption for contradiction)
+ 4.2. a = b. (Relation Antisymmetry from 2, 4.1)
+ 4.3. a = b and not (a = b). (Conjunction Introduction from 4.2, 3)
+end subproof
+
+# 9: A strict relation derived from a partial order is irreflexive
+## Proof that
+### S(a,a) is false when S(x,y) iff R(x,y) and x differs from y
+
+1. Let X be any set, R be a partial order on X, S be a relation on X, and a be in X. (Declaration)
+2. forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))). (Premise)
+3. not S(a,a). (Proof by Contradiction from subproof below)
+begin subproof
+ 3.1. S(a,a). (Assumption for contradiction)
+ 3.2. forall y, (S(a,y) iff (R(a,y) and not (a = y))). (Universal Instantiation from 2)
+ 3.3. S(a,a) iff (R(a,a) and not (a = a)). (Universal Instantiation from 3.2)
+ 3.4. S(a,a) -> (R(a,a) and not (a = a)). (Biconditional Elimination from 3.3)
+ 3.5. R(a,a) and not (a = a). (Modus Ponens from 3.4, 3.1)
+ 3.6. not (a = a). (Conjunction Elimination from 3.5)
+ 3.7. a = a. (Reflexivity)
+ 3.8. a = a and not (a = a). (Conjunction Introduction from 3.7, 3.6)
+end subproof
+
+# 10: A strict relation derived from a partial order is transitive
+## Proof that
+### if S(a,b) and S(b,c), then S(a,c), when S(x,y) iff R(x,y) and x differs from y
+
+1. Let X be any set, R be a partial order on X, S be a relation on X, and a, b, c be in X. (Declaration)
+2. forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))). (Premise)
+3. S(a,b). (Premise)
+4. S(b,c). (Premise)
+5. forall y, (S(a,y) iff (R(a,y) and not (a = y))). (Universal Instantiation from 2)
+6. S(a,b) iff (R(a,b) and not (a = b)). (Universal Instantiation from 5)
+7. S(a,b) -> (R(a,b) and not (a = b)). (Biconditional Elimination from 6)
+8. R(a,b) and not (a = b). (Modus Ponens from 7, 3)
+9. R(a,b). (Conjunction Elimination from 8)
+10. not (a = b). (Conjunction Elimination from 8)
+11. forall y, (S(b,y) iff (R(b,y) and not (b = y))). (Universal Instantiation from 2)
+12. S(b,c) iff (R(b,c) and not (b = c)). (Universal Instantiation from 11)
+13. S(b,c) -> (R(b,c) and not (b = c)). (Biconditional Elimination from 12)
+14. R(b,c) and not (b = c). (Modus Ponens from 13, 4)
+15. R(b,c). (Conjunction Elimination from 14)
+16. not (b = c). (Conjunction Elimination from 14)
+17. R(a,c). (Relation Transitivity from 9, 15)
+18. not (a = c). (Proof by Contradiction from subproof below)
+begin subproof
+ 18.1. a = c. (Assumption for contradiction)
+ 18.2. R(b,a). (Substitution from 18.1, 15)
+ 18.3. a = b. (Relation Antisymmetry from 9, 18.2)
+ 18.4. a = b and not (a = b). (Conjunction Introduction from 18.3, 10)
+end subproof
+19. R(a,c) and not (a = c). (Conjunction Introduction from 17, 18)
+20. forall y, (S(a,y) iff (R(a,y) and not (a = y))). (Universal Instantiation from 2)
+21. S(a,c) iff (R(a,c) and not (a = c)). (Universal Instantiation from 20)
+22. (R(a,c) and not (a = c)) -> S(a,c). (Biconditional Elimination from 21)
+23. S(a,c). (Modus Ponens from 22, 19)

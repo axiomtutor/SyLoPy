@@ -1,0 +1,104 @@
+# Independent readings of natural-language logical syntax. The "expect"
+# side uses only plain-logic forms; it does not copy the surface notation.
+
+id: logic-natural-universal-conditional
+context: line
+surface: for all x, if P(x) then Q(x)
+expect: forall x, (P(x) -> Q(x))
+why: The natural-language quantifier and conditional translate to their first-order logical forms.
+
+id: logic-natural-existential-conjunction
+context: line
+surface: there exists x such that P(x) and Q(x)
+expect: exists x, (P(x) and Q(x))
+why: One witness satisfies both conjuncts.
+
+id: logic-natural-multiple-universal
+context: line
+surface: for all x, y such that R(x, y)
+expect: forall x, (forall y, R(x, y))
+why: The multi-variable "such that" form desugars to nested universal quantifiers.
+
+id: logic-natural-multiple-existential
+context: line
+surface: there exists x, y such that R(x, y)
+expect: exists x, (exists y, R(x, y))
+why: The multi-variable existential form desugars to nested existential quantifiers.
+
+id: logic-natural-conditional
+context: nested
+surface: if P then Q
+expect: P -> Q
+why: Natural-language conditional wording lowers to implication.
+
+id: logic-implies-alias
+context: nested
+surface: P implies Q
+expect: P -> Q
+why: The word "implies" is an alias for the implication connective.
+
+id: logic-biconditional-phrase
+context: nested
+surface: P if and only if Q
+expect: P iff Q
+why: The English biconditional phrase lowers to the logical biconditional.
+
+id: logic-implication-consequent-precedence
+context: nested
+surface: P -> Q and R
+expect: P -> (Q and R)
+why: Conjunction groups inside the consequent of the implication.
+
+id: logic-disjunction-conjunction-precedence
+context: nested
+surface: P or Q and R
+expect: P or (Q and R)
+why: Conjunction binds more tightly than disjunction.
+
+id: logic-disjunction-implication-precedence
+context: nested
+surface: P or Q implies R
+expect: (P or Q) -> R
+why: Implication binds more loosely than disjunction, so the disjunction is its antecedent.
+
+id: logic-negation-symbol
+context: nested
+surface: not P and Q
+expect: (not P) and Q
+why: Negation binds more tightly than conjunction, so only P is negated.
+
+id: logic-not-equal-sugar
+context: nested
+surface: a =/= b
+expect: not (a = b)
+why: The inequality token lowers to negated equality.
+
+id: logic-nested-quantifier-dependent-witness
+context: nested
+surface: for all x, there exists y such that R(x, y)
+expect: forall x, exists y, R(x, y)
+why: The existential quantifier remains inside the universal, allowing y to depend on x.
+
+id: logic-nested-quantifier-shared-witness
+context: nested
+surface: there exists y such that for all x, R(x, y)
+expect: exists y, forall x, R(x, y)
+why: The existential quantifier scopes over the universal, requiring one witness to work for every x.
+
+id: logic-free-variable-under-universal
+context: nested
+surface: for all x, if P(x) then Q(y)
+expect: forall x, (P(x) -> Q(y))
+why: The universal binds x but must leave y free.
+
+id: logic-natural-existential-nested-in-conditional
+context: nested
+surface: if P(x) then there exists y such that R(x, y)
+expect: P(x) -> exists y, R(x, y)
+why: The existential is scoped inside the consequent of the conditional.
+
+id: logic-exists-unique-lowering
+context: line
+surface: there exists a unique set Y such that P(Y)
+expect: exists Y, (P(Y) and forall X, (P(X) -> X = Y))
+why: Unique existence is expanded into existence plus a universal uniqueness condition.

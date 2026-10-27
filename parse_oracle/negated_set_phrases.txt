@@ -1,0 +1,74 @@
+# Negative membership, subset, and emptiness phrases.
+# Intended readings are ordinary first-order set formulas.
+
+id: j4-not-subset-of-line
+context: line
+surface: A is not a subset of B
+expect: not (forall u, (In(u, A) -> In(u, B)))
+why: A fails to be a subset of B exactly when the universal membership implication is false.
+
+id: j4-not-subseteq-nested
+context: nested
+surface: P and A is not a subset of B
+expect: P and not (forall u, (In(u, A) -> In(u, B)))
+why: The negative subset claim is the second conjunct.
+
+id: j4-not-member-wording
+context: line
+surface: x does not belong to A
+expect: not In(x, A)
+why: “Does not belong to” is the ordinary negative membership reading.
+
+id: j4-not-element-of
+context: nested
+surface: not (x is an element of A)
+expect: not In(x, A)
+why: Elementhood and membership are the same relation in this language.
+
+id: j4-nonmember-iff
+context: nested
+surface: x does not belong to A iff Q(x)
+expect: not In(x, A) iff Q(x)
+why: The negative membership phrase is one side of the biconditional.
+
+id: j4-empty-set-explicit
+context: line
+surface: A is empty
+expect: forall u, not In(u, A)
+why: A set is empty when none of its objects is a member.
+
+id: j4-not-empty-line
+context: line
+surface: A is not empty
+expect: exists u, In(u, A)
+why: A set is nonempty exactly when it has a member.
+
+id: j4-nonempty-adjective
+context: nested
+surface: A is nonempty and P(A)
+expect: (exists u, In(u, A)) and P(A)
+why: The adjective nonempty states existence of a member.
+
+id: j4-not-nonempty
+context: nested
+surface: A is not nonempty
+expect: not (exists u, In(u, A))
+why: Negating nonemptiness is equivalent to having no members.
+
+id: j4-does-not-contain
+context: line
+surface: A does not contain x
+expect: not In(x, A)
+why: To say that A does not contain x is to deny x's membership in A.
+
+id: j4-empty-set-negated
+context: nested
+surface: not (A has an element)
+expect: not (exists u, In(u, A))
+why: Denying that a set has an element is the formula for emptiness.
+
+id: j4-not-subset-token-variant
+context: line
+surface: A is not subseteq B
+expect: not (forall u, (In(u, A) -> In(u, B)))
+why: The established subset token is non-strict; its negation means at least one member of A is not in B.

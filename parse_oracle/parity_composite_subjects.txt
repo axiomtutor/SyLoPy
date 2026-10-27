@@ -1,0 +1,25 @@
+# Explicit parity predicates accept compound subjects and compose under binding.
+
+id: parity-composite-subject-disjunction
+context: nested
+surface: Plus(a, b) is even or Plus(a, b) is odd
+expect: Even(Plus(a, b)) or Odd(Plus(a, b))
+why: Both alternatives explicitly repeat the same compound subject, which is parsed as a term argument to the corresponding parity predicate.
+
+id: parity-reversed-order-disjunction
+context: nested
+surface: n is odd or n is even
+expect: Odd(n) or Even(n)
+why: The explicit alternatives may be stated in either parity order; their order in the formula must be preserved.
+
+id: parity-composite-subject-in-conditional
+context: nested
+surface: if Plus(a, b) is even or Plus(a, b) is odd then P(a)
+expect: (Even(Plus(a, b)) or Odd(Plus(a, b))) -> P(a)
+why: The repeated compound subject is parsed within the antecedent disjunction before the conditional is assembled.
+
+id: parity-disjunction-under-universal
+context: nested
+surface: forall n, n is odd or n is even
+expect: forall n, (Odd(n) or Even(n))
+why: The variable in both explicit alternatives remains bound by the surrounding universal quantifier.

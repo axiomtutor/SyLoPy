@@ -950,3 +950,25 @@ def test_the_names_one_run_found_are_not_remembered_by_the_next():
     validator.initial_declarations = []
     ok, err, _ = validator.validate(_entries(_PLAIN_X_FOR_CARRIER))
     assert ok, str(err)
+
+def test_descriptive_relation_property_label_does_not_constrain_same_named_object():
+    """A property label in metadata is not a symbol reference.
+
+    The word 'reflexive' is used both as an ordinary object name and as a
+    descriptive relation-property label. The latter should not by itself
+    make the object non-arbitrary for Uniqueness.
+    """
+    text = """
+1. Let a, X be any set, R be a reflexive relation on X. (Declaration)
+2. Let reflexive be any set. (Declaration)
+3. a = a. (Reflexivity)
+4. Exists Y, Y = a. (Existential Introduction from 3)
+5. Let Y be such a set. (Existence from 4)
+6. If reflexive = a then reflexive = Y. (Conditional Introduction from subproof below)
+ 6.1. reflexive = a. (Assumption for Conditional Introduction)
+ 6.2. a = Y. (Symmetry from 5)
+ 6.3. reflexive = Y. (Transitivity from 6.1, 6.2)
+7. Exists Y, (Y = a and forall X, (X = a -> X = Y)). (Uniqueness, 4, 6)
+"""
+    ok, message = run(text)
+    assert ok, message

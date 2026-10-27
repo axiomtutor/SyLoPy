@@ -1,0 +1,31 @@
+# The shorthand parity disjunction stays rejected in compound formulas.
+
+id: parity-ambiguous-shorthand-in-implication
+context: nested
+surface: if n is even or odd then P
+expect: REJECT
+why: The repeated subject is omitted in the second alternative, so the parity disjunction remains ambiguous inside a conditional antecedent.
+
+id: parity-ambiguous-shorthand-in-conjunction
+context: nested
+surface: P and (n is even or odd)
+expect: REJECT
+why: Parenthesizing the shorthand as one conjunct must not give the incomplete second alternative an unambiguous reading.
+
+id: parity-ambiguous-shorthand-under-negation
+context: nested
+surface: not (n is even or odd)
+expect: REJECT
+why: Negation changes only the outer connective and must not change how the inner shorthand parity phrase is interpreted.
+
+id: parity-ambiguous-shorthand-under-universal-quantifier
+context: nested
+surface: forall n, n is even or odd
+expect: REJECT
+why: A universal quantifier must not make the ambiguous shorthand parity disjunction unambiguous.
+
+id: parity-ambiguous-shorthand-under-existential-quantifier
+context: nested
+surface: exists n, n is even or odd
+expect: REJECT
+why: An existential quantifier must not make the ambiguous shorthand parity disjunction unambiguous.

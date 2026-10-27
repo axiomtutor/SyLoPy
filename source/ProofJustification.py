@@ -4,11 +4,19 @@ Rule names are resolved by explicit aliases rather than substring matching.
 Theory-specific rules are represented by named placeholders and resolved by
 ProofLogic when the proof's theory environment supplies the corresponding
 rule instance.
+
+A proved theorem is cited by its title, the way a rule is cited: bare when it
+has no premises (`(Symmetry of equality)`), and with the lines that state its
+premises when it has some (`(Property transport from 3)`, `(Property
+transport, 3)`). The parser cannot tell a title from a misspelled rule name,
+and a misspelled name followed by citations is an error here, not a
+placeholder that fails later. So the caller says which titles exist
+(`theorem_names`); a title that is not among them, and not a rule, is unknown.
 """
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
 
@@ -127,16 +135,51 @@ def _rule(name: str):
     raise ValueError(f"Unknown inference rule '{name.strip()}' in justification")
 
 
-def _cited_rule(rule_name: str, refs: List[str]):
+def theorem_titles(names: Iterable[str]) -> Tuple[str, ...]:
+    """`names` as a tuple of theorem titles. A lone string is one title, not
+    the characters it is made of."""
+    return (names,) if isinstance(names, str) else tuple(names)
+
+
+def _theorem_title(name: str, theorem_names: Iterable[str]) -> Optional[str]:
+    """The title in `theorem_names` that `name` cites, or None.
+
+    A title written exactly wins. Otherwise the comparison is `_normalize`,
+    the case-, hyphen- and spacing-insensitive one every built-in rule name
+    gets, and it counts only when it picks out one title. The result is the
+    title as the theorem was promoted under it, because that is what the
+    validator looks a placeholder up by."""
+    titles = list(theorem_names)
+    wanted = name.strip()
+    if wanted in titles:
+        return wanted
+    matches = {title for title in titles if _normalize(title) == _normalize(wanted)}
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
+def _cited_rule(rule_name: str, refs: List[str], theorem_names: Iterable[str] = ()):
     """Resolve `rule_name`, choosing by citation count where a name covers
     two rules: bare "Set property" is the empty-set rule, while "Set
-    property" citing lines is the general one."""
+    property" citing lines is the general one. A name that is no rule at all
+    may be the title of a theorem the caller knows (`theorem_names`); a
+    built-in rule's name is never taken for one."""
     if refs and _normalize(rule_name) in {"set property", "set property rule"}:
         return pl.NamedRulePlaceholder("SetProperty")
-    return _rule(rule_name)
+    try:
+        return _rule(rule_name)
+    except ValueError:
+        title = _theorem_title(rule_name, theorem_names)
+        if title is None:
+            raise
+        return pl.NamedRulePlaceholder(title)
 
 
-def parse_justification(s: str):
+def parse_justification(s: str, theorem_names: Iterable[str] = ()):
+    """Parse the text of a proof line's justification.
+
+    `theorem_names` are the titles of the theorems the proof may cite (see
+    the module docstring); with none, only rules and bare names are cited."""
+    theorem_names = theorem_titles(theorem_names)
     s = s.strip()
     if not s:
         raise ValueError("Justification text is required for every proof line")
@@ -163,12 +206,12 @@ def parse_justification(s: str):
     if citation:
         rule_name = s[:citation.start(0) + len(citation.group(1))].strip()
         refs = _parse_indices(citation.group(2))
-        return ("rule", _cited_rule(rule_name, refs), refs)
+        return ("rule", _cited_rule(rule_name, refs, theorem_names), refs)
     # "Rule, 3, 3.2.1" / "Rule, 3.1 to 3.2": the rule's name, then the lines it cites.
     comma_citation = re.match(rf"^(?P<name>[^,]*[A-Za-z][^,]*?)\s*,\s*(?P<refs>{_REF_LIST_PATTERN})\s*$", s)
     if comma_citation:
         refs = _parse_refs(comma_citation.group("refs"))
-        return ("rule", _cited_rule(comma_citation.group("name"), refs), refs)
+        return ("rule", _cited_rule(comma_citation.group("name"), refs, theorem_names), refs)
     normalized = _normalize(s)
     if normalized in {"arbitrary", "fresh variable", "fresh constant", "arbitrary object"}:
         return ("arbitrary",)
@@ -187,9 +230,10 @@ def parse_justification(s: str):
     if "from" not in low and "subproof" not in low:
         # A bare, zero-citation rule name ("Axiom of pairing", "Separation"):
         # resolve known aliases and theory placeholders, and otherwise keep
-        # the raw text as a placeholder so the validator reports it by name.
+        # the raw text -- or the title of a theorem it names -- as a
+        # placeholder so the validator looks it up, or reports it, by name.
         try:
             return ("rule", _rule(s), [])
         except ValueError:
-            return ("rule", pl.NamedRulePlaceholder(s), [])
+            return ("rule", pl.NamedRulePlaceholder(_theorem_title(s, theorem_names) or s), [])
     raise ValueError(f"Invalid justification format: '{s}'")

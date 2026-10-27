@@ -62,9 +62,9 @@ subproof's own (recursively parsed) entry list::
 Two things worth knowing before writing new proof text
 --------------------------------------------------------------------------
 1. **Connective precedence follows the textbook convention, not the order
-   `parse_formula`'s checks run in.** `ProofParserPolicy` installs the
-   active formula parser (`_parse_formula_conventional`) over this
-   module's `parse_formula` name at import time, using ordinary
+   `parse_formula`'s checks run in.** The package's explicit assembly step
+   installs `ProofParserPolicy._parse_formula_conventional` as the active
+   implementation, using ordinary
    precedence: ``not`` binds tightest, then ``and``, then ``or``, then
    ``->``/``implies``, loosest of all the biconditional family. So
    ``parse_formula("A -> B and C")`` parses as ``A -> (B and C)``, and
@@ -80,14 +80,14 @@ Two things worth knowing before writing new proof text
 
 import re
 import sys
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass, replace
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
 import SyLoPy.source.ProofContext as pc
-from SyLoPy.source.ProofJustification import parse_justification
+from SyLoPy.source.ProofJustification import parse_justification, theorem_titles
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaboratedEntries,
@@ -189,7 +189,11 @@ def split_top_level(s: str, sep: str) -> List[str]:
         i += 1
     if depth > 0:
         raise ValueError("Unmatched opening parenthesis in string: " + s)
-    if buf:
+    # Preserve an empty final component when a separator trails the input.
+    # Formula/term parsers should reject "P and" and "f(a,)" rather than
+    # silently reading them as "P" and "f(a)" respectively. Empty input still
+    # returns an empty list for callers such as the zero-argument parser.
+    if buf or parts:
         parts.append(''.join(buf).strip())
     return parts
 
@@ -407,12 +411,13 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     a citable formula at all, and the resulting error pointed at the
     *citing* line three steps later, not at the real problem here).
 
-    This is the *fallback* case of the more general mechanism just below
-    (`elaborate_typed_declaration` / `DECLARATION_RECIPE_REGISTRY`): a
-    plain object with no registered structure recipe for its descriptor.
-    It stays a free-standing function (rather than folding into that
-    mechanism entirely) because "such that" premises need it directly,
-    without going through a full line's worth of recipe-dispatch.
+    This helper remains for declaration-like text handled by the generic
+    premise/fallback path, notably a formula-stating premise that begins
+    with a declaration and continues with "such that". Ordinary
+    "(Declaration)" lines beginning with "Let" are parsed into
+    `SurfaceDeclarationStatement` and handled by
+    `elaborate_compound_declaration`, which is the single declaration-recipe
+    dispatch path. This fallback does not dispatch structure recipes.
     """
     s = text.strip().rstrip('.').strip()
     
@@ -615,50 +620,12 @@ _FORMULA_START_RE = re.compile(
 )
 
 
-def _top_level_keyword_positions(s: str, keyword: str) -> List[int]:
-    positions = []
-    depth = 0
-    i = 0
-    low = s.lower()
-    needle = keyword.lower()
-    while i <= len(s) - len(keyword):
-        ch = s[i]
-        if ch == '(':
-            depth += 1
-        elif ch == ')':
-            depth -= 1
-        if depth == 0 and low.startswith(needle, i):
-            positions.append(i)
-            i += len(keyword)
-            continue
-        i += 1
-    return positions
-
-
 def _text_after_is_declaration_start(s: str) -> bool:
     return bool(_DECL_START_RE.match(s.strip()))
 
 
 def _text_after_is_formula_start(s: str) -> bool:
     return bool(_FORMULA_START_RE.match(s.strip()))
-
-
-def _next_top_level_separator(s: str, start: int) -> str:
-    """Return the next top-level `and`/comma-separated segment."""
-    depth = 0
-    i = start
-    while i < len(s):
-        if s[i] == '(':
-            depth += 1
-        elif s[i] == ')':
-            depth -= 1
-        elif depth == 0:
-            if s[i] == ',':
-                return s[start:i]
-            if s[i:i+5].lower() == ' and ':
-                return s[start:i]
-        i += 1
-    return s[start:]
 
 
 def _split_compound_declaration_items(body: str) -> List[str]:
@@ -698,6 +665,15 @@ def _split_compound_declaration_items(body: str) -> List[str]:
         if not text:
             return False
         if _text_after_is_formula_start(text):
+            return True
+        # A symbol named "a" can begin a membership premise ("a in X").
+        # Do not mistake that article-like first word for a declaration
+        # descriptor when it follows a completed declaration after a comma.
+        if re.match(
+            r"^[A-Za-z_][A-Za-z0-9_]*\s+(?:(?:is\s+)?(?:not\s+)?in)\b",
+            text,
+            re.I,
+        ):
             return True
         m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)\b', text)
         if not m:
@@ -919,9 +895,26 @@ def parse_surface_declaration_statement(
         if re.search(r'\b(?:be|are)\b', item, re.I):
             clauses.append(_surface_declaration_from_clause(item, span))
         else:
-            for formula in split_top_level(item, ' and '):
-                if formula.strip():
-                    clauses.append(SurfacePremiseClause(formula.strip(), span))
+            # In a "Let ..." statement, "a in X" is a membership declaration,
+            # not a raw formula clause. Normalize it through the existing
+            # declaration parser so its witness is declared and its membership
+            # formula is emitted by the same path as other membership clauses.
+            membership_declaration = re.match(
+                r"^((?:[A-Za-z_][A-Za-z0-9_]*)(?:\s*(?:,|and)\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+in\s+(.+)$",
+                item,
+                re.I,
+            )
+            if membership_declaration:
+                target, set_expression = membership_declaration.groups()
+                clauses.append(
+                    _surface_declaration_from_clause(
+                        f"{target} be in {set_expression}", span
+                    )
+                )
+            else:
+                for formula in split_top_level(item, ' and '):
+                    if formula.strip():
+                        clauses.append(SurfacePremiseClause(formula.strip(), span))
 
     return SurfaceDeclarationStatement(clauses, span)
 
@@ -931,13 +924,10 @@ def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause) -> Declar
     """Reconstruct the `DeclarationClause` shape a `DeclarationRecipe`
     expects from a already-parsed `SurfaceDeclarationClause`.
 
-    Reads `is_tuple`/`domain`/`codomain` straight off `clause` rather than
-    assuming a plain single-name shape -- a recipe dispatched through the
-    coordinated `Let X be any set, (W, <) be a well-ordered poset, ...`
-    path must see the same clause shape a standalone `Let (W, <) be a
-    well-ordered poset.` line gets via `elaborate_typed_declaration`, or
-    every tuple-/typed-function-shaped recipe would silently fail to
-    match here specifically (see `SurfaceDeclarationClause`'s docstring).
+    Reads `is_tuple`/`domain`/`codomain` straight off `clause` so the
+    canonical surface-AST path passes tuple and typed-function targets to a
+    recipe in the same shape in which the user wrote them (see
+    `SurfaceDeclarationClause`'s docstring).
     """
     names = [d.name for d in clause.declarations]
     descriptor = clause.declarations[0].descriptor if clause.declarations else ""
@@ -955,16 +945,14 @@ def _declaration_metadata(attributes: Dict[str, Any]) -> tuple:
 
 
 def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationContext') -> Optional[tuple]:
-    """Elaborate the coordinated `Let ...` surface AST from left to right.
+    """Elaborate one parsed declaration statement through the canonical path.
 
-    Declarations are entered into the elaboration registry before later
-    clauses are processed. Membership clauses introduce object declarations
-    and ordinary membership premises. Formula clauses are parsed only after
-    all declarations preceding them have been registered.
-
-    The returned core representation intentionally uses only the existing
-    semantic concepts: declarations plus a formula or formula bundle marked
-    as a premise. The kernel never sees a compound-declaration construct.
+    Adjacent declaration clauses are offered together to registered recipes,
+    so a recipe can consume one clause or a short sequence that must be
+    interpreted jointly. Unmatched clauses fall back to their parsed
+    declaration metadata. Premise clauses are parsed in their original order.
+    The kernel sees only declarations and ordinary formulas, never a special
+    compound-declaration construct.
     """
     statement = entry.declaration_statement
     if statement is None:
@@ -976,33 +964,62 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
 
     declarations: List[pl.Declaration] = []
     formulas: List[fl.Formula] = []
+    clauses = statement.clauses
+    index = 0
 
-    for clause in statement.clauses:
-        if isinstance(clause, SurfaceDeclarationClause):
-            recipe_clause = _surface_clause_to_recipe_clause(clause)
+    while index < len(clauses):
+        clause = clauses[index]
+
+        if isinstance(clause, SurfacePremiseClause):
+            try:
+                formulas.append(context.parse_core_formula(clause.formula))
+            except (TypeError, ValueError) as exc:
+                raise ElaborationError(str(exc), clause.span or entry.span) from exc
+            index += 1
+            continue
+
+        if not isinstance(clause, SurfaceDeclarationClause):
+            raise TypeError(f"unknown declaration statement clause: {clause!r}")
+
+        # A recipe may require multiple adjacent declaration clauses, but it
+        # must not consume a premise clause or jump across one.
+        run_start = index
+        while index < len(clauses) and isinstance(clauses[index], SurfaceDeclarationClause):
+            index += 1
+        run = clauses[run_start:index]
+        recipe_clauses = [_surface_clause_to_recipe_clause(item) for item in run]
+
+        recipe_index = 0
+        while recipe_index < len(run):
             matched = None
+            matched_recipe = None
             for recipe in context.environment.declaration_recipes:
-                matched = recipe.try_match([recipe_clause], 0)
-                if matched is not None:
+                candidate = recipe.try_match(recipe_clauses, recipe_index)
+                if candidate is not None:
+                    matched = candidate
+                    matched_recipe = recipe
                     break
 
             if matched is not None:
                 consumed, extra_decls, extra_formulas, extra_rules = matched
-                if consumed != 1:
+                if consumed < 1 or recipe_index + consumed > len(run):
                     raise ElaborationError(
-                        f"declaration recipe {getattr(recipe, 'name', '<unknown>')!r} "
-                        "requires a declaration sequence that is not supported by this surface clause",
-                        clause.span or entry.span,
+                        f"declaration recipe {getattr(matched_recipe, 'name', '<unknown>')!r} "
+                        "returned an invalid number of consumed clauses",
+                        run[recipe_index].span or entry.span,
                     )
+                source_span = run[recipe_index].span or entry.span
                 for declaration in extra_decls:
-                    context.register_declaration(declaration, clause.span or entry.span)
+                    context.register_declaration(declaration, source_span)
                     declarations.append(declaration)
                 formulas.extend(extra_formulas)
                 for rule in extra_rules:
                     context.add_extra_rule(rule)
+                recipe_index += consumed
                 continue
 
-            for surface_decl in clause.declarations:
+            surface_clause = run[recipe_index]
+            for surface_decl in surface_clause.declarations:
                 name = surface_decl.name
                 if not _IDENTIFIER_RE.match(name):
                     raise ElaborationError(
@@ -1036,28 +1053,21 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
                 context.register_declaration(declaration, surface_decl.span or entry.span)
                 declarations.append(declaration)
 
-            if clause.membership_expression is not None:
-                target = clause.membership_expression
+            if surface_clause.membership_expression is not None:
+                target = surface_clause.membership_expression
                 if not target:
                     raise ElaborationError(
                         "membership declaration requires a target expression",
-                        clause.span or entry.span,
+                        surface_clause.span or entry.span,
                     )
-                for surface_decl in clause.declarations:
+                for surface_decl in surface_clause.declarations:
                     formula_text = f"{surface_decl.name} is in {target}"
                     try:
                         formulas.append(context.parse_core_formula(formula_text))
                     except (TypeError, ValueError) as exc:
-                        raise ElaborationError(str(exc), clause.span or entry.span) from exc
+                        raise ElaborationError(str(exc), surface_decl.span or entry.span) from exc
 
-        elif isinstance(clause, SurfacePremiseClause):
-            try:
-                formula = context.parse_core_formula(clause.formula)
-            except (TypeError, ValueError) as exc:
-                raise ElaborationError(str(exc), clause.span or entry.span) from exc
-            formulas.append(formula)
-        else:
-            raise TypeError(f"unknown declaration statement clause: {clause!r}")
+            recipe_index += 1
 
     context.register_origin(entry.label, entry.span, "compound declaration")
 
@@ -1068,123 +1078,20 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
     return (entry.label, value, ('premise', declarations))
 
 
-def elaborate_typed_declaration(entry: 'SurfaceLine', context: '_ElaborationContext') -> Optional[tuple]:
-    """The single, general entry point for every `Let ...` declaration
-    line: split into clauses, and for each, try every registered
-    `DeclarationRecipe` (from `context.environment.declaration_recipes`,
-    populated by whichever theory modules are loaded) before falling back
-    to a bare object/predicate/function declaration for whatever no
-    recipe recognized. Always returns a result for a `Let ...` line
-    (never `None`) -- unlike a typical `line_elaborator`, this doesn't
-    decline, because it *is* the declaration path now, not an optional
-    override of it; `parse_declaration_prefix` remains as the "such
-    that:" premise case and as this function's own per-clause fallback,
-    not as a separate thing declaration lines might reach instead.
-
-    Registering a brand new structure type (a group, a ring, ...) is
-    exactly: write an `expand` function computing the declarations,
-    formulas, and rules a declaration of that type should carry, wrap it
-    as a `DeclarationRecipe`, and add it to your module's
-    `TheoryEnvironment(declaration_recipes=[...])`. No change here, or to
-    any other theory module, is needed.
-    """
-    just = entry.justification_text.strip().lower()
-    if just not in ('declaration', 'declare'):
-        return None
-    text = entry.formula_text.strip().rstrip('.').strip()
-    if not re.match(r'^let\b', text, flags=re.I):
-        return None
-    if re.search(r'\bsuch\s+that\s*:?\s*', text, flags=re.I):
-        return None  # "such that" premises (colon optional) stay on parse_declaration_prefix's original path
-
-    body = re.sub(r'^let\s+', '', text, flags=re.I, count=1)
-    clauses = [parse_declaration_clause(c) for c in split_declaration_clauses(body)]
-
-    declarations: List[pl.Declaration] = []
-    bundle: List[fl.Formula] = []
-    recipes = context.environment.declaration_recipes
-
-    i = 0
-    while i < len(clauses):
-        matched = None
-        for recipe in recipes:
-            result = recipe.try_match(clauses, i)
-            if result is not None:
-                matched = result
-                break
-        if matched is not None:
-            consumed, extra_decls, extra_formulas, extra_rules = matched
-            for decl in extra_decls:
-                context.register_declaration(decl, entry.span)
-            declarations.extend(extra_decls)
-            bundle.extend(extra_formulas)
-            for rule in extra_rules:
-                context.add_extra_rule(rule)
-            i += max(consumed, 1)
-            continue
-
-        dc = clauses[i]
-        if dc.domain is not None:
-            # A typed-function clause with no recipe claiming its
-            # descriptor: still declare the function itself (so proofs
-            # that don't need any extra derived facts aren't forced to
-            # find/write a recipe just to name a typed function), just
-            # without any bundled range/behavior facts.
-            decl = pl.Declaration(name=dc.names[0], kind=pl.DeclarationKind.FUNCTION,
-                                                arity=1, type_name=dc.descriptor.strip())
-            context.register_declaration(decl, entry.span)
-            declarations.append(decl)
-        else:
-            try:
-                new_decls = _fallback_declarations_for_clause(dc)
-            except ValueError as exc:
-                raise ElaborationError(str(exc), entry.span) from exc
-            for decl in new_decls:
-                context.register_declaration(decl, entry.span)
-                declarations.append(decl)
-        i += 1
-
-    context.register_origin(entry.label, entry.span)
-    if not bundle:
-        return (entry.label, None, ('declare', declarations))
-    formula = bundle[0] if len(bundle) == 1 else bundle
-    return (entry.label, formula, ('premise', declarations))
+# `parse_formula` is intentionally supplied by the policy extension rather
+# than defined in this module. The assembly step in source/__init__.py calls
+# ProofParserPolicy.install_parser_extensions, which installs the conventional-
+# precedence implementation. It remains in ProofParserPolicy because it uses
+# this module's split_top_level, parse_term, _match_applied_symbol, and
+# _BARE_IDENTIFIER_RE helpers.
 
 
-# `parse_formula` is installed by `ProofParserPolicy` at import time
-# (`_parse_formula_conventional`, using textbook connective precedence --
-# see that function's docstring for the exact recognition order) and is
-# deliberately *not* defined here. An earlier version of this function
-# lived at this exact spot, splitting `and`/`or` *before* `->` so that
-# (unlike the active parser, and unlike ordinary textbook precedence)
-# implication bound *tighter* than conjunction/disjunction; it was fully
-# superseded the same way `parse_justification` above was, and for the
-# same reason it was safe to delete outright: `ProofParserPolicy`
-# overwrites `ProofParser.parse_formula` unconditionally the moment the
-# package loads, so nothing has called this module's own definition since
-# that override was introduced. Unlike `parse_justification`'s
-# replacement, `_parse_formula_conventional` isn't a self-contained
-# module of its own -- it reaches back into this module's `split_top_level`,
-# `parse_term`, `_match_applied_symbol`, and `_BARE_IDENTIFIER_RE` -- so it
-# stays a policy overlay in `ProofParserPolicy.py` rather than moving here
-# or being imported wholesale the way `parse_justification` was.
-
-
-# `parse_justification` itself lives in `ProofJustification.py` (imported
-# above) and is deliberately *not* redefined here. An earlier,
-# substring-keyword-matching implementation used to live at this exact
-# spot; it was fully superseded when `ProofJustification`'s deterministic
-# alias-table resolver became the authoritative rule-name parser, but the
-# old body was left in place, silently dead: `SyLoPy/source/__init__.py`
-# imports `ProofParserPolicy` right after this module, and
-# `ProofParserPolicy` overwrote `ProofParser.parse_justification` at
-# import time regardless of what was defined here, so nothing ever
-# actually called the old inline version again. Removed once confirmed
-# nothing referenced it directly (see `test_import_contract.py` and the
-# module-identity check in `pytest_tests/test_parser.py`); `source/
-# test_parser.py`, the one file that *did* still exercise the dead
-# version's behavior directly, was correspondingly retired -- its still-
-# relevant cases live on in `pytest_tests/test_parser.py`.
+# `parse_justification` lives in ProofJustification.py (imported above) and
+# is deliberately not redefined here. The old inline implementation used
+# substring keyword matching and became dead when ProofJustification's
+# deterministic alias-table resolver became authoritative. Its obsolete
+# source/test_parser.py coverage was retired; relevant cases remain in
+# pytest_tests/test_parser.py.
 
 
 def _split_trailing_parenthetical(text: str) -> Tuple[Optional[str], Optional[str]]:
@@ -1227,49 +1134,6 @@ class _LogicalSourceLine:
     start_line: int
     end_line: int
     original_text: str
-
-
-def _comment_preserving_newlines(match: re.Match) -> str:
-    return ''.join('\n' if ch == '\n' else ' ' for ch in match.group(0))
-
-
-def _prepare_surface_lines(text: str) -> Tuple[List[_LogicalSourceLine], List[str]]:
-    """Remove comments/headings and join wrapped physical lines.
-
-    Unlike the old direct parser, this retains physical source line numbers so
-    elaboration and validation errors can be mapped back to the user's text.
-    """
-    cleaned = re.sub(r'\(\*.*?\*\)', _comment_preserving_newlines, text, flags=re.S)
-    raw_lines: List[str] = []
-    physical = []
-    for line_number, line in enumerate(cleaned.splitlines(), start=1):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        raw_lines.append(line)
-        if _is_theory_directive(stripped):
-            continue
-        physical.append((line_number, line))
-
-    logical: List[_LogicalSourceLine] = []
-    for line_number, line in physical:
-        stripped = line.strip()
-        starts_item = (
-            _LABELED_LINE_RE.match(stripped)
-            or _BEGIN_SUBPROOF_RE.match(stripped)
-            or _END_SUBPROOF_RE.match(stripped)
-        )
-        if starts_item or not logical:
-            logical.append(_LogicalSourceLine(line, line_number, line_number, line))
-        else:
-            previous = logical[-1]
-            logical[-1] = _LogicalSourceLine(
-                previous.text + ' ' + stripped,
-                previous.start_line,
-                line_number,
-                previous.original_text + '\n' + line,
-            )
-    return logical, raw_lines
 
 
 def _surface_span(item: _LogicalSourceLine, label: Optional[str] = None) -> SourceSpan:
@@ -1564,6 +1428,32 @@ def try_elaborate_existence(entry: 'SurfaceLine', context: '_ElaborationContext'
     return (entry.label, formula, ('premise', declarations))
 
 
+def _base_line_elaborators():
+    """Return active base elaborators, including policy-installed wrappers.
+
+    The package's explicit assembly step installs the wrapper before callers
+    build theory environments. Resolve the active function here rather than
+    capturing it during module initialization.
+    """
+    return (
+        elaborate_compound_declaration,
+        try_elaborate_existence,
+    )
+
+
+def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
+    """Add base proof syntax to an explicitly selected theory without mutation."""
+    base_elaborators = _base_line_elaborators()
+    return replace(
+        environment,
+        line_elaborators=[
+            *base_elaborators,
+            *(item for item in environment.line_elaborators
+              if item not in base_elaborators),
+        ],
+    )
+
+
 def default_theory_environment() -> TheoryEnvironment:
     """The default surface language: base logic plus every theory module
     that happens to be importable, currently set theory and number theory.
@@ -1574,12 +1464,15 @@ def default_theory_environment() -> TheoryEnvironment:
     `NUMBER_THEORY_ENVIRONMENT`) can be composed with that other theory
     again here without duplicating anything: `Proof.__init__` merges
     `required_rules`/`required_axioms`/`required_declarations` by identity
-    (rule type+name, axiom structural equality, declaration name), so a
-    theory reachable through more than one path is just a harmless no-op
-    the second time.
+    (rule configuration, axiom structural equality, declaration name), so a
+    theory reachable through more than one path is just a harmless no-op the
+    second time. Rules are the same when `InferenceRule.same_configuration`
+    says so: two inductions over different types are two rules.
     """
-    environment = TheoryEnvironment(line_elaborators=[elaborate_compound_declaration, elaborate_typed_declaration, try_elaborate_existence],
-                                     rules=[pl.AlgebraRule()])
+    environment = TheoryEnvironment(
+        line_elaborators=list(_base_line_elaborators()),
+        rules=[pl.AlgebraRule()],
+    )
     try:
         import SyLoPy.source.SetTheory as st
         environment = environment.extended(st.SET_THEORY_ENVIRONMENT)
@@ -1604,8 +1497,14 @@ def default_theory_environment() -> TheoryEnvironment:
 
 
 class _ElaborationContext:
-    def __init__(self, environment: TheoryEnvironment):
+    def __init__(self, environment: TheoryEnvironment, theorem_names: Iterable[str] = ()):
         self.environment = environment
+        # Titles of the theorems this proof may cite (see
+        # `ProofJustification`): the justification parser cannot tell a title
+        # from a misspelled rule name, so whoever promotes the theorems says
+        # which exist. Citing one is only parsed here; that the proof has it
+        # is decided by the validator.
+        self.theorem_names = theorem_titles(theorem_names)
         self.origin_by_label: Dict[str, CoreOrigin] = {}
         # Rules a `line_elaborator` constructs *while elaborating a specific
         # line* -- as opposed to `environment.rules`, which is fixed before
@@ -1625,10 +1524,12 @@ class _ElaborationContext:
         # parallel `pl.DeclarationScope` used to be kept here too, dual-
         # written on every `register_declaration` call purely so this
         # constructor could lean on its "skip a compatible duplicate"
-        # seeding rule -- once every *read* (including the seeding for
-        # `DiscreteMath.relation_rule_set` in `elaborate_proof`) had moved
+        # seeding rule -- once every *read* (including the seeding of the
+        # relation rules that `elaborate_proof` used to do) had moved
         # onto `self.context`, that parallel structure had no reader of
-        # its own left and was removed. Seeded from
+        # its own left and was removed. (The relation rules have since
+        # stopped reading elaboration state at all: they ask the kernel's
+        # scope for the declaration at the line they justify.) Seeded from
         # `pl._dedupe_declarations(environment.declarations)`, not
         # `environment.declarations` directly, since the latter can
         # contain literal duplicate `Declaration`s (e.g. SetTheory's
@@ -1791,9 +1692,12 @@ class _ElaborationContext:
             label, formula, justification = result[0], result[1], result[2]
             tag = justification[0] if isinstance(justification, tuple) and justification else None
 
-            def bind_label_here(value: Any) -> None:
+            def bind_reference_here(value: Any, *, assumption: bool = False) -> None:
                 try:
-                    self.context.bind_label(label, value)
+                    if assumption:
+                        self.context.assume(value, label=label)
+                    else:
+                        self.context.bind_label(label, value)
                 except pc.DuplicateBindingError as exc:
                     raise ElaborationError(
                         f"label '{label}' is already used earlier in this "
@@ -1801,17 +1705,8 @@ class _ElaborationContext:
                         entry.span,
                     ) from exc
 
-            if tag == 'assume':
-                try:
-                    self.context.assume(formula, label=label)
-                except pc.DuplicateBindingError as exc:
-                    raise ElaborationError(
-                        f"label '{label}' is already used earlier in this "
-                        "proof or an enclosing scope",
-                        entry.span,
-                    ) from exc
-            elif (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
-                  and not formula.args and isinstance(formula.predicate, str)):
+            if (tag == 'arbitrary' and isinstance(formula, fl.AtomicFormula)
+                    and not formula.args and isinstance(formula.predicate, str)):
                 try:
                     self.context.bind_arbitrary(formula.predicate)
                 except pc.DuplicateBindingError as exc:
@@ -1821,9 +1716,8 @@ class _ElaborationContext:
                         "scope",
                         entry.span,
                     ) from exc
-                bind_label_here(formula)
-            else:
-                bind_label_here(formula)
+
+            bind_reference_here(formula, assumption=(tag == 'assume'))
         return result
 
     def _elaborate_entry_impl(self, entry: Any) -> Any:
@@ -1843,7 +1737,7 @@ class _ElaborationContext:
                 return result
 
         try:
-            justification = parse_justification(entry.justification_text)
+            justification = parse_justification(entry.justification_text, self.theorem_names)
             tag = justification[0]
             declarations = []
 
@@ -1903,16 +1797,18 @@ class _ElaborationContext:
 def elaborate_proof(
     surface_proof: SurfaceProof,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_names: Iterable[str] = (),
 ) -> ElaboratedEntries:
-    """Lower a SurfaceProof to the strict ProofLogic entry language."""
-    environment = environment or default_theory_environment()
-    context = _ElaborationContext(environment)
+    """Lower a SurfaceProof to the strict ProofLogic entry language.
+
+    `theorem_names` are the titles of the proved theorems the proof may cite
+    by name, with the lines that state their premises if they have any."""
+    if environment is None:
+        environment = default_theory_environment()
+    else:
+        environment = _with_base_line_elaborators(environment)
+    context = _ElaborationContext(environment, theorem_names)
     entries = [context.elaborate_entry(entry) for entry in surface_proof.entries]
-    try:
-        import SyLoPy.source.DiscreteMath as dm
-        context.extra_rules.extend(dm.relation_rule_set(context.context.declarations_here()))
-    except ImportError:
-        pass
     return ElaboratedEntries(
         entries,
         origin_by_label=context.origin_by_label,
@@ -1926,15 +1822,21 @@ def elaborate_proof(
 def parse_proof_text(
     text: str,
     environment: Optional[TheoryEnvironment] = None,
+    theorem_names: Iterable[str] = (),
 ):
     """Parse natural proof text and elaborate it to core proof entries.
 
     The return shape remains ``(entries, raw_lines)`` for compatibility.
     ``entries`` is an :class:`ElaboratedEntries` list subclass containing
     origin and theory metadata used by :class:`ProofLogic.Proof`.
+
+    ``theorem_names`` are the titles of proved theorems the text may cite,
+    ``(Title from 3)`` when the theorem has premises. Parsing only needs the
+    titles; the :class:`~ProofLogic.TheoremRule` objects themselves go in the
+    ``rules`` of the :class:`~ProofLogic.Proof` that checks the entries.
     """
     surface = parse_surface_proof(text)
-    entries = elaborate_proof(surface, environment)
+    entries = elaborate_proof(surface, environment, theorem_names)
     return entries, surface.raw_lines
 
 
@@ -1946,9 +1848,20 @@ def check_proof_text(
     axioms: Optional[list] = None,
     rules: Optional[list] = None,
     declarations: Optional[list] = None,
+    theorem_names: Iterable[str] = (),
 ):
-    """Parse, elaborate, and validate proof text in one source-aware call."""
-    entries, _ = parse_proof_text(text, environment)
+    """Parse, elaborate, and validate proof text in one source-aware call.
+
+    The theorems among ``rules`` can be cited by title, with the lines that
+    state their premises; ``theorem_names`` adds titles to cite without them
+    (a citation that the proof has no such rule for is then a validation error).
+    """
+    entries, _ = parse_proof_text(
+        text,
+        environment,
+        [rule.name for rule in rules or () if isinstance(rule, pl.TheoremRule)]
+        + list(theorem_titles(theorem_names)),
+    )
     return pl.Proof(
         entries,
         premises=premises,

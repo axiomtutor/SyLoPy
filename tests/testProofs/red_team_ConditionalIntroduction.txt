@@ -1,0 +1,35 @@
+# 1: Conditional introduction with matching assumption and conclusion
+## Proof that
+### if A is a closed formula.
+### then A -> A.
+
+1. Let A be a closed formula. (Declaration)
+2. A -> A. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Conditional Introduction)
+ 2.2. A. (Reiteration from 2.1)
+end subproof
+
+# 2: Conditional introduction requires the stated antecedent as the assumption
+## Invalid: antecedent mismatch — the subproof assumes C, not A.
+### if A, B, and C are closed formulas.
+### then A -> B.
+
+1. Let A, B, and C be closed formulas. (Declaration)
+2. A -> B. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. C. (Assumption for Conditional Introduction)
+ 2.2. B. (Premise)
+end subproof
+
+# 3: Conditional introduction requires the stated consequent as the conclusion
+## Invalid: consequent mismatch — the subproof concludes C, not B.
+### if A, B, and C are closed formulas.
+### then A -> B.
+
+1. Let A, B, and C be closed formulas. (Declaration)
+2. A -> B. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. A. (Assumption for Conditional Introduction)
+ 2.2. C. (Premise)
+end subproof

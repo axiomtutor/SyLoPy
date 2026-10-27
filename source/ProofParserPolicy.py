@@ -1,26 +1,23 @@
 """Language-policy extensions for the proof parser.
 
-The parser implementation lives in :mod:`ProofParser`.  This module contains
-small, explicit policy extensions that used to be installed by a compatibility
-facade.  Keeping them separate avoids putting theory-specific surface syntax
-into the core parser while avoiding any dependency on a legacy parser module.
+The parser implementation lives in ProofParser. This module defines policy
+extensions and exposes one explicit installation entry point. The package
+initializer invokes that entry point after both modules have loaded.
 """
 from __future__ import annotations
 
 import re
 
-from SyLoPy.source import ProofParser as _parser
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
 
-# `parse_justification` no longer needs to be installed here: it has no
-# dependency on anything in `ProofParser`, so `ProofParser.py` now imports
-# `ProofJustification.parse_justification` directly at its own top level
-# instead of relying on this module to patch it in after the fact.
-_install_line_break_syntax(_parser)
-
-
-_original_parse_surface_declaration_statement = _parser.parse_surface_declaration_statement
+# Initialized by install_parser_extensions. These indirections let policy
+# functions reuse the parser's core helpers without importing and patching it
+# as a side effect of this module's import.
+_parser = None
+_original_parse_surface_declaration_statement = None
+_original_elaborate_compound_declaration = None
+_installed_parser = None
 
 
 def _parse_surface_declaration_statement(text, span):
@@ -32,9 +29,6 @@ def _parse_surface_declaration_statement(text, span):
         flags=re.I,
     )
     return _original_parse_surface_declaration_statement(normalized, span)
-
-
-_parser.parse_surface_declaration_statement = _parse_surface_declaration_statement
 
 
 _NAME = r"[A-Za-z_][A-Za-z0-9_]*"
@@ -54,7 +48,7 @@ _EXISTS_SUCH_THAT_RE = re.compile(
 _EXISTS_ARTICLE_RE = re.compile(
     r"^there\s+(?:exists|is)\s+"
     r"(?P<quant>(?:an?\s+)?unique|exactly\s+one|an?|one)\s+"
-    rf"(?:{_NOT_A_KEYWORD}(?P<kind>{_NAME})\s+)?"
+    rf"(?:{_NOT_A_KEYWORD}(?P<kind>{_NAME}(?:\s+{_NAME})*?)\s+)?"
     rf"(?P<name>{_NOT_A_VARIABLE}{_NAME}|\{{[^{{}}]*\}})\s*"
     r"(?P<connector>such\s+that|that|which|=|,)\s*:?\s*(?P<rest>.+)$",
     re.I,
@@ -253,9 +247,10 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     loosest of all the biconditional family -- the textbook convention,
     not the order this function's own checks run in (see below for why
     those two things differ). This is the `parse_formula` every caller
-    actually gets: it's installed onto `ProofParser.parse_formula` at
-    import time (see the bottom of this module) and is deliberately an
-    *extension* of the core parser rather than a second parser
+    actually gets after the package initializer calls
+    `install_parser_extensions`: it installs this function as
+    `ProofParser.parse_formula` and is deliberately an *extension* of the
+    core parser rather than a second parser
     implementation -- it reaches back into `ProofParser`'s own
     `split_top_level`, `parse_term`, `_match_applied_symbol`, and
     `_BARE_IDENTIFIER_RE` for everything except connective ordering.
@@ -453,7 +448,9 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
                 _parse_formula_conventional(parts[1], bound_vars, environment),
             )
 
-    m = re.match(r"^if\s+(.*?)\s+then\s+(.*)$", s, flags=re.I)
+    # Accept the standard comma before "then" without making it part of
+    # the antecedent (which may itself be a complete theory phrase).
+    m = re.match(r"^if\s+(.*?)(?:,\s*|\s+)then\s+(.*)$", s, flags=re.I)
     if m:
         return fl.Implies(
             _parse_formula_conventional(m.group(1), bound_vars, environment),
@@ -536,11 +533,6 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     raise ValueError(f"Unrecognized formula syntax: {s!r}")
 
 
-_parser.parse_formula = _parse_formula_conventional
-
-
-_original_elaborate_compound_declaration = _parser.elaborate_compound_declaration
-
 
 def _membership_characterization(text: str):
     s = text.strip().rstrip(".").strip()
@@ -614,4 +606,31 @@ def _elaborate_membership_characterization(entry, context):
     return _original_elaborate_compound_declaration(entry, context)
 
 
-_parser.elaborate_compound_declaration = _elaborate_membership_characterization
+def install_parser_extensions(parser) -> None:
+    """Install parser-policy extensions at one explicit assembly point.
+
+    source.__init__ calls this after the parser and policy modules have loaded.
+    Repeated calls with the same parser are harmless; installation into a
+    different parser module is unsupported.
+    """
+    global _parser
+    global _original_parse_surface_declaration_statement
+    global _original_elaborate_compound_declaration
+    global _installed_parser
+
+    if _installed_parser is parser:
+        return
+    if _installed_parser is not None:
+        raise RuntimeError("parser-policy extensions are already installed on another module")
+
+    _parser = parser
+    _install_line_break_syntax(parser)
+
+    _original_parse_surface_declaration_statement = parser.parse_surface_declaration_statement
+    parser.parse_surface_declaration_statement = _parse_surface_declaration_statement
+    parser.parse_formula = _parse_formula_conventional
+
+    _original_elaborate_compound_declaration = parser.elaborate_compound_declaration
+    parser.elaborate_compound_declaration = _elaborate_membership_characterization
+
+    _installed_parser = parser

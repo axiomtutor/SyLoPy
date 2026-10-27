@@ -65,6 +65,8 @@ recursive shape as induction itself, e.g.
 below are in use.
 """
 
+import re
+
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
@@ -78,6 +80,22 @@ _y = tl.VariableTerm('y')
 
 def _Nat(term: tl.Term) -> fl.Formula:
     return fl.AtomicFormula('Nat', [term])
+
+
+def try_parse_nat_formula(text: str, bound_vars):
+    """Parse the number-theory phrase 'TERM is a natural number' as Nat(TERM).
+
+    This is a formula parser, not a typing side channel: the resulting formula
+    is ordinary and citable, and the parser is registered by the combined
+    number-theory environment.
+    """
+    normalized = " ".join(text.strip().rstrip(".").split())
+    match = re.fullmatch(r"(.+?)\s+is\s+a\s+natural\s+number", normalized, flags=re.I)
+    if match is None:
+        return None
+
+    import SyLoPy.source.ProofParser as pp
+    return _Nat(pp.parse_term(match.group(1), bound_vars))
 
 
 def _Succ(term: tl.Term) -> tl.Term:
@@ -119,6 +137,7 @@ NAT_TYPE = pl.Type(
     axioms=NAT_AXIOMS,
     schema_rules=[pl.InductionRule(type_predicate="Nat", zero_term=Zero, succ_symbol=SUCC)],
     declarations=NAT_DECLARATIONS,
+    descriptors=["natural number", "natural numbers"],
 )
 
 

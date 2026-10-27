@@ -248,6 +248,20 @@ def test_a_builder_does_not_capture_a_name_the_element_uses():
     assert alpha(formula, core("forall v, (In(v, u) iff (In(v, X) and P(v)))"))
 
 
+def test_set_builder_range_does_not_capture_an_outer_variable():
+    reads_as(
+        "forall x, Y = {x in x: P(x)}",
+        "forall x, forall z, (In(z, Y) iff (In(z, x) and P(z)))",
+    )
+
+
+def test_replacement_builder_range_does_not_capture_an_outer_variable():
+    reads_as(
+        "forall x, Y = {F(x): x in x}",
+        "forall x, forall v, (In(v, Y) iff exists z, (In(z, x) and v = F(z)))",
+    )
+
+
 def test_an_element_may_not_use_a_name_the_builder_binds_inside():
     with pytest.raises(ValueError, match="bound inside"):
         surface("w is in {u in X: exists w, Q(u, w)}")
@@ -310,6 +324,22 @@ def test_bounded_quantifier_can_appear_after_a_connective():
     )
 
 
+@pytest.mark.parametrize("text,plain", [
+    (
+        "forall x, forall x in x, P(x)",
+        "forall x, forall z, (In(z, x) -> P(z))",
+    ),
+    (
+        "forall x, exists x in x such that P(x)",
+        "forall x, exists z, (In(z, x) and P(z))",
+    ),
+])
+def test_bounded_quantifier_range_does_not_capture_outer_variable(text, plain):
+    # The range set is parsed outside the inner binder, so its x must still
+    # refer to the surrounding forall x, not to the bounded variable.
+    reads_as(text, plain)
+
+
 @pytest.mark.parametrize("text", [
     "forall a in X",
     "exists a in X",
@@ -334,9 +364,15 @@ def test_malformed_bounded_quantifiers_are_refused(text):
     ("there exists a set Y such that Y = {a, b}", "exists Y, forall u, (In(u, Y) iff (u = a or u = b))"),
     ("there exists x such that there exists y such that R(x, y)", "exists x, exists y, R(x, y)"),
     ("there exists an integer n such that P(n)", "exists n, (Int(n) and P(n))"),
+    ("there exists a natural number n such that P(n)", "exists n, (Nat(n) and P(n))"),
 ])
 def test_existential_phrases_desugar_to_ordinary_quantifiers(text, plain):
     reads_as(text, plain)
+
+
+def test_unknown_multiword_existential_kind_is_rejected_with_guidance():
+    with pytest.raises(ValueError, match="no imported theory defines the condition"):
+        surface("there exists a mythical creature x such that P(x)")
 
 
 def test_the_word_set_adds_no_condition():
@@ -407,7 +443,6 @@ def test_symbolic_quantifiers_keep_their_old_scope():
 
 
 @pytest.mark.parametrize("text", [
-    "there exists a natural number n such that P(n)",   # two-word kind: no such predicate
     "there exists a unique set Y",                       # no condition
     "there exists a unique set Y such that",             # empty condition
     "there exists a set such that P",                    # no variable

@@ -149,8 +149,8 @@ def test_core_renderer_exposes_desugared_steps_without_reparsing_text():
 # A parallel `pl.DeclarationScope` used to be kept here too (see
 # todos.txt's "ProofContext integration" / "remove duplicated lexical
 # scope bookkeeping" phases), dual-written on every `register_declaration`
-# call. Once every *read* -- including the seeding for
-# `DiscreteMath.relation_rule_set` -- had moved onto `context.context`,
+# call. Once every *read* -- including the seeding of the relation rules
+# that `elaborate_proof` used to do -- had moved onto `context.context`,
 # the parallel structure had no reader of its own left and was removed;
 # these tests now just confirm `context.context` behaves correctly on
 # its own.
@@ -328,6 +328,22 @@ def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof
 # anything to exercise.
 # --------------------------------------------------------------------
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1. A. (Premise)\n1. B. (Premise)\n",
+        "1. A. (Premise)\nbegin subproof\n 1. B. (Assumption)\nend subproof\n",
+    ],
+    ids=["duplicate-line-label", "duplicate-assumption-label"],
+)
+def test_duplicate_reference_labels_have_consistent_elaboration_errors(text):
+    with pytest.raises(
+        pe.ElaborationError,
+        match="already used earlier in this proof or an enclosing scope",
+    ):
+        pp.parse_proof_text(text)
+
+
 def test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_subproof():
     # The label half of the same "parent visibility" property the
     # declaration test above covers: an existential established outside a
@@ -439,4 +455,51 @@ def test_typed_declarations_register_into_proof_context():
     assert declaration is not None
     assert declaration.kind == pl.DeclarationKind.OBJECT
     assert declaration.type_name == "a natural number"
+
+
+
+@pytest.mark.parametrize("membership", ["a is in X", "a is not in X"])
+def test_compound_declaration_keeps_following_membership_formula_as_a_premise(membership):
+    """A membership formula must not become part of the preceding type descriptor."""
+    entries, _ = pp.parse_proof_text(
+        f"1. Let X be any set, {membership}. (Declaration)\n"
+    )
+
+    (_label, formula, (tag, declarations)), = entries
+    assert tag == "premise"
+    assert [declaration.name for declaration in declarations] == ["X"]
+    assert declarations[0].type_name == "any set"
+    assert pl._ast_eq(formula, pp.parse_formula(membership))
+
+
+def test_compound_declaration_keeps_membership_declaration_separate_from_descriptor():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be any set, a in X. (Declaration)\n"
+    )
+
+    (_label, formula, (tag, declarations)), = entries
+    assert tag == "premise"
+    by_name = {declaration.name: declaration for declaration in declarations}
+    assert set(by_name) == {"X", "a"}
+    assert by_name["X"].type_name == "any set"
+    assert pl._ast_eq(formula, pp.parse_formula("a is in X"))
+
+
+def test_compound_relation_descriptor_keeps_its_properties_before_membership_premise():
+    text = (
+        "1. Let X be any set, R be a reflexive, symmetric relation on X, "
+        "a in X. (Declaration)\n"
+    )
+    entries, _ = pp.parse_proof_text(text)
+
+    (_label, formula, (tag, declarations)), = entries
+    assert tag == "premise"
+    by_name = {declaration.name: declaration for declaration in declarations}
+    assert set(by_name) == {"X", "R", "a"}
+    assert by_name["X"].type_name == "any set"
+    assert "a in X" not in by_name["R"].type_name
+    assert pl._ast_eq(formula, pp.parse_formula("a is in X"))
+    metadata = dict(by_name["R"].metadata)
+    assert metadata["carrier"] == "X"
+    assert set(metadata["properties"]) == {"reflexive", "symmetric"}
 

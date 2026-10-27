@@ -43,7 +43,7 @@ What's characterized here
      divides `n`) -- there is no axiom saying `Quotient` is total, and no
      axiom governing what `n/a` means when it *isn't* an integer.
        - Defining property: if `n/a` is an integer, then `n = a * (n/a)`.
-       - Uniqueness: if `m` is an integer and `n = a * m`, then `n/a = m`.
+       - Uniqueness: if `m` is an integer, `n = a * m`, and `a ≠ Zero`, then `n/a = m`.
      Both are exposed as one-step citable rules (`QuotientDefiningPropertyRule`,
      `QuotientUniquenessRule`) rather than left as a generic "Algebra"
      black box -- see the note on that below.
@@ -63,6 +63,12 @@ Divisibility (`a|n`, "a divides n") is *not* a new primitive or a new
 rule. It is definitional sugar, expanded at parse time to
 `exists m, (Int(m) and n = a * m)` -- the same principle `SetTheory`'s
 subset notation already follows (see `ELABORATION_ARCHITECTURE.md`).
+
+Parity wording has an intentionally smaller commitment: `n is even` and
+`n is odd` lower to the unary predicates `Even(n)` and `Odd(n)`.
+These predicates are vocabulary only; this module adds no arithmetic axioms
+characterizing parity. The ambiguous shorthand `n is even or odd` remains
+rejected; write the subject explicitly in both alternatives.
 Existential Introduction/Elimination, already in `ProofLogic.default_rules()`,
 are what a proof actually cites to introduce or use a divisibility fact;
 there is no separate "Definition of Divisibility" rule to look up, the
@@ -126,6 +132,8 @@ import SyLoPy.source.TermLogic as tl
 from SyLoPy.source.ProofElaboration import TheoryEnvironment
 
 INT_PREDICATE = "Int"
+EVEN_PREDICATE = "Even"
+ODD_PREDICATE = "Odd"
 PLUS = "Plus"
 TIMES = "Times"
 NEG = "Neg"
@@ -179,11 +187,14 @@ INT_AXIOMS = [
         _Int(_Quotient(_n, _a)), fl.Equals(_n, _Times(_a, _Quotient(_n, _a))),
     ))),
 
-    # 6. Quotient uniqueness: any integer solution to that same equation
-    #    *is* n/a -- division is the unique inverse of multiplication when
-    #    an inverse exists at all.
+    # 6. Quotient uniqueness: if a is nonzero, any integer solution to
+    #    n = a*m is n/a. Without the nonzero guard, n = a = 0 would force
+    #    0/0 to equal every integer.
     fl.ForAll('n', fl.ForAll('a', fl.ForAll('m', fl.Implies(
-        fl.And(_Int(_m), fl.Equals(_n, _Times(_a, _m))),
+        fl.And(
+            fl.And(_Int(_m), fl.Equals(_n, _Times(_a, _m))),
+            fl.Not(fl.Equals(_a, nt.Zero)),
+        ),
         fl.Equals(_Quotient(_n, _a), _m),
     )))),
 
@@ -224,6 +235,8 @@ INT_AXIOMS = [
 
 INT_DECLARATIONS = [
     pl.Declaration(INT_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(EVEN_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(ODD_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
     pl.Declaration(PLUS, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(TIMES, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(NEG, pl.DeclarationKind.FUNCTION, arity=1),
@@ -264,18 +277,22 @@ class QuotientDefiningPropertyRule(pl.AxiomSchemaRule):
 
 
 class QuotientUniquenessRule(pl.AxiomSchemaRule):
-    """From `Int(m)` and `n = a * m` (cited in that order), infer `n/a = m`:
-    Universal Instantiation of axiom 6 above plus Modus Ponens, bundled
-    the same way as `QuotientDefiningPropertyRule`.
+    """From `Int(m)`, `n = a * m`, and `a ≠ Zero` (in that order), infer
+    `n/a = m`: Universal Instantiation of axiom 6 above plus Modus Ponens,
+    bundled the same way as `QuotientDefiningPropertyRule`.
 
     Example::
 
         3.2. Int(m). (Conjunction Elimination from 3.1)
         3.3. n = Times(a, m). (Conjunction Elimination from 3.1)
-        3.4. n/a = m. (Quotient Uniqueness from 3.2, 3.3)
+        3.4. not (a = Zero). (Premise)
+        3.5. n/a = m. (Quotient Uniqueness from 3.2, 3.3, 3.4)
+
+    A zero denominator is not covered by this rule: when `a = Zero`, the
+    equation `n = a * m` cannot uniquely identify `m`.
     """
     name = "QuotientUniqueness"
-    premise_arity = 2
+    premise_arity = 3
 
     def _expected(self, phi, candidates):
         if not isinstance(phi, fl.Equals):
@@ -285,7 +302,11 @@ class QuotientUniquenessRule(pl.AxiomSchemaRule):
                 and len(quotient_term.args) == 2):
             return None
         n_term, a_term = quotient_term.args
-        return [_Int(m_term), fl.Equals(n_term, _Times(a_term, m_term))]
+        return [
+            _Int(m_term),
+            fl.Equals(n_term, _Times(a_term, m_term)),
+            fl.Not(fl.Equals(a_term, nt.Zero)),
+        ]
 
 
 INT_TYPE = pl.Type(
@@ -294,6 +315,7 @@ INT_TYPE = pl.Type(
     axioms=INT_AXIOMS,
     schema_rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()],
     declarations=INT_DECLARATIONS,
+    descriptors=["integer", "integers"],
 )
 
 
@@ -344,6 +366,69 @@ def try_parse_int_term(text: str, bound_vars):
     return _Quotient(pp.parse_term(parts[0], bound_vars), pp.parse_term(parts[1], bound_vars))
 
 
+def try_parse_parity_phrase(text: str, bound_vars):
+    """Parse the parity vocabulary as uninterpreted unary predicates.
+
+    The phrase-parser hook checks the whole input before connective splitting.
+    That lets this function preserve the deliberate rejection of the ambiguous
+    shorthand "n is even or odd" rather than letting "odd" fall back to an
+    unrelated zero-argument proposition.
+    """
+    import re
+
+    s = " ".join(text.strip().rstrip(".").split())
+    if re.fullmatch(r"(.+?)\s+is\s+(?:even\s+or\s+odd|odd\s+or\s+even)", s, flags=re.I):
+        raise ValueError(
+            f"Ambiguous parity phrase {s!r}; write the subject in both alternatives"
+        )
+    # A repeated-subject parity disjunction is explicit and can be
+    # elaborated as ordinary disjunction. Recognize it before the single-
+    # phrase matcher, whose non-greedy subject group would otherwise consume
+    # the earlier "is even or n" as part of the final predicate's subject.
+    # Any other input containing "or" must fall back to the general connective
+    # grammar: especially "if P then n is even or n is odd", where splitting
+    # here may not see through the conditional, but the consequent is a valid
+    # parity disjunction when the conditional parser recursively reaches it.
+    if " or " in s:
+        alternatives = _split_top_level(s, " or ")
+        if len(alternatives) > 1:
+            matches = [
+                re.fullmatch(r"(.+?)\s+is\s+(even|odd)", alternative.strip(), flags=re.I)
+                for alternative in alternatives
+            ]
+            if all(matches):
+                import SyLoPy.source.ProofParser as pp
+                parsed = []
+                try:
+                    for match in matches:
+                        predicate = (
+                            EVEN_PREDICATE
+                            if match.group(2).lower() == "even"
+                            else ODD_PREDICATE
+                        )
+                        parsed.append(
+                            fl.AtomicFormula(
+                                predicate,
+                                [pp.parse_term(match.group(1), bound_vars)],
+                            )
+                        )
+                except ValueError:
+                    # This apparent alternative may include an outer
+                    # connective (for example, "if P then n is even").
+                    # Leave that complete formula to the general grammar.
+                    return None
+                return fl.Or(*parsed)
+        return None
+
+    match = re.fullmatch(r"(.+?)\s+is\s+(even|odd)", s, flags=re.I)
+    if match is None:
+        return None
+
+    import SyLoPy.source.ProofParser as pp
+    predicate = EVEN_PREDICATE if match.group(2).lower() == "even" else ODD_PREDICATE
+    return fl.AtomicFormula(predicate, [pp.parse_term(match.group(1), bound_vars)])
+
+
 def try_parse_int_formula(text: str, bound_vars):
     """Formula-level sugar recognized in *any* position (top of a line or
     nested inside a connective -- see `ProofParser.parse_formula`'s
@@ -380,11 +465,16 @@ def try_parse_int_formula(text: str, bound_vars):
 
 NUMBER_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="number theory",
-    nested_formula_parsers=[try_parse_int_formula],
+    nested_formula_parsers=[nt.try_parse_nat_formula, try_parse_int_formula],
+    phrase_parsers=[try_parse_parity_phrase],
     term_parsers=[try_parse_int_term],
     rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()] + list(nt.NAT_TYPE.schema_rules),
     axioms=list(INT_AXIOMS) + list(nt.NAT_AXIOMS),
     declarations=list(INT_DECLARATIONS) + list(nt.NAT_DECLARATIONS),
+    declaration_recipes=[
+        nt.NAT_TYPE.as_declaration_recipe(),
+        INT_TYPE.as_declaration_recipe(),
+    ],
 ).extended(st.SET_THEORY_ENVIRONMENT)
 
 

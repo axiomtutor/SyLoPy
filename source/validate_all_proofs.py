@@ -175,6 +175,17 @@ def parse_multi_proof_file(text):
     text = _COMMENT_RE.sub(" ", text)
     lines = text.splitlines()
     positions = [index for index, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
+    # The titles of every proof in the file, so that one proof can cite another
+    # with the lines that state its premises (`(Title from 3)`): the parser
+    # cannot tell a title from a misspelled rule name. Parsing a citation does
+    # not give the proof the theorem; `run_multi_proof_file` does, once the
+    # earlier proof has been promoted, so citing a later or an unpromoted
+    # proof fails when it is checked.
+    titles = []
+    for start in positions:
+        title = _PROOF_HEADER_RE.match(lines[start].strip()).group(2)
+        if title and title.strip():
+            titles.append(title.strip())
     cases = []
     for position, start in enumerate(positions):
         end = positions[position + 1] if position + 1 < len(positions) else len(lines)
@@ -183,7 +194,9 @@ def parse_multi_proof_file(text):
         expected, description, body_start = _split_header_block(block)
         body = "\n".join(block[body_start:])
         try:
-            entries, raw_lines = pp.parse_proof_text(body) if body.strip() else ([], [])
+            entries, raw_lines = (
+                pp.parse_proof_text(body, theorem_names=titles) if body.strip() else ([], [])
+            )
             error = None
         except Exception as exc:
             entries, raw_lines = [], []
@@ -455,17 +468,28 @@ def main(argv=None):
     enforced_fails = 0
     enforced_results = []
     informational_results = []
+    fixture_failures = []
 
     print("=== Enforced fixture corpus ===")
     for directory in ENFORCED_DIRS:
         suite_results = run([directory])
         enforced_results.extend(suite_results)
+        fixture_failures.extend(
+            (directory, "enforced", result)
+            for result in suite_results
+            if not result.passed
+        )
         enforced_fails += _print_suite_summary(directory, suite_results, True)
 
     print("\n=== Informational fixture corpus ===")
     for directory in INFORMATIONAL_DIRS:
         suite_results = run([directory])
         informational_results.extend(suite_results)
+        fixture_failures.extend(
+            (directory, "informational", result)
+            for result in suite_results
+            if not result.passed
+        )
         _print_suite_summary(directory, suite_results, False)
 
     print(
@@ -473,6 +497,18 @@ def main(argv=None):
         f"(enforced: {sum(r.passed for r in enforced_results)}/{len(enforced_results)}, "
         f"informational: {sum(r.passed for r in informational_results)}/{len(informational_results)})"
     )
+    print("\n=== Fixtures that did not behave as expected ===")
+    if not fixture_failures:
+        print("none")
+    else:
+        for directory, category, result in fixture_failures:
+            message = result.message or "no diagnostic message"
+            message = re.sub(r"\s*[\r\n]+\s*", " ", message).strip()
+            print(
+                f"FAIL {directory}/{result.file} #{result.proof_id} "
+                f"({category}): {message}"
+            )
+
     if enforced_fails:
         print(f"\n{enforced_fails} unexpected result(s) in the enforced fixture corpus.")
         return 1

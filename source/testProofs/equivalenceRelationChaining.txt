@@ -1,0 +1,67 @@
+Use discrete math.
+
+(*
+A small end-to-end example: transitivity followed by symmetry, with both
+assumptions discharged by nested conditional-introduction subproofs.
+*)
+
+# 1
+## Proof that
+### if R is an equivalence relation on X and a, b, c are in X.
+### then R(a,b) -> (R(b,c) -> R(c,a)).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a,b) -> (R(b,c) -> R(c,a)). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,c) -> R(c,a). (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,c). (Assumption for Conditional Introduction)
+  2.2.2. R(a,c). (Relation Transitivity from 2.1, 2.2.1)
+  2.2.3. R(c,a). (Relation Symmetry from 2.2.2)
+ end subproof
+end subproof
+
+# 2
+## Proof that
+### if R is a partial order on X and a, b are in X.
+### then R(a,b) -> (R(b,a) -> a = b).
+
+1. Let X be any set, R be a partial order on X, and a, b be in X. (Declaration)
+2. R(a,b) -> (R(b,a) -> a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,a) -> a = b. (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,a). (Assumption for Conditional Introduction)
+  2.2.2. a = b. (Relation Antisymmetry from 2.1, 2.2.1)
+ end subproof
+end subproof
+
+# 3
+## Proof that
+### if R is an equivalence relation on X and a, b, c are in X.
+### if R(a,b) and R(c,b).
+### then R(a,c).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c be in X. (Declaration)
+2. R(a, b). (Premise)
+3. R(c, b). (Premise)
+4. R(b, c). (Relation Symmetry from 3)
+5. R(a, c). (Relation Transitivity from 2, 4)
+
+# 4
+## Proof that
+### if R is a partial order on X and a, b, c are in X.
+### if R(a,b), R(b,c), and R(c,a).
+### then a = b and b = c.
+
+1. Let X be any set,
+ R be a partial order on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and R(c,a). (Declaration)
+2. R(b,a). (Relation Transitivity from 1, 1)
+3. a = b. (Relation Antisymmetry from 1, 2)
+4. R(c,b). (Relation Transitivity from 1, 1)
+5. b = c. (Relation Antisymmetry from 1, 4)
+6. a = b and b = c. (Conjunction Introduction from 3, 5)

@@ -1,0 +1,123 @@
+# Introductory set-operation theorems. The first two are verified seed
+# patterns from the live collaboration handoff; the remaining proofs add
+# intersection/difference existence and uniqueness of an intersection.
+
+# 1: There is no set of all sets
+## Proof that
+### then not (exists V, forall x, In(x, V)).
+
+1. not (exists V, forall x, In(x, V)). (Proof by Contradiction from subproof below)
+ 1.1. exists V, forall x, In(x, V). (Assumption for contradiction)
+ 1.2. Let V be such a set. (Existence from 1.1)
+ 1.3. exists Y, forall u, (In(u, Y) iff (In(u, V) and not In(u, u))). (Separation)
+ 1.4. Let Y be such a set. (Existence from 1.3)
+ 1.5. In(Y, Y) iff (In(Y, V) and not In(Y, Y)). (Universal Instantiation from 1.4)
+ 1.6. In(Y, V). (Universal Instantiation from 1.2)
+ 1.7. In(Y, Y) -> (In(Y, V) and not In(Y, Y)). (Biconditional Elimination from 1.5)
+ 1.8. (In(Y, V) and not In(Y, Y)) -> In(Y, Y). (Biconditional Elimination from 1.5)
+ 1.9. not In(Y, Y). (Proof by Contradiction from subproof below)
+  1.9.1. In(Y, Y). (Assumption for contradiction)
+  1.9.2. In(Y, V) and not In(Y, Y). (Modus Ponens from 1.7, 1.9.1)
+  1.9.3. not In(Y, Y). (Conjunction Elimination from 1.9.2)
+  1.9.4. In(Y, Y) and not In(Y, Y). (Conjunction Introduction from 1.9.1, 1.9.3)
+ 1.10. In(Y, V) and not In(Y, Y). (Conjunction Introduction from 1.6, 1.9)
+ 1.11. In(Y, Y). (Modus Ponens from 1.8, 1.10)
+ 1.12. In(Y, Y) and not In(Y, Y). (Conjunction Introduction from 1.11, 1.9)
+
+
+# 2: The union of two sets exists
+## Proof that
+### If A and B are sets
+### then there exists U such that forall x, (In(x, U) iff (In(x, A) or In(x, B))).
+
+1. A and B are sets. (Declaration)
+2. Exists P, forall u, (In(u, P) iff (u = A or u = B)). (Axiom of pairing)
+3. Let P be such a set. (Existence from 2)
+4. Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, P) and In(u, v)))). (Axiom of union)
+5. Let Y be such a set. (Existence from 4)
+6. A = A. (Reflexivity)
+7. A = A or A = B. (Disjunction Introduction from 6)
+8. In(A, P). (Set property from 3, 7)
+9. B = B. (Reflexivity)
+10. B = A or B = B. (Disjunction Introduction from 9)
+11. In(B, P). (Set property from 3, 10)
+12. forall x, (In(x, Y) iff (In(x, A) or In(x, B))). (Universal Generalization from subproof below)
+begin subproof
+ 12.0. let c be arbitrary. (Arbitrary)
+ 12.1. In(c, Y) -> (In(c, A) or In(c, B)). (Conditional Introduction from subproof below)
+  12.1.1. In(c, Y). (Assumption for Conditional Introduction)
+  12.1.2. Exists v, (In(v, P) and In(c, v)). (Set property, 5, 12.1.1)
+  12.1.3. Let v be an object. (Declare)
+  12.1.4. In(c, A) or In(c, B). (Existential Elimination from 12.1.2, subproof below)
+  begin subproof
+   12.1.4.1. In(v, P) and In(c, v). (Assumption for Existential Elimination)
+   12.1.4.2. In(v, P). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.3. In(c, v). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.4. v = A or v = B. (Set property, 3, 12.1.4.2)
+   12.1.4.5. In(c, A) or In(c, B). (Proof by Cases from 12.1.4.4, subproofs below)
+   begin subproof
+    12.1.4.5.1. v = A. (Case)
+    12.1.4.5.2. In(c, A). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+   begin subproof
+    12.1.4.5.1. v = B. (Case)
+    12.1.4.5.2. In(c, B). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+  end subproof
+ 12.2. (In(c, A) or In(c, B)) -> In(c, Y). (Conditional Introduction from subproof below)
+  12.2.1. In(c, A) or In(c, B). (Assumption for Conditional Introduction)
+  12.2.2. In(c, Y). (Proof by Cases from 12.2.1, subproofs below)
+  begin subproof
+   12.2.2.1. In(c, A). (Case)
+   12.2.2.2. In(A, P) and In(c, A). (Conjunction Introduction from 8, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+  begin subproof
+   12.2.2.1. In(c, B). (Case)
+   12.2.2.2. In(B, P) and In(c, B). (Conjunction Introduction from 11, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+ 12.3. In(c, Y) iff (In(c, A) or In(c, B)). (Biconditional Introduction from 12.1, 12.2)
+end subproof
+13. Exists U, forall x, (In(x, U) iff (In(x, A) or In(x, B))). (Existential Introduction from 12)
+
+
+# 3: The intersection of two sets exists
+## Proof that
+### If A and B are sets
+### then there exists I such that forall u, (In(u, I) iff (In(u, A) and In(u, B))).
+
+1. A and B are sets. (Declaration)
+2. Exists I, forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Separation)
+
+
+# 4: The difference of two sets exists
+## Proof that
+### If A and B are sets
+### then there exists D such that forall u, (In(u, D) iff (In(u, A) and not In(u, B))).
+
+1. A and B are sets. (Declaration)
+2. Exists D, forall u, (In(u, D) iff (In(u, A) and not In(u, B))). (Separation)
+
+
+# 5: Intersection sets are unique
+## Proof that
+### If I and J both have the membership property of the intersection of A and B
+### then I = J.
+
+1. Let A, B, I, J be any set. (Declaration)
+2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+3. forall u, (In(u, J) iff (In(u, A) and In(u, B))). (Premise)
+4. I subseteq J. (Subset proof below)
+ 4.1. Let x in I. (Assumption for subset proof)
+ 4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
+ 4.3. In(x, J). (Set property from 3, 4.2)
+5. J subseteq I. (Subset proof below)
+ 5.1. Let y in J. (Assumption for subset proof)
+ 5.2. In(y, A) and In(y, B). (Set property from 3, 5.1)
+ 5.3. In(y, I). (Set property from 2, 5.2)
+6. I = J. (Set Equality from 4, 5)
