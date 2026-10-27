@@ -1,6 +1,6 @@
 # SyLoPy proof-file format
 
-Verified against master baseline commit `c1b05c1d229fe57bc4efd1addaa50ab86a885a65`. Complete proof examples in this document are regression-tested by pytest.
+Complete proof examples marked in this document are executed by the pytest suite; CI results identify the exact commit tested.
 
 This reference describes the proof-file syntax and the implemented surface forms in the current repository. The parser and theory modules remain authoritative when a rule or phrase evolves. The document distinguishes supported input syntax from features that are explicitly deferred.
 
@@ -318,7 +318,7 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
-Equality-case WLOG is implemented: it handles a disjunction of two equality cases and replays the following proof region for the other case, including retaining outside citations when they are invariant under exchanging the two case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names; see the next subsection.
+Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names; see the next subsection.
 
 ### Mutatis mutandis: the same argument for other names
 
@@ -364,6 +364,8 @@ end subproof
 9. T(a, b) and T(b, a). (Conjunction Introduction from 7, 8)
 ```
 
+Known defect: a range whose endpoints are the same line (for example, `Mutatis mutandis, 2 to 2`) is currently accepted in some cases, although the range is intended to identify a distinct start line before the repeated line. This is tracked in [issue #122](https://github.com/axiomtutor/SyLoPy/issues/122); the kernel fix is owned by Claude.
+
 The line is refused, with the reason, when:
 
 - line `B` was not derived by a rule from other lines (a premise, an assumption or a declaration has no argument to repeat), or is a WLOG step (an argument that contains a WLOG step can be repeated);
@@ -373,7 +375,7 @@ The line is refused, with the reason, when:
 - more than `B` or `A to B` is cited, the range runs backwards, or a cited line is not visible (a line inside a subproof that has ended is not);
 - the repeated argument is itself wrong for the new names, as when the new name is the witness the argument introduces: the usual freshness check of the repeated rule refuses it.
 
-Limits of this form: only names are replaced, not names by terms, and not one relation or function symbol by another. A name can be replaced only if it occurs in the statement of `B` and of the new line. A repeated argument is one line with the subproofs attached to it; a model whose argument contains a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.
+Limits of this form: only names are replaced, not names by terms, and not one relation or function symbol by another. A name can be replaced only if it occurs in the statement of `B` and of the new line. A repeated argument is one line with the subproofs attached to it; a repeated argument containing a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.
 
 ## 8. Premises, axioms, and conclusions
 
