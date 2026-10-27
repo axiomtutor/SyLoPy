@@ -1,44 +1,16 @@
 # Live Collaboration Handoff
 
-This file contains stable collaboration rules. The current task handoff is kept on the [coordination branch](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/AGENT_COLLABORATION.md); the [TODO](todos.txt) is the design ledger, and PRs/issues hold implementation details. The owner has final authority over priorities and semantics.
+This branch carries task-specific handoff state, not the stable contribution rules. Use the [collaboration guide on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md) for stable rules, [`todos.txt` on master](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt) for current status and design decisions, and [`JOBS_FOR_CHATGPT.md` on this branch](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/JOBS_FOR_CHATGPT.md) for delegated work. PRs and issues hold implementation-specific discussion.
 
-## Load only relevant context
+## Current handoff
 
-Do not read the full TODO and every architecture document for each task. Start here, inspect current master plus relevant open PRs/branches, and check the project-status/known-issues section at the top of `todos.txt`. Then read only the TODO subsection and reference docs needed for the task.
+- **No delegated jobs are currently queued.** Do not turn the TODO's general directions or owner-approval list into new work without an explicit owner request or a new queue item.
+- The completed job definitions and verified proof patterns are preserved in the [historical archive](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md). Archived task instructions are not current authorization.
+- The latest consolidation, [PR #128](https://github.com/axiomtutor/SyLoPy/pull/128), merged after [CI run #954 passed](https://github.com/axiomtutor/SyLoPy/actions/runs/40432256483). The live queue now lists the completed job IDs and no active jobs.
+- Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. [Issue #122](https://github.com/axiomtutor/SyLoPy/issues/122) remains an open kernel-owned finding about a same-line `Mutatis mutandis` range. Do not edit either kernel file without coordination.
 
-- Read `README.md` for user-facing behavior or API/documentation work.
-- Read `ARCHITECTURE_STATUS.md` for architecture, parser/elaboration boundaries, or validation-context work.
-- Read `ELABORATION_ARCHITECTURE.md` or `TYPE_SYSTEM_DESIGN.md` only when working in those areas.
-- Prefer targeted search or line-range reads over loading long design-history sections. Recheck PR state and CI; handoffs and status snapshots can become stale.
+## When resuming
 
-`pytest_tests/test_set_axioms.py::test_zfc_remaining_axioms_fixture_all_pass` failed until [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121) implemented `Mutatis mutandis` for names replaced by names; its proof stopped at line 5.3 after [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86) (Claude's WLOG fix) had fixed #75's replay defect. The test and the fixture were not changed and it passes now, so a failing test in CI is new: explain it or fix it, and do not describe it as known. [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75) is still open for the owner to close.
-
-The intended pipeline is surface proof text → parsing/surface AST → elaboration → core proof entries → `ProofLogic` validation. `ProofContext` owns elaboration-time lexical scope; kernel `LabelScope` and `DeclarationScope` remain separate validation-time trust boundaries.
-
-Keep theory-specific syntax and interpretation in theory environments and declaration recipes. Prefer surface sugar over new AST/kernel primitives unless a genuinely new logical primitive is required. Do not add generic parser/elaboration special cases to rescue one example.
-
-## Coordinate and respect ownership
-
-- Check for active work in the same subsystem before editing. Use one small, isolated branch per task.
-- Never rewrite, rebase, force-push, or clean up another agent's branch.
-- Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. Coordinate before changing either file.
-- If semantics are ambiguous or conflict with an owner decision, stop and raise the question; do not decide implicitly in code.
-
-## Current constraints
-
-- Equality-case WLOG replay is implemented (PR #63) and keeps outside citations that treat both cases alike ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)); it is not a new feature to implement from scratch. `Mutatis mutandis` is implemented for names replaced by names, and the informational ZFC proof `zfc_remaining_axioms.txt` that uses it passes. Do not weaken negative tests or expand WLOG to arbitrary properties.
-- The general `Set property` rule is implemented. Do not follow obsolete notes that describe it as wholly deferred.
-- The named Pairing, Union, Power Set, and Infinity axiom-citation rules are implemented, including the Union/Power Set instance forms (PR #81). The remaining owner decision is whether to retire generic `(Axiom)` citations; see `todos.txt` §5.
-- `Mutatis mutandis` is implemented only for names replaced by names. Replacing a name by a term, or a relation or function symbol by another, remains deferred pending explicit owner approval.
-- The scoped witness form `Let Y be such a set. (Existence from L)` names a witness from an existing existential; the axiom citation itself does not introduce one. Do not extend the older direct Pairing-witness form to other axioms.
-
-For the full rationale and current open work, consult only the relevant entries in `todos.txt` and the linked issue/PR; avoid copying that history into this guide.
-
-## Parser and test discipline
-
-- New surface-syntax cases belong in `parse_oracle/`, with `expect` written as the intended plain-logic reading. Investigate disagreements rather than automatically weakening the oracle.
-- Run `./run_tests.sh` for full verification. Preserve the enforced fixture corpus and report known failures separately from regressions.
-- Negative proof tests must fail for the intended rule/guard, not due to parsing, undeclared symbols, or unrelated scope errors.
-- Report the exact tested commit/CI run, Python test totals, coverage, enforced fixtures, informational fixtures, and any remaining failures.
-
-The aim is composable, reviewable changes that preserve the project's accumulated decisions, not maximum independent activity.
+1. Recheck current master, open PRs, and CI; don't treat this handoff as an authoritative snapshot of source code.
+2. Read the relevant `todos.txt` subsection and linked issues before changing behavior or proposing a new feature.
+3. Work only on an explicit job or owner-assigned task, using a separate branch and a small PR.
