@@ -33,11 +33,13 @@ promotion, and regression corpus are implemented. Recent completed jobs:
 - [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75): the WLOG citation
   replay defect is fixed; the issue remains open for the owner to close.
 
-Recent CI reports are from separate PR heads, not from a fresh run on the combined
-merge commit: [J24 run #939](https://github.com/axiomtutor/SyLoPy/actions/runs/40163300287)
-and [J25 run #942](https://github.com/axiomtutor/SyLoPy/actions/runs/40163755402).
-Use CI on the current commit for a current baseline; do not treat either PR's
-counts as the combined master's test totals.
+The latest successful CI run covering the recent documentation consolidation and
+unused-helper removals is [PR #128 run #954](https://github.com/axiomtutor/SyLoPy/actions/runs/40432256483)
+on PR-head commit `38b72d18ac00b181cad591924f7c53ddce22b57f`. It passed, but
+no workflow run on the resulting merge commit `6a39b605dd7ed7c15e00a360ca10b445789315fb`
+is recorded. The earlier J24 run #939 and J25 run #942 were also on separate PR
+heads. Use CI on the current commit for a fresh master baseline; do not treat
+PR-head test totals as the combined master's totals.
 
 ## Architecture and correctness invariants
 
