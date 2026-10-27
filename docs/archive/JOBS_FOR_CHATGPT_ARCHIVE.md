@@ -1,4 +1,4 @@
-> **Historical archive.** Snapshot captured on 2026-10-27 when all jobs in this queue had merged. The detailed job definitions, rules, and verified proof patterns below are preserved for provenance only; they are not authorization to restart work. Use `JOBS_FOR_CHATGPT.md`, `AGENT_COLLABORATION.md`, `todos.txt`, and current PRs/issues for authoritative status.
+> **Historical archive.** Snapshot captured on 2026-10-26 when all jobs in this queue had merged. The detailed job definitions, rules, and verified proof patterns below are preserved for provenance only; they are not authorization to restart work. Use `JOBS_FOR_CHATGPT.md`, `AGENT_COLLABORATION.md`, `todos.txt`, and current PRs/issues for authoritative status.
 
 ---
 
