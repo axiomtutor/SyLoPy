@@ -5,6 +5,8 @@ open design decisions, and invariants belong here. Detailed implementation histo
 is in the linked PRs; behavior is specified by the code, tests, README, and
 `docs/PROOF_FILE_FORMAT.md`.
 
+Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
+
 ## Current status
 
 SyLoPy is a proof-language checker with this pipeline:
