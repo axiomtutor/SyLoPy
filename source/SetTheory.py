@@ -119,10 +119,6 @@ def _parse_enumeration(text: str, bound_vars: set) -> Optional[List[tl.Term]]:
     return terms
 
 
-def _term_names(term: tl.Term) -> set:
-    return fl.term_names(term)
-
-
 def _fresh_generated_variable_name(used_names: set, preferred: str, candidates=()) -> str:
     """Pick an unused generated binder name, including when candidates are exhausted."""
     for candidate in candidates:
