@@ -318,13 +318,22 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
-Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names; see the next subsection.
+Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
 
-### Mutatis mutandis: the same argument for other names
+### Mutatis mutandis: the same argument for other names, terms and symbols
 
-`P'. (Mutatis mutandis, B)` says that line `B` was derived by an argument that works just as well for other names, and that `P'` is what `B` says with those names. `P'. (Mutatis mutandis, A to B)` says the same and names the line `A` where the argument starts. The names are read off the two statements: each name in `B` that changes is replaced by one name, wherever it occurs. Two names may be exchanged (`T(a, b)` repeated as `T(b, a)`), one may be replaced alone (`Q(a)` as `Q(b)`), and two may be replaced by one name. Nothing else may change: the predicates, the shape of the formula and the free variables stay, and bound variables may be named differently as long as they correspond.
+`P'. (Mutatis mutandis, B)` says that line `B` was derived by an argument that works just as well for other names or other symbols, and that `P'` is what `B` says with those. `P'. (Mutatis mutandis, A to B)` says the same and names the line `A` where the argument starts. What is replaced is read off the two statements, each wherever it occurs:
 
-The checker does not take the line on trust. It writes out the argument that is being repeated -- the justification of line `B` and the subproofs below it, with the names replaced -- and checks that like any other line, so a refusal is an ordinary refusal at the `Mutatis mutandis` line, saying which line of the argument failed. What the expansion has to arrange is the lines that the argument cites from outside. A cited line that says something about a name being replaced (`P(a)` when `a` becomes `b`) is replaced by the earliest visible line that says it of the new name (`P(b)`); a cited line that says nothing about those names (a general fact) is cited as it is. A premise written as one bundle (`Let P, Q be predicates such that: A. B. (Premise)`) stands for a line it states every fact of. The range `A to B` also asks that line `A` have such a counterpart for the new names, which is how the start of the argument is checked; `A` itself is not repeated, and the lines between `A` and `B` are not either.
+- a name in `B` is replaced by a name or by a term with no variable in it: `Q(a)` repeated as `Q(b)` or as `Q(f(a))`, or `Int(Plus(a, b))` repeated as `Int(Plus(Plus(a, b), c))`, which replaces `a` by `Plus(a, b)` and `b` by `c`;
+- a predicate or function symbol in `B` is replaced by another that takes the same number of arguments: `Q(a)` repeated as `S(a)`, `P(f(a))` as `P(g(a))`, or `R(a, c)` as `S(a, c)`.
+
+Everything is replaced at once. Two names may be exchanged (`T(a, b)` repeated as `T(b, a)`), and so may two predicates; a term that replaces a name is what it says, and is not replaced again. A name or symbol has one replacement, and two may be replaced by the same one. Nothing else may change: the connectives, the quantifiers, `=`, the shape of the formula and the free variables stay, and bound variables may be named differently as long as they correspond.
+
+The checker does not take the line on trust. It writes out the argument that is being repeated -- the justification of line `B` and the subproofs below it, with the names and symbols replaced -- and checks that like any other line, so a refusal is an ordinary refusal at the `Mutatis mutandis` line, saying which line of the argument failed. Three things follow from that, and none needs a rule of its own:
+
+- A term that replaces a name has no variable in it, so no quantifier of the line it is put into can capture it. A term that mentions the witness of an existential elimination in the argument is refused by the usual freshness check, as it would be if written out.
+- There is no table of which rules of one relation correspond to which rules of another. A rule that reads what a relation is declared to be (`Relation Transitivity`, `Relation Symmetry`) reads the declaration of the new relation at this line: it accepts when that relation is declared with the property and refuses, by the rule, when it is not. A rule that is about one symbol (`Set property`, cited with lines, is about `In`) refuses another predicate with its own message.
+- What the expansion has to arrange is the lines that the argument cites from outside. A cited line that says something about a name or symbol being replaced (`P(a)` when `a` becomes `b`, or the closure axiom for `Plus` when `Plus` becomes `Times`) is replaced by the earliest visible line that says it of the new one; a cited line that says nothing about those (a general fact) is cited as it is. A premise written as one bundle (`Let P, Q be predicates such that: A. B. (Premise)`) stands for a line it states every fact of. The range `A to B` also asks that line `A` have such a counterpart for the new names and symbols, which is how the start of the argument is checked; `A` itself is not repeated, and the lines between `A` and `B` are not either.
 
 <!-- proof-format-test: valid-proof -->
 ```text
@@ -362,7 +371,55 @@ end subproof
 7. T(a, b). (Modus Ponens from 3, 5)
 8. T(b, a). (Mutatis mutandis, 7)
 9. T(a, b) and T(b, a). (Conjunction Introduction from 7, 8)
+
+# 3: A name replaced by a term
+## Proof that
+### Int(a), Int(b) and Int(c) imply Int(Plus(Plus(a, b), c))
+
+1. Let a, b, c be objects. (Declaration)
+2. Int(a). (Premise)
+3. Int(b). (Premise)
+4. Int(c). (Premise)
+5. forall x, forall y, ((Int(x) and Int(y)) -> Int(Plus(x, y))). (Axiom)
+6. (Int(a) and Int(b)) -> Int(Plus(a, b)). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. Int(a) and Int(b). (Assumption for Conditional Introduction)
+ 6.2. forall y, ((Int(a) and Int(y)) -> Int(Plus(a, y))). (Universal Instantiation from 5)
+ 6.3. (Int(a) and Int(b)) -> Int(Plus(a, b)). (Universal Instantiation from 6.2)
+ 6.4. Int(Plus(a, b)). (Modus Ponens from 6.3, 6.1)
+end subproof
+7. Int(a) and Int(b). (Conjunction Introduction from 2, 3)
+8. Int(Plus(a, b)). (Modus Ponens from 6, 7)
+9. (Int(Plus(a, b)) and Int(c)) -> Int(Plus(Plus(a, b), c)). (Mutatis mutandis, 6)
+10. Int(Plus(a, b)) and Int(c). (Conjunction Introduction from 8, 4)
+11. Int(Plus(Plus(a, b), c)). (Modus Ponens from 9, 10)
+
+# 4: A function symbol replaced by another
+## Proof that
+### if P is a predicate and f and g are functions such that: forall x, P(f(x)). forall x, P(g(x)).
+### then P(f(a)) and P(g(a)).
+
+1. Let a be an object and P be a predicate and f, g be unary functions such that: forall x, P(f(x)). (Premise)
+2. forall x, P(g(x)). (Premise)
+3. P(f(a)). (Universal Instantiation from 1)
+4. P(g(a)). (Mutatis mutandis, 3)
+5. P(f(a)) and P(g(a)). (Conjunction Introduction from 3, 4)
+
+# 5: A relation replaced by another that is declared to have the same property
+## Proof that
+### if R and S are equivalence relations on X, R(a,b), R(b,c), S(a,b) and S(b,c),
+### then R(a, c) and S(a, c).
+
+1. Let X be any set,
+ R and S be equivalence relations on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. R(a,c). (Relation Transitivity from 1, 1)
+3. S(a,c). (Mutatis mutandis, 2)
+4. R(a,c) and S(a,c). (Conjunction Introduction from 2, 3)
 ```
+
+In the last example `S` is declared an equivalence relation, so `Relation Transitivity` accepts the repeated step for `S`. Had `S` been declared only symmetric, line 3 would be refused by that rule: `Mutatis mutandis cannot repeat line 2 with R by S: 'RelationTransitivity' does not justify S(a, c) from the cited line(s) ['1', '1']`.
 
 Known defect: a range whose endpoints are the same line (for example, `Mutatis mutandis, 2 to 2`) is currently accepted in some cases, although the range is intended to identify a distinct start line before the repeated line. This is tracked in [issue #122](https://github.com/axiomtutor/SyLoPy/issues/122); the kernel fix is owned by Claude.
 
@@ -370,12 +427,12 @@ The line is refused, with the reason, when:
 
 - line `B` was not derived by a rule from other lines (a premise, an assumption or a declaration has no argument to repeat), or is a WLOG step (an argument that contains a WLOG step can be repeated);
 - the argument contains a hypothesis -- a premise, an axiom, a witness named with `Existence from`, a declaration that states a fact or records structure -- since repeating it would add a hypothesis that nobody wrote;
-- the new statement is not line `B` with names replaced (a different predicate, shape, free variable or quantifier), replaces nothing, or replaces one name by two;
-- a line of the argument cites a line for which no visible line says the same of the new names, or `A` has no such counterpart;
+- the new statement is not line `B` with names and symbols replaced (a different connective, shape, free variable or quantifier, or an equation against a relation), replaces nothing, replaces one name or symbol by two, replaces a symbol by one that takes another number of arguments, or replaces a name by a term that has a variable in it;
+- a line of the argument cites a line for which no visible line says the same of the new names and symbols, or `A` has no such counterpart;
 - more than `B` or `A to B` is cited, the range runs backwards, or a cited line is not visible (a line inside a subproof that has ended is not);
-- the repeated argument is itself wrong for the new names, as when the new name is the witness the argument introduces: the usual freshness check of the repeated rule refuses it.
+- the repeated argument is itself wrong for the new names and symbols, and the rule of the step that fails refuses it: the new name is the witness the argument introduces, the new relation is not declared to have the property that a rule of the argument reads, or a rule about one symbol meets another.
 
-Limits of this form: only names are replaced, not names by terms, and not one relation or function symbol by another. A name can be replaced only if it occurs in the statement of `B` and of the new line. A repeated argument is one line with the subproofs attached to it; a repeated argument containing a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.
+Limits of this form: a name is replaced by a name or a term, and a predicate or function symbol by one symbol that takes the same number of arguments. A compound term is never replaced as a whole (`P(f(a))` as `P(c)` is refused, though `P(f(a))` as `P(g(b))` is not), and a symbol is never replaced by a term. Only a name or symbol that occurs in the statement of `B` is replaced, so the names and symbols that the argument uses only inside (a witness, a bound variable) are not changed. A repeated argument is one line with the subproofs attached to it, so a closed block of several lines (the first case of a proof by cases, say) cannot be repeated for the second as a whole. A repeated argument containing a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.
 
 ## 8. Premises, axioms, and conclusions
 
@@ -466,7 +523,7 @@ Separation and Replacement are schema citations. For axiom-instance and `Set pro
 Features explicitly deferred:
 
 - WLOG for arbitrary properties. Only the equality-case WLOG replay is implemented.
-- `Mutatis mutandis` beyond names replaced by names: replacing a name by a term, or a relation or function symbol by another with the rules that correspond to them. Only the first form is implemented.
+- `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->`.
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
 
 ## 12. Worked set-theory proofs
