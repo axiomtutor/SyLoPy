@@ -168,8 +168,8 @@ Uniqueness's arbitrary object c and equality target d must be distinct
 constants; c must be genuinely arbitrary, absent from the existence line and
 from every hypothesis in force, and not constrained by declaration metadata.
 The rule explains refusals through those conditions. Regression coverage is in
-\`pytest_tests/test_uniqueness_rule.py\` and
-\`tests/testProofs/uniqueness_red_team.txt\`.
+`pytest_tests/test_uniqueness_rule.py` and
+`tests/testProofs/uniqueness_red_team.txt`.
 
 Two policy/design questions remain:
 
