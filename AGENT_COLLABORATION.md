@@ -22,15 +22,11 @@ Keep theory-specific syntax and interpretation in theory environments and declar
 - Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. Coordinate before changing either file.
 - If semantics are ambiguous or conflict with an owner decision, stop and raise the question; do not decide implicitly in code.
 
-## Current constraints
+## Keep work status in one place
 
-- Equality-case WLOG replay is implemented (PR #63) and keeps outside citations that treat both cases alike ([issue #75](https://github.com/axiomtutor/SyLoPy/issues/75)); it is not a new feature to implement from scratch. `Mutatis mutandis` is implemented for names replaced by names, and the informational ZFC proof `zfc_remaining_axioms.txt` that uses it passes. Do not weaken negative tests or expand WLOG to arbitrary properties.
-- The general `Set property` rule is implemented. Do not follow obsolete notes that describe it as wholly deferred.
-- The named Pairing, Union, Power Set, and Infinity axiom-citation rules are implemented, including the Union/Power Set instance forms (PR #81). The remaining owner decision is whether to retire generic `(Axiom)` citations; see `todos.txt` §5.
-- `Mutatis mutandis` is implemented only for names replaced by names. Replacing a name by a term, or a relation or function symbol by another, remains deferred pending explicit owner approval.
-- The scoped witness form `Let Y be such a set. (Existence from L)` names a witness from an existing existential; the axiom citation itself does not introduce one. Do not extend the older direct Pairing-witness form to other axioms.
-
-For the full rationale and current open work, consult only the relevant entries in `todos.txt` and the linked issue/PR; avoid copying that history into this guide.
+- `todos.txt` is the source of truth for feature status, correctness invariants, design decisions, and owner-approval requirements. Do not duplicate that feature inventory here; read the relevant subsection before touching WLOG, `Mutatis mutandis`, axiom citations, witness handling, or theorem promotion.
+- `JOBS_FOR_CHATGPT.md` is the delegated-work tracker. Completed task specifications are preserved in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md` for historical context only; an archived specification is not current authorization to work.
+- Do not start an item marked as requiring owner approval in `todos.txt` without explicit approval.
 
 ## Parser and test discipline
 
