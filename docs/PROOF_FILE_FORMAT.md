@@ -471,7 +471,7 @@ Features explicitly deferred:
 
 ## 12. Worked set-theory proofs
 
-The first two examples are the verified introductory patterns maintained in the live collaboration handoff. They are complete proof files and are run by the documentation test, along with the additional examples in this section.
+The first two examples are foundational worked proofs. They are complete proof files and are run by the documentation test, along with the additional examples in this section.
 
 <!-- proof-format-test: valid-proof -->
 ```text

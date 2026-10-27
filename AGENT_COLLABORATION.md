@@ -1,6 +1,6 @@
 # Collaboration Guide
 
-This file contains stable collaboration rules. The [TODO](todos.txt) is the current-state/design ledger; [JOBS_FOR_CHATGPT.md on the coordination branch](https://github.com/axiomtutor/SyLoPy/blob/chatgpt-agent-guidance/JOBS_FOR_CHATGPT.md) records delegated jobs; PRs and issues hold implementation details and discussion. The owner has final authority over priorities and semantics.
+This file contains stable collaboration rules. The [TODO](todos.txt) is the current-state/design ledger; the [delegated-job tracker](JOBS_FOR_CHATGPT.md) records delegated work; PRs and issues hold implementation details and discussion. The owner has final authority over priorities and semantics.
 
 ## Load only relevant context
 

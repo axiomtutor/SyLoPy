@@ -1,5 +1,5 @@
-# Introductory set-operation theorems. The first two are verified seed
-# patterns from the live collaboration handoff; the remaining proofs add
+# Introductory set-operation theorems. The first two are foundational worked
+# examples; the remaining proofs add
 # intersection/difference existence and uniqueness of an intersection.
 
 # 1: There is no set of all sets
