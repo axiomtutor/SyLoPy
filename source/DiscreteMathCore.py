@@ -64,14 +64,6 @@ RELATION_TYPE_PROPERTIES = {
 }
 
 
-def _atom(relation: str, left: tl.Term, right: tl.Term) -> fl.Formula:
-    return fl.AtomicFormula(relation, [left, right])
-
-
-def _in(carrier: str, term: tl.Term) -> fl.Formula:
-    return fl.AtomicFormula(MEMBERSHIP, [term, tl.ConstantTerm(carrier, carrier)])
-
-
 def _relation_terms(phi: fl.Formula) -> Optional[Tuple[str, tl.Term, tl.Term]]:
     if not isinstance(phi, fl.AtomicFormula) or len(phi.args) != 2:
         return None
