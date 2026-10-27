@@ -130,48 +130,27 @@ already-elaborated proof entries. The two layers implement the same relevant
 lexical-scope semantics, but keeping them separate preserves the boundary
 between elaboration and kernel validation.
 
-## Where the project is going
+## Development direction
 
-The current direction is not a rewrite; it is a consolidation phase.
-`ProofContext` is the lexical environment used during elaboration. The kernel
-retains independent scope structures for validation of the elaborated proof.
-This separation is intentional: the elaborator resolves source-level bindings,
-while the kernel validates the resulting proof representation.
+Work is focused on consolidation, not a rewrite. The elaborator resolves
+source-level bindings; the kernel independently validates the resulting proof
+entries. Preserve this boundary.
 
-As new theory features are designed, the guiding principle is: most things
-beyond the level of pure logic should be sugar. New mathematical convenience
-— a notation, a derived fact like "exists a unique X" — should desugar into
-forms the kernel already understands rather than growing the kernel itself.
-Kernel/AST changes are reserved for genuinely new logical primitives.
+Most mathematical convenience beyond pure logic should be surface syntax that
+lowers into existing formulas, declarations, or proof steps. Change the kernel
+or AST only when a feature requires genuinely new logical behavior. Theory
+extensions should use theory-local syntax, declaration recipes, and rules
+rather than generic parser special cases.
 
-Short term, the project is heading toward:
+Current maintenance priorities:
 
-- a clearer public API for parsing and checking proofs;
-- broader theory support without breaking the existing proof corpus;
-- continued proof-corpus growth and regression coverage.
-
-In other words, the project is already functionally solid. The next step is to
-make it easier to extend and maintain.
-
-## Next work priorities
-
-1. Tighten the public-facing API.
-   - Keep the parser and proof-checking entry points clear and documented.
-   - Document canonical usage patterns and expected outputs for users.
-
-2. Expand theory modules and surface syntax.
-   - Add richer algebraic and order-theoretic features without destabilizing the
-     existing core logic.
-   - Prefer theory-local syntax and declaration recipes over generic ad hoc
-     elaboration hacks.
-   - Extend proofs within the agreed scope. Named axiom-citation rules and
-     `Mutatis mutandis` for names are implemented; replacing names by terms, or
-     relation and function symbols, remains deferred pending owner approval.
-
-3. Continue proof-corpus growth.
-   - Add more examples and end-to-end fixtures for edge cases, not just the core
-     rules already covered.
-   - Keep the existing enforced proof corpus as the regression floor.
+- Keep the public parsing and proof-checking API documented, including expected
+  inputs, outputs, and theory-environment selection.
+- Grow the informational examples and enforced regression corpus with realistic
+  proof patterns and edge cases.
+- Expand mathematical syntax and theory support within approved scope. In
+  particular, extending `Mutatis mutandis` beyond name-to-name replacement
+  remains deferred pending owner approval.
 
 ## Project structure
 
@@ -323,9 +302,3 @@ For Bash completion:
 ```bash
 source completion/run_tests.bash
 ```
-
-## Summary
-
-SyLoPy is a working proof-language checker with a mature core and an established
-regression corpus. See `todos.txt` for current maintenance priorities and
-design decisions.
