@@ -1,4 +1,4 @@
-> **Historical archive.** Snapshot captured on 2026-10-26 when all jobs in this queue had merged. The detailed job definitions, rules, and verified proof patterns below are preserved for provenance only; they are not authorization to restart work. Use `JOBS_FOR_CHATGPT.md`, `AGENT_COLLABORATION.md`, `todos.txt`, and current PRs/issues for authoritative status.
+> **Historical archive.** Snapshot captured on 2026-10-26 when all jobs in this queue had merged. The detailed job definitions, rules, and verified proof patterns below are preserved for provenance only; they are not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
 
 ---
 
