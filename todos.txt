@@ -117,25 +117,54 @@ negative tests.
 
 ### Mutatis mutandis
 
-Stage 1 is implemented: repeat the argument of a derived line after replacing
-names with names. A single-line citation `B` repeats that line and its attached
-subproofs; `A to B` additionally requires a visible counterpart for A, which
-is checked but not repeated. The intervening lines are not replayed. The checker
-expands and validates the repeated argument normally rather than trusting a new
-inference rule.
+Implemented in three stages (stage 1 [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121);
+stages 2 and 3 were approved by the owner on 2026-10-24). The rule repeats the
+argument of a derived line after replacing names, and the checker expands and
+validates the repeated argument like any other line rather than trusting a new
+inference rule. So a wrong alignment can only make it refuse a line, never
+accept a false one.
+
+- Stage 1: a name is replaced by a name.
+- Stage 2: a name is replaced by a term with no variable in it, so no quantifier
+  can capture it. The replacement is simultaneous and a replacement term is not
+  replaced again.
+- Stage 3: a predicate or function symbol is replaced by another that takes the
+  same number of arguments, everywhere it occurs; two may be exchanged. `=`, the
+  connectives and the quantifiers are never replaced. There is no table of
+  corresponding rules: a rule that reads a relation's declaration reads the new
+  relation's, and a rule about one symbol (`Set property` about `In`) refuses
+  another predicate.
+
+A single-line citation `B` repeats that line and its attached subproofs; `A to B`
+additionally requires a visible counterpart for A, which is checked but not
+repeated. The intervening lines are not replayed. A cited line that mentions a
+replaced name or symbol is replaced by the earliest visible line that says the
+same of the new one.
 
 The argument must be safe to repeat: premises, assumptions, witness lines,
 axiom citations, structure declarations, and unsupported justifications are
-rejected. Names are aligned from the source and target statements; replacements
-must fit those statements, and citations must remain visible or have valid
-counterparts. Details and examples are in
+rejected. Names and symbols are aligned from the source and target statements;
+replacements must fit those statements, and citations must remain visible or
+have valid counterparts.
+
+The substitution guard belongs to this `Mutatis mutandis` replay path, not to
+quantifier-inference rules. The substitution-application path must itself reject
+invalid or capture-causing variable substitutions rather than relying only on
+`_mm_align` to make bad mappings unreachable. Preserve strict binder matching;
+do not introduce alpha-renaming or change quantifier-inference side conditions
+to address this. Since WLOG shares the substitution helpers, verify that its
+existing valid behavior remains unchanged. Details and examples are in
 [`docs/PROOF_FILE_FORMAT.md`](https://github.com/axiomtutor/SyLoPy/blob/master/docs/PROOF_FILE_FORMAT.md),
 `pytest_tests/test_mutatis_mutandis.py`, and
 `pytest_tests/test_mutatis_mutandis_reasons.py`.
 
-Name-to-term replacement and relation/function-symbol replacement are stages 2
-and 3. Neither is designed or approved. Do not implement them without an owner
-decision. Issue #122 remains a kernel-owned correctness finding in stage 1.
+Not supported, and neither designed nor approved: replacing a compound term as a
+whole; repeating a closed block of several lines, so the second case of a proof
+by cases cannot be written by repeating the first (11 of the 13 Disjunction
+Elimination lines in the corpus have two blocks of the same shape); and
+counterpart lines that differ by the symmetry of `=` or `<->`. Do not implement
+these without an owner decision. Issue #122 remains a kernel-owned correctness
+finding.
 
 ### Number theory and discrete mathematics
 
@@ -200,7 +229,9 @@ collaboration handoff before starting.
 - Retiring generic `(Axiom)` citations for the four set axioms.
 - Implementing a symbolic defining property for sets without an explicit
   characterization.
-- Extending `Mutatis mutandis` beyond name-to-name replacement.
+- Extending `Mutatis mutandis` beyond names, terms and symbols (repeating a
+  closed block of several lines; counterpart lines that differ by the symmetry
+  of `=` or `<->`).
 - Extending WLOG to arbitrary properties.
 - Implementing the broader Infinity/finite-set semantics described above.
 - Declaring function symbols in proof text or making set operations into terms;

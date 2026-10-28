@@ -13,27 +13,30 @@ BAD_REFERENCE = pl.CATEGORY_BAD_REFERENCE
 RULE_MISMATCH = pl.CATEGORY_RULE_MISMATCH
 
 # case -> (line, category, distinctive part of the expected refusal)
+# Cases 4, 17 and 20 were refused in stage 1 because the replacement itself was
+# not allowed. Stages 2 and 3 allow it, so they are refused because the facts
+# that the repeated argument cites about the new symbols or term are not stated.
 REFUSALS = {
     "2": ("3", BAD_REFERENCE, "no visible line says b = a"),
-    "4": ("3", RULE_MISMATCH, "only names may change"),
-    "6": ("3", RULE_MISMATCH, "only names may change"),
+    "4": ("3", BAD_REFERENCE, "no visible line says R(g(b), b)"),
+    "6": ("3", RULE_MISMATCH, "only a term without variables can replace a name"),
     "8": ("4", RULE_MISMATCH, "a repeated argument may not add a hypothesis"),
     "10": ("5", BAD_REFERENCE, "no visible line says a = d"),
-    "12": ("5", RULE_MISMATCH, "only names may change"),
-    "17": ("3", RULE_MISMATCH, "only names may change"),
-    "20": ("3", RULE_MISMATCH, "only names may change"),
+    "12": ("5", RULE_MISMATCH, "only names and symbols may change"),
+    "17": ("3", BAD_REFERENCE, "no visible line says (∀x. (Q(x) → P(x)))"),
+    "20": ("3", BAD_REFERENCE, "no visible line says R(f(b))"),
 }
 
-VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "18", "19"]
+VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "18", "19", "21", "22", "23"]
 SIBLINGS = {
     "2": "1",
-    "4": "3",
+    "4": "21",
     "6": "5",
     "8": "7",
     "10": "9",
     "12": "11",
-    "17": "16",
-    "20": "19",
+    "17": "23",
+    "20": "22",
 }
 
 
