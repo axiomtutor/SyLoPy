@@ -145,7 +145,15 @@ The argument must be safe to repeat: premises, assumptions, witness lines,
 axiom citations, structure declarations, and unsupported justifications are
 rejected. Names and symbols are aligned from the source and target statements;
 replacements must fit those statements, and citations must remain visible or
-have valid counterparts. Details and examples are in
+have valid counterparts.
+
+The substitution guard belongs to this `Mutatis mutandis` replay path, not to
+quantifier-inference rules. The substitution-application path must itself reject
+invalid or capture-causing variable substitutions rather than relying only on
+`_mm_align` to make bad mappings unreachable. Preserve strict binder matching;
+do not introduce alpha-renaming or change quantifier-inference side conditions
+to address this. Since WLOG shares the substitution helpers, verify that its
+existing valid behavior remains unchanged. Details and examples are in
 [`docs/PROOF_FILE_FORMAT.md`](https://github.com/axiomtutor/SyLoPy/blob/master/docs/PROOF_FILE_FORMAT.md),
 `pytest_tests/test_mutatis_mutandis.py`, and
 `pytest_tests/test_mutatis_mutandis_reasons.py`.
