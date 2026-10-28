@@ -69,6 +69,34 @@ def _same(formulas, expected):
 
 
 # --------------------------------------------------------------------------
+# The citation: a line alone, or a range that starts before it
+# --------------------------------------------------------------------------
+
+REPEATED_LINE = """1. Let a, b be objects and P be a predicate such that: P(a). P(b). (Premise)
+2. P(a). (Reiteration from 1)
+3. P(b). (Mutatis mutandis, {cite})
+"""
+
+
+def test_a_line_is_repeated_by_citing_it_alone():
+    _accepted(REPEATED_LINE.format(cite="2"))
+
+
+def test_a_range_cannot_start_and_end_at_the_same_line():
+    error = _refused(REPEATED_LINE.format(cite="2 to 2"))
+    assert (error.label, error.category) == ("3", pl.CATEGORY_BAD_REFERENCE)
+    assert "'2 to 2' from a line to itself" in error.detail
+    assert "cite just 2" in error.detail
+
+
+def test_a_range_that_runs_backwards_is_refused_as_backwards():
+    error = _refused(REPEATED_LINE.format(cite="2 to 1"))
+    assert (error.label, error.category) == ("3", pl.CATEGORY_BAD_REFERENCE)
+    assert "backwards: line 2 comes after line 1" in error.detail
+    assert "from a line to itself" not in error.detail
+
+
+# --------------------------------------------------------------------------
 # What the line expands to
 # --------------------------------------------------------------------------
 

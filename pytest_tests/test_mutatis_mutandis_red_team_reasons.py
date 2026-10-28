@@ -24,10 +24,11 @@ REFUSALS = {
     "10": ("5", BAD_REFERENCE, "no visible line says a = d"),
     "12": ("5", RULE_MISMATCH, "only names and symbols may change"),
     "17": ("3", BAD_REFERENCE, "no visible line says (∀x. (Q(x) → P(x)))"),
+    "18": ("3", BAD_REFERENCE, "from a line to itself"),
     "20": ("3", BAD_REFERENCE, "no visible line says R(f(b))"),
 }
 
-VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "18", "19", "21", "22", "23"]
+VALID = ["1", "3", "5", "7", "9", "11", "13", "14", "15", "16", "19", "21", "22", "23", "24"]
 SIBLINGS = {
     "2": "1",
     "4": "21",
@@ -36,6 +37,7 @@ SIBLINGS = {
     "10": "9",
     "12": "11",
     "17": "23",
+    "18": "24",
     "20": "22",
 }
 
@@ -103,10 +105,3 @@ def test_fixture_runner_agrees_with_the_case_expectations():
     for number, expected_valid, ok, message, crashed in results:
         assert not crashed, (number, message)
         assert ok == expected_valid, (number, message)
-
-
-@pytest.mark.xfail(strict=True, reason="issue #122")
-def test_same_line_mutatis_range_is_rejected():
-    """A range A to B must not have an empty argument when A == B."""
-    ok, error = _check(_cases()["18"])
-    assert not ok, error

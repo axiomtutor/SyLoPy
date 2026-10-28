@@ -23,10 +23,6 @@ promotion, and regression corpus are implemented. Recent completed jobs:
 
 ### Open findings
 
-- [Issue #122](https://github.com/axiomtutor/SyLoPy/issues/122): the kernel accepts
-  a `Mutatis mutandis` citation range whose start and end are the same line.
-  The issue assigns the kernel fix to Claude; do not edit `ProofLogic.py` or
-  `ProofJustification.py` independently.
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
   proofs require arithmetic laws not currently axiomatized. This is an owner
   decision list, **not** authorization to add axioms.
@@ -163,8 +159,7 @@ whole; repeating a closed block of several lines, so the second case of a proof
 by cases cannot be written by repeating the first (11 of the 13 Disjunction
 Elimination lines in the corpus have two blocks of the same shape); and
 counterpart lines that differ by the symmetry of `=` or `<->`. Do not implement
-these without an owner decision. Issue #122 remains a kernel-owned correctness
-finding.
+these without an owner decision.
 
 ### Number theory and discrete mathematics
 
