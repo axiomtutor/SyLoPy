@@ -27,6 +27,12 @@ promotion, and regression corpus are implemented. Recent completed jobs:
   a `Mutatis mutandis` citation range whose start and end are the same line.
   The issue assigns the kernel fix to Claude; do not edit `ProofLogic.py` or
   `ProofJustification.py` independently.
+- [Issue #132](https://github.com/axiomtutor/SyLoPy/issues/132): substitution application
+  in `ProofLogic.py` can capture a variable supplied by an invalid replacement
+  map. The current `Mutatis mutandis` alignment guard makes this unreachable
+  from proof text, but the shared helper is unsafe when called directly. The
+  substitution-boundary guard and tests are assigned to Claude. This is not a
+  request to alter quantifier-inference rules or add alpha-renaming.
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
   proofs require arithmetic laws not currently axiomatized. This is an owner
   decision list, **not** authorization to add axioms.
