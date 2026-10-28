@@ -421,15 +421,13 @@ end subproof
 
 In the last example `S` is declared an equivalence relation, so `Relation Transitivity` accepts the repeated step for `S`. Had `S` been declared only symmetric, line 3 would be refused by that rule: `Mutatis mutandis cannot repeat line 2 with R by S: 'RelationTransitivity' does not justify S(a, c) from the cited line(s) ['1', '1']`.
 
-Known defect: a range whose endpoints are the same line (for example, `Mutatis mutandis, 2 to 2`) is currently accepted in some cases, although the range is intended to identify a distinct start line before the repeated line. This is tracked in [issue #122](https://github.com/axiomtutor/SyLoPy/issues/122); the kernel fix is owned by Claude.
-
 The line is refused, with the reason, when:
 
 - line `B` was not derived by a rule from other lines (a premise, an assumption or a declaration has no argument to repeat), or is a WLOG step (an argument that contains a WLOG step can be repeated);
 - the argument contains a hypothesis -- a premise, an axiom, a witness named with `Existence from`, a declaration that states a fact or records structure -- since repeating it would add a hypothesis that nobody wrote;
 - the new statement is not line `B` with names and symbols replaced (a different connective, shape, free variable or quantifier, or an equation against a relation), replaces nothing, replaces one name or symbol by two, replaces a symbol by one that takes another number of arguments, or replaces a name by a term that has a variable in it;
 - a line of the argument cites a line for which no visible line says the same of the new names and symbols, or `A` has no such counterpart;
-- more than `B` or `A to B` is cited, the range runs backwards, or a cited line is not visible (a line inside a subproof that has ended is not);
+- more than `B` or `A to B` is cited, the range runs backwards or starts and ends at the same line (to repeat a line alone, cite just that line), or a cited line is not visible (a line inside a subproof that has ended is not);
 - the repeated argument is itself wrong for the new names and symbols, and the rule of the step that fails refuses it: the new name is the witness the argument introduces, the new relation is not declared to have the property that a rule of the argument reads, or a rule about one symbol meets another.
 
 Limits of this form: a name is replaced by a name or a term, and a predicate or function symbol by one symbol that takes the same number of arguments. A compound term is never replaced as a whole (`P(f(a))` as `P(c)` is refused, though `P(f(a))` as `P(g(b))` is not), and a symbol is never replaced by a term. Only a name or symbol that occurs in the statement of `B` is replaced, so the names and symbols that the argument uses only inside (a witness, a bound variable) are not changed. A repeated argument is one line with the subproofs attached to it, so a closed block of several lines (the first case of a proof by cases, say) cannot be repeated for the second as a whole. A repeated argument containing a premise, an axiom or a witness line is refused rather than repeated. The matching that finds a counterpart line also ignores the order of `and` and `or` and the names of bound variables, which WLOG's replay now does too.

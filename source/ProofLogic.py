@@ -4765,8 +4765,8 @@ class ProofValidator:
         below it -- is rewritten with them, and each line it cites from
         outside is replaced by the visible line that says the same of the new
         names and symbols (`_transform_wlog_entry`).
-        Line A, where the argument starts, must itself have such a line. A
-        single cited line is B alone.
+        Line A, where the argument starts, must come before B and must itself
+        have such a line. A single cited line is B alone.
 
         Returns `(entry, note, None)`: the entry to validate in the line's
         place, carrying its label and statement, and the beginning of the
@@ -4797,7 +4797,13 @@ class ProofValidator:
 
         if len(refs) == 2:
             order = [visible for visible, _ in _visible_label_items(labels)]
-            if order.index(refs[0]) > order.index(refs[1]):
+            start_at, end_at = order.index(refs[0]), order.index(refs[1])
+            if start_at == end_at:
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cites the range '{refs[0]} to {refs[1]}' from a line to "
+                              f"itself: a range starts at an earlier line than the one it repeats "
+                              f"(to repeat line {refs[1]} alone, cite just {refs[1]})")
+            if start_at > end_at:
                 return refuse(CATEGORY_BAD_REFERENCE,
                               f"Mutatis mutandis cites the range '{refs[0]} to {refs[1]}' backwards: "
                               f"line {refs[0]} comes after line {refs[1]}")
