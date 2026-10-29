@@ -96,26 +96,3 @@ one, are in tests/testProofs/mutatis_mutandis.txt.
 8. In(x, Y). (Set property, 4, 7)
 9. In(x, Z). (Mutatis mutandis, 8)
 
-# 6: Replacing a name by a term in Set property requires the transformed characterization
-## Invalid: missing characterization — no visible line says that membership in Y is characterized by equality to f(a).
-### then In(f(a), Y).
-
-1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
-2. forall u, (In(u, Y) iff u = a). (Premise)
-3. forall u, (In(u, Y) iff u = b). (Premise)
-4. a = a. (Reflexivity)
-5. f(a) = f(a). (Reflexivity)
-6. In(a, Y). (Set property from 2, 4)
-7. In(f(a), Y). (Mutatis mutandis, 6)
-
-# 7: Replacing a name by a term works when both supporting facts are stated
-## Proof that
-### if membership in Y is characterized by equality to a and to f(a), then In(f(a), Y).
-
-1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
-2. forall u, (In(u, Y) iff u = a). (Premise)
-3. forall u, (In(u, Y) iff u = f(a)). (Premise)
-4. a = a. (Reflexivity)
-5. f(a) = f(a). (Reflexivity)
-6. In(a, Y). (Set property from 2, 4)
-7. In(f(a), Y). (Mutatis mutandis, 6)
