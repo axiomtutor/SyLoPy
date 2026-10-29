@@ -140,9 +140,12 @@ SETS_REFUSALS = {
           "Mutatis mutandis cannot repeat line 8 with In by R: 'SetProperty' does not justify R(x, Y) "
           "from the cited line(s) ['5', '7']",
           "a cited line must characterize membership in a fixed set by a universal biconditional"),
+    "6": ("7", BAD_REFERENCE,
+          "Mutatis mutandis cannot repeat line 6 with a by f(a):",
+          "no visible line says"),
 }
-SETS_SIBLINGS = {"3": "2", "4": "5"}
-SETS_VALID = ["1", "2", "5"]
+SETS_SIBLINGS = {"3": "2", "4": "5", "6": "7"}
+SETS_VALID = ["1", "2", "5", "7"]
 
 RELATIONS_REFUSALS = {
     "3": ("3", RULE_MISMATCH,
@@ -155,9 +158,12 @@ RELATIONS_REFUSALS = {
           "Mutatis mutandis cannot repeat line 2 with R by S: line 2 cites line 1, which says "
           "In(a, X); In(b, X); In(c, X); R(a, b); R(b, c), and no visible line says "
           "In(a, X); In(b, X); In(c, X); S(a, b); S(b, c)", None),
+    "6": ("4", RULE_MISMATCH,
+          "Mutatis mutandis cannot repeat line 3 with R by S:",
+          "RelationTransitivity"),
 }
-RELATIONS_SIBLINGS = {"3": "1", "4": "2", "5": "1"}
-RELATIONS_VALID = ["1", "2"]
+RELATIONS_SIBLINGS = {"3": "1", "4": "2", "5": "1", "6": "7"}
+RELATIONS_VALID = ["1", "2", "7"]
 
 
 def _cases(path):
