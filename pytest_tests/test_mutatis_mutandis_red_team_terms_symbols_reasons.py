@@ -149,7 +149,7 @@ def test_runner_agrees_with_all_case_expectations_including_the_promoted_theorem
 
 # Theory-specific J26 red-team cases: each invalid case has one valid twin.
 RELATION_REFUSALS = {
-    "1": ("4", RULE_MISMATCH, "does not justify S(a, c)"),
+    "1": ("4", RULE_MISMATCH, "RelationTransitivity"),
     "3": ("4", RULE_MISMATCH, "does not justify S(a, a)"),
 }
 RELATION_SIBLINGS = {"1": "2", "3": "4"}
