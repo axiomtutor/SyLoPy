@@ -213,15 +213,15 @@ def test_each_valid_theory_specific_case_is_accepted_and_derives_its_conclusion(
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Finding b: RelationAntisymmetry ignores the declared carrier; owner Claude must fix the kernel rule.",
+    reason="Finding b: Relation Symmetry, Transitivity and Antisymmetry ignore the declared carrier; owner Claude must fix the kernel rules.",
 )
-def test_relation_antisymmetry_replay_respects_declared_carrier():
+def test_relation_rules_replayed_for_a_different_carrier_respect_declaration():
     ok, error = _check(_cases(RELATIONS)["5"])
     assert not ok, error
     assert isinstance(error, pl.ValidationError), error
     assert error.label == "3", error
     assert error.category == RULE_MISMATCH, error
-    assert "RelationAntisymmetry" in error.detail, error
+    assert "RelationSymmetry" in error.detail, error
 
 
 @pytest.mark.parametrize(
