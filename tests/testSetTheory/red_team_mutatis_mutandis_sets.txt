@@ -27,3 +27,25 @@ a by f(a); its valid twin adds precisely that counterpart.
 5. f(a) = f(a). (Reflexivity)
 6. In(a, Y). (Set property from 2, 4)
 7. In(f(a), Y). (Mutatis mutandis, 6)
+
+# 3: A set name may be replaced by a term only when the characterization is available
+## Invalid: missing counterpart — no visible line characterizes membership in f(Y).
+### then a is in f(Y).
+
+1. Let a be any set, Y and Z be any sets, and f be a function. (Declaration)
+2. forall u, (In(u, Y) iff u = a). (Premise)
+3. forall u, (In(u, Z) iff u = a). (Premise)
+4. a = a. (Reflexivity)
+5. In(a, Y). (Set property from 2, 4)
+6. In(a, f(Y)). (Mutatis mutandis, 5)
+
+# 4: A set name may be replaced by a term when its characterization is stated
+## Proof that
+### then a is in f(Y).
+
+1. Let a be any set, Y and Z be any sets, and f be a function. (Declaration)
+2. forall u, (In(u, Y) iff u = a). (Premise)
+3. forall u, (In(u, f(Y)) iff u = a). (Premise)
+4. a = a. (Reflexivity)
+5. In(a, Y). (Set property from 2, 4)
+6. In(a, f(Y)). (Mutatis mutandis, 5)
