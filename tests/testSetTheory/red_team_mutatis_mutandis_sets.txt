@@ -1,44 +1,90 @@
 (*
-J26 red-team cases for membership-specific SetProperty and axiom-citation rules.
-Each refusal has a valid control that changes only whether In is replaced.
+J26 red-team cases for rules whose formulas are specific to set membership.
+Every invalid axiom replay differs from the valid control only by replacing In
+with R in the one target axiom formula. Each target also exercises a -> f(a).
 *)
 
-# 1: Set property cannot replace membership by an arbitrary predicate
-## Invalid: membership symbol — SetProperty requires In even when the matching R-characterization is visible.
-### then R(a, f(Y)).
-
-1. Let a and Y be any sets, f be a function and R be a predicate. (Declaration)
-2. forall u, (In(u, Y) iff u = a). (Premise)
-3. forall u, (R(u, f(Y)) iff u = a). (Premise)
-4. a = a. (Reflexivity)
-5. In(a, Y). (Set property from 2, 4)
-6. R(a, f(Y)). (Mutatis mutandis, 5)
-
-# 2: Set property supports a set-name-to-term replacement when its characterization is present
+# 1: The four set axiom rules allow a term replacement while keeping In fixed
 ## Proof that
-### if membership in Y and f(Y) is characterized by equality to a,
-### then In(a, f(Y)).
+### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
 
-1. Let a and Y be any sets, f be a function and R be a predicate. (Declaration)
-2. forall u, (In(u, Y) iff u = a). (Premise)
-3. forall u, (In(u, f(Y)) iff u = a). (Premise)
-4. a = a. (Reflexivity)
-5. In(a, Y). (Set property from 2, 4)
-6. In(a, f(Y)). (Mutatis mutandis, 5)
-
-# 3: Pairing cannot replace its membership symbol by a predicate
-## Invalid: axiom-specific symbol — the Pairing axiom requires In, not R.
-### then exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)).
-
-1. Let a and b be any sets and f be a function and R be a predicate. (Declaration)
+1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
-3. exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
+4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
+5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
+6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
+11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
+12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
 
-# 4: Pairing permits a name-to-term replacement while keeping membership fixed
-## Proof that
-### if a and b are sets and f is a function,
-### then exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)).
+# 2: Pairing cannot replace its membership symbol by a predicate
+## Invalid: axiom-specific symbol — PairingAxiom requires In, not R.
+### then (exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
 
-1. Let a and b be any sets and f be a function and R be a predicate. (Declaration)
+1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
-3. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
+4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
+5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
+6. exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+10. (exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
+11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
+12. ((exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+
+# 3: Union cannot replace its membership symbol by a predicate
+## Invalid: axiom-specific symbol — UnionAxiom requires In, not R.
+### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+
+1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
+4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
+5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
+6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+7. exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))). (Mutatis mutandis, 3)
+8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v))))). (Conjunction Introduction from 6, 7)
+11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
+12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+
+# 4: Power Set cannot replace its membership symbol by a predicate
+## Invalid: axiom-specific symbol — PowerSetAxiom requires In, not R.
+### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+
+1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
+4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
+5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
+6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+8. exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a)))). (Mutatis mutandis, 4)
+9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
+11. (exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
+12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+
+# 5: Separation cannot replace its membership symbol by a predicate
+## Invalid: axiom-specific symbol — Separation requires In, not R.
+### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))).
+
+1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
+4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
+5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
+6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+9. exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
+11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
+12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
