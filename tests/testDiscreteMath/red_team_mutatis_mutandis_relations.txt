@@ -21,7 +21,7 @@ Use discrete math.
 
 # 2: Declared transitivity supports the repeated argument
 ## Proof that
-### if S is transitive on X and S(a,b) and S(b,c), then S(a,c).
+### then S(a, c).
 
 1. Let X be any set,
  R be an equivalence relation on X,
