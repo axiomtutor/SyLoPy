@@ -19,7 +19,7 @@ a by f(a); its valid twin adds precisely that counterpart.
 # 2: A term replacement is valid when its membership characterization is stated
 ## Proof that
 ### if membership in Y is characterized by equality to a and f(a),
-### then f(a) is in Y.
+### then In(f(a), Y).
 
 1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
 2. forall u, (In(u, Y) iff u = a). (Premise)
@@ -31,7 +31,7 @@ a by f(a); its valid twin adds precisely that counterpart.
 
 # 3: A set name may be replaced by a term only when the characterization is available
 ## Invalid: missing counterpart — no visible line characterizes membership in f(Y).
-### then a is in f(Y).
+### then In(a, f(Y)).
 
 1. Let a be any set, Y and Z be any sets, and f be a function. (Declaration)
 2. forall u, (In(u, Y) iff u = a). (Premise)
