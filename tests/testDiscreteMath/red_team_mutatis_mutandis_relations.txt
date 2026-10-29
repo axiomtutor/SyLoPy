@@ -94,20 +94,24 @@ begin subproof
 end subproof
 4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
 
-# 5: Finding (b) — Relation Antisymmetry accepts a relation declared on another carrier
+# 5: Finding (b) — carrier metadata is ignored by Symmetry, Transitivity and Antisymmetry
 ## Proof that
-### then (S(a,b) and S(b,a)) -> a = b.
+### then (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b).
 
 1. Let X and Y be any sets,
- R be an antisymmetric relation on X,
- S be an antisymmetric relation on Y,
- a and b be in X,
- R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
-2. (R(a,b) and R(b,a)) -> a = b. (Conditional Introduction from subproof below)
+ R be a symmetric, transitive and antisymmetric relation on X,
+ S be a symmetric, transitive and antisymmetric relation on Y,
+ a, b and c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. (R(a,b) and R(b,c)) -> ((R(b,a) and R(a,c)) and a = b). (Conditional Introduction from subproof below)
 begin subproof
- 2.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 2.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
  2.2. R(a,b). (Conjunction Elimination from 2.1)
- 2.3. R(b,a). (Conjunction Elimination from 2.1)
- 2.4. a = b. (Relation Antisymmetry from 2.2, 2.3)
+ 2.3. R(b,c). (Conjunction Elimination from 2.1)
+ 2.4. R(b,a). (Relation Symmetry from 2.2)
+ 2.5. R(a,c). (Relation Transitivity from 2.2, 2.3)
+ 2.6. a = b. (Relation Antisymmetry from 2.2, 2.4)
+ 2.7. R(b,a) and R(a,c). (Conjunction Introduction from 2.4, 2.5)
+ 2.8. (R(b,a) and R(a,c)) and a = b. (Conjunction Introduction from 2.7, 2.6)
 end subproof
-3. (S(a,b) and S(b,a)) -> a = b. (Mutatis mutandis, 2)
+3. (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b). (Mutatis mutandis, 2)
