@@ -1533,7 +1533,6 @@ class _ElaborationContext:
 
     def lookup_declaration(self, name: str) -> Optional[pl.Declaration]:
         """Resolve a declaration reference through `self.context`."""
-
         return self.context.lookup_declaration(name)
 
     def lookup_reference(self, name: str) -> Any:

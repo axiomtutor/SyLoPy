@@ -229,6 +229,8 @@ def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context(
     )
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_declaration("X") is None
+
+
 # --------------------------------------------------------------------
 # Arbitrary-name bindings and assumptions are scoped to the subproof in
 # which they are introduced. A common placeholder such as `c` may be
@@ -268,8 +270,10 @@ def test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_co
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_arbitrary("c") is None
     assert context.context.is_arbitrary("c") is False
+
+
 def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof():
-        # A declaration in an enclosing scope must remain visible when a nested
+    # A declaration in an enclosing scope must remain visible when a nested
     # relation declaration refers to that enclosing carrier.
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof(
