@@ -34,7 +34,7 @@ end subproof
 
 1. Let X be any set,
  R be an equivalence relation on X,
- S be a transitive relation on X,
+ S be a symmetric and transitive relation on X,
  a, b, c be in X,
  R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
 2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
