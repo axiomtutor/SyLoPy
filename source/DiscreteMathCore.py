@@ -18,6 +18,23 @@ Convenience relation descriptors:
     strict partial order = irreflexive + transitive
     total order / linear order = reflexive + antisymmetric + transitive + total
 
+What a relation declaration says: ``Let R be a ... relation on X`` makes R a
+relation on X in the usual sense, a subset of X x X, so R(a, b) can hold only
+for members of X (the owner's decision of 2026-10-29, issue #136).  That fixes
+which rules have to look at X:
+
+* A rule that starts from an R-fact -- symmetry, antisymmetry, asymmetry,
+  transitivity -- reads the declared property and nothing else.  The fact
+  R(a, b) it cites already puts a and b in X, so there is no membership premise
+  and nothing to check about the set the terms were declared in.
+* A rule that produces an R-fact, or its denial, from membership --
+  reflexivity, irreflexivity, totality -- cites that membership, and it must be
+  membership in the declared carrier: R reflexive on X says nothing about the
+  members of another set Y.
+
+The checker does not derive ``a in X`` from R(a, b); where a rule asks for a
+membership, a line has to state it.
+
 The rules are deliberately declaration-sensitive.  A relation rule can only
 apply to a relation whose declaration explicitly supplied the corresponding
 property.  Thus declaring R as transitive does not accidentally license
@@ -177,7 +194,9 @@ class RelationIrreflexivityRule(_RelationRule):
 
 
 class RelationSymmetryRule(_RelationRule):
-    """From R(x,y), infer R(y,x) when R is declared symmetric."""
+    """From R(x,y), infer R(y,x) when R is declared symmetric.
+
+    No membership premise: R(x,y) already puts x and y in the carrier."""
 
     name = "RelationSymmetry"
     property_name = "symmetric"
@@ -196,7 +215,9 @@ class RelationSymmetryRule(_RelationRule):
 
 
 class RelationAntisymmetryRule(_RelationRule):
-    """From R(x,y) and R(y,x), infer x=y when R is antisymmetric."""
+    """From R(x,y) and R(y,x), infer x=y when R is antisymmetric.
+
+    No membership premise: R(x,y) already puts x and y in the carrier."""
 
     name = "RelationAntisymmetry"
     property_name = "antisymmetric"
@@ -218,7 +239,9 @@ class RelationAntisymmetryRule(_RelationRule):
 
 
 class RelationAsymmetryRule(_RelationRule):
-    """From R(x,y), infer not R(y,x) when R is asymmetric."""
+    """From R(x,y), infer not R(y,x) when R is asymmetric.
+
+    No membership premise: R(x,y) already puts x and y in the carrier."""
 
     name = "RelationAsymmetry"
     property_name = "asymmetric"
@@ -237,7 +260,10 @@ class RelationAsymmetryRule(_RelationRule):
 
 
 class RelationTransitivityRule(_RelationRule):
-    """From R(x,y), R(y,z), infer R(x,z)."""
+    """From R(x,y), R(y,z), infer R(x,z) when R is declared transitive.
+
+    No membership premise: R(x,y) and R(y,z) already put x, y and z in the
+    carrier."""
 
     name = "RelationTransitivity"
     property_name = "transitive"

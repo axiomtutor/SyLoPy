@@ -215,6 +215,8 @@ visible outside it.
 
 Declarations support multiple names and ordinary typed/set-membership clauses, for example `Let X, Y be any set. (Declaration)`, `Let a be an integer. (Declaration)`, and `Let R be a reflexive relation on X. (Declaration)`. The names are available at that line and throughout its descendant scopes; declarations made in a closed subproof do not escape it.
 
+`Let R be a reflexive relation on X` declares R as a relation on X in the usual sense, a subset of X × X: `R(a, b)` can hold only for members of X. The relation rules read the declaration in scope, and what they need of X follows from that. `Relation Symmetry`, `Relation Antisymmetry`, `Relation Asymmetry` and `Relation Transitivity` start from lines `R(a, b)`, which already put `a` and `b` in X, so they need only the declared property: no line saying that `a` is in X, and it does not matter which set `a` was declared in. `Relation Reflexivity`, `Relation Irreflexivity` and `Relation Totality` start from membership, so they cite the line saying that the term is in X, and X must be the carrier named in the declaration. The checker does not derive `In(a, X)` from `R(a, b)`; where a rule asks for a membership, a line has to state it.
+
 A witness obtained from an existing existential can be named with `Let Y be such a set. (Existence from L)`, where line `L` states an existential formula. This names a witness and states its existential body as a scoped declaration; it is not an axiom citation and does not replace one.
 
 An assumption is different from a declaration:
