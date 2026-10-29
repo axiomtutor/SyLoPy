@@ -30,7 +30,7 @@ REFUSALS = {
     "1": ("3", BAD_REFERENCE, "no visible line says R(f(a))"),
     "7": ("3", RULE_MISMATCH, "same number of arguments"),
     "9": ("5", RULE_MISMATCH, "P would have to be replaced by both P and Q"),
-    "11": ("5", RULE_MISMATCH, "does not justify"),
+    "11": ("5", RULE_MISMATCH, "only names and symbols may change"),
     "13": ("3", RULE_MISMATCH, "only names and symbols may change"),
     "15": ("3", RULE_MISMATCH, "only names and symbols may change"),
     "17": ("3", RULE_MISMATCH, "same number of arguments"),
