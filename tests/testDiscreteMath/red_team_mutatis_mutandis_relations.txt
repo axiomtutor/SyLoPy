@@ -92,23 +92,24 @@ begin subproof
 end subproof
 4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
 
-# 5: A premise formula does not add antisymmetry to the declaration
-## Invalid: declaration property — the formula premise says S is antisymmetric, but S is declared only reflexive.
-### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+# The final case is an intentionally reported false acceptance (finding (b)):
+# Relation Antisymmetry checks that S has the property but not that a,b belong
+# to S's declared carrier. Its strict xfail lives in the reason tests.
+
+# 5: Finding (b) — Relation Antisymmetry accepts a relation declared on another carrier
+## Proof that
+### then (S(a,b) and S(b,a)) -> a = b.
 
 1. Let X and Y be any sets,
- R be a reflexive and antisymmetric relation on X,
- S be a reflexive relation on X,
+ R be an antisymmetric relation on X,
+ S be an antisymmetric relation on Y,
  a and b be in X,
  R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
-2. (S(a,b) and S(b,a)) -> a = b. (Premise)
-3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+2. (R(a,b) and R(b,a)) -> a = b. (Conditional Introduction from subproof below)
 begin subproof
- 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
- 3.2. R(a,b). (Conjunction Elimination from 3.1)
- 3.3. R(b,a). (Conjunction Elimination from 3.1)
- 3.4. R(a,a). (Relation Reflexivity from 1)
- 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
- 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+ 2.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 2.2. R(a,b). (Conjunction Elimination from 2.1)
+ 2.3. R(b,a). (Conjunction Elimination from 2.1)
+ 2.4. a = b. (Relation Antisymmetry from 2.2, 2.3)
 end subproof
-4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
+3. (S(a,b) and S(b,a)) -> a = b. (Mutatis mutandis, 2)
