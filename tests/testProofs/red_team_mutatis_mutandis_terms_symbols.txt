@@ -151,7 +151,8 @@ condition repaired.
 
 # 16: Equality remains equality when names change
 ## Proof that
-### a is an object, and then b = b.
+### if a and b are objects,
+### then b = b.
 
 1. Let a and b be objects. (Declaration)
 2. a = a. (Reflexivity)
@@ -312,7 +313,8 @@ end subproof
 
 # 30: Reusable term lemma
 ## Proof that
-### if a is an object, P is a predicate and f is a function, then P(f(a)), given P(a) and P(f(a)).
+### if a is an object and P is a predicate and f is a function and P(a) and P(f(a)),
+### then P(f(a)).
 
 1. Let a be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
@@ -323,7 +325,8 @@ end subproof
 
 # 31: A theorem proved using term replacement can be cited by title
 ## Proof that
-### if b is an object, P is a predicate and f is a function, then P(f(b)), given P(b) and P(f(b)).
+### if b is an object and P is a predicate and f is a function and P(b) and P(f(b)),
+### then P(f(b)).
 
 1. Let b be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
