@@ -95,4 +95,3 @@ one, are in tests/testProofs/mutatis_mutandis.txt.
 7. x = a. (Premise)
 8. In(x, Y). (Set property, 4, 7)
 9. In(x, Z). (Mutatis mutandis, 8)
-
