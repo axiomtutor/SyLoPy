@@ -226,17 +226,18 @@ end subproof
 ### if a, b and c are objects and P, Q, R and S are predicates such that: forall x, (P(x) -> Q(x)). forall x, (Q(x) -> R(x)). forall x, (R(x) -> S(x)).
 ### then R(c) -> S(c).
 
-1. Let a, b and c be objects and P, Q, R and S be predicates. (Declaration)
-2. forall x, (P(x) -> Q(x)). (Premise)
-3. forall x, (Q(x) -> R(x)). (Premise)
-4. forall x, (R(x) -> S(x)). (Premise)
-5. P(a) -> Q(a). (Conditional Introduction from subproof below)
+1. Let a, b and c be objects. (Declaration)
+2. Let P, Q, R and S be predicates. (Declaration)
+3. forall x, (P(x) -> Q(x)). (Premise)
+4. forall x, (Q(x) -> R(x)). (Premise)
+5. forall x, (R(x) -> S(x)). (Premise)
+6. P(a) -> Q(a). (Conditional Introduction from subproof below)
 begin subproof
- 5.1. P(a). (Assumption for Conditional Introduction)
- 5.2. Q(a). (Universal Modus Ponens from 2, 5.1)
+ 6.1. P(a). (Assumption for Conditional Introduction)
+ 6.2. Q(a). (Universal Modus Ponens from 3, 6.1)
 end subproof
-6. Q(b) -> R(b). (Mutatis mutandis, 5)
-7. R(c) -> S(c). (Mutatis mutandis, 6)
+7. Q(b) -> R(b). (Mutatis mutandis, 6)
+8. R(c) -> S(c). (Mutatis mutandis, 7)
 
 # 24: A term replacement is valid under corresponding quantifiers
 ## Proof that
@@ -283,18 +284,19 @@ end subproof
 ## Proof that
 ### then R(f(a)).
 
-1. Let a be an object and f be a function and P, Q and R be predicates. (Declaration)
-2. P(a) or Q(a). (Premise)
-3. forall x, R(x). (Premise)
-4. R(f(a)). (Proof by Cases from 2, subproofs below)
+1. Let a be an object and f be a function. (Declaration)
+2. Let P, Q and R be predicates. (Declaration)
+3. P(a) or Q(a). (Premise)
+4. forall x, R(x). (Premise)
+5. R(f(a)). (Proof by Cases from 3, subproofs below)
 begin subproof
- 4.1.left. P(a). (Case)
- 4.2.left. R(a). (Universal Instantiation from 3)
- 4.3.left. R(f(a)). (Mutatis mutandis, 4.2.left)
+ 5.1.left. P(a). (Case)
+ 5.2.left. R(a). (Universal Instantiation from 4)
+ 5.3.left. R(f(a)). (Mutatis mutandis, 5.2.left)
 end subproof
 begin subproof
- 4.1.right. Q(a). (Case)
- 4.2.right. R(f(a)). (Universal Instantiation from 3)
+ 5.1.right. Q(a). (Case)
+ 5.2.right. R(f(a)). (Universal Instantiation from 4)
 end subproof
 
 # 29: A term replacement remains valid inside a WLOG replay region
