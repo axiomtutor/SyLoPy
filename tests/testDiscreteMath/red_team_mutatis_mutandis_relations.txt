@@ -2,8 +2,9 @@
 J26 red-team cases for declaration-dependent relation rules.
 The invalid case has the relation property only as a formula premise; the
 valid twin changes only the relation's declaration to include that property.
-The final case documents an accepted-invalid Relation Antisymmetry replay:
-the rule checks the property but not membership in the declared carrier.
+The final case is a valid replay: since S is a relation on Y, the facts
+S(a,b) and S(b,c) put a, b and c in Y; the fact-based relation rules need
+no separate membership premise.
 *)
 
 Use discrete math.
@@ -94,7 +95,7 @@ begin subproof
 end subproof
 4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
 
-# 5: Finding (b) — carrier metadata is ignored by Symmetry, Transitivity and Antisymmetry
+# 5: Valid replay across carriers — relation facts already put the arguments in the declared carrier
 ## Proof that
 ### then (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b).
 
