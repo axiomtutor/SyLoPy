@@ -12,7 +12,7 @@ Use discrete math.
 
 1. Let X be any set,
  R be an equivalence relation on X,
- S be a relation on X,
+ S be a symmetric relation on X,
  a, b, c be in X,
  R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
 2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
@@ -31,3 +31,27 @@ Use discrete math.
 2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
 3. R(a,c). (Relation Transitivity from 1, 1)
 4. S(a,c). (Mutatis mutandis, 3)
+
+# 3: A relation declared reflexive on another carrier cannot discharge membership in X
+## Invalid: carrier mismatch — S is declared reflexive on Y, but only membership in X is established.
+### then S(a, a).
+
+1. Let X and Y be any sets,
+ R be a reflexive relation on X,
+ S be a reflexive relation on Y,
+ a be in X. (Declaration)
+2. a is in X. (Premise)
+3. R(a, a). (Relation Reflexivity from 2)
+4. S(a, a). (Mutatis mutandis, 3)
+
+# 4: A relation declared reflexive on X supports the repeated step
+## Proof that
+### then S(a, a).
+
+1. Let X and Y be any sets,
+ R be a reflexive relation on X,
+ S be a reflexive relation on X,
+ a be in X. (Declaration)
+2. a is in X. (Premise)
+3. R(a, a). (Relation Reflexivity from 2)
+4. S(a, a). (Mutatis mutandis, 3)
