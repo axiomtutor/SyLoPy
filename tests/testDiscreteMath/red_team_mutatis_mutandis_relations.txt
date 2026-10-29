@@ -92,10 +92,6 @@ begin subproof
 end subproof
 4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
 
-# The final case is an intentionally reported false acceptance (finding (b)):
-# Relation Antisymmetry checks that S has the property but not that a,b belong
-# to S's declared carrier. Its strict xfail lives in the reason tests.
-
 # 5: Finding (b) — Relation Antisymmetry accepts a relation declared on another carrier
 ## Proof that
 ### then (S(a,b) and S(b,a)) -> a = b.
