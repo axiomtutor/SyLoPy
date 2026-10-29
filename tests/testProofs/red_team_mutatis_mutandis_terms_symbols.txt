@@ -325,7 +325,8 @@ end subproof
 
 # 31: A theorem proved using term replacement can be cited by title
 ## Proof that
-### if P(b) and P(f(b)), then P(f(b)).
+### if P(b) and P(f(b)),
+### then P(f(b)).
 
 1. Let b be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
@@ -353,7 +354,8 @@ end subproof
 
 # 34: Two predicate symbols may be replaced by one
 ## Proof that
-### if P(a), Q(a) and R(b), then R(b) and R(b).
+### if P(a) and Q(a) and R(b),
+### then R(b) and R(b).
 
 1. Let a and b be objects. (Declaration)
 2. Let P, Q and R be predicates. (Declaration)
