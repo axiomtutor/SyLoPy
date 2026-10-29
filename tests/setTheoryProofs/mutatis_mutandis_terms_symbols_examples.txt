@@ -6,8 +6,11 @@ J27 examples adapted from existing proofs:
    proof for a second pair of predicate symbols.
 2-3. source/testProofs/equivalenceRelationChaining.txt, proofs 1 and 2:
    repeat nested conditional arguments for another tuple.
-4-5. source/testProofs/informationalRelationOrderProofs.txt, proofs 3 and 4:
-   repeat contradiction arguments for another tuple and another relation.
+4. source/testProofs/informationalRelationOrderProofs.txt, proof 7: repeat
+   the contradiction showing totality and antisymmetry forbid both directions
+   of a pair, after replacing the relation symbol.
+5. The same file, proof 4: repeat an asymmetry contradiction for another
+   relation symbol.
 6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: repeat the
    contradiction argument that a strict relation is irreflexive.
 The original proofs are unchanged. Each repeated line has an attached
@@ -73,24 +76,24 @@ end subproof
 3. R(c,d) -> (R(d,c) -> c = d). (Mutatis mutandis, 2)
 4. (R(a,b) -> (R(b,a) -> a = b)) and (R(c,d) -> (R(d,c) -> c = d)). (Conjunction Introduction from 2, 3)
 
-# 4: The transitivity contrapositive transfers to another triple
+# 4: Totality and antisymmetry forbid both directions for another relation
 ## Proof that
-### if R is transitive on X, a, b, c, d, e, f are in X, R(a,b), not R(a,c), R(d,e), and not R(d,f),
-### then not R(b,c) and not R(e,f).
+### if R and S are total and antisymmetric relations on X, a and b are in X, and not (a = b),
+### then not (R(a,b) and R(b,a)) and not (S(a,b) and S(b,a)).
 
-1. Let X be any set, R be a transitive relation on X, and a, b, c, d, e, f be in X. (Declaration)
-2. R(a,b). (Premise)
-3. not R(a,c). (Premise)
-4. not R(b,c). (Proof by Contradiction from subproof below)
+1. Let X be any set, R and S be total and antisymmetric relations on X, and a and b be in X. (Declaration)
+2. not (a = b). (Premise)
+3. R(a, b) or R(b, a). (Relation Totality from 1, 1)
+4. not (R(a, b) and R(b, a)). (Proof by Contradiction from subproof below)
 begin subproof
- 4.1. R(b,c). (Assumption for Contradiction)
- 4.2. R(a,c). (Relation Transitivity from 2, 4.1)
- 4.3. R(a,c) and not R(a,c). (Conjunction Introduction from 4.2, 3)
+ 4.1. R(a, b) and R(b, a). (Assumption for Contradiction)
+ 4.2. R(a, b). (Conjunction Elimination from 4.1)
+ 4.3. R(b, a). (Conjunction Elimination from 4.1)
+ 4.4. a = b. (Relation Antisymmetry from 4.2, 4.3)
+ 4.5. (a = b) and not (a = b). (Conjunction Introduction from 4.4, 2)
 end subproof
-5. R(d,e). (Premise)
-6. not R(d,f). (Premise)
-7. not R(e,f). (Mutatis mutandis, 4)
-8. not R(b,c) and not R(e,f). (Conjunction Introduction from 4, 7)
+5. not (S(a, b) and S(b, a)). (Mutatis mutandis, 4)
+6. not (R(a, b) and R(b, a)) and not (S(a, b) and S(b, a)). (Conjunction Introduction from 4, 5)
 
 # 5: The asymmetry contradiction transfers to another relation
 ## Proof that
