@@ -9,7 +9,7 @@ one repeated axiom formula, which the corresponding axiom-specific rule rejects.
 ## Proof that
 ### then In(a, f(Y)).
 
-1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+1. Let a, b and Y be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
@@ -28,7 +28,7 @@ one repeated axiom formula, which the corresponding axiom-specific rule rejects.
 ## Invalid: axiom-specific symbol — PairingAxiom requires In, not R.
 ### then In(a, f(Y)).
 
-1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+1. Let a, b and Y be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
@@ -47,7 +47,7 @@ one repeated axiom formula, which the corresponding axiom-specific rule rejects.
 ## Invalid: axiom-specific symbol — UnionAxiom requires In, not R.
 ### then In(a, f(Y)).
 
-1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+1. Let a, b and Y be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
@@ -66,7 +66,7 @@ one repeated axiom formula, which the corresponding axiom-specific rule rejects.
 ## Invalid: axiom-specific symbol — PowerSetAxiom requires In, not R.
 ### then In(a, f(Y)).
 
-1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+1. Let a, b and Y be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
@@ -85,7 +85,7 @@ one repeated axiom formula, which the corresponding axiom-specific rule rejects.
 ## Invalid: axiom-specific symbol — Separation requires In, not R.
 ### then In(a, f(Y)).
 
-1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
+1. Let a, b and Y be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
