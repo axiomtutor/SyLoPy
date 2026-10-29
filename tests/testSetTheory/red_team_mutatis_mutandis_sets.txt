@@ -1,0 +1,29 @@
+(*
+J26 red-team cases for term substitutions in Set property.
+The invalid case lacks a visible membership characterization after replacing
+a by f(a); its valid twin adds precisely that counterpart.
+*)
+
+# 1: A term replacement needs a transformed membership characterization
+## Invalid: missing counterpart — no visible line characterizes membership in Y by equality to f(a).
+### then In(f(a), Y).
+
+1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff u = a). (Premise)
+3. forall u, (In(u, Y) iff u = b). (Premise)
+4. a = a. (Reflexivity)
+5. f(a) = f(a). (Reflexivity)
+6. In(a, Y). (Set property from 2, 4)
+7. In(f(a), Y). (Mutatis mutandis, 6)
+
+# 2: A term replacement is valid when its membership characterization is stated
+## Proof that
+### if membership in Y is characterized by equality to a and to f(a), then In(f(a), Y).
+
+1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
+2. forall u, (In(u, Y) iff u = a). (Premise)
+3. forall u, (In(u, Y) iff u = f(a)). (Premise)
+4. a = a. (Reflexivity)
+5. f(a) = f(a). (Reflexivity)
+6. In(a, Y). (Set property from 2, 4)
+7. In(f(a), Y). (Mutatis mutandis, 6)
