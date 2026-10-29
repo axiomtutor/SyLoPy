@@ -1,90 +1,131 @@
 (*
-J26 red-team cases for rules whose formulas are specific to set membership.
-Every invalid axiom replay differs from the valid control only by replacing In
-with R in the one target axiom formula. Each target also exercises a -> f(a).
+J26 red-team cases for all four membership-specific set axiom citations.
+One valid control and four invalid twins each differ only by replacing In
+with R in one target axiom formula; all also exercise a -> f(a). The common
+proof includes the valid SetProperty set-name replacement In(a,W) -> In(f(a),f(W)).
 *)
 
-# 1: The four set axiom rules allow a term replacement while keeping In fixed
+# 1: The set axiom rules permit closed-term replacement while preserving In
 ## Proof that
-### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+### then In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))).
 
 1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
 5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
-6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
-7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
-8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
-9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
-10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
-11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
-12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+6. Let W be such a set. (Existence from 2)
+7. forall u, (In(u, W) iff (u = a or u = b)). (Universal Instantiation from 6)
+8. forall u, (In(u, f(W)) iff (u = f(a) or u = b)). (Premise)
+9. a = a. (Reflexivity)
+10. a = a or a = b. (Disjunction Introduction from 9)
+11. In(a, W). (Set property from 7, 10)
+12. In(f(a), f(W)). (Mutatis mutandis, 11)
+13. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+14. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+15. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+16. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+17. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 13, 14)
+18. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 15, 16)
+19. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 17, 18)
+20. In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))). (Conjunction Introduction from 12, 19)
 
-# 2: Pairing cannot replace its membership symbol by a predicate
+# 2: Pairing cannot replace In by a predicate
 ## Invalid: axiom-specific symbol — PairingAxiom requires In, not R.
-### then (exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+### then In(f(a), f(W)) and (((exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))).
 
 1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
 5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
-6. exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
-7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
-8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
-9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
-10. (exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
-11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
-12. ((exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+6. Let W be such a set. (Existence from 2)
+7. forall u, (In(u, W) iff (u = a or u = b)). (Universal Instantiation from 6)
+8. forall u, (In(u, f(W)) iff (u = f(a) or u = b)). (Premise)
+9. a = a. (Reflexivity)
+10. a = a or a = b. (Disjunction Introduction from 9)
+11. In(a, W). (Set property from 7, 10)
+12. In(f(a), f(W)). (Mutatis mutandis, 11)
+13. exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+14. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+15. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+16. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+17. (exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 13, 14)
+18. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 15, 16)
+19. ((exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 17, 18)
+20. In(f(a), f(W)) and (((exists Y, forall u, (R(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))). (Conjunction Introduction from 12, 19)
 
-# 3: Union cannot replace its membership symbol by a predicate
+# 3: Union cannot replace In by a predicate
 ## Invalid: axiom-specific symbol — UnionAxiom requires In, not R.
-### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+### then In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))).
 
 1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
 5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
-6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
-7. exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))). (Mutatis mutandis, 3)
-8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
-9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
-10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v))))). (Conjunction Introduction from 6, 7)
-11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
-12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+6. Let W be such a set. (Existence from 2)
+7. forall u, (In(u, W) iff (u = a or u = b)). (Universal Instantiation from 6)
+8. forall u, (In(u, f(W)) iff (u = f(a) or u = b)). (Premise)
+9. a = a. (Reflexivity)
+10. a = a or a = b. (Disjunction Introduction from 9)
+11. In(a, W). (Set property from 7, 10)
+12. In(f(a), f(W)). (Mutatis mutandis, 11)
+13. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+14. exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))). (Mutatis mutandis, 3)
+15. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+16. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+17. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v))))). (Conjunction Introduction from 13, 14)
+18. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 15, 16)
+19. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 17, 18)
+20. In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (R(u, Y) iff (exists v, (R(v, f(a)) and R(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))). (Conjunction Introduction from 12, 19)
 
-# 4: Power Set cannot replace its membership symbol by a predicate
+# 4: Power Set cannot replace In by a predicate
 ## Invalid: axiom-specific symbol — PowerSetAxiom requires In, not R.
-### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a)))) and exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))).
+### then In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))).
 
 1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
 5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
-6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
-7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
-8. exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a)))). (Mutatis mutandis, 4)
-9. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
-10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
-11. (exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
-12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+6. Let W be such a set. (Existence from 2)
+7. forall u, (In(u, W) iff (u = a or u = b)). (Universal Instantiation from 6)
+8. forall u, (In(u, f(W)) iff (u = f(a) or u = b)). (Premise)
+9. a = a. (Reflexivity)
+10. a = a or a = b. (Disjunction Introduction from 9)
+11. In(a, W). (Set property from 7, 10)
+12. In(f(a), f(W)). (Mutatis mutandis, 11)
+13. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+14. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+15. exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a)))). (Mutatis mutandis, 4)
+16. exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+17. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 13, 14)
+18. (exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))). (Conjunction Introduction from 15, 16)
+19. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u))))). (Conjunction Introduction from 17, 18)
+20. In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (R(u, Y) iff forall w, (R(w, u) -> R(w, f(a))))) and (exists Y, forall u, (In(u, Y) iff (In(u, f(a)) and P(u)))))). (Conjunction Introduction from 12, 19)
 
-# 5: Separation cannot replace its membership symbol by a predicate
+# 5: Separation cannot replace In by a predicate
 ## Invalid: axiom-specific symbol — Separation requires In, not R.
-### then (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)) and exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))) and (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))) and exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))).
+### then In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))))).
 
 1. Let a and b be any sets, f be a function, and P and R be predicates. (Declaration)
 2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
 3. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, a) and In(u, v)))). (Axiom of union)
 4. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, a))). (Axiom of power set)
 5. exists Y, forall u, (In(u, Y) iff (In(u, a) and P(u))). (Separation)
-6. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
-7. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
-8. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
-9. exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))). (Mutatis mutandis, 5)
-10. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 6, 7)
-11. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))). (Conjunction Introduction from 8, 9)
-12. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))))). (Conjunction Introduction from 10, 11)
+6. Let W be such a set. (Existence from 2)
+7. forall u, (In(u, W) iff (u = a or u = b)). (Universal Instantiation from 6)
+8. forall u, (In(u, f(W)) iff (u = f(a) or u = b)). (Premise)
+9. a = a. (Reflexivity)
+10. a = a or a = b. (Disjunction Introduction from 9)
+11. In(a, W). (Set property from 7, 10)
+12. In(f(a), f(W)). (Mutatis mutandis, 11)
+13. exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b)). (Mutatis mutandis, 2)
+14. exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))). (Mutatis mutandis, 3)
+15. exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a)))). (Mutatis mutandis, 4)
+16. exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))). (Mutatis mutandis, 5)
+17. (exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v))))). (Conjunction Introduction from 13, 14)
+18. (exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))). (Conjunction Introduction from 15, 16)
+19. ((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u))))). (Conjunction Introduction from 17, 18)
+20. In(f(a), f(W)) and (((exists Y, forall u, (In(u, Y) iff (u = f(a) or u = b))) and (exists Y, forall u, (In(u, Y) iff (exists v, (In(v, f(a)) and In(u, v)))))) and ((exists Y, forall u, (In(u, Y) iff forall w, (In(w, u) -> In(w, f(a))))) and (exists Y, forall u, (R(u, Y) iff (R(u, f(a)) and P(u)))))). (Conjunction Introduction from 12, 19)
