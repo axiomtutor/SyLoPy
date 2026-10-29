@@ -1,0 +1,33 @@
+(*
+J26 red-team cases for declaration-dependent relation rules.
+The invalid case has the relation property only as a formula premise; the
+valid twin changes only the relation's declaration to include that property.
+*)
+
+Use discrete math.
+
+# 1: A formula does not add transitivity to a relation declaration
+## Invalid: declaration property — a premise formula does not make S transitive.
+### then S(a, c).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. R(a,c). (Relation Transitivity from 1, 1)
+4. S(a,c). (Mutatis mutandis, 3)
+
+# 2: Declared transitivity supports the repeated argument
+## Proof that
+### if S is transitive on X and S(a,b) and S(b,c), then S(a,c).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a transitive relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. R(a,c). (Relation Transitivity from 1, 1)
+4. S(a,c). (Mutatis mutandis, 3)
