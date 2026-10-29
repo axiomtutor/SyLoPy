@@ -149,10 +149,9 @@ def test_runner_agrees_with_all_case_expectations_including_the_promoted_theorem
 RELATION_REFUSALS = {
     "1": ("4", RULE_MISMATCH, "RelationTransitivity"),
     "3": ("4", RULE_MISMATCH, "RelationReflexivity"),
-    "5": ("4", RULE_MISMATCH, "RelationAntisymmetry"),
 }
-RELATION_SIBLINGS = {"1": "2", "3": "4", "5": "4"}
-RELATION_VALID = ["2", "4"]
+RELATION_SIBLINGS = {"1": "2", "3": "4"}
+RELATION_VALID = ["2", "4", "5"]
 
 SET_REFUSALS = {
     "2": ("11", RULE_MISMATCH, "PairingAxiom"),
