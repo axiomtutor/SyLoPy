@@ -18,7 +18,7 @@ a by f(a); its valid twin adds precisely that counterpart.
 
 # 2: A term replacement is valid when its membership characterization is stated
 ## Proof that
-### if membership in Y is characterized by equality to a and to f(a), then In(f(a), Y).
+### then f(a) is in Y.
 
 1. Let a and b be any sets and f be a function and Y be any set. (Declaration)
 2. forall u, (In(u, Y) iff u = a). (Premise)
