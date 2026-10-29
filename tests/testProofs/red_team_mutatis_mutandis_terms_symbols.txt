@@ -331,3 +331,20 @@ end subproof
 3. P(b). (Premise)
 4. P(f(b)). (Premise)
 5. P(f(b)). (Reusable term lemma from 3, 4)
+
+
+# 32: A compound term cannot be replaced as a whole
+## Invalid: compound term — f(a) cannot be replaced as one unit by b.
+### then R(b).
+
+1. Let a and b be objects and f be a function and R be a predicate such that: R(f(a)). R(b). R(f(b)). (Premise)
+2. R(f(a)). (Reiteration from 1)
+3. R(b). (Mutatis mutandis, 2)
+
+# 33: A name may be replaced inside a compound term
+## Proof that
+### if R(f(a)), R(b) and R(f(b)), then R(f(b)).
+
+1. Let a and b be objects and f be a function and R be a predicate such that: R(f(a)). R(b). R(f(b)). (Premise)
+2. R(f(a)). (Reiteration from 1)
+3. R(f(b)). (Mutatis mutandis, 2)
