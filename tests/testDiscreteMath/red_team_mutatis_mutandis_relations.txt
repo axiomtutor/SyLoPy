@@ -1,0 +1,118 @@
+(*
+J26 red-team cases for declaration-dependent relation rules.
+The invalid case has the relation property only as a formula premise; the
+valid twin changes only the relation's declaration to include that property.
+The final case is a valid replay: since S is a relation on Y, the facts
+S(a,b) and S(b,c) put a, b and c in Y; the fact-based relation rules need
+no separate membership premise.
+*)
+
+Use discrete math.
+
+# 1: A formula does not add transitivity to a relation declaration, and exchanging relation symbols fails if only one is transitive
+## Invalid: declaration property — S is not declared transitive, and exchanging R and S fails despite the transitivity formula premise.
+### then (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a symmetric relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. (R(a,b) and R(b,c)) -> (R(a,c) and S(a,b)). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,c). (Conjunction Elimination from 3.1)
+ 3.4. R(a,c). (Relation Transitivity from 3.2, 3.3)
+ 3.5. S(a,b). (Reiteration from 1)
+ 3.6. R(a,c) and S(a,b). (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
+
+# 2: Exchanging relation symbols works when both have the required property
+## Proof that
+### if R(a,b), R(b,c), S(a,b) and S(b,c),
+### then (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a symmetric and transitive relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. (R(a,b) and R(b,c)) -> (R(a,c) and S(a,b)). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,c). (Conjunction Elimination from 3.1)
+ 3.4. R(a,c). (Relation Transitivity from 3.2, 3.3)
+ 3.5. S(a,b). (Reiteration from 1)
+ 3.6. R(a,c) and S(a,b). (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
+
+# 3: Reflexivity cannot be replayed on another carrier
+## Invalid: carrier mismatch — the cited membership is in X, but S is declared reflexive on Y.
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+
+1. Let X and Y be any sets,
+ R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on Y,
+ a and b be in X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+2. (S(a,b) and S(b,a)) -> a = b. (Premise)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
+
+# 4: Reflexivity and antisymmetry may both be replayed when the declaration supports them
+## Proof that
+### if a and b are in X,
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+
+1. Let X and Y be any sets,
+ R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on X,
+ a and b be in X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+2. (S(a,b) and S(b,a)) -> a = b. (Premise)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
+
+# 5: Valid replay across carriers — relation facts already put the arguments in the declared carrier
+## Proof that
+### then (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b).
+
+1. Let X and Y be any sets,
+ R be a symmetric, transitive and antisymmetric relation on X,
+ S be a symmetric, transitive and antisymmetric relation on Y,
+ a, b and c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. (R(a,b) and R(b,c)) -> ((R(b,a) and R(a,c)) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
+ 2.2. R(a,b). (Conjunction Elimination from 2.1)
+ 2.3. R(b,c). (Conjunction Elimination from 2.1)
+ 2.4. R(b,a). (Relation Symmetry from 2.2)
+ 2.5. R(a,c). (Relation Transitivity from 2.2, 2.3)
+ 2.6. a = b. (Relation Antisymmetry from 2.2, 2.4)
+ 2.7. R(b,a) and R(a,c). (Conjunction Introduction from 2.4, 2.5)
+ 2.8. (R(b,a) and R(a,c)) and a = b. (Conjunction Introduction from 2.7, 2.6)
+end subproof
+3. (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b). (Mutatis mutandis, 2)
