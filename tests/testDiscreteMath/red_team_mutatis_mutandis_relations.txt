@@ -49,27 +49,66 @@ begin subproof
 end subproof
 4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
 
-# 3: A relation declared reflexive on another carrier cannot discharge membership in X
-## Invalid: carrier mismatch — S is declared reflexive on Y, but only membership in X is established.
-### then S(a, a).
+# 3: Reflexivity cannot be replayed on another carrier
+## Invalid: carrier mismatch — the cited membership is in X, but S is declared reflexive on Y.
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
 
 1. Let X and Y be any sets,
- R be a reflexive relation on X,
- S be a reflexive relation on Y,
- a be in X. (Declaration)
-2. a is in X. (Premise)
-3. R(a, a). (Relation Reflexivity from 2)
-4. S(a, a). (Mutatis mutandis, 3)
+ R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on Y,
+ a and b be in X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+2. (S(a,b) and S(b,a)) -> a = b. (Premise)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
 
-# 4: A relation declared reflexive on X supports the repeated step
+# 4: Reflexivity and antisymmetry may both be replayed when the declaration supports them
 ## Proof that
-### if a is in X,
-### then S(a, a).
+### if a and b are in X,
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
 
 1. Let X and Y be any sets,
- R be a reflexive relation on X,
+ R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on X,
+ a and b be in X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+2. (S(a,b) and S(b,a)) -> a = b. (Premise)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
+
+# 5: A premise formula does not add antisymmetry to the declaration
+## Invalid: declaration property — the formula premise says S is antisymmetric, but S is declared only reflexive.
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+
+1. Let X and Y be any sets,
+ R be a reflexive and antisymmetric relation on X,
  S be a reflexive relation on X,
- a be in X. (Declaration)
-2. a is in X. (Premise)
-3. R(a, a). (Relation Reflexivity from 2)
-4. S(a, a). (Mutatis mutandis, 3)
+ a and b be in X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+2. (S(a,b) and S(b,a)) -> a = b. (Premise)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
