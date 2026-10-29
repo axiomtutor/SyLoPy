@@ -81,7 +81,10 @@ end subproof
 ### if R and S are total and antisymmetric relations on X, a and b are in X, and not (a = b),
 ### then not (R(a,b) and R(b,a)) and not (S(a,b) and S(b,a)).
 
-1. Let X be any set, R and S be total and antisymmetric relations on X, and a and b be in X. (Declaration)
+1. Let X be any set,
+ R be a total and antisymmetric relation on X,
+ S be a total and antisymmetric relation on X,
+ a and b be in X. (Declaration)
 2. not (a = b). (Premise)
 3. R(a, b) or R(b, a). (Relation Totality from 1, 1)
 4. not (R(a, b) and R(b, a)). (Proof by Contradiction from subproof below)
@@ -100,7 +103,10 @@ end subproof
 ### if R and S are asymmetric relations on X, a and b are in X, forall x, forall y, (R(x,y) -> R(y,x)), and forall x, forall y, (S(x,y) -> S(y,x)),
 ### then not R(a,b) and not S(a,b).
 
-1. Let X be any set, R and S be asymmetric relations on X, and a and b be in X. (Declaration)
+1. Let X be any set,
+ R be an asymmetric relation on X,
+ S be an asymmetric relation on X,
+ a and b be in X. (Declaration)
 2. forall x, forall y, (R(x,y) -> R(y,x)). (Premise)
 3. forall x, forall y, (S(x,y) -> S(y,x)). (Premise)
 4. not R(a,b). (Proof by Contradiction from subproof below)
