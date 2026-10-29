@@ -82,8 +82,8 @@ end subproof
 ### then not (R(a,b) and R(b,a)) and not (S(a,b) and S(b,a)).
 
 1. Let X be any set,
- R be a total and antisymmetric relation on X,
- S be a total and antisymmetric relation on X,
+ R be a total, antisymmetric relation on X,
+ S be a total, antisymmetric relation on X,
  a and b be in X. (Declaration)
 2. not (a = b). (Premise)
 3. R(a, b) or R(b, a). (Relation Totality from 1, 1)
