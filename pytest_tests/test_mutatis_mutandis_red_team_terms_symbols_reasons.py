@@ -7,6 +7,7 @@ the first refusing line and a reason-specific fragment; each has a valid twin.
 """
 
 from pathlib import Path
+from functools import lru_cache
 
 import pytest
 
@@ -17,11 +18,6 @@ GENERIC = PROJECT / "tests" / "testProofs" / "red_team_mutatis_mutandis_terms_sy
 RELATIONS = PROJECT / "tests" / "testDiscreteMath" / "red_team_mutatis_mutandis_relations.txt"
 SETS = PROJECT / "tests" / "testSetTheory" / "red_team_mutatis_mutandis_sets.txt"
 
-BARE = dict(
-    axioms=mp.BARE_PROOF_AXIOMS,
-    rules=mp.BARE_PROOF_RULES,
-    declarations=mp.BARE_PROOF_DECLARATIONS,
-)
 BAD_REFERENCE = pl.CATEGORY_BAD_REFERENCE
 RULE_MISMATCH = pl.CATEGORY_RULE_MISMATCH
 
@@ -59,6 +55,7 @@ VALID_CASES = [
 ]
 
 
+@lru_cache(maxsize=None)
 def _cases(path=GENERIC):
     parsed = mp.parse_multi_proof_file(path.read_text(encoding="utf-8"))
     return {str(case.number): case for case in parsed}
@@ -75,6 +72,7 @@ def _check(case):
     return proof.check_detailed()
 
 
+@lru_cache(maxsize=None)
 def _runner_results(path=GENERIC):
     results = mp.run_multi_proof_file(
         path.read_text(encoding="utf-8"),
@@ -157,11 +155,13 @@ RELATION_SIBLINGS = {"1": "2", "3": "4", "5": "4"}
 RELATION_VALID = ["2", "4"]
 
 SET_REFUSALS = {
-    "1": ("6", RULE_MISMATCH, "SetProperty"),
-    "3": ("3", RULE_MISMATCH, "PairingAxiom"),
+    "2": ("13", RULE_MISMATCH, "PairingAxiom"),
+    "3": ("14", RULE_MISMATCH, "UnionAxiom"),
+    "4": ("15", RULE_MISMATCH, "PowerSetAxiom"),
+    "5": ("16", RULE_MISMATCH, "Separation"),
 }
-SET_SIBLINGS = {"1": "2", "3": "4"}
-SET_VALID = ["2", "4"]
+SET_SIBLINGS = {"2": "1", "3": "1", "4": "1", "5": "1"}
+SET_VALID = ["1"]
 
 
 @pytest.mark.parametrize(
