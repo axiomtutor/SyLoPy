@@ -1518,25 +1518,12 @@ class _ElaborationContext:
         # the declaration that names them. See `elaborate_proof`, which
         # merges these into the final `ElaboratedEntries.required_rules`.
         self.extra_rules: List[Any] = []
-        # `ProofContext` is the sole lexical scope for declarations during
-        # elaboration (see todos.txt's "ProofContext integration" /
-        # "remove duplicated lexical scope bookkeeping" phases). A
-        # parallel `pl.DeclarationScope` used to be kept here too, dual-
-        # written on every `register_declaration` call purely so this
-        # constructor could lean on its "skip a compatible duplicate"
-        # seeding rule -- once every *read* (including the seeding of the
-        # relation rules that `elaborate_proof` used to do) had moved
-        # onto `self.context`, that parallel structure had no reader of
-        # its own left and was removed. (The relation rules have since
-        # stopped reading elaboration state at all: they ask the kernel's
-        # scope for the declaration at the line they justify.) Seeded from
-        # `pl._dedupe_declarations(environment.declarations)`, not
-        # `environment.declarations` directly, since the latter can
-        # contain literal duplicate `Declaration`s (e.g. SetTheory's
-        # vocabulary reachable both directly and through NumberTheory's
-        # own `.extended(SET_THEORY_ENVIRONMENT)`) -- `ProofContext.declare()`
-        # has no leniency for that and would raise `DuplicateBindingError`
-        # on the second, identical occurrence.
+        # ProofContext is the sole lexical scope during elaboration. The
+        # kernel keeps its own DeclarationScope as an independent validation
+        # authority; relation rules consult that scope at the line they
+        # justify. An extended environment can expose the same declaration
+        # along multiple paths, so deduplicate declarations before seeding a
+        # context whose declare() operation rejects duplicate bindings.
         self.context = pc.ProofContext()
         for declaration in pl._dedupe_declarations(list(environment.declarations)):
             self.context.declare(declaration)
@@ -1545,26 +1532,17 @@ class _ElaborationContext:
         self.extra_rules.append(rule)
 
     def lookup_declaration(self, name: str) -> Optional[pl.Declaration]:
-        """Resolve a declaration reference through `self.context`
-        (`ProofContext`) -- the sole lexical scope for declarations during
-        elaboration; see `__init__` for why there is nothing else to
-        resolve it through anymore.
-        """
+        """Resolve a declaration reference through `self.context`."""
         return self.context.lookup_declaration(name)
 
     def lookup_reference(self, name: str) -> Any:
         """Resolve a proof-line-label or labeled-assumption reference
-        through `self.context` -- the label half of todos.txt's "resolve
-        declaration and label references through the context" step,
-        unblocked now that the kernel's `LabelScope` forbids label
-        shadowing exactly like `ProofContext.bind_label` always has (see
-        `ProofLogic.LabelScope`'s docstring): the two structures finally
-        agree on what's legal, the same equivalence `lookup_declaration`
-        above already established for declarations. Currently the only
-        caller is `try_elaborate_existence`'s "Existence from L" citation;
-        nothing else in this module resolves a label during elaboration
-        itself (as opposed to during kernel validation, where `LabelScope`
-        remains the sole authority regardless of this method's existence).
+        through `self.context`.
+
+        The context and the kernel's LabelScope enforce the same visibility
+        rule: ancestor labels are available, but closed sibling labels are not.
+        Elaboration currently needs this lookup for the "Existence from L"
+        citation; kernel validation remains authoritative for proof references.
         """
         return self.context.lookup_reference(name)
 

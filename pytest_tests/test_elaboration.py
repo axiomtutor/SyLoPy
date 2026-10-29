@@ -138,22 +138,11 @@ def test_core_renderer_exposes_desugared_steps_without_reparsing_text():
     assert "ConditionalIntroduction from subproof below" in rendered
     assert "Explosion from 2.1, 2.2" in rendered
 
-
-
-
-
-
 # --------------------------------------------------------------------
-# ProofContext holds all declaration bookkeeping during elaboration.
-#
-# A parallel `pl.DeclarationScope` used to be kept here too (see
-# todos.txt's "ProofContext integration" / "remove duplicated lexical
-# scope bookkeeping" phases), dual-written on every `register_declaration`
-# call. Once every *read* -- including the seeding of the relation rules
-# that `elaborate_proof` used to do -- had moved onto `context.context`,
-# the parallel structure had no reader of its own left and was removed;
-# these tests now just confirm `context.context` behaves correctly on
-# its own.
+# Elaboration uses ProofContext as its sole lexical scope for declarations.
+# The kernel's DeclarationScope remains an independent validation boundary.
+# These tests cover declaration registration, environment seeding, and
+# duplicate-declaration errors.
 # --------------------------------------------------------------------
 
 def test_compound_declaration_registers_into_proof_context():
@@ -181,9 +170,8 @@ def test_duplicate_compound_declaration_still_raises_elaboration_error():
 
 
 # --------------------------------------------------------------------
-# ProofContext integration, phase 2 continued: `elaborate_subproof_body`
-# gives every subproof its own child `ProofContext`, and `elaborate_entry`
-# now also dual-writes each label into it.
+# Each subproof gets a child ProofContext, so labels remain local to their
+# branch and sibling branches may reuse the same labels.
 # --------------------------------------------------------------------
 
 def test_sibling_subproofs_can_reuse_the_same_label():
@@ -207,10 +195,8 @@ def test_sibling_subproofs_can_reuse_the_same_label():
 
 
 def test_sibling_subproofs_can_reuse_the_same_compound_declaration_name():
-    # Was an xfail: declaration scoping wasn't yet subproof-isolated, so
-    # this collided even though label scoping was already fine. Fixed by
-    # having `elaborate_subproof_body` give `self.context` a child scope
-    # per subproof for declarations too, not just labels.
+    # Sibling branches have independent child contexts, so the same named
+    # declaration may be introduced in both without leaking after closure.
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof(
         "1. Let P, Q, R be closed formulas such that: P or Q. if P then R. Q -> R. (Premise)\n"
@@ -243,16 +229,12 @@ def test_declaration_inside_a_subproof_does_not_leak_into_the_enclosing_context(
     )
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_declaration("X") is None
+
+
 # --------------------------------------------------------------------
-# ProofContext integration, phase 2 continued: `elaborate_entry` now also
-# dual-writes assumptions (`self.context.assume`) and arbitrary/fresh
-# bindings (`self.context.bind_arbitrary`), choosing whichever matches a
-# line's justification tag instead of always calling `bind_label` (see
-# that method's docstring for exactly why "assume" and "arbitrary" each
-# need different treatment). "c" is by far the most common arbitrary-name
-# placeholder in this corpus (testProofs/propLogTests.txt alone uses it
-# repeatedly across unrelated proofs), so sibling reuse is the realistic
-# risk to guard here, the same way it was for labels.
+# Arbitrary-name bindings and assumptions are scoped to the subproof in
+# which they are introduced. A common placeholder such as `c` may be
+# reused in sibling branches without leaking across them.
 # --------------------------------------------------------------------
 
 def test_sibling_subproofs_can_reuse_the_same_arbitrary_name():
@@ -288,16 +270,11 @@ def test_arbitrary_binding_inside_a_subproof_does_not_leak_into_the_enclosing_co
     context.elaborate_entry(surface.entries[0])
     assert context.context.lookup_arbitrary("c") is None
     assert context.context.is_arbitrary("c") is False
+
+
 def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof():
-    # The "parent visibility" half of end-to-end context coverage, noted
-    # in todos.txt as not meaningfully testable before this file existed:
-    # nothing read from self.context, so there was nothing for such a test
-    # to exercise beyond ProofContext.child()'s own mechanics (already
-    # covered directly in test_proof_context.py). Now that
-    # lookup_declaration does read through self.context, this is a real
-    # integration check: elaborate_compound_declaration's carrier check
-    # ("has X been declared yet" for a relation on X) must succeed for a
-    # carrier declared in an *enclosing* scope, not just the current one.
+    # A declaration in an enclosing scope must remain visible when a nested
+    # relation declaration refers to that enclosing carrier.
     context = pp._ElaborationContext(pp.default_theory_environment())
     surface = pp.parse_surface_proof(
         "1. Let X be any set. (Declaration)\n"
@@ -318,14 +295,10 @@ def test_declaration_from_an_enclosing_scope_is_visible_inside_a_nested_subproof
 
 
 # --------------------------------------------------------------------
-# ProofContext integration, phase 2, "resolve declaration and label
-# references through the context" (label half): LabelScope now forbids
-# label shadowing exactly like ProofContext.bind_label always has (see
-# ProofLogic.LabelScope's docstring), which is what the declaration-half
-# docstring above was waiting on. try_elaborate_existence's "Existence
-# from L" citation is the one place elaboration reads a label's content
-# rather than only writing one, so it's the one place this migration has
-# anything to exercise.
+# Elaboration resolves line-label references through ProofContext.
+# "Existence from L" reads the content of an earlier line, so these tests
+# check that ancestor labels are visible but closed sibling labels are not.
+# The kernel's LabelScope independently enforces reference visibility.
 # --------------------------------------------------------------------
 
 @pytest.mark.parametrize(
@@ -362,20 +335,9 @@ def test_label_from_an_enclosing_scope_is_visible_to_existence_inside_a_nested_s
 
 
 def test_existence_no_longer_leaks_a_sibling_subproofs_reused_label():
-    # Regression test for a real bug the migration fixes, not just an
-    # equivalence check: try_elaborate_existence used to resolve its
-    # citation through the flat, never-subproof-scoped
-    # context.formula_by_label dict. Two sibling branches are free to
-    # reuse the same label (see LabelScope's docstring -- sibling scopes
-    # aren't in an ancestor/descendant relationship, so this is legitimate,
-    # not itself an error), but the flat dict had no notion of "which
-    # branch is currently open": whichever branch happened to be
-    # elaborated *first* left its value sitting under that label, where a
-    # same-named citation from an unrelated *second* branch would silently
-    # pick it up. Confirmed empirically by reverting just this lookup back
-    # to context.formula_by_label and observing the second branch's
-    # "Existence from 2.2" resolve to the first branch's "exists x, S(x)."
-    # instead of correctly failing to find "2.2" in scope at all.
+    # Regression test for sibling-scoped label lookup. Two branches may reuse
+    # a label, so lookup must consult the currently visible context rather than
+    # a flat label-to-formula dictionary that can leak a sibling's formula.
     text = (
         "1. P or Q. (Premise)\n"
         "2. R. (Proof by Cases from 1, subproofs below)\n"
@@ -395,23 +357,12 @@ def test_existence_no_longer_leaks_a_sibling_subproofs_reused_label():
 
 
 # --------------------------------------------------------------------
-# ProofContext integration, phase 2, "preserve source origins and
-# existing elaborated core representations": not a missing feature so
-# much as an invariant the whole dual-write approach depends on. Every
-# self.context.* call added throughout this migration sits alongside
-# _elaborate_entry_impl's existing register_origin/self.formula_by_label/
-# return-value construction, never inside it, so none of it can change
-# what elaborate_proof actually returns -- the pre-existing SetTheory-sugar
-# tests above (test_subset_proof_elaborates_to_ug_then_conditional_
-# introduction, test_synthetic_freshness_failure_maps_back_to_subset_line)
-# already exercise this incidentally, since "Subset proof below" elaborates
-# through the identical self.context-touching path. This pins the property
-# down directly and explicitly, against a proof exercising every binding
-# kind the migration touches (declare, arbitrary, a nested rule_below
-# subproof) in one pass.
+# Context bookkeeping must preserve source origins and the core entry shape.
+# This regression exercises declarations, an arbitrary binding, and a nested
+# rule-below subproof in one proof.
 # --------------------------------------------------------------------
 
-def test_proof_context_dual_write_does_not_disturb_origins_or_core_entry_shape():
+def test_proof_context_tracking_preserves_origins_and_core_entry_shape():
     text = (
         "1. Let A be a closed formula. (Declare)\n"
         "2. forall x, x = x. (Universal Generalization from subproof below)\n"

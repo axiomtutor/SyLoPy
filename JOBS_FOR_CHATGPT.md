@@ -10,7 +10,7 @@ Start a job only after the pull request that adds it has been merged: both read 
 
 | Job | Title | State |
 | --- | --- | --- |
-| J26 | Red-team Mutatis mutandis stages 2 and 3 | todo |
+| J26 | Red-team Mutatis mutandis stages 2 and 3 | in progress (PR #135) |
 | J27 | Where Mutatis mutandis stops, second look | todo |
 
 ### J26. Red-team Mutatis mutandis stages 2 and 3

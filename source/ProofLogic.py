@@ -1676,18 +1676,11 @@ class UniversalModusPonensRule(InferenceRule):
     concrete objects as needed, one line each, rather than a two-line
     Instantiation-then-Ponens pair every time.
 
-    This is also why `ProofContext.bind_theorem`/`lookup_theorem` were
-    removed rather than wired in for this purpose (see todos.txt's
-    "theorem and lemma semantics" notes): the within-proof case this rule
-    targets -- reuse a fact proven about a locally-arbitrary object for
-    several different concrete instances, later in the same proof -- was
-    already fully expressible with Universal Generalization plus
-    Universal Instantiation; nothing about it needed a context-bound
-    name, only less typing per use. Reusing a fact *across separate
-    proofs* is a genuinely different problem (there is no shared subproof
-    structure left to instantiate against once one proof is finished and
-    a new one begins), which is exactly what `promote_theorem`/
-    `TheoremRule` remain for, untouched by any of this.
+    Within one proof, reusing a fact established for an arbitrary object is
+    already expressible with Universal Generalization and Universal Modus
+    Ponens, so it does not require a context-bound theorem name. Reuse across
+    separate proofs is different; `promote_theorem`/`TheoremRule` remain
+    the supported mechanism for carrying a checked result into another proof.
 
     Matches via the same `FormulaMatcher` `UniversalInstantiationRule`
     uses just above, matching the universal's whole body against a
