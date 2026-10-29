@@ -72,4 +72,3 @@ Use discrete math.
  R(a,b) and R(b,c). (Declaration)
 2. R(a,c). (Relation Transitivity from 1, 1)
 3. S(a,c). (Mutatis mutandis, 2)
-
