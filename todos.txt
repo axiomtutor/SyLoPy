@@ -16,10 +16,8 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 ```
 
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
-promotion, and regression corpus are implemented. Recent completed jobs:
-[PR #123](https://github.com/axiomtutor/SyLoPy/pull/123) (red-team tests for
-`Mutatis mutandis`) and [PR #124](https://github.com/axiomtutor/SyLoPy/pull/124)
-(informational examples of its current scope).
+promotion, and regression corpus are implemented. The J26 red-team pass is open
+in [PR #135](https://github.com/axiomtutor/SyLoPy/pull/135).
 
 ### Open findings
 
@@ -28,6 +26,9 @@ promotion, and regression corpus are implemented. Recent completed jobs:
   decision list, **not** authorization to add axioms.
 - [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75): the WLOG citation
   replay defect is fixed; the issue remains open for the owner to close.
+- [Issue #136](https://github.com/axiomtutor/SyLoPy/issues/136): relation
+  symmetry, transitivity, and antisymmetry rules can infer facts for arguments
+  outside the relation's declared carrier.
 
 Selected passing CI references for this cleanup are [PR #128 run #954](https://github.com/axiomtutor/SyLoPy/actions/runs/40432256483) and [PR #129 run #956](https://github.com/axiomtutor/SyLoPy/actions/runs/40432809533), both run on PR-head commits. The earlier J24 run #939 and J25 run #942 were also on separate PR heads. These are useful verification records, not runs on the resulting merge commits. Use CI on the current commit for a fresh master baseline; do not treat PR-head test totals as the combined master's totals.
 
@@ -177,7 +178,9 @@ these without an owner decision.
   before writing a proof that appears to require another law. Do not add axioms
   as part of an example-writing task.
 - Relation declarations and their property/carrier metadata respect nested and
-  sibling proof scopes. Regression coverage: `pytest_tests/test_relation_scope_rules.py`
+  sibling proof scopes. A separate carrier-membership guard is missing from
+  relation-property rules; see [issue #136](https://github.com/axiomtutor/SyLoPy/issues/136).
+  Regression coverage for the scope behavior: `pytest_tests/test_relation_scope_rules.py`
   and `pytest_tests/test_rule_context_declarations.py`.
 - Typed declarations such as `Let n be a natural number` add the corresponding
   ordinary formula (`Nat(n)`); they are not refinement-type checking and do not

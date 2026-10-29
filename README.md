@@ -7,8 +7,7 @@ proof representation, and validates the result with the kernel in
 
 It includes first-order logic, set theory, natural-number and integer reasoning,
 quotient and divisibility notation, and discrete-mathematics and order-theory
-rules. See the sections below for current support and `todos.txt` for open
-work and design constraints.
+rules. The sections below summarize current support.
 
 ## Current status
 
@@ -18,15 +17,9 @@ predicate or function symbol replaced by another. The informational ZFC proof
 `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose second inclusion uses
 `Mutatis mutandis`, passes.
 
-The [development TODO](todos.txt) is the source of truth for the latest
-reported test/fixture counts, remaining issues, and open design decisions.
-
-The named Pairing, Union, Power Set, and Infinity axiom-citation rules are
-implemented, including the Union and Power Set instance forms. The remaining
-owner decision is whether to retire generic `(Axiom)` citations. `Mutatis
-mutandis` is implemented for names, terms and symbols.
-
-See `todos.txt` for the design ledger and remaining work.
+The [development TODO](todos.txt) is the source of truth for current findings
+and open design decisions. Verification totals belong with the CI run and pull
+request that tested each change.
 
 ## Proof-processing pipeline
 
