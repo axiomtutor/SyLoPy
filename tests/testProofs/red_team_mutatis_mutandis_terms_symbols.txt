@@ -313,8 +313,7 @@ end subproof
 
 # 30: Reusable term lemma
 ## Proof that
-### if a is an object and P is a predicate and f is a function and P(a) and P(f(a)),
-### then P(f(a)).
+### if P(a) and P(f(a)), then P(f(a)).
 
 1. Let a be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
@@ -325,8 +324,7 @@ end subproof
 
 # 31: A theorem proved using term replacement can be cited by title
 ## Proof that
-### if b is an object and P is a predicate and f is a function and P(b) and P(f(b)),
-### then P(f(b)).
+### if P(b) and P(f(b)), then P(f(b)).
 
 1. Let b be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
