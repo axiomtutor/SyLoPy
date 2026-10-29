@@ -14,6 +14,8 @@ from .support import mp, pl
 
 PROJECT = Path(__file__).resolve().parents[1]
 GENERIC = PROJECT / "tests" / "testProofs" / "red_team_mutatis_mutandis_terms_symbols.txt"
+RELATIONS = PROJECT / "tests" / "testDiscreteMath" / "red_team_mutatis_mutandis_relations.txt"
+SETS = PROJECT / "tests" / "testSetTheory" / "red_team_mutatis_mutandis_sets.txt"
 
 BARE = dict(
     axioms=mp.BARE_PROOF_AXIOMS,
@@ -55,8 +57,8 @@ VALID_CASES = [
 ]
 
 
-def _cases():
-    parsed = mp.parse_multi_proof_file(GENERIC.read_text(encoding="utf-8"))
+def _cases(path=GENERIC):
+    parsed = mp.parse_multi_proof_file(path.read_text(encoding="utf-8"))
     return {str(case.number): case for case in parsed}
 
 
@@ -71,9 +73,9 @@ def _check(case):
     return proof.check_detailed()
 
 
-def _runner_results():
+def _runner_results(path=GENERIC):
     results = mp.run_multi_proof_file(
-        GENERIC.read_text(encoding="utf-8"),
+        path.read_text(encoding="utf-8"),
         axioms=mp.BARE_PROOF_AXIOMS,
         rules=mp.BARE_PROOF_RULES,
         declarations=mp.BARE_PROOF_DECLARATIONS,
@@ -141,3 +143,86 @@ def test_runner_agrees_with_all_case_expectations_including_the_promoted_theorem
         expected_valid, ok, message, crashed = results[number]
         assert not crashed, (number, message)
         assert ok == expected_valid, (number, message)
+
+
+# Theory-specific J26 red-team cases: each invalid case has one valid twin.
+RELATION_REFUSALS = {
+    "1": ("4", RULE_MISMATCH, "does not justify S(a, c)"),
+}
+RELATION_SIBLINGS = {"1": "2"}
+RELATION_VALID = ["2"]
+
+SET_REFUSALS = {
+    "1": ("7", BAD_REFERENCE, "no visible line says"),
+}
+SET_SIBLINGS = {"1": "2"}
+SET_VALID = ["2"]
+
+
+@pytest.mark.parametrize(
+    "path,number,pins",
+    [
+        (RELATIONS, number, RELATION_REFUSALS)
+        for number in sorted(RELATION_REFUSALS, key=int)
+    ] + [
+        (SETS, number, SET_REFUSALS)
+        for number in sorted(SET_REFUSALS, key=int)
+    ],
+)
+def test_each_invalid_theory_specific_case_is_refused_at_its_line_for_its_reason(path, number, pins):
+    line, category, reason = pins[number]
+    ok, error = _check(_cases(path)[number])
+    assert not ok, f"{path.name} case {number} was accepted"
+    assert isinstance(error, pl.ValidationError), error
+    assert error.label == line, error
+    assert error.category == category, error
+    assert reason in error.detail, error
+
+
+@pytest.mark.parametrize(
+    "path,expected_invalid,expected_valid",
+    [
+        (RELATIONS, set(RELATION_REFUSALS), RELATION_VALID),
+        (SETS, set(SET_REFUSALS), SET_VALID),
+    ],
+)
+def test_theory_specific_pins_and_valid_lists_cover_every_case(path, expected_invalid, expected_valid):
+    cases = _cases(path)
+    assert {number for number, case in cases.items() if not case.expected_valid} == expected_invalid
+    assert [number for number, case in cases.items() if case.expected_valid] == expected_valid
+
+
+@pytest.mark.parametrize(
+    "path,number",
+    [(RELATIONS, number) for number in RELATION_VALID]
+    + [(SETS, number) for number in SET_VALID],
+)
+def test_each_valid_theory_specific_case_is_accepted_and_derives_its_conclusion(path, number):
+    case = _cases(path)[number]
+    expected_valid, ok, message, crashed = _runner_results(path)[number]
+    assert expected_valid, (path.name, number)
+    assert not crashed, (path.name, number, message)
+    assert ok, (path.name, number, message)
+    assert case.stated_conclusion is not None
+    assert mp.conclusion_is_derived(case.entries, case.stated_conclusion), (path.name, number)
+
+
+@pytest.mark.parametrize(
+    "path,number,siblings",
+    [
+        (RELATIONS, number, RELATION_SIBLINGS)
+        for number in sorted(RELATION_SIBLINGS, key=int)
+    ] + [
+        (SETS, number, SET_SIBLINGS)
+        for number in sorted(SET_SIBLINGS, key=int)
+    ],
+)
+def test_each_invalid_theory_specific_case_has_a_valid_twin(path, number, siblings):
+    cases = _cases(path)
+    control = siblings[number]
+    assert not cases[number].expected_valid
+    assert cases[control].expected_valid
+    expected_valid, ok, message, crashed = _runner_results(path)[control]
+    assert expected_valid, (path.name, control)
+    assert not crashed, (path.name, control, message)
+    assert ok, (path.name, control, message)
