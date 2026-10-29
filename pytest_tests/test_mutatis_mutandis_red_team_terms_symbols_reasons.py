@@ -155,10 +155,10 @@ RELATION_SIBLINGS = {"1": "2", "3": "4", "5": "4"}
 RELATION_VALID = ["2", "4"]
 
 SET_REFUSALS = {
-    "2": ("13", RULE_MISMATCH, "PairingAxiom"),
-    "3": ("14", RULE_MISMATCH, "UnionAxiom"),
-    "4": ("15", RULE_MISMATCH, "PowerSetAxiom"),
-    "5": ("16", RULE_MISMATCH, "Separation"),
+    "2": ("11", RULE_MISMATCH, "PairingAxiom"),
+    "3": ("12", RULE_MISMATCH, "UnionAxiom"),
+    "4": ("13", RULE_MISMATCH, "PowerSetAxiom"),
+    "5": ("14", RULE_MISMATCH, "Separation"),
 }
 SET_SIBLINGS = {"2": "1", "3": "1", "4": "1", "5": "1"}
 SET_VALID = ["1"]
