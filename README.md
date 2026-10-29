@@ -84,7 +84,10 @@ integer closure, quotient notation, and divisibility rules.
 `source/DiscreteMath.py` adds relation declarations and relation-property rules,
 including reflexive, irreflexive, symmetric, antisymmetric, asymmetric,
 transitive, total/connected, and the common derived relation families such as
-partial orders and equivalence relations.
+partial orders and equivalence relations. A relation on X is a subset of X × X:
+the rules that start from a fact `R(a, b)` need only the declared property, and
+the rules that start from membership (reflexivity, irreflexivity, totality)
+require the declared carrier.
 
 ### Theorem promotion and reuse
 
