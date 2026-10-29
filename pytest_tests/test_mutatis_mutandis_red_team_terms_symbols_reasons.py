@@ -36,6 +36,7 @@ REFUSALS = {
     "17": ("3", RULE_MISMATCH, "same number of arguments"),
     "19": ("5", BAD_REFERENCE, "S(b)"),
     "25": ("5", RULE_MISMATCH, "f would have to be replaced by both g and h"),
+    "32": ("3", RULE_MISMATCH, "only names and symbols may change"),
 }
 
 # Each refused case -> the valid control that repairs its named condition.
@@ -49,11 +50,12 @@ SIBLINGS = {
     "17": "18",
     "19": "20",
     "25": "26",
+    "32": "33",
 }
 
 VALID_CASES = [
     "2", "3", "4", "5", "6", "8", "10", "12", "14", "16", "18",
-    "20", "21", "22", "23", "24", "26", "27", "28", "29", "30", "31",
+    "20", "21", "22", "23", "24", "26", "27", "28", "29", "30", "31", "33",
 ]
 
 
@@ -155,9 +157,10 @@ RELATION_VALID = ["2", "4"]
 
 SET_REFUSALS = {
     "1": ("7", BAD_REFERENCE, "no visible line says"),
+    "3": ("6", BAD_REFERENCE, "no visible line says"),
 }
-SET_SIBLINGS = {"1": "2"}
-SET_VALID = ["2"]
+SET_SIBLINGS = {"1": "2", "3": "4"}
+SET_VALID = ["2", "4"]
 
 
 @pytest.mark.parametrize(
