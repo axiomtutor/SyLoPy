@@ -2959,49 +2959,111 @@ class ConstantGeneralizingMatcher:
         return False
 
 
-def _substitute_constants_in_term(term: tl.Term, mapping: Dict[str, tl.Term]) -> tl.Term:
+class _UnsafeSubstitution(ValueError):
+    """A name cannot be replaced by a term that has a variable in it.
+
+    `_substitute_constants_in_term` and `_substitute_constants_in_formula`
+    put the replacement where the name stood, as it is: they never rename a
+    bound variable, and strict matching is not theirs to change. A term with
+    a variable in it cannot be put anywhere safely. Under a quantifier that
+    binds the variable it is *captured* (`a` replaced by `x` in
+    `forall x, R(a, x)` gives `forall x, R(x, x)`, which says something
+    else); anywhere else the result has a *free* variable, and a proof line
+    has none. So the substitution refuses to build either, whatever its caller
+    has already checked (`_mm_align` never offers such a term, and the callers
+    do not rely on that).
+
+    `name` is the name that was to be replaced, `replacement` the term,
+    `variable` the first variable in it (alphabetically; the first one that a
+    quantifier binds, when `captured`).
+    """
+
+    def __init__(self, name: str, replacement: tl.Term, variable: str, captured: bool):
+        if captured:
+            detail = (f"{name} cannot be replaced by {replacement!r}: the variable {variable} in it "
+                      f"would be captured by the quantifier that binds {variable} around {name}")
+        else:
+            detail = (f"{name} cannot be replaced by {replacement!r}: the variable {variable} in it "
+                      "would be free in the result, and a proof line has no free variable")
+        super().__init__(detail)
+        self.name = name
+        self.replacement = replacement
+        self.variable = variable
+        self.captured = captured
+
+
+def _check_replacement(name: str, replacement: tl.Term, bound: Tuple[str, ...]) -> None:
+    """Raise `_UnsafeSubstitution` unless `replacement` can stand where the
+    name `name` does, inside the quantifiers that bind `bound`: it has no
+    variable in it. A variable that one of those quantifiers binds is reported
+    as captured, any other as free."""
+    free = fl.term_free_variables(replacement)
+    if not free:
+        return
+    captured = sorted(free & set(bound))
+    if captured:
+        raise _UnsafeSubstitution(name, replacement, captured[0], True)
+    raise _UnsafeSubstitution(name, replacement, sorted(free)[0], False)
+
+
+def _substitute_constants_in_term(term: tl.Term, mapping: Dict[str, tl.Term],
+                                  bound: Tuple[str, ...] = ()) -> tl.Term:
     """Term-level counterpart of `FormulaLogic.substitute_in_term`, keyed
     on constant names rather than a single variable name -- replace every
     `ConstantTerm` whose name is a key of `mapping` with the corresponding
     term, recursively. A `_Replacement` also replaces function symbols
     (its `functions`); a plain dict only replaces names.
+
+    `bound` is the variables of the quantifiers around `term`. A replacement
+    term with a variable in it is refused (`_UnsafeSubstitution`), before
+    anything is built from it.
     """
     if isinstance(term, tl.ConstantTerm):
-        return mapping.get(term.name, term)
+        if term.name not in mapping:
+            return term
+        replacement = mapping[term.name]
+        _check_replacement(term.name, replacement, bound)
+        return replacement
     if isinstance(term, tl.FunctionTerm):
         symbol = getattr(mapping, "functions", {}).get(term.symbol, term.symbol)
-        return tl.FunctionTerm(symbol, [_substitute_constants_in_term(a, mapping) for a in term.args])
+        return tl.FunctionTerm(symbol, [_substitute_constants_in_term(a, mapping, bound) for a in term.args])
     return term
 
 
-def _substitute_constants_in_formula(formula: fl.Formula, mapping: Dict[str, tl.Term]) -> fl.Formula:
-    """Formula-level counterpart of `_substitute_constants_in_term`."""
+def _substitute_constants_in_formula(formula: fl.Formula, mapping: Dict[str, tl.Term],
+                                     bound: Tuple[str, ...] = ()) -> fl.Formula:
+    """Formula-level counterpart of `_substitute_constants_in_term`. `bound`
+    starts empty and gains the variable of each quantifier the substitution
+    goes inside; see `_UnsafeSubstitution`."""
     if isinstance(formula, fl.AtomicFormula):
         predicate = formula.predicate
         if isinstance(predicate, str):
             predicate = getattr(mapping, "predicates", {}).get(predicate, predicate)
         return fl.AtomicFormula(predicate, [
-            _substitute_constants_in_term(a, mapping) if isinstance(a, tl.Term) else a for a in formula.args
+            _substitute_constants_in_term(a, mapping, bound) if isinstance(a, tl.Term) else a
+            for a in formula.args
         ])
     if isinstance(formula, fl.And):
-        return fl.And(*[_substitute_constants_in_formula(c, mapping) for c in formula.conjuncts])
+        return fl.And(*[_substitute_constants_in_formula(c, mapping, bound) for c in formula.conjuncts])
     if isinstance(formula, fl.Or):
-        return fl.Or(*[_substitute_constants_in_formula(d, mapping) for d in formula.disjuncts])
+        return fl.Or(*[_substitute_constants_in_formula(d, mapping, bound) for d in formula.disjuncts])
     if isinstance(formula, fl.Not):
-        return fl.Not(_substitute_constants_in_formula(formula.sub, mapping))
+        return fl.Not(_substitute_constants_in_formula(formula.sub, mapping, bound))
     if isinstance(formula, fl.Implies):
-        return fl.Implies(_substitute_constants_in_formula(formula.antecedent, mapping),
-                           _substitute_constants_in_formula(formula.consequent, mapping))
+        return fl.Implies(_substitute_constants_in_formula(formula.antecedent, mapping, bound),
+                           _substitute_constants_in_formula(formula.consequent, mapping, bound))
     if isinstance(formula, fl.Iff):
-        return fl.Iff(_substitute_constants_in_formula(formula.left, mapping),
-                       _substitute_constants_in_formula(formula.right, mapping))
+        return fl.Iff(_substitute_constants_in_formula(formula.left, mapping, bound),
+                       _substitute_constants_in_formula(formula.right, mapping, bound))
     if isinstance(formula, fl.Equals):
-        return fl.Equals(_substitute_constants_in_term(formula.left, mapping),
-                          _substitute_constants_in_term(formula.right, mapping))
+        return fl.Equals(_substitute_constants_in_term(formula.left, mapping, bound),
+                          _substitute_constants_in_term(formula.right, mapping, bound))
     if isinstance(formula, fl.ForAll):
-        return fl.ForAll(formula.var, _substitute_constants_in_formula(formula.body, mapping))
+        return fl.ForAll(formula.var,
+                         _substitute_constants_in_formula(formula.body, mapping, bound + (formula.var,)))
     if isinstance(formula, fl.Exists):
-        return fl.Exists(formula.var, _substitute_constants_in_formula(formula.body, mapping))
+        return fl.Exists(formula.var,
+                         _substitute_constants_in_formula(formula.body, mapping, bound + (formula.var,)))
     return formula
 
 
@@ -3090,7 +3152,13 @@ class TheoremRule(AxiomSchemaRule):
         matcher = ConstantGeneralizingMatcher(self.generalized_names)
         if not matcher.match_formula(self.conclusion, phi):
             return None
-        return [_substitute_constants_in_formula(p, matcher.mapping) for p in self.premises]
+        try:
+            return [_substitute_constants_in_formula(p, matcher.mapping) for p in self.premises]
+        except _UnsafeSubstitution:
+            # The matcher checked the conclusion's quantifiers; the premises
+            # have their own, and a term with a variable in it does not fit
+            # them. The theorem is not citable at this instance.
+            return None
 
     def _unavailable(self, context: "RuleContext") -> List[str]:
         """What this theorem's proof used that the proof around `context`
@@ -3961,9 +4029,14 @@ class _ReplayPolicy(NamedTuple):
     `find(labels, expected)` is the label of a visible line that says what
     `expected` says, or None. `refusal(citing_label, cited_label, cited_value,
     expected)` is the detail of the refusal; None keeps the wording of WLOG.
+    `unsafe(line_label, error)` is the detail of the refusal when the line, or
+    a line it cites, cannot be rewritten because a replacement term has a
+    variable in it (`_UnsafeSubstitution` is `error`); None keeps the wording
+    of WLOG.
     """
     find: Any
     refusal: Any = None
+    unsafe: Any = None
 
 
 _WLOG_POLICY = _ReplayPolicy(_visible_counterpart)
@@ -4014,11 +4087,27 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
 
     label = classified.label
     phi = classified.phi
-    if isinstance(phi, fl.Formula):
-        phi = _substitute_constants_in_formula(phi, mapping)
-    elif isinstance(phi, list):
-        phi = [_substitute_constants_in_formula(item, mapping)
-               if isinstance(item, fl.Formula) else item for item in phi]
+
+    def unsafe(error: _UnsafeSubstitution) -> _WLOGReplayError:
+        where = f"line {label}" if label else "an unlabeled line"
+        detail = (policy.unsafe(label, error) if policy.unsafe is not None else
+                  f"WLOG replay cannot rewrite {where}, because {error}")
+        return _WLOGReplayError(label, block_label, sidx, CATEGORY_RULE_MISMATCH, detail)
+
+    def substituted(value, replacement):
+        try:
+            return _substitute_wlog_value(value, replacement)
+        except _UnsafeSubstitution as exc:
+            raise unsafe(exc) from None
+
+    try:
+        if isinstance(phi, fl.Formula):
+            phi = _substitute_constants_in_formula(phi, mapping)
+        elif isinstance(phi, list):
+            phi = [_substitute_constants_in_formula(item, mapping)
+                   if isinstance(item, fl.Formula) else item for item in phi]
+    except _UnsafeSubstitution as exc:
+        raise unsafe(exc) from None
 
     justification = classified.justification
     if isinstance(justification, tuple):
@@ -4041,10 +4130,10 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
                         remapped.append(reference)
                         continue
                     original_value = original_labels[reference]
-                    expected = _substitute_wlog_value(original_value, mapping)
+                    expected = substituted(original_value, mapping)
                     counterpart = policy.find(original_labels, expected)
                     if counterpart is None and _wlog_value_matches(
-                            original_value, _substitute_wlog_value(original_value, exchange)):
+                            original_value, substituted(original_value, exchange)):
                         remapped.append(reference)
                         continue
                     if counterpart is None:
@@ -4105,7 +4194,11 @@ def _transform_wlog_entry(raw_entry, mapping, original_labels: LabelScope,
 # stood. The term has no variable in it, so nothing can capture it, and the
 # rules of the repeated argument refuse it wherever they need a name -- a
 # witness, or a name that is generalized over -- as they would if it had been
-# written out.
+# written out. `_mm_align` never offers a term that has a variable, and the
+# substitution does not rely on that: it refuses such a term itself, rather
+# than capture its variable or leave it free (`_UnsafeSubstitution`), and the
+# line is refused at the `Mutatis mutandis` line like any other that cannot be
+# rewritten. Bound variables are never renamed to make a term fit.
 #
 # A function or predicate symbol may be replaced by another that takes the
 # same number of arguments: the argument for `Plus` repeated for `Times`, or
@@ -4180,7 +4273,9 @@ def _mm_align(model, claim, sigma: _Replacement, env_model: dict, env_claim: dic
 
     A name is replaced by a name or by a term with no variable in it,
     wherever it occurs (nothing the term says can be captured by a quantifier
-    of the line it is put into). A function or predicate symbol is replaced
+    of the line it is put into; the substitution itself refuses a term with a
+    variable, `_UnsafeSubstitution`, and does not rely on this). A function or
+    predicate symbol is replaced
     by another that takes the same number of arguments, wherever it occurs.
     Nothing else changes: the shapes (connectives, quantifiers, `=`) and the
     free variables must agree, and bound variables must correspond (they may
@@ -4767,6 +4862,9 @@ class ProofValidator:
         names and symbols (`_transform_wlog_entry`).
         Line A, where the argument starts, must come before B and must itself
         have such a line. A single cited line is B alone.
+        If the rewriting refuses a replacement (`_UnsafeSubstitution`: a term
+        with a variable in it, which `_mm_align` does not offer) the line is
+        refused here, naming the line that cannot be rewritten.
 
         Returns `(entry, note, None)`: the entry to validate in the line's
         place, carrying its label and statement, and the beginning of the
@@ -4848,7 +4946,12 @@ class ProofValidator:
 
         if start is not None:
             start_value = labels[start]
-            expected_start = _substitute_wlog_value(start_value, sigma)
+            try:
+                expected_start = _substitute_wlog_value(start_value, sigma)
+            except _UnsafeSubstitution as exc:
+                return refuse(CATEGORY_RULE_MISMATCH,
+                              f"Mutatis mutandis cannot start from line {start} with {renaming}: "
+                              f"it cannot be rewritten, because {exc}")
             if _mm_counterpart(labels, expected_start) is None:
                 return refuse(CATEGORY_BAD_REFERENCE,
                               f"Mutatis mutandis cannot start from line {start}: it says "
@@ -4861,10 +4964,15 @@ class ProofValidator:
                     f"{where} cites line {reference}, which says {_mm_show(original)}, "
                     f"and no visible line says {_mm_show(expected)}")
 
+        def not_rewritable(line_label, error):
+            where = f"line {line_label}" if line_label else "an unlabeled line"
+            return (f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: "
+                    f"{where} cannot be rewritten, because {error}")
+
         try:
             transformed = _transform_wlog_entry(
                 model_entry, sigma, labels, block_label, sidx, sigma,
-                _ReplayPolicy(_mm_counterpart, no_counterpart))
+                _ReplayPolicy(_mm_counterpart, no_counterpart, not_rewritable))
         except _WLOGReplayError as exc:
             return refuse(exc.category, exc.detail)
 
