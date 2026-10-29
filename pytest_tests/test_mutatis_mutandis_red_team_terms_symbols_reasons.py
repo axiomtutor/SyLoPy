@@ -157,8 +157,8 @@ RELATION_SIBLINGS = {"1": "2", "3": "4", "5": "4"}
 RELATION_VALID = ["2", "4"]
 
 SET_REFUSALS = {
-    "1": ("7", BAD_REFERENCE, "no visible line says"),
-    "3": ("6", BAD_REFERENCE, "no visible line says"),
+    "1": ("6", RULE_MISMATCH, "SetProperty"),
+    "3": ("3", RULE_MISMATCH, "PairingAxiom"),
 }
 SET_SIBLINGS = {"1": "2", "3": "4"}
 SET_VALID = ["2", "4"]
