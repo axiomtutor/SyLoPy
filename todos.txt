@@ -45,9 +45,11 @@ Selected passing CI references for this cleanup are [PR #128 run #954](https://g
 - Universal Generalization, Existential Elimination, Uniqueness, and theorem
   promotion must account for hypotheses and declaration-structure dependencies,
   not merely formula occurrences.
-- Substitution and schema rules enforce variable-capture side conditions.
-  Preserve those guards and the project's strict matching discipline; do not
-  casually replace side-condition checks with alpha-renaming.
+- Substitution and schema rules enforce variable-capture side conditions, and
+  so does the name substitution that `Mutatis mutandis`, WLOG's replay and
+  theorem citation share (`_UnsafeSubstitution`). Preserve those guards and the
+  project's strict matching discipline; do not casually replace side-condition
+  checks with alpha-renaming.
 - Rule authorization compares the identity/configuration of registered rules,
   not merely Python class or rule name. See [PR #56](https://github.com/axiomtutor/SyLoPy/pull/56)
   and `pytest_tests/test_rule_configuration_identity.py`.
@@ -144,12 +146,19 @@ replacements must fit those statements, and citations must remain visible or
 have valid counterparts.
 
 The substitution guard belongs to this `Mutatis mutandis` replay path, not to
-quantifier-inference rules. The substitution-application path must itself reject
+quantifier-inference rules. The substitution-application path itself rejects
 invalid or capture-causing variable substitutions rather than relying only on
-`_mm_align` to make bad mappings unreachable. Preserve strict binder matching;
-do not introduce alpha-renaming or change quantifier-inference side conditions
-to address this. Since WLOG shares the substitution helpers, verify that its
-existing valid behavior remains unchanged. Details and examples are in
+`_mm_align` to make bad mappings unreachable: `_substitute_constants_in_term`
+and `_substitute_constants_in_formula` refuse a replacement term with a variable
+in it (`_UnsafeSubstitution`), as captured where a quantifier around the name
+binds the variable and as free anywhere else. `Mutatis mutandis` and the WLOG
+replay report it as an ordinary refusal at the line, and a promoted theorem is
+not citable at such an instance. Strict binder matching is preserved; there is no
+alpha-renaming and no quantifier-inference side condition changed. WLOG shares
+the substitution helpers and its valid behavior is unchanged (it replaces a name
+by a name). No proof text reaches the guard, so
+`pytest_tests/test_substitution_guard.py` calls it directly and with `_mm_align`
+(or WLOG's substitution) taken away. Details and examples are in
 [`docs/PROOF_FILE_FORMAT.md`](https://github.com/axiomtutor/SyLoPy/blob/master/docs/PROOF_FILE_FORMAT.md),
 `pytest_tests/test_mutatis_mutandis.py`, and
 `pytest_tests/test_mutatis_mutandis_reasons.py`.
