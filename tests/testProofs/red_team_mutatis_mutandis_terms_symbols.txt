@@ -313,7 +313,8 @@ end subproof
 
 # 30: Reusable term lemma
 ## Proof that
-### if P(a) and P(f(a)), then P(f(a)).
+### if P(a) and P(f(a)),
+### then P(f(a)).
 
 1. Let a be any object. (Declaration)
 2. Let P be a predicate and f be a function. (Declaration)
@@ -343,7 +344,8 @@ end subproof
 
 # 33: A name may be replaced inside a compound term
 ## Proof that
-### if R(f(a)), R(b) and R(f(b)), then R(f(b)).
+### if R(f(a)), R(b) and R(f(b)),
+### then R(f(b)).
 
 1. Let a and b be objects and f be a function and R be a predicate such that: R(f(a)). R(b). R(f(b)). (Premise)
 2. R(f(a)). (Reiteration from 1)
