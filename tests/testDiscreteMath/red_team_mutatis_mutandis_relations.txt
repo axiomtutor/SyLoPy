@@ -21,6 +21,7 @@ Use discrete math.
 
 # 2: Declared transitivity supports the repeated argument
 ## Proof that
+### if S(a,b) and S(b,c),
 ### then S(a, c).
 
 1. Let X be any set,
@@ -46,6 +47,7 @@ Use discrete math.
 
 # 4: A relation declared reflexive on X supports the repeated step
 ## Proof that
+### if a is in X,
 ### then S(a, a).
 
 1. Let X and Y be any sets,
