@@ -2,6 +2,8 @@
 J26 red-team cases for declaration-dependent relation rules.
 The invalid case has the relation property only as a formula premise; the
 valid twin changes only the relation's declaration to include that property.
+The final case documents an accepted-invalid Relation Antisymmetry replay:
+the rule checks the property but not membership in the declared carrier.
 *)
 
 Use discrete math.
