@@ -72,3 +72,29 @@ Use discrete math.
  R(a,b) and R(b,c). (Declaration)
 2. R(a,c). (Relation Transitivity from 1, 1)
 3. S(a,c). (Mutatis mutandis, 2)
+
+# 6: A transitivity formula does not make a relation declaration transitive
+## Invalid: declaration property — Relation Transitivity reads the declaration of S, not a premise formula.
+### then S(a, c).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. R(a,c). (Relation Transitivity from 1, 1)
+4. S(a,c). (Mutatis mutandis, 3)
+
+# 7: A declared transitive relation supports the repeated step
+## Proof that
+### if S is transitive on X and S(a,b) and S(b,c), then S(a,c).
+
+1. Let X be any set,
+ R be an equivalence relation on X,
+ S be a transitive relation on X,
+ a, b, c be in X,
+ R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
+2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
+3. R(a,c). (Relation Transitivity from 1, 1)
+4. S(a,c). (Mutatis mutandis, 3)
