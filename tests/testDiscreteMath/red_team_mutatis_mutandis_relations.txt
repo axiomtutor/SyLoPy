@@ -6,9 +6,9 @@ valid twin changes only the relation's declaration to include that property.
 
 Use discrete math.
 
-# 1: A formula does not add transitivity to a relation declaration
-## Invalid: declaration property — a premise formula does not make S transitive.
-### then S(a, c).
+# 1: A formula does not add transitivity to a relation declaration, and exchanging relation symbols fails if only one is transitive
+## Invalid: declaration property — S is not declared transitive, and exchanging R and S fails despite the transitivity formula premise.
+### then (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)).
 
 1. Let X be any set,
  R be an equivalence relation on X,
@@ -16,13 +16,21 @@ Use discrete math.
  a, b, c be in X,
  R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
 2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
-3. R(a,c). (Relation Transitivity from 1, 1)
-4. S(a,c). (Mutatis mutandis, 3)
+3. (R(a,b) and R(b,c)) -> (R(a,c) and S(a,b)). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,c). (Conjunction Elimination from 3.1)
+ 3.4. R(a,c). (Relation Transitivity from 3.2, 3.3)
+ 3.5. S(a,b). (Reiteration from 1)
+ 3.6. R(a,c) and S(a,b). (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
 
-# 2: Declared transitivity supports the repeated argument
+# 2: Exchanging relation symbols works when both have the required property
 ## Proof that
-### if S(a,b) and S(b,c),
-### then S(a, c).
+### if R(a,b), R(b,c), S(a,b) and S(b,c),
+### then (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)).
 
 1. Let X be any set,
  R be an equivalence relation on X,
@@ -30,8 +38,16 @@ Use discrete math.
  a, b, c be in X,
  R(a,b) and R(b,c) and S(a,b) and S(b,c). (Declaration)
 2. forall x, forall y, forall z, ((S(x,y) and S(y,z)) -> S(x,z)). (Premise)
-3. R(a,c). (Relation Transitivity from 1, 1)
-4. S(a,c). (Mutatis mutandis, 3)
+3. (R(a,b) and R(b,c)) -> (R(a,c) and S(a,b)). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,c). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,c). (Conjunction Elimination from 3.1)
+ 3.4. R(a,c). (Relation Transitivity from 3.2, 3.3)
+ 3.5. S(a,b). (Reiteration from 1)
+ 3.6. R(a,c) and S(a,b). (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
 
 # 3: A relation declared reflexive on another carrier cannot discharge membership in X
 ## Invalid: carrier mismatch — S is declared reflexive on Y, but only membership in X is established.
