@@ -189,7 +189,10 @@ these without an owner decision.
   Known costs: declaration bundles and Mutatis mutandis messages are longer, and
   repeating an argument that cites a relation declaration for another relation
   needs that relation on the same carrier. A Universal Modus Ponens over two
-  variables at once would shorten the derivation; nobody has asked for it.
+  variables at once would shorten the derivation; nobody has asked for it. The
+  formula is the predicate-language reading of `R ⊆ X × X`: there are no pair
+  terms or Cartesian products yet (owner-gated, "making set operations into
+  terms" below). J30 to J32 in `JOBS_FOR_CHATGPT.md` red-team it and use it.
 - Relation declarations and their property/carrier metadata respect nested and
   sibling proof scopes. Regression coverage: `pytest_tests/test_relation_scope_rules.py`
   and `pytest_tests/test_rule_context_declarations.py`.
