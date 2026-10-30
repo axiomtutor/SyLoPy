@@ -8,9 +8,7 @@ Completed job specifications and their original task instructions are preserved 
 
 Start a job only after the pull request that adds it has been merged, so the instructions and implementation can be read together. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
 
-| Job | Title | State |
-| --- | --- | --- |
-| J26 | Red-team Mutatis mutandis stages 2 and 3 | merged ([PR #135](https://github.com/axiomtutor/SyLoPy/pull/135)) |
+No active jobs are currently queued.
 
 
 ## Completed jobs
