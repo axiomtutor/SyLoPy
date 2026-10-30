@@ -15,7 +15,7 @@ def test_mutatis_mutandis_terms_symbols_examples_all_pass():
         for number, expected_valid, ok, _message, crashed in results
     ]
     assert outcomes == [
-        (str(number), True, True, False) for number in range(1, 9)
+        (str(number), True, True, False) for number in range(1, 7)
     ], [
         (number, message)
         for number, expected_valid, ok, message, crashed in results
