@@ -48,3 +48,17 @@ No active jobs are currently queued.
 6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
 
 Historical note: this tracker replaces the former long-form queue. Archived job text is retained for provenance, but current repository guidance and explicit owner decisions take precedence.
+
+## Active maintenance
+
+### J29 — Consolidate the legacy natural-number fixture runner
+
+**Goal:** Keep `source/test_runner_NatNum.py` as a compatibility command, but delegate suite execution, theory-resource configuration, reporting, and exit status to `source/validate_all_proofs.py`.
+
+**Allowed scope:** `source/test_runner_NatNum.py`, `pytest_tests/test_import_contract.py`, and this tracker. Do not change proof semantics, fixtures, or kernel code.
+
+**Tests:** Run the compatibility command from the same subprocess/import environment as its existing test; assert successful exit and the full natural-number suite summary.
+
+**Done when:** The duplicate runner implementation is removed, the old command continues to validate `testProofsNat`, regression coverage verifies its result, and full CI passes.
+
+Status: in progress.
