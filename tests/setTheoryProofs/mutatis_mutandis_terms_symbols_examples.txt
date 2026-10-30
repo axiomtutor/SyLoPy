@@ -180,3 +180,19 @@ begin subproof
  end subproof
  5.4. X = Y. (Set Equality from 5.2, 5.3)
 end subproof
+
+# 8: The reverse subset proof repeats the first subset argument with the sets exchanged
+## Proof that
+### if I and J have the same members, then I = J.
+
+1. Let A, B, I, J be any sets. (Declaration)
+2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+3. forall u, (In(u, J) iff (In(u, A) and In(u, B))). (Premise)
+4. I subseteq J. (Subset proof below)
+ begin subproof
+  4.1. Let x in I. (Assumption for subset proof)
+  4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
+  4.3. In(x, J). (Set property from 3, 4.2)
+ end subproof
+5. J subseteq I. (Mutatis mutandis, 4)
+6. I = J. (Set Equality from 4, 5)
