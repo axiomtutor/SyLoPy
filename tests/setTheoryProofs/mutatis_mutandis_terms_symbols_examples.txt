@@ -16,7 +16,10 @@ The cited source proofs are unchanged. Examples 1-6 are explicit demonstration
 variants, not literal shortenings of second repeated passages. Example 7 is
 a literal shortening of proof 5 in
 tests/setTheoryProofs/set_operation_foundations.txt, a distinct source
-location not represented in the J25 fixture. The pair-set proof in
+location not represented in the J25 fixture. Example 8 shortens the
+WLOG variant in tests/testSetTheory/unique_pairing_with_wlog.txt, proof 1:
+the WLOG line remains explicit, and the following Set property step is
+reused with the WLOG line as the range's visible counterpart. The pair-set proof in
 tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1, is omitted
 because J25 example 1 already shortens that source proof.
 *)
@@ -160,3 +163,27 @@ end subproof
  end subproof
 5. J subseteq I. (Mutatis mutandis, 4)
 6. I = J. (Set Equality from 4, 5)
+
+# 8: A WLOG-selected branch supplies the counterpart for the repeated membership step
+## Proof that
+### If a and b are sets,
+### then there exists a unique set Y such that forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. a and b are sets. (Declaration)
+2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. Let X be any set. (Declaration)
+5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
+ 5.1. Forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
+ 5.2. X subseteq Y. (Subset proof below)
+  5.2.1. Let x in X. (Assumption for subset proof)
+  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
+  5.2.3. x = a. (WLOG, 5.2.2)
+  5.2.4. In(x, Y). (Set property, 3, 5.2.3)
+ 5.3. Y subseteq X. (Subset proof below)
+  5.3.1. Let y in Y. (Assumption for subset proof)
+  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
+  5.3.3. y = a. (WLOG, 5.3.2)
+  5.3.4. In(y, X). (Mutatis mutandis, 5.2.3 to 5.2.4)
+ 5.4. X = Y. (Set equality, 5.2, 5.3)
+6. Exists Y, (forall u, (In(u, Y) iff (u = a or u = b))) and (forall X, (forall z, (In(z, X) iff (z = a or z = b))) -> X = Y). (Uniqueness, 2, 5)
