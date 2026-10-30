@@ -546,16 +546,25 @@ class DeclarationClause:
     `descriptor`: the raw text after "be" (before any kind/type-name
     interpretation -- that's the recipe's or `_declaration_kind_from_
     descriptor`'s job, not this class's).
+    `is_declared`: `name -> bool`, whether `name` is already declared where
+    this clause is elaborated (an enclosing scope, an earlier line, or an
+    earlier clause of this line); None where there is no scope to ask, as
+    when a clause is built outside elaboration. A recipe about a name that
+    must already exist (a relation's carrier) reads it instead of requiring
+    that the name be declared by a clause of the same line.
     """
-    __slots__ = ('names', 'is_tuple', 'domain', 'codomain', 'descriptor', 'normalized_descriptor')
+    __slots__ = ('names', 'is_tuple', 'domain', 'codomain', 'descriptor', 'normalized_descriptor',
+                 'is_declared')
 
     def __init__(self, names: List[str], is_tuple: bool, descriptor: str,
-                 domain: Optional[str] = None, codomain: Optional[str] = None):
+                 domain: Optional[str] = None, codomain: Optional[str] = None,
+                 is_declared=None):
         self.names = names
         self.is_tuple = is_tuple
         self.descriptor = descriptor
         self.domain = domain
         self.codomain = codomain
+        self.is_declared = is_declared
         # `descriptor` with whitespace collapsed, lowercased, and a
         # leading "a"/"an"/"any"/"the" stripped -- computed once here
         # rather than left for every recipe to redo (and risk forgetting:
@@ -920,7 +929,7 @@ def parse_surface_declaration_statement(
 
 
 
-def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause) -> DeclarationClause:
+def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause, is_declared=None) -> DeclarationClause:
     """Reconstruct the `DeclarationClause` shape a `DeclarationRecipe`
     expects from a already-parsed `SurfaceDeclarationClause`.
 
@@ -933,7 +942,7 @@ def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause) -> Declar
     descriptor = clause.declarations[0].descriptor if clause.declarations else ""
     return DeclarationClause(
         names, is_tuple=clause.is_tuple, descriptor=descriptor,
-        domain=clause.domain, codomain=clause.codomain,
+        domain=clause.domain, codomain=clause.codomain, is_declared=is_declared,
     )
 
 
@@ -987,7 +996,11 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
         while index < len(clauses) and isinstance(clauses[index], SurfaceDeclarationClause):
             index += 1
         run = clauses[run_start:index]
-        recipe_clauses = [_surface_clause_to_recipe_clause(item) for item in run]
+        recipe_clauses = [
+            _surface_clause_to_recipe_clause(
+                item, is_declared=lambda name: context.lookup_declaration(name) is not None)
+            for item in run
+        ]
 
         recipe_index = 0
         while recipe_index < len(run):

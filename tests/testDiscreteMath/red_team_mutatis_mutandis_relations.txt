@@ -2,9 +2,15 @@
 J26 red-team cases for declaration-dependent relation rules.
 The invalid case has the relation property only as a formula premise; the
 valid twin changes only the relation's declaration to include that property.
-The final case is a valid replay: since S is a relation on Y, the facts
+Case 5 is a valid replay: since S is a relation on Y, the facts
 S(a,b) and S(b,c) put a, b and c in Y; the fact-based relation rules need
 no separate membership premise.
+Declaring a relation on X also states that it is a subset of X x X, so in
+cases 3 and 4 the cited declaration line says that of R, and the replay needs
+a visible line that says it of S: case 3 is refused for lack of one. Cases 6
+and 7 are the twins of 3 and 4 with the membership declared on its own line,
+which says nothing of R, so the replay goes on to the rule, which reads the
+carrier S was declared on.
 *)
 
 Use discrete math.
@@ -53,7 +59,7 @@ end subproof
 4. (S(a,b) and S(b,c)) -> (S(a,c) and R(a,b)). (Mutatis mutandis, 3)
 
 # 3: Reflexivity cannot be replayed on another carrier
-## Invalid: carrier mismatch — the cited membership is in X, but S is declared reflexive on Y.
+## Invalid: carrier mismatch — the cited line says R is a relation on X, and no visible line says that of S, which is declared on Y.
 ### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
 
 1. Let X and Y be any sets,
@@ -116,3 +122,42 @@ begin subproof
  2.8. (R(b,a) and R(a,c)) and a = b. (Conjunction Introduction from 2.7, 2.6)
 end subproof
 3. (S(a,b) and S(b,c)) -> ((S(b,a) and S(a,c)) and a = b). (Mutatis mutandis, 2)
+
+# 6: Reflexivity cannot be replayed on another carrier when the membership is declared on its own line
+## Invalid: carrier mismatch — the cited membership is in X, but S is declared reflexive on Y.
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+
+1. Let X and Y be any sets, a, b be in X. (Declaration)
+2. Let R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on Y,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)
+
+# 7: Reflexivity may be replayed when the membership is declared on its own line and S is declared on the same carrier
+## Proof that
+### if a and b are in X,
+### then (S(a,b) and S(b,a)) -> (S(a,a) and a = b).
+
+1. Let X and Y be any sets, a, b be in X. (Declaration)
+2. Let R be a reflexive and antisymmetric relation on X,
+ S be a reflexive and antisymmetric relation on X,
+ R(a,b) and R(b,a) and S(a,b) and S(b,a). (Declaration)
+3. (R(a,b) and R(b,a)) -> (R(a,a) and a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. R(a,b) and R(b,a). (Assumption for Conditional Introduction)
+ 3.2. R(a,b). (Conjunction Elimination from 3.1)
+ 3.3. R(b,a). (Conjunction Elimination from 3.1)
+ 3.4. R(a,a). (Relation Reflexivity from 1)
+ 3.5. a = b. (Relation Antisymmetry from 3.2, 3.3)
+ 3.6. R(a,a) and a = b. (Conjunction Introduction from 3.4, 3.5)
+end subproof
+4. (S(a,b) and S(b,a)) -> (S(a,a) and a = b). (Mutatis mutandis, 3)

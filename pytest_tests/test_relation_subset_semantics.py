@@ -1,8 +1,9 @@
 """A relation on X is a subset of X x X (owner decision, 2026-10-29; issue #136).
 
 `Let R be a ... relation on X` declares R as a relation on X in the usual
-sense, so R(a, b) can hold only for members of X. That settles which relation
-rules have to be told about X:
+sense, so R(a, b) can hold only for members of X, and states that of R as a
+formula of its line (`test_relation_subset_sugar.py` pins the formula and what a
+proof gets from it). That settles which relation rules have to be told about X:
 
 * Symmetry, antisymmetry, asymmetry and transitivity start from facts
   R(a, b). Such a fact already puts a and b in X, so these rules read the

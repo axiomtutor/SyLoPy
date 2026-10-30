@@ -443,13 +443,18 @@ def test_compound_relation_descriptor_keeps_its_properties_before_membership_pre
     )
     entries, _ = pp.parse_proof_text(text)
 
-    (_label, formula, (tag, declarations)), = entries
+    (_label, formulas, (tag, declarations)), = entries
     assert tag == "premise"
     by_name = {declaration.name: declaration for declaration in declarations}
     assert set(by_name) == {"X", "R", "a"}
     assert by_name["X"].type_name == "any set"
     assert "a in X" not in by_name["R"].type_name
-    assert pl._ast_eq(formula, pp.parse_formula("a is in X"))
+    # The relation states that it is a subset of X x X; the membership premise
+    # follows it, and is the same formula as before.
+    subset, membership = formulas
+    assert pl._ast_eq(subset, pp.parse_formula(
+        "forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))"))
+    assert pl._ast_eq(membership, pp.parse_formula("a is in X"))
     metadata = dict(by_name["R"].metadata)
     assert metadata["carrier"] == "X"
     assert set(metadata["properties"]) == {"reflexive", "symmetric"}
