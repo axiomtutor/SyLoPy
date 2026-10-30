@@ -12,16 +12,16 @@ J27 examples adapted from existing source proof patterns:
    asymmetry contradiction to a second relation symbol.
 6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: adapt the
    contradiction proving irreflexivity to another point.
-The cited source proofs are unchanged. Examples 1-6 are explicit demonstration
-variants, not literal shortenings of second repeated passages. Example 7 is
-a literal shortening of proof 5 in
-tests/setTheoryProofs/set_operation_foundations.txt, a distinct source
-location not represented in the J25 fixture. Example 8 shortens the
-WLOG variant in tests/testSetTheory/unique_pairing_with_wlog.txt, proof 1:
-the WLOG line remains explicit, and the following Set property step is
-reused with the WLOG line as the range's visible counterpart. The pair-set proof in
-tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1, is omitted
-because J25 example 1 already shortens that source proof.
+The cited source proofs are unchanged. Examples 1-6 are adapted
+demonstrations of patterns found in the surveyed files, not literal
+shortenings of second repeated passages in those files. The additional
+same-pattern candidates were excluded: the pair-set proof in
+tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1, is already
+shortened in J25 example 1; intersection uniqueness in
+tests/setTheoryProofs/set_operation_foundations.txt, proof 5, is the same
+argument pattern as J25 example 4; and the WLOG version in
+tests/testSetTheory/unique_pairing_with_wlog.txt, proof 1, is already
+shortened in tests/testSetTheory/mutatis_mutandis_sets.txt, proof 1.
 *)
 
 # 1: A universal implication works for another pair of predicates
@@ -147,43 +147,3 @@ begin subproof
 end subproof
 4. not S(b,b). (Mutatis mutandis, 3)
 5. not S(a,a) and not S(b,b). (Conjunction Introduction from 3, 4)
-
-# 7: The second inclusion repeats the first subset argument with the sets exchanged
-## Proof that
-### if I and J both have the membership property of the intersection of A and B, then I = J.
-
-1. Let A, B, I, J be any set. (Declaration)
-2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
-3. forall u, (In(u, J) iff (In(u, A) and In(u, B))). (Premise)
-4. I subseteq J. (Subset proof below)
- begin subproof
-  4.1. Let x in I. (Assumption for subset proof)
-  4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
-  4.3. In(x, J). (Set property from 3, 4.2)
- end subproof
-5. J subseteq I. (Mutatis mutandis, 4)
-6. I = J. (Set Equality from 4, 5)
-
-# 8: A WLOG-selected branch supplies the counterpart for the repeated membership step
-## Proof that
-### If a and b are sets,
-### then there exists a unique set Y such that forall u, (In(u, Y) iff (u = a or u = b)).
-
-1. a and b are sets. (Declaration)
-2. Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
-3. Let Y be such a set. (Existence from 2)
-4. Let X be any set. (Declaration)
-5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
- 5.1. Forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
- 5.2. X subseteq Y. (Subset proof below)
-  5.2.1. Let x in X. (Assumption for subset proof)
-  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
-  5.2.3. x = a. (WLOG, 5.2.2)
-  5.2.4. In(x, Y). (Set property, 3, 5.2.3)
- 5.3. Y subseteq X. (Subset proof below)
-  5.3.1. Let y in Y. (Assumption for subset proof)
-  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
-  5.3.3. y = a. (WLOG, 5.3.2)
-  5.3.4. In(y, X). (Mutatis mutandis, 5.2.3 to 5.2.4)
- 5.4. X = Y. (Set equality, 5.2, 5.3)
-6. Exists Y, (forall u, (In(u, Y) iff (u = a or u = b))) and (forall X, (forall z, (In(z, X) iff (z = a or z = b))) -> X = Y). (Uniqueness, 2, 5)
