@@ -8,8 +8,8 @@ J27 examples adapted from existing proofs:
    repeat nested conditional arguments for another tuple.
 4. tests/testDiscreteMath/order_relation_proofs.txt, proof 8: repeat
    the contradiction from antisymmetry and inequality for another relation.
-5. The same file, proof 4: repeat an asymmetry contradiction for another
-   relation symbol.
+5. source/testProofs/informationalRelationOrderProofs.txt, proof 4: repeat
+   an asymmetry contradiction for another relation symbol.
 6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: repeat the
    contradiction argument that a strict relation is irreflexive.
 The original proofs are unchanged. Each repeated line has an attached
