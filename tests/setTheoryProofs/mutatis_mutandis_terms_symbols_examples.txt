@@ -1,19 +1,17 @@
 Use discrete math.
 
 (*
-J27 examples adapted from existing proofs:
-1. tests/testProofs/first_order_classics.txt, proof 20: repeat a conditional
-   proof for a second pair of predicate symbols.
-2-3. source/testProofs/equivalenceRelationChaining.txt, proofs 1 and 2:
-   repeat nested conditional arguments for another tuple.
-4. tests/testDiscreteMath/order_relation_proofs.txt, proof 8: repeat
-   the contradiction from antisymmetry and inequality for another relation.
-5. source/testProofs/informationalRelationOrderProofs.txt, proof 4: repeat
-   an asymmetry contradiction for another relation symbol.
-6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: repeat the
-   contradiction argument that a strict relation is irreflexive.
-The original proofs are unchanged. Each repeated line has an attached
-subproof; a closed multi-line case block cannot be repeated in this way.
+J27 examples:
+1-6 are adapted demonstrations from existing first-order, relation and order proof patterns.
+7. tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1: shortens the
+   existing reverse-inclusion case argument by repeating a Proof by Cases line
+   together with its two attached five-line case subproofs.
+8. tests/setTheoryProofs/set_operation_foundations.txt, proof 5: shortens the
+   existing reverse subset proof by exchanging the two set names.
+The original source proofs are unchanged. Examples 7 and 8 are actual
+shortenings of repeated arguments in the surveyed corpus. Both repeat a rule
+line together with its attached subproof; this is distinct from repeating a
+standalone closed case block, which the rule cannot do.
 *)
 
 # 1: A universal implication works for another pair of predicates
