@@ -6,8 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from .support import PROJECT_PARENT
 
 
@@ -28,7 +26,7 @@ def test_proof_parser_imports_as_package_without_path_aliases():
     assert result.returncode == 0, result.stderr
 
 
-def test_nat_test_runner_imports_the_existing_nat_module():
+def test_nat_test_runner_delegates_to_shared_fixture_validator():
     script = PROJECT_PARENT / "SyLoPy" / "source" / "test_runner_NatNum.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(
@@ -41,7 +39,10 @@ def test_nat_test_runner_imports_the_existing_nat_module():
         text=True,
         capture_output=True,
     )
-    assert "No module named 'NatTheory'" not in result.stderr
+
+    assert result.returncode == 0, result.stderr
+    assert "=== testProofsNat (enforced) ===" in result.stdout
+    assert "6/6 proofs pass" in result.stdout
 
 
 def test_core_package_modules_import_cleanly():
@@ -53,10 +54,6 @@ def test_core_package_modules_import_cleanly():
         "SyLoPy.source.SetTheory"
     )
     assert result.returncode == 0, result.stderr
-
-
-
-
 
 
 def test_parser_extension_assembly_is_explicit_and_idempotent():
