@@ -41,7 +41,7 @@ def test_nat_test_runner_delegates_to_shared_fixture_validator():
     )
 
     assert result.returncode == 0, result.stderr
-    assert "=== testProofsNat (enforced) ===" in result.stdout
+    assert "=== tests/testProofsNat (enforced) ===" in result.stdout
     assert "6/6 proofs pass" in result.stdout
 
 
