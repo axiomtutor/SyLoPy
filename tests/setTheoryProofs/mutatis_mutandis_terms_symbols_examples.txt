@@ -139,3 +139,44 @@ begin subproof
 end subproof
 4. not S(b,b). (Mutatis mutandis, 3)
 5. not S(a,a) and not S(b,b). (Conjunction Introduction from 3, 4)
+
+# 7: Repeating a proof-by-cases line also repeats its attached case subproofs
+## Proof that
+### if a and b are sets, Y is a set with exactly a and b as members, and X has exactly a and b as members.
+### then X = Y.
+
+1. a and b are sets. (Declaration)
+2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+3. Let Y be such a set. (Existence from 2)
+4. Let X be any set. (Declaration)
+5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
+begin subproof
+ 5.1. forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
+ 5.2. X subseteq Y. (Subset proof below)
+ begin subproof
+  5.2.1. Let x in X. (Assumption for subset proof)
+  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
+  5.2.3. In(x, Y). (Proof by Cases from 5.2.2, subproofs below)
+  begin subproof
+   5.2.3.1. x = a. (Case)
+   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
+   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
+   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
+   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
+  end subproof
+  begin subproof
+   5.2.3.1. x = b. (Case)
+   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
+   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
+   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
+   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
+  end subproof
+ end subproof
+ 5.3. Y subseteq X. (Subset proof below)
+ begin subproof
+  5.3.1. Let y in Y. (Assumption for subset proof)
+  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
+  5.3.3. In(y, X). (Mutatis mutandis, 5.2.3)
+ end subproof
+ 5.4. X = Y. (Set Equality from 5.2, 5.3)
+end subproof
