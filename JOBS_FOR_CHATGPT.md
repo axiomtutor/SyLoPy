@@ -6,20 +6,10 @@ Completed job specifications and their original task instructions are preserved 
 
 ## Current queue
 
-Start a job only after the pull request that adds it has been merged: both read the rule as implemented there. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
+Start a job only after the pull request that adds it has been merged, so the instructions and implementation can be read together. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
 
-| Job | Title | State |
-| --- | --- | --- |
-| J26 | Red-team Mutatis mutandis stages 2 and 3 | merged ([PR #135](https://github.com/axiomtutor/SyLoPy/pull/135)) |
-| J27 | Where Mutatis mutandis stops, second look | in progress (PR #139) |
+No active jobs are currently queued.
 
-### J27. Where Mutatis mutandis stops, second look
-
-Why: the owner has not decided whether the rule should also repeat a closed block of several lines (the first case of a proof by cases, one direction of a biconditional proved in its own subproof), or accept a counterpart line that differs only by the symmetry of `=` or `<->`. That decision needs examples from real proofs, and J25 was written before stages 2 and 3.
-
-Do (read only, except the two new files): go through the proofs under `tests/` and `source/testProofs/` again and find places where a proof repeats an argument with other names, terms or symbols. For each place that the rule now expresses, write the shortened proof with `Mutatis mutandis` in the new informational file `tests/setTheoryProofs/mutatis_mutandis_terms_symbols_examples.txt`, with the file test of rule 7 in the new `pytest_tests/test_mutatis_mutandis_terms_symbols_examples.py`; skip a place that `tests/setTheoryProofs/mutatis_mutandis_examples.txt` already shortens. For each place it cannot express, say in the PR description which of three things is missing: (i) the repeated part is a closed block of several lines (say which kind, how many lines, whether the other block has exactly the same shape, and what is replaced); (ii) the counterpart line differs only by the symmetry of `=` or `<->` (give the two lines); (iii) the replaced name or symbol occurs only inside the argument, in neither statement. Leave the original proofs as they are.
-
-Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, number of lines, what is needed), and CI shows no failing test. The table is for the owner. Do not start anything the table suggests.
 
 ## Completed jobs
 
@@ -46,6 +36,7 @@ Done when: at least 6 proofs shortened with the rule pass in CI (if the survey f
 | J24 | Red-team Mutatis mutandis | merged ([PR #123](https://github.com/axiomtutor/SyLoPy/pull/123)) |
 | J25 | Where stage 1 of Mutatis mutandis stops | merged ([PR #124](https://github.com/axiomtutor/SyLoPy/pull/124)) |
 | J26 | Red-team Mutatis mutandis stages 2 and 3 | merged ([PR #135](https://github.com/axiomtutor/SyLoPy/pull/135)) |
+| J27 | Where Mutatis mutandis stops, second look | merged ([PR #139](https://github.com/axiomtutor/SyLoPy/pull/139)) |
 
 ## Rules for new jobs
 

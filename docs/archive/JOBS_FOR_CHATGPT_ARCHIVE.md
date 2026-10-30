@@ -1,4 +1,4 @@
-> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; the J26 specification was added on 2026-10-29 after PR #135 merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
+> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; the J26 specification was added on 2026-10-29 after PR #135 merged, and the J27 specification was added on 2026-10-30 after PR #139 merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
 
 ---
 
@@ -6,7 +6,7 @@
 
 The owner asked Claude to queue work that ChatGPT can do without Claude, to save Claude's time. Take jobs in order, one PR per job. Stable rules: [`AGENT_COLLABORATION.md` on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md). Live status: `AGENT_COLLABORATION.md` on this branch. If this file conflicts with the owner or with master's guide, they win; say so in the PR.
 
-Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`; J24 and J25 against master `97e71ee`. Edit only the Status table; do not delete jobs.
+Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`; J24 and J25 against master `97e71ee`; J27 was completed on 2026-10-30 and merged in PR #139. Edit only the Status table; do not delete jobs.
 
 ## Status
 
@@ -33,6 +33,7 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J24 | Red-team Mutatis mutandis | merged (PR #123) |
 | J25 | Where stage 1 of Mutatis mutandis stops | merged (PR #124) |
 | J26 | Red-team Mutatis mutandis stages 2 and 3 | merged (PR #135) |
+| J27 | Where Mutatis mutandis stops, second look | merged (PR #139) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
@@ -307,6 +308,17 @@ Valid controls (refusing one is finding (a), after you have compared it with the
 If an invalid proof is accepted, that is finding (b): an issue with `Owner: Claude`, a strict xfail in your pins, and a note in the PR. If a valid proof is refused, compare it with the doc first: the repeated argument is checked like any line, a name or symbol is replaced only if it occurs in the statement of line B, a compound term is never replaced as a whole, and the lines between A and B are not replayed. A message that does not say why is finding (d). Do not edit the cases of J24 or the earlier fixtures.
 
 Done when: every numbered point has a case or a sentence in the PR saying why it cannot be written, every refused case has a valid twin, none repeats an existing case, CI shows no failing test, and the PR lists every finding.
+
+## J27. Where Mutatis mutandis stops, second look (merged in PR #139)
+
+Why: the owner had not decided whether the rule should also repeat a closed block of several lines (the first case of a proof by cases, one direction of a biconditional proved in its own subproof), or accept a counterpart line that differs only by the symmetry of `=` or `<->`. That decision needed examples from real proofs, and J25 was written before stages 2 and 3.
+
+Do (read only, except the two new files): go through the proofs under `tests/` and `source/testProofs/` again and find places where a proof repeats an argument with other names, terms or symbols. For each place that the rule now expresses, write the shortened proof with `Mutatis mutandis` in the new informational file `tests/setTheoryProofs/mutatis_mutandis_terms_symbols_examples.txt`, with the file test of rule 7 in the new `pytest_tests/test_mutatis_mutandis_terms_symbols_examples.py`; skip a place that `tests/setTheoryProofs/mutatis_mutandis_examples.txt` already shortens. For each place it cannot express, say in the PR description which of three things is missing: (i) the repeated part is a closed block of several lines (say which kind, how many lines, whether the other block has exactly the same shape, and what is replaced); (ii) the counterpart line differs only by the symmetry of `=` or `<->` (give the two lines); (iii) the replaced name or symbol occurs only inside the argument, in neither statement. Leave the original proofs as they are.
+
+Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, number of lines, what is needed), and CI shows no failing test. The table is for the owner. Do not start anything the table suggests.
+
+Result: PR #139 added six passing informational demonstration proofs adapted from existing first-order, relation, and order proof patterns, plus a focused pytest. The survey did not find six additional literal source shortenings after excluding patterns already covered in J25 and earlier set-theory examples; the PR records that distinction explicitly. It documents the remaining closed-block, equality/biconditional-symmetry, and argument-internal mapping limitations without implementing them. CI run [#1035](https://github.com/axiomtutor/SyLoPy/actions/runs/41001782871) passed on the PR head: 1,982 Python tests passed, 1 expected xfail; coverage passed; enforced fixtures 372/372 and informational fixtures 100/100 passed (472 total).
+
 
 ## Not yet at the original 2026-10-26 snapshot (historical; not current guidance)
 
