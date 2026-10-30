@@ -1,4 +1,4 @@
-> **Historical archive.** Snapshot captured on 2026-10-26 when all jobs in this queue had merged. The detailed job definitions, rules, and verified proof patterns below are preserved for provenance only; they are not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
+> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; the J26 specification was added on 2026-10-29 after PR #135 merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
 
 ---
 
@@ -32,6 +32,7 @@ Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J
 | J23 | Expand informational relation and order proofs | merged (PR #119) |
 | J24 | Red-team Mutatis mutandis | merged (PR #123) |
 | J25 | Where stage 1 of Mutatis mutandis stops | merged (PR #124) |
+| J26 | Red-team Mutatis mutandis stages 2 and 3 | merged (PR #135) |
 
 States: `todo`, `in progress (PR #n)`, `waiting for owner (PR #n)`, `merged (PR #n)`, `blocked: <why>`. At most 3 PRs open. After J0 merges, J1 to J7 may run in parallel within that limit.
 
@@ -278,7 +279,38 @@ Do (read only, except the new file): go through the proofs under `tests/` and `s
 
 Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places that stage 1 can express, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, what is needed), and CI shows no failing test. The table is for the owner. Do not start stage 2 or 3.
 
-## Not yet (needs owner approval; do not start)
+## J26. Red-team Mutatis mutandis stages 2 and 3 (merged in PR #135)
+
+Why: stages 2 and 3 let a name be replaced by a term with no variable in it, and a predicate or function symbol by another with the same number of arguments. The kernel does not trust the line: it expands it into the repeated argument and validates that like any other line, so a mistake in the matching should only ever cause a wrong refusal. An independent pass finds what the author did not think of, and an accepted bad proof is finding (b), the worst kind.
+
+Scope correction: this is a substitution-safety issue in `Mutatis mutandis`, not a variable-swap issue for quantifier-inference rules. The earlier interpretation that connected the guard to quantifier inference was mistaken. The substitution-application path used by `Mutatis mutandis` must explicitly reject invalid or capture-causing variable substitutions rather than relying only on `_mm_align` to make such mappings unreachable. Keep the current strict binder-matching policy; do not introduce alpha-renaming or alter quantifier-inference rules to address this. This is done ([PR #134](https://github.com/axiomtutor/SyLoPy/pull/134), `_UnsafeSubstitution`). No proof text reaches the guard, because `_mm_align` refuses a replacement term with a variable in it first, so its tests call it directly (`pytest_tests/test_substitution_guard.py`); this job does not touch it.
+
+Read first (read only): `docs/PROOF_FILE_FORMAT.md`, "Mutatis mutandis: the same argument for other names, terms and symbols"; the cases of `tests/testProofs/mutatis_mutandis.txt` (53), `tests/testProofs/red_team_mutatis_mutandis.txt` (24), `tests/testSetTheory/mutatis_mutandis_sets.txt` (5), `tests/testDiscreteMath/mutatis_mutandis_relations.txt` (5) and the two `tests/testNumberTheory/integer_closure_mutatis_mutandis*.txt` files (do not repeat any of them); `pytest_tests/test_mutatis_mutandis_reasons.py` and `pytest_tests/test_mutatis_mutandis_red_team_reasons.py` (the pinning shape); and in `source/ProofLogic.py` `_Replacement`, `_mm_align`, `_expand_mutatis_mutandis`, `_mm_blocked_line`, `_mm_counterpart`, `_mm_says`, `_transform_wlog_entry` and `_substitute_constants_in_formula`.
+
+Do: at least 15 new cases in `tests/testProofs/red_team_mutatis_mutandis_terms_symbols.txt` (enforced), plus at most 5 each in `tests/testDiscreteMath/red_team_mutatis_mutandis_relations.txt` and `tests/testSetTheory/red_team_mutatis_mutandis_sets.txt` for the rules that read a relation's declaration or are about `In`. Each invalid case is refused for the reason its `## Invalid: <condition> — <why>` title names and has a valid twin that differs from it only in that condition. Pin each refusal (line, category, reason) in `pytest_tests/test_mutatis_mutandis_red_team_terms_symbols_reasons.py` (rule 5).
+
+The replacement is a uniform, simultaneous substitution. It need not be idempotent or injective: a name may be replaced by a term that contains it, and two names or symbols may be replaced by one. A case is valid exactly when every step of the expanded argument, and every outside citation changed for the new names and symbols, is valid. So the job has two halves: proofs the rule must refuse, and valid controls it must accept. Give every refused case a valid twin, and write the controls as cases of their own.
+
+Proofs the rule must refuse (accepting one is finding (b)):
+
+1. Capture: the new term has a variable in it (one free in the line, or one that a quantifier binds where the term lands); it mentions the arbitrary constant of a `Universal Generalization` subproof, the witness of an `Existential Elimination`, or a name declared inside the argument.
+2. Symbols that do not fit: a predicate replaced by a function symbol or the reverse; a symbol replaced by one with another number of arguments; `=`, a connective or a quantifier "replaced"; a symbol replaced in one place and kept in another, including inside a cited line; a compound term replaced as a whole.
+3. Rules that read a declaration or are about one symbol: `Relation Reflexivity` with the new relation declared on another carrier; `Reflexivity`, `Symmetry`, `Transitivity` and `Antisymmetry` with the new relation declared with other properties, or with the property only as a premise formula; two relations exchanged when only one has the property; `Set property`, `Set equality` and the axiom citations (Pairing, Union, Power Set, Separation) with `In` replaced, or with a set name replaced by a term.
+4. Citations with no counterpart: a cited line that mentions a replaced name or symbol only inside a bundle premise, a quantified formula or a closed subproof, so that no visible line says the same of the new one; a bundle that states the needed fact for one symbol and the old fact for the other; an argument that needs counterparts for a replaced name and a replaced symbol at once and has only one; `A to B` where A has no counterpart for the new symbols.
+
+Valid controls (refusing one is finding (a), after you have compared it with the doc; state the facts each one needs):
+
+5. Overlapping terms: a name replaced by a term that contains it (`a` by `f(a)`), and that repeated (`f(f(a))`); two names replaced by one term; `a` by `f(b)` together with `b` by `f(a)`; an identity replacement beside a real one; a term replacing a name inside an equation, a negation, a biconditional, or under a quantifier.
+6. Symbols: two symbols exchanged; two replaced by one; one replaced in every place, including inside the cited lines; a name and a symbol replaced in the same line; `Symmetry`, `Transitivity`, `Antisymmetry` or `Asymmetry` replayed for a relation declared on another carrier than the set the terms are in (a relation on X is a subset of X × X, an owner decision of 2026-10-29, so these rules read only the declared property: that is accepted, not a finding; `Reflexivity`, `Irreflexivity` and `Totality` start from membership and do read the carrier).
+7. Chains and interplay: a repeat of a repeat whose symbols drift (`P` by `Q`, then `Q` by `R`); a repeat for a term followed by a repeat for a symbol of its result; a repeat inside a WLOG region and inside a case block of a `Proof by Cases`; a theorem proved with a repeat and cited later by its title.
+
+If an invalid proof is accepted, that is finding (b): an issue with `Owner: Claude`, a strict xfail in your pins, and a note in the PR. If a valid proof is refused, compare it with the doc first: the repeated argument is checked like any line, a name or symbol is replaced only if it occurs in the statement of line B, a compound term is never replaced as a whole, and the lines between A and B are not replayed. A message that does not say why is finding (d). Do not edit the cases of J24 or the earlier fixtures.
+
+Done when: every numbered point has a case or a sentence in the PR saying why it cannot be written, every refused case has a valid twin, none repeats an existing case, CI shows no failing test, and the PR lists every finding.
+
+## Not yet at the original 2026-10-26 snapshot (historical; not current guidance)
+
+At the snapshot date, these items had not yet been approved or implemented. Check the live tracker and TODO ledger before drawing any current conclusion.
 
 `Mutatis mutandis` beyond names replaced by names (a name replaced by a term; relation or function symbols replaced); WLOG for arbitrary properties; the symbolic defining property; the Infinity follow-up in `todos.txt` §5; retiring the generic `(Axiom)` citation; declaring function symbols in proof text and set operations as terms (no design yet); new theory modules such as abstract algebra or topology. If you think of a job that is not here, put it in the live handoff as a proposal and wait.
 
