@@ -1,17 +1,21 @@
 Use discrete math.
 
 (*
-J27 examples:
-1-6 are adapted demonstrations from existing first-order, relation and order proof patterns.
-7. tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1: shortens the
-   existing reverse-inclusion case argument by repeating a Proof by Cases line
-   together with its two attached five-line case subproofs.
-8. tests/setTheoryProofs/set_operation_foundations.txt, proof 5: shortens the
-   existing reverse subset proof by exchanging the two set names.
-The original source proofs are unchanged. Examples 7 and 8 are actual
-shortenings of repeated arguments in the surveyed corpus. Both repeat a rule
-line together with its attached subproof; this is distinct from repeating a
-standalone closed case block, which the rule cannot do.
+J27 examples adapted from existing source proof patterns:
+1. tests/testProofs/first_order_classics.txt, proof 20: adapt a nested conditional
+   and universal-generalization argument to a second predicate pair.
+2-3. source/testProofs/equivalenceRelationChaining.txt, proofs 1 and 2:
+   adapt nested conditional arguments to other names.
+4. tests/testDiscreteMath/order_relation_proofs.txt, proof 8: adapt the
+   antisymmetry contradiction to a second relation.
+5. source/testProofs/informationalRelationOrderProofs.txt, proof 4: adapt an
+   asymmetry contradiction to a second relation symbol.
+6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: adapt the
+   contradiction proving irreflexivity to another point.
+The cited source proofs are unchanged. These are explicit demonstration
+variants of their proof patterns, not literal shortenings of a second
+repeated passage in those source proofs. The earlier J25 examples are not
+repeated here.
 *)
 
 # 1: A universal implication works for another pair of predicates
@@ -137,60 +141,3 @@ begin subproof
 end subproof
 4. not S(b,b). (Mutatis mutandis, 3)
 5. not S(a,a) and not S(b,b). (Conjunction Introduction from 3, 4)
-
-# 7: Repeating a proof-by-cases line also repeats its attached case subproofs
-## Proof that
-### if a and b are sets, Y is a set with exactly a and b as members, and X has exactly a and b as members.
-### then X = Y.
-
-1. a and b are sets. (Declaration)
-2. exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
-3. Let Y be such a set. (Existence from 2)
-4. Let X be any set. (Declaration)
-5. If (forall z, (In(z, X) iff (z = a or z = b))) then X = Y. (Conditional Introduction from subproof below)
-begin subproof
- 5.1. forall z, (In(z, X) iff (z = a or z = b)). (Assumption for Conditional Introduction)
- 5.2. X subseteq Y. (Subset proof below)
- begin subproof
-  5.2.1. Let x in X. (Assumption for subset proof)
-  5.2.2. x = a or x = b. (Set property, 5.1, 5.2.1)
-  5.2.3. In(x, Y). (Proof by Cases from 5.2.2, subproofs below)
-  begin subproof
-   5.2.3.1. x = a. (Case)
-   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
-   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
-   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
-   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
-  end subproof
-  begin subproof
-   5.2.3.1. x = b. (Case)
-   5.2.3.2. In(x, Y) iff (x = a or x = b). (Universal Instantiation from 3)
-   5.2.3.3. (x = a or x = b) -> In(x, Y). (Biconditional Elimination from 5.2.3.2)
-   5.2.3.4. x = a or x = b. (Disjunction Introduction from 5.2.3.1)
-   5.2.3.5. In(x, Y). (Modus Ponens from 5.2.3.4, 5.2.3.3)
-  end subproof
- end subproof
- 5.3. Y subseteq X. (Subset proof below)
- begin subproof
-  5.3.1. Let y in Y. (Assumption for subset proof)
-  5.3.2. y = a or y = b. (Set property, 3, 5.3.1)
-  5.3.3. In(y, X). (Mutatis mutandis, 5.2.3)
- end subproof
- 5.4. X = Y. (Set Equality from 5.2, 5.3)
-end subproof
-
-# 8: The reverse subset proof repeats the first subset argument with the sets exchanged
-## Proof that
-### if I and J have the same members, then I = J.
-
-1. Let A, B, I, J be any sets. (Declaration)
-2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
-3. forall u, (In(u, J) iff (In(u, A) and In(u, B))). (Premise)
-4. I subseteq J. (Subset proof below)
- begin subproof
-  4.1. Let x in I. (Assumption for subset proof)
-  4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
-  4.3. In(x, J). (Set property from 3, 4.2)
- end subproof
-5. J subseteq I. (Mutatis mutandis, 4)
-6. I = J. (Set Equality from 4, 5)
