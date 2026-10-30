@@ -12,10 +12,13 @@ J27 examples adapted from existing source proof patterns:
    asymmetry contradiction to a second relation symbol.
 6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: adapt the
    contradiction proving irreflexivity to another point.
-The cited source proofs are unchanged. These are explicit demonstration
-variants of their proof patterns, not literal shortenings of a second
-repeated passage in those source proofs. The earlier J25 examples are not
-repeated here.
+The cited source proofs are unchanged. Examples 1-6 are explicit demonstration
+variants, not literal shortenings of second repeated passages. Example 7 is
+a literal shortening of proof 5 in
+tests/setTheoryProofs/set_operation_foundations.txt, a distinct source
+location not represented in the J25 fixture. The pair-set proof in
+tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1, is omitted
+because J25 example 1 already shortens that source proof.
 *)
 
 # 1: A universal implication works for another pair of predicates
@@ -141,3 +144,19 @@ begin subproof
 end subproof
 4. not S(b,b). (Mutatis mutandis, 3)
 5. not S(a,a) and not S(b,b). (Conjunction Introduction from 3, 4)
+
+# 7: The second inclusion repeats the first subset argument with the sets exchanged
+## Proof that
+### if I and J both have the membership property of the intersection of A and B, then I = J.
+
+1. Let A, B, I, J be any set. (Declaration)
+2. forall u, (In(u, I) iff (In(u, A) and In(u, B))). (Premise)
+3. forall u, (In(u, J) iff (In(u, A) and In(u, B))). (Premise)
+4. I subseteq J. (Subset proof below)
+ begin subproof
+  4.1. Let x in I. (Assumption for subset proof)
+  4.2. In(x, A) and In(x, B). (Set property from 2, 4.1)
+  4.3. In(x, J). (Set property from 3, 4.2)
+ end subproof
+5. J subseteq I. (Mutatis mutandis, 4)
+6. I = J. (Set Equality from 4, 5)
