@@ -8,6 +8,18 @@ Completed job specifications and their original task instructions are preserved 
 
 Start a job only after the pull request that adds it has been merged, so the instructions and implementation can be read together. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
 
+### J28 — Register every elaborated declaration in ProofContext
+
+**Goal:** Keep the elaboration-time lexical declaration context synchronized with every declaration emitted into core entries, including declarations produced by `Existence from L` and the generic declaration-prefix path used by declaration-like premises.
+
+**Allowed scope:** `source/ProofParser.py`, a focused new regression module under `pytest_tests/`, and this tracker. Do not edit `ProofLogic.py` or `ProofJustification.py`.
+
+**Tests:** Verify that an existence witness and a declaration parsed from a `Premise` with `such that` are visible to a later declaration recipe that refers to them as a carrier; verify duplicate declarations are rejected during elaboration; preserve existing compound-declaration, scope, and typed-declaration behavior.
+
+**Done when:** All declaration objects emitted by an elaborated entry are registered exactly once in the current `ProofContext`, already-registered compound-declaration objects are not re-registered, duplicate names fail at the source line, and CI passes the full test suite and enforced/informational fixture corpus.
+
+Status: in progress (implementation PR pending).
+
 No active jobs are currently queued.
 
 
