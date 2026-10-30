@@ -20,20 +20,33 @@ Convenience relation descriptors:
 
 What a relation declaration says: ``Let R be a ... relation on X`` makes R a
 relation on X in the usual sense, a subset of X x X, so R(a, b) can hold only
-for members of X (the owner's decision of 2026-10-29, issue #136).  That fixes
-which rules have to look at X:
+for members of X (the owner's decisions of 2026-10-29, issue #136).  The
+declaration states that as a formula of its line, as sugar for it, the way
+``a be in X`` states ``In(a, X)``:
+
+    forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))
+
+(Added by the declaration recipe of ``DiscreteMath``, ``relation_subset_formula``;
+the rules below do not read it.)  A proof gets the memberships from R(a, b)
+with the ordinary rules, for terms declared in no set at all:
+
+    2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+    3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+That fixes which rules have to look at X:
 
 * A rule that starts from an R-fact -- symmetry, antisymmetry, asymmetry,
   transitivity -- reads the declared property and nothing else.  The fact
-  R(a, b) it cites already puts a and b in X, so there is no membership premise
-  and nothing to check about the set the terms were declared in.
+  R(a, b) it cites puts a and b in X, so there is no membership premise and
+  nothing to check about the set the terms were declared in.
 * A rule that produces an R-fact, or its denial, from membership --
   reflexivity, irreflexivity, totality -- cites that membership, and it must be
   membership in the declared carrier: R reflexive on X says nothing about the
-  members of another set Y.
+  members of another set Y.  A proof that has only R(a, b) derives the
+  membership first, as above.
 
-The checker does not derive ``a in X`` from R(a, b); where a rule asks for a
-membership, a line has to state it.
+A relation declared through the API, with a carrier and properties as metadata
+and no declaration line, states nothing: the formula comes from the line.
 
 The rules are deliberately declaration-sensitive.  A relation rule can only
 apply to a relation whose declaration explicitly supplied the corresponding

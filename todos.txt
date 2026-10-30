@@ -174,14 +174,22 @@ these without an owner decision.
   Check the header of `source/NumberTheory.py` and [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98)
   before writing a proof that appears to require another law. Do not add axioms
   as part of an example-writing task.
-- A relation on X is a subset of X × X (owner decision, 2026-10-29, which settled
-  [issue #136](https://github.com/axiomtutor/SyLoPy/issues/136) as no defect).
-  `R(a, b)` puts `a` and `b` in X, so the rules that start from such a fact
-  (symmetry, antisymmetry, asymmetry, transitivity) read only the declared
-  property and take no membership premise; the rules that start from membership
-  (reflexivity, irreflexivity, totality) require the declared carrier.
-  `pytest_tests/test_relation_subset_semantics.py` pins which is which. The
-  checker does not derive `a in X` from `R(a, b)`.
+- A relation on X is a subset of X × X (owner decisions, 2026-10-29, which settled
+  [issue #136](https://github.com/axiomtutor/SyLoPy/issues/136) as no defect and
+  made the subset a fact of the declaration). `Let R be a relation on X` states
+  `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))` as a formula of its
+  line, as sugar (`DiscreteMath.relation_subset_formula`), so `In(a, X)` follows
+  from `R(a, b)` by Universal Instantiation, Universal Modus Ponens and
+  Conjunction Elimination (`tests/testDiscreteMath/relation_subset.txt`,
+  `pytest_tests/test_relation_subset_sugar.py`). The rules that start from a
+  fact `R(a, b)` (symmetry, antisymmetry, asymmetry, transitivity) read only the
+  declared property and take no membership premise; the rules that start from
+  membership (reflexivity, irreflexivity, totality) require the declared
+  carrier. `pytest_tests/test_relation_subset_semantics.py` pins which is which.
+  Known costs: declaration bundles and Mutatis mutandis messages are longer, and
+  repeating an argument that cites a relation declaration for another relation
+  needs that relation on the same carrier. A Universal Modus Ponens over two
+  variables at once would shorten the derivation; nobody has asked for it.
 - Relation declarations and their property/carrier metadata respect nested and
   sibling proof scopes. Regression coverage: `pytest_tests/test_relation_scope_rules.py`
   and `pytest_tests/test_rule_context_declarations.py`.

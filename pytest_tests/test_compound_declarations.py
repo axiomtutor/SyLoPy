@@ -6,6 +6,9 @@ import pytest
 
 from .support import pp, pl, fl, c, numt
 
+# What `Let R be a relation on X` states about R (see DiscreteMath.relation_subset_formula).
+R_ON_X = "(∀x. (∀y. (R(x, y) → (In(x, X) ∧ In(y, X)))))"
+
 
 def test_compound_declaration_surface_ast_separates_declarations_and_premises():
     text = """
@@ -45,8 +48,10 @@ def test_compound_declaration_elaborates_to_existing_core_concepts():
     label, formulas, justification = entries[0]
     assert label == "1"
     assert isinstance(formulas, list)
+    # `R be a relation on X` states that R is a subset of X x X, as a fact of
+    # the declaration line, before the facts of the clauses that follow it.
     assert [repr(phi) for phi in formulas] == [
-        "In(a, X)", "In(b, X)", "R(a, b)"
+        R_ON_X, "In(a, X)", "In(b, X)", "R(a, b)"
     ]
     assert justification[0] == "premise"
     assert [d.name for d in justification[1]] == ["X", "R", "a", "b"]
@@ -151,7 +156,7 @@ def test_membership_declaration_accepts_are_in_wording():
     ),
     (
         "1. Let X be any set, R be a relation on X, P(a), Q(b). (Declaration)\n",
-        ["P(a)", "Q(b)"],
+        [R_ON_X, "P(a)", "Q(b)"],
     ),
     (
         "1. Let X be any set, a, b be in X, P(a), Q(b). (Declaration)\n",

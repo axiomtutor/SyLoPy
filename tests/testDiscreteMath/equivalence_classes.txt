@@ -191,7 +191,7 @@ not a term here, so do not write `[a]` or `{u in X : R(a, u)}` in a formula.
   7.7. In(u, D). (Set property from 6, 7.6)
 
 # 9: Set property needs the carrier-membership conjunct
-## Invalid: missing carrier membership — R(b,u) alone does not establish u belongs to the class of b.
+## Invalid: missing carrier membership — no line says that u is in X (the declaration of R gives it, but a line has to derive it), so R(b,u) alone does not establish that u belongs to the class of b.
 ### then C subseteq D.
 
 

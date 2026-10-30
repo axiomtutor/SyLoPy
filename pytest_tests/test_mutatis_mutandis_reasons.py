@@ -144,6 +144,11 @@ SETS_REFUSALS = {
 SETS_SIBLINGS = {"3": "2", "4": "5"}
 SETS_VALID = ["1", "2", "5"]
 
+# What declaring a relation on X states about it, as it prints (a relation on
+# X is a subset of X x X; DiscreteMath.relation_subset_formula).
+R_SUBSET = "(∀x. (∀y. (R(x, y) → (In(x, X) ∧ In(y, X)))))"
+S_SUBSET = "(∀x. (∀y. (S(x, y) → (In(x, X) ∧ In(y, X)))))"
+
 RELATIONS_REFUSALS = {
     "3": ("3", RULE_MISMATCH,
           "Mutatis mutandis cannot repeat line 2 with R by S: 'RelationTransitivity' does not justify "
@@ -153,8 +158,8 @@ RELATIONS_REFUSALS = {
           "S(b, a) from the cited line(s) ['1']", None),
     "5": ("3", BAD_REFERENCE,
           "Mutatis mutandis cannot repeat line 2 with R by S: line 2 cites line 1, which says "
-          "In(a, X); In(b, X); In(c, X); R(a, b); R(b, c), and no visible line says "
-          "In(a, X); In(b, X); In(c, X); S(a, b); S(b, c)", None),
+          f"{R_SUBSET}; {S_SUBSET}; In(a, X); In(b, X); In(c, X); R(a, b); R(b, c), and no visible "
+          f"line says {S_SUBSET}; {S_SUBSET}; In(a, X); In(b, X); In(c, X); S(a, b); S(b, c)", None),
 }
 RELATIONS_SIBLINGS = {"3": "1", "4": "2", "5": "1"}
 RELATIONS_VALID = ["1", "2"]
