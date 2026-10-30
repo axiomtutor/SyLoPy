@@ -16,8 +16,8 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 ```
 
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
-promotion, and regression corpus are implemented. The J26 red-team pass is open
-in [PR #135](https://github.com/axiomtutor/SyLoPy/pull/135).
+promotion, and regression corpus are implemented. The J26 red-team pass is merged
+in [PR #135](https://github.com/axiomtutor/SyLoPy/pull/135); the J27 survey of where `Mutatis mutandis` still falls short has been merged in [PR #139](https://github.com/axiomtutor/SyLoPy/pull/139).
 
 ### Open findings
 

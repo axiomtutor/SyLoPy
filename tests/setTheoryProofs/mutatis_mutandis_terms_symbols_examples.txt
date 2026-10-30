@@ -1,0 +1,149 @@
+Use discrete math.
+
+(*
+J27 examples adapted from existing source proof patterns:
+1. tests/testProofs/first_order_classics.txt, proof 20: adapt a nested conditional
+   and universal-generalization argument to a second predicate pair.
+2-3. source/testProofs/equivalenceRelationChaining.txt, proofs 1 and 2:
+   adapt nested conditional arguments to other names.
+4. tests/testDiscreteMath/order_relation_proofs.txt, proof 8: adapt the
+   antisymmetry contradiction to a second relation.
+5. source/testProofs/informationalRelationOrderProofs.txt, proof 4: adapt an
+   asymmetry contradiction to a second relation symbol.
+6. tests/testDiscreteMath/order_relation_proofs.txt, proof 9: adapt the
+   contradiction proving irreflexivity to another point.
+The cited source proofs are unchanged. Examples 1-6 are adapted
+demonstrations of patterns found in the surveyed files, not literal
+shortenings of second repeated passages in those files. The additional
+same-pattern candidates were excluded: the pair-set proof in
+tests/testSetTheory/unique_pairing_without_wlog.txt, proof 1, is already
+shortened in J25 example 1; intersection uniqueness in
+tests/setTheoryProofs/set_operation_foundations.txt, proof 5, is the same
+argument pattern as J25 example 4; and the WLOG version in
+tests/testSetTheory/unique_pairing_with_wlog.txt, proof 1, is already
+shortened in tests/testSetTheory/mutatis_mutandis_sets.txt, proof 1.
+*)
+
+# 1: A universal implication works for another pair of predicates
+## Proof that
+### if P, Q, R and S are predicates such that: forall x, (P(x) -> Q(x)). forall x, (R(x) -> S(x)).
+### then ((forall x, P(x)) -> (forall x, Q(x))) and ((forall x, R(x)) -> (forall x, S(x))).
+
+1. Let P, Q, R and S be predicates. (Declaration)
+2. forall x, (P(x) -> Q(x)). (Premise)
+3. forall x, (R(x) -> S(x)). (Premise)
+4. (forall x, P(x)) -> (forall x, Q(x)). (Conditional Introduction from subproof below)
+begin subproof
+ 4.1. forall x, P(x). (Assumption for Conditional Introduction)
+ 4.2. forall x, Q(x). (Universal Generalization from subproof below)
+ begin subproof
+  4.2.0. Let c be arbitrary. (Arbitrary)
+  4.2.1. P(c) -> Q(c). (Universal Instantiation from 2)
+  4.2.2. P(c). (Universal Instantiation from 4.1)
+  4.2.3. Q(c). (Modus Ponens from 4.2.1, 4.2.2)
+ end subproof
+end subproof
+5. (forall x, R(x)) -> (forall x, S(x)). (Mutatis mutandis, 4)
+6. ((forall x, P(x)) -> (forall x, Q(x))) and ((forall x, R(x)) -> (forall x, S(x))). (Conjunction Introduction from 4, 5)
+
+# 2: An equivalence-relation argument transfers to another triple
+## Proof that
+### if R is an equivalence relation on X and a, b, c, d, e, f are in X,
+### then (R(a,b) -> (R(b,c) -> R(c,a))) and (R(d,e) -> (R(e,f) -> R(f,d))).
+
+1. Let X be any set, R be an equivalence relation on X, and a, b, c, d, e, f be in X. (Declaration)
+2. R(a,b) -> (R(b,c) -> R(c,a)). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,c) -> R(c,a). (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,c). (Assumption for Conditional Introduction)
+  2.2.2. R(a,c). (Relation Transitivity from 2.1, 2.2.1)
+  2.2.3. R(c,a). (Relation Symmetry from 2.2.2)
+ end subproof
+end subproof
+3. R(d,e) -> (R(e,f) -> R(f,d)). (Mutatis mutandis, 2)
+4. (R(a,b) -> (R(b,c) -> R(c,a))) and (R(d,e) -> (R(e,f) -> R(f,d))). (Conjunction Introduction from 2, 3)
+
+# 3: A partial-order argument transfers to another pair
+## Proof that
+### if R is a partial order on X and a, b, c, d are in X,
+### then (R(a,b) -> (R(b,a) -> a = b)) and (R(c,d) -> (R(d,c) -> c = d)).
+
+1. Let X be any set, R be a partial order on X, and a, b, c, d be in X. (Declaration)
+2. R(a,b) -> (R(b,a) -> a = b). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. R(a,b). (Assumption for Conditional Introduction)
+ 2.2. R(b,a) -> a = b. (Conditional Introduction from subproof below)
+ begin subproof
+  2.2.1. R(b,a). (Assumption for Conditional Introduction)
+  2.2.2. a = b. (Relation Antisymmetry from 2.1, 2.2.1)
+ end subproof
+end subproof
+3. R(c,d) -> (R(d,c) -> c = d). (Mutatis mutandis, 2)
+4. (R(a,b) -> (R(b,a) -> a = b)) and (R(c,d) -> (R(d,c) -> c = d)). (Conjunction Introduction from 2, 3)
+
+# 4: Antisymmetry and inequality exclude the reverse pair for another relation
+## Proof that
+### if R and S are antisymmetric relations on X, a and b are in X, not (a = b), R(a,b), and S(a,b),
+### then not R(b,a) and not S(b,a).
+
+1. Let X be any set,
+ R be an antisymmetric relation on X,
+ S be an antisymmetric relation on X,
+ a and b be in X. (Declaration)
+2. not (a = b). (Premise)
+3. R(a, b). (Premise)
+4. S(a, b). (Premise)
+5. not R(b, a). (Proof by Contradiction from subproof below)
+begin subproof
+ 5.1. R(b, a). (Assumption for Contradiction)
+ 5.2. a = b. (Relation Antisymmetry from 3, 5.1)
+ 5.3. (a = b) and not (a = b). (Conjunction Introduction from 5.2, 2)
+end subproof
+6. not S(b, a). (Mutatis mutandis, 5)
+7. not R(b, a) and not S(b, a). (Conjunction Introduction from 5, 6)
+
+# 5: The asymmetry contradiction transfers to another relation
+## Proof that
+### if R and S are asymmetric relations on X, a and b are in X, forall x, forall y, (R(x,y) -> R(y,x)), and forall x, forall y, (S(x,y) -> S(y,x)),
+### then not R(a,b) and not S(a,b).
+
+1. Let X be any set,
+ R be an asymmetric relation on X,
+ S be an asymmetric relation on X,
+ a and b be in X. (Declaration)
+2. forall x, forall y, (R(x,y) -> R(y,x)). (Premise)
+3. forall x, forall y, (S(x,y) -> S(y,x)). (Premise)
+4. not R(a,b). (Proof by Contradiction from subproof below)
+begin subproof
+ 4.1. R(a,b). (Assumption for Contradiction)
+ 4.2. forall y, (R(a,y) -> R(y,a)). (Universal Instantiation from 2)
+ 4.3. R(a,b) -> R(b,a). (Universal Instantiation from 4.2)
+ 4.4. R(b,a). (Modus Ponens from 4.3, 4.1)
+ 4.5. not R(b,a). (Relation Asymmetry from 4.1)
+ 4.6. R(b,a) and not R(b,a). (Conjunction Introduction from 4.4, 4.5)
+end subproof
+5. not S(a,b). (Mutatis mutandis, 4)
+6. not R(a,b) and not S(a,b). (Conjunction Introduction from 4, 5)
+
+# 6: A strict relation derived from a partial order is irreflexive at another point too
+## Proof that
+### if R is a partial order on X, S is a relation on X, a and b are in X, and forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))),
+### then not S(a,a) and not S(b,b).
+
+1. Let X be any set, R be a partial order on X, S be a relation on X, and a and b be in X. (Declaration)
+2. forall x, forall y, (S(x,y) iff (R(x,y) and not (x = y))). (Premise)
+3. not S(a,a). (Proof by Contradiction from subproof below)
+begin subproof
+ 3.1. S(a,a). (Assumption for Contradiction)
+ 3.2. forall y, (S(a,y) iff (R(a,y) and not (a = y))). (Universal Instantiation from 2)
+ 3.3. S(a,a) iff (R(a,a) and not (a = a)). (Universal Instantiation from 3.2)
+ 3.4. S(a,a) -> (R(a,a) and not (a = a)). (Biconditional Elimination from 3.3)
+ 3.5. R(a,a) and not (a = a). (Modus Ponens from 3.4, 3.1)
+ 3.6. not (a = a). (Conjunction Elimination from 3.5)
+ 3.7. a = a. (Reflexivity)
+ 3.8. (a = a) and not (a = a). (Conjunction Introduction from 3.7, 3.6)
+end subproof
+4. not S(b,b). (Mutatis mutandis, 3)
+5. not S(a,a) and not S(b,b). (Conjunction Introduction from 3, 4)

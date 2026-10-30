@@ -1683,6 +1683,31 @@ class _ElaborationContext:
             label, formula, justification = result[0], result[1], result[2]
             tag = justification[0] if isinstance(justification, tuple) and justification else None
 
+            # Every declaration carried into the core entry must also exist
+            # in the elaboration-time lexical context. Most declaration
+            # syntax is handled by elaborate_compound_declaration, which
+            # registers declarations incrementally so later clauses in the
+            # same line can depend on earlier ones. Other paths -- notably
+            # Existence from L and declaration-like Premise lines using
+            # "such that" -- produce the same core declaration payload
+            # without passing through that helper. Register those here.
+            #
+            # The identity check makes this common postcondition compatible
+            # with the incremental compound-declaration path: declarations
+            # already registered by that path are not registered twice, but
+            # a different declaration with the same visible name is still a
+            # genuine duplicate and is rejected.
+            if (tag in ('premise', 'declare')
+                    and isinstance(justification, tuple)
+                    and len(justification) > 1
+                    and isinstance(justification[1], list)):
+                for declaration in justification[1]:
+                    if not isinstance(declaration, pl.Declaration):
+                        continue
+                    if self.context.lookup_declaration(declaration.name) is declaration:
+                        continue
+                    self.register_declaration(declaration, entry.span)
+
             def bind_reference_here(value: Any, *, assumption: bool = False) -> None:
                 try:
                     if assumption:
