@@ -166,6 +166,12 @@ def test_j30_parser_mutations_are_detected(tmp_path):
             "new": old_declaration_start,
         },
         {
+            "id": "and-joined-comma-lookahead",
+            "file": "source/ProofParser.py",
+            "old": ") and _text_after_is_declaration_start(rest):",
+            "new": ") and not _text_after_is_declaration_start(rest):",
+        },
+        {
             "id": "single-sentence-guard",
             "file": "source/ProofParser.py",
             "old": r"if re.search(r'\.\s*let\b', source, re.I):",
@@ -183,7 +189,7 @@ def test_j30_parser_mutations_are_detected(tmp_path):
     focused_tests = (
         "python3 -m pytest -q pytest_tests/test_declaration_text_is_not_dropped.py "
         "-k 'grouped_names_after_a_declaration_clause_are_not_dropped or "
-        "a_declaration_line_rejects_a_second_let_sentence_at_its_source_line or "
+        "a_declaration_line_rejects_a_second_let_sentence_at_its_source_line or ""test_oxford_comma_name_group_remains_one_declaration or "
         "declaration_recipe_output_is_subject_to_the_identifier_guard'"
     )
     completed = subprocess.run(
@@ -207,4 +213,4 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         f"mutation checker failed\nstdout:\n{completed.stdout}\n"
         f"stderr:\n{completed.stderr}"
     )
-    assert "Summary: total=3 killed=3 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
+    assert "Summary: total=4 killed=4 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
