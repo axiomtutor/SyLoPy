@@ -330,7 +330,7 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
-Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is deferred. `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
+Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is approved but not implemented yet. `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
 
 ### Mutatis mutandis: the same argument for other names, terms and symbols
 
@@ -532,8 +532,8 @@ Separation and Replacement are schema citations. For axiom-instance and `Set pro
 
 Features explicitly deferred:
 
-- WLOG for arbitrary properties. Only the equality-case WLOG replay is implemented.
-- `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->`.
+- WLOG for arbitrary properties (approved on 2026-10-30, not implemented yet). Only the equality-case WLOG replay is implemented.
+- `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->` (not planned for now: owner decision of 2026-10-30).
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
 
 ## 12. Worked set-theory proofs
