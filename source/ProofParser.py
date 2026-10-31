@@ -735,15 +735,7 @@ def _split_compound_declaration_items(body: str) -> List[str]:
             # Before ``be/are`` commas are grouped-name separators.  Check
             # this before the general declaration-boundary test: otherwise
             # ``a, b, c be objects`` would be mistaken for three clauses.
-            if re.match(
-                r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*$',
-                current,
-            ) and re.match(
-                r'^(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*'
-                r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
-                rest,
-                re.I,
-            ):
+            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest):
                 buf.append(ch)
                 i += 1
                 continue
