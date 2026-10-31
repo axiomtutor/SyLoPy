@@ -5,26 +5,32 @@ Each invalid case has a valid twin that changes only the condition named.
 
 Use discrete math.
 
-# 1: A declaration made in a closed subproof is not visible outside it
-## Invalid: closed scope — the relation declaration is local to the subproof.
+# 1: A fact derived from a relation declared in a closed subproof is not visible outside
+## Invalid: closed scope — the membership line is local to the subproof that declares R.
 1. Let X be any set, a, b be objects. (Declaration)
 2. a = a -> a = a. (Conditional Introduction from subproof below)
 begin subproof
  2.1. a = a. (Assumption for Conditional Introduction)
  2.2. Let R be a relation on X, R(a,b). (Declaration)
- 2.3. a = a. (Reiteration from 2.1)
+ 2.3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 2.2)
+ 2.4. In(a,X) and In(b,X). (Universal Modus Ponens from 2.3, 2.2)
+ 2.5. In(a,X). (Conjunction Elimination from 2.4)
+ 2.6. a = a. (Reiteration from 2.1)
 end subproof
-3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 2.2)
+3. In(a,X). (Reiteration from 2.5)
 
-# 2: The same declaration is usable when it is in the enclosing scope
+# 2: The same membership is available when the relation is declared in the enclosing scope
 ## Proof that
 1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
-2. a = a -> a = a. (Conditional Introduction from subproof below)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+4. In(a,X). (Conjunction Elimination from 3)
+5. a = a -> a = a. (Conditional Introduction from subproof below)
 begin subproof
- 2.1. a = a. (Assumption for Conditional Introduction)
- 2.2. a = a. (Reiteration from 2.1)
+ 5.1. a = a. (Assumption for Conditional Introduction)
+ 5.2. a = a. (Reiteration from 5.1)
 end subproof
-3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+6. In(a,X). (Reiteration from 4)
 
 # 3: Sibling subproofs may declare the same relation name on different carriers
 ## Proof that
