@@ -41,9 +41,9 @@ REFUSALS = {
         "UniversalInstantiation' does not justify (∀y. (R(a, y) → (In(y, X) ∧ In(a, X)))",
     ),
     "8": (
-        "2",
+        "3",
         RULE_MISMATCH,
-        "UniversalInstantiation' does not justify (∀y. (S(a, y) → (In(a, X) ∧ In(y, X)))",
+        "UniversalModusPonens' does not justify (In(a, X) ∧ In(b, X))",
     ),
     "10": (
         "2",
