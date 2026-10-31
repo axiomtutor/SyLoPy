@@ -168,8 +168,108 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         {
             "id": "and-joined-comma-lookahead",
             "file": "source/ProofParser.py",
-            "old": ") and _text_after_is_declaration_start(rest):",
-            "new": ") and not _text_after_is_declaration_start(rest):",
+            "old": r"""            if re.match(
+                r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*
+        {
+            "id": "single-sentence-guard",
+            "file": "source/ProofParser.py",
+            "old": r"if re.search(r'\.\s*let\b', source, re.I):",
+            "new": "if False:",
+        },
+        {
+            "id": "recipe-name-guard",
+            "file": "source/ProofParser.py",
+            "old": "if not isinstance(name, str) or not _IDENTIFIER_RE.fullmatch(name):",
+            "new": "if False:",
+        },
+    ]
+    spec = tmp_path / "j30-mutations.json"
+    spec.write_text(json.dumps(mutations), encoding="utf-8")
+    focused_tests = (
+        "python3 -m pytest -q pytest_tests/test_declaration_text_is_not_dropped.py "
+        "-k 'grouped_names_after_a_declaration_clause_are_not_dropped or "
+        "a_declaration_line_rejects_a_second_let_sentence_at_its_source_line or ""test_oxford_comma_name_group_remains_one_declaration or "
+        "declaration_recipe_output_is_subject_to_the_identifier_guard'"
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(project_root / "tools" / "mutation_check.py"),
+            str(spec),
+            "--tests",
+            focused_tests,
+            "--jobs",
+            "3",
+        ],
+        cwd=project_root,
+        env=os.environ.copy(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=150,
+    )
+    assert completed.returncode == 0, (
+        f"mutation checker failed\nstdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
+    )
+    assert "Summary: total=4 killed=4 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
+,
+                current,
+            ) and _text_after_is_declaration_start(rest):
+                buf.append(ch)
+                i += 1
+                continue""",
+            "new": r"""            if re.match(
+                r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*
+        {
+            "id": "single-sentence-guard",
+            "file": "source/ProofParser.py",
+            "old": r"if re.search(r'\.\s*let\b', source, re.I):",
+            "new": "if False:",
+        },
+        {
+            "id": "recipe-name-guard",
+            "file": "source/ProofParser.py",
+            "old": "if not isinstance(name, str) or not _IDENTIFIER_RE.fullmatch(name):",
+            "new": "if False:",
+        },
+    ]
+    spec = tmp_path / "j30-mutations.json"
+    spec.write_text(json.dumps(mutations), encoding="utf-8")
+    focused_tests = (
+        "python3 -m pytest -q pytest_tests/test_declaration_text_is_not_dropped.py "
+        "-k 'grouped_names_after_a_declaration_clause_are_not_dropped or "
+        "a_declaration_line_rejects_a_second_let_sentence_at_its_source_line or ""test_oxford_comma_name_group_remains_one_declaration or "
+        "declaration_recipe_output_is_subject_to_the_identifier_guard'"
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(project_root / "tools" / "mutation_check.py"),
+            str(spec),
+            "--tests",
+            focused_tests,
+            "--jobs",
+            "3",
+        ],
+        cwd=project_root,
+        env=os.environ.copy(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=150,
+    )
+    assert completed.returncode == 0, (
+        f"mutation checker failed\nstdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
+    )
+    assert "Summary: total=4 killed=4 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
+,
+                current,
+            ) and not _text_after_is_declaration_start(rest):
+                buf.append(ch)
+                i += 1
+                continue""",
         },
         {
             "id": "single-sentence-guard",
