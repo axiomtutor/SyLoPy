@@ -168,8 +168,9 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         {
             "id": "and-joined-comma-lookahead",
             "file": "source/ProofParser.py",
-            "old": r"""            if re.match(
-                r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*
+            "old": (
+                "            if re.match(\n"
+                "                r'^[A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*
         {
             "id": "single-sentence-guard",
             "file": "source/ProofParser.py",
@@ -213,14 +214,16 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         f"stderr:\n{completed.stderr}"
     )
     assert "Summary: total=4 killed=4 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
-,
-                current,
-            ) and _text_after_is_declaration_start(rest):
-                buf.append(ch)
-                i += 1
-                continue""",
-            "new": r"""            if re.match(
-                r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*
+,\n"
+                "                current,\n"
+                "            ) and _text_after_is_declaration_start(rest):\n"
+                "                buf.append(ch)\n"
+                "                i += 1\n"
+                "                continue"
+            ),
+            "new": (
+                "            if re.match(\n"
+                "                r'^[A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*
         {
             "id": "single-sentence-guard",
             "file": "source/ProofParser.py",
@@ -264,12 +267,13 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         f"stderr:\n{completed.stderr}"
     )
     assert "Summary: total=4 killed=4 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
-,
-                current,
-            ) and not _text_after_is_declaration_start(rest):
-                buf.append(ch)
-                i += 1
-                continue""",
+,\n"
+                "                current,\n"
+                "            ) and not _text_after_is_declaration_start(rest):\n"
+                "                buf.append(ch)\n"
+                "                i += 1\n"
+                "                continue"
+            ),
         },
         {
             "id": "single-sentence-guard",
