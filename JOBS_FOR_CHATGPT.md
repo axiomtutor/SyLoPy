@@ -55,7 +55,7 @@ Status: in progress (PR #146).
 
 **Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1, 5 and 6 turned out to accept, and CI passes.
 
-Status: todo.
+Status: in progress (PR #148).
 
 ### J32 — Proofs that use the relation-subset fact
 
