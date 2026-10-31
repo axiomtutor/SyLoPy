@@ -36,7 +36,7 @@ Expected: (1) declares and states for both names, with `a` and `an` still articl
 
 **Done when:** the three inputs behave as expected, the whole corpus (enforced and informational) gives the results it gave before, the mutation check has no survivor in the changed code (or the PR says why one is equivalent), and CI passes.
 
-Status: todo.
+Status: in progress (PR #146).
 
 ### J31 — Red-team "a relation on X is a subset of X × X"
 
