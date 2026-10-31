@@ -1844,6 +1844,7 @@ def elaborate_proof(
         required_rules=list(environment.rules) + context.extra_rules,
         required_axioms=environment.axioms,
         required_declarations=environment.declarations,
+        axioms_closed=environment.axioms_closed,
     )
 
 

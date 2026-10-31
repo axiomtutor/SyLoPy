@@ -104,6 +104,18 @@ rule, configuration included, as one the proof was configured with
 over `Int` is not induction over `Nat`, and an unregistered subclass is not its
 parent. `Proof` and promotion merge rule lists by the same test.
 
+An `(Axiom)` line may state only what the proof's axiom list holds, once the
+proof has a list; a proof given no axioms takes any formula as an axiom (a bare
+proof). That is wrong for a theory that cites its axioms by name and so lists
+none, so a theory can close its list: `TheoryEnvironment.axioms_closed` reaches
+`ElaboratedEntries`, `Proof` and `ProofValidator`, and `ProofValidator.axioms_closed`
+is the one place the question is answered (the axiom check, the record of which
+axioms a proof used, the WLOG replay validators). A list that is not empty closes
+itself and needs no flag. Set theory closes an empty list, which is what retired
+generic `(Axiom)` for its four axioms. A refused `(Axiom)` line is answered with
+the rules of the proof that justify the formula outright (`citation` of a rule is
+the phrase a proof writes, when it is not the rule's `name`).
+
 The invariant for such a rule: whatever the proof relies on that says
 something about a constant must reach the context, as a recorded formula or as
 declaration metadata. A fact a rule reads from somewhere else (a new kind of

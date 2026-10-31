@@ -161,6 +161,12 @@ class ElaboratedEntries(list):
 
     It deliberately subclasses ``list`` so all existing callers that expect
     the old ``entries`` API continue to work unchanged.
+
+    ``axioms_closed`` carries the theory's own statement that its axiom list
+    is closed (``TheoryEnvironment.axioms_closed``): a proof checked in it
+    may cite as ``(Axiom)`` only the axioms it was given, even when that
+    list is empty. Without it, a proof given no axioms accepts any formula as
+    one (``ProofLogic.Proof``).
     """
 
     def __init__(
@@ -172,6 +178,7 @@ class ElaboratedEntries(list):
         required_rules: Optional[Sequence[Any]] = None,
         required_axioms: Optional[Sequence[Any]] = None,
         required_declarations: Optional[Sequence[Any]] = None,
+        axioms_closed: bool = False,
     ):
         super().__init__(values)
         self.origin_by_label: Dict[str, CoreOrigin] = dict(origin_by_label or {})
@@ -179,6 +186,7 @@ class ElaboratedEntries(list):
         self.required_rules = list(required_rules or [])
         self.required_axioms = list(required_axioms or [])
         self.required_declarations = list(required_declarations or [])
+        self.axioms_closed = bool(axioms_closed)
 
 
 class ElaborationError(ValueError):
@@ -231,10 +239,22 @@ class TheoryEnvironment:
     # as a whole.
     phrase_spans: List[PhraseSpanFinder] = field(default_factory=list)
     declaration_recipes: List[Any] = field(default_factory=list)
+    # Whether `axioms` is the whole of what `(Axiom)` may cite, even when it is
+    # empty. A proof that is given no axioms at all takes any formula as an
+    # axiom, which is right for a bare proof but not for a theory that has
+    # decided what its axioms are: set theory cites its four axioms by name
+    # (`Axiom of pairing`, ...) and so lists none, and must not thereby let
+    # `(Axiom)` assert anything. A theory with a non-empty list needs no flag
+    # (a proof given axioms is checked against them); the flag is for the empty
+    # one. It is last so that no positional construction changes.
+    axioms_closed: bool = False
 
     def extended(self, *others: "TheoryEnvironment") -> "TheoryEnvironment":
         result = TheoryEnvironment(name=" + ".join([self.name, *[o.name for o in others]]))
         for environment in (self, *others):
+            # One theory closing its axiom list closes the combination: a
+            # theory that extends another does not reopen what it closed.
+            result.axioms_closed = result.axioms_closed or environment.axioms_closed
             result.formula_parsers.extend(environment.formula_parsers)
             result.line_elaborators.extend(environment.line_elaborators)
             result.rules.extend(environment.rules)

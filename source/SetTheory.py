@@ -1375,12 +1375,17 @@ def elaborate_subset_proof(line: SurfaceLine, context):
 
 
 # ---------------------------------------------------------------------------
-# ZFC axioms (Jech's presentation, "Set Theory").  Extensionality through
-# Infinity are plain formulas, cited verbatim as "(Axiom)" the same way
-# NumberTheory's Times-associativity/distributivity axioms already are: a
-# proof writes out the exact quantified statement and matches it structurally
-# (`_ast_eq`) against one entry of `SET_AXIOMS`, then works with it by
-# ordinary inference (Universal Instantiation, Existential Elimination, ...).
+# ZFC axioms (Jech's presentation, "Set Theory").  Pairing through Infinity
+# are plain formulas (`SET_AXIOMS`), each cited by name -- "(Axiom of pairing)",
+# "(Axiom of union)", "(Axiom of power set)", "(Axiom of infinity)" -- through a
+# zero-premise rule that checks the cited formula's shape against the axiom
+# (the formula in full, or, for Pairing, Union and Power Set, the instance for
+# particular sets of the proof), after which a proof works with it by ordinary
+# inference (Universal Instantiation, Existential Elimination, ...). They are
+# not cited with the generic "(Axiom)" that NumberTheory's axioms use: the owner
+# retired that path on 2026-10-30, so `SET_THEORY_ENVIRONMENT` lists no axiom
+# for "(Axiom)" and says so by closing the list (`axioms_closed`), which makes an
+# empty list mean "nothing may be cited that way" instead of "anything may".
 # Separation and Replacement are *schemas* -- "for every property" ranges
 # over formulas, which this theory has no way to quantify over -- so each is
 # a zero-premise rule instead, matching `EmptySetPropertyRule`'s own
@@ -1435,9 +1440,8 @@ POWER_SET_AXIOM = fl.ForAll('X', fl.Exists('Y', fl.ForAll(
 """For any X, there is a set Y = P(X) = {u : u subset X}. Jech's Axiom 5.
 Reuses `subset_formula` directly rather than re-deriving subset notation,
 overriding its default (synthetic, `__subset_element`) bound-variable name
-to the natural `v`. This full formula remains the form used by the generic
-`(Axiom)` citation, which requires the axiom to be restated verbatim; the
-named `PowerSetAxiomRule` also accepts the intended instance form.
+to the natural `v`. `PowerSetAxiomRule` accepts this full formula and the
+intended instance form.
 """
 
 INFINITY_AXIOM = fl.Exists('X', fl.And(
@@ -1462,6 +1466,12 @@ beyond what is already primitive (`In`, `Equals`).
 """
 
 SET_AXIOMS = [PAIRING_AXIOM, UNION_AXIOM, POWER_SET_AXIOM, INFINITY_AXIOM]
+"""The four axioms in full, in the order of their named rules
+(`PairingAxiomRule`, `UnionAxiomRule`, `PowerSetAxiomRule`,
+`InfinityAxiomRule`). Each rule accepts exactly its own. This is not the
+theory's list of axioms for `(Axiom)`, which is empty and closed: the axioms are
+cited by name.
+"""
 
 
 class SeparationSchemaRule(pl.InferenceRule):
@@ -1602,6 +1612,7 @@ class PairingAxiomRule(pl.InferenceRule):
        where a and b are specific variables from context.
     """
     name = "PairingAxiom"
+    citation = "Axiom of pairing"
     premise_arity = 0
 
     def __init__(self, witness_name: Optional[str] = None):
@@ -1862,6 +1873,7 @@ class UnionAxiomRule(pl.InferenceRule):
     set, a comprehension with no bounding set that the axiom does not give.
     """
     name = "UnionAxiom"
+    citation = "Axiom of union"
     premise_arity = 0
 
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
@@ -1921,6 +1933,7 @@ class PowerSetAxiomRule(pl.InferenceRule):
     which the axiom does not give and which Separation refutes.
     """
     name = "PowerSetAxiom"
+    citation = "Axiom of power set"
     premise_arity = 0
 
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
@@ -1961,6 +1974,7 @@ class InfinityAxiomRule(pl.InferenceRule):
     where 0 represents the empty set.
     """
     name = "InfinityAxiom"
+    citation = "Axiom of infinity"
     premise_arity = 0
 
     def applies(self, candidates: list, phi: fl.Formula) -> bool:
@@ -2366,7 +2380,9 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     line_elaborators=[elaborate_subset_proof, elaborate_pairing_witness],
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
-    axioms=SET_AXIOMS,
+    # No formula is cited with `(Axiom)`; the four axioms are cited by name.
+    # Closed, so that the empty list does not mean "any formula".
+    axioms_closed=True,
     declarations=SET_DECLARATIONS,
     term_parsers=[try_parse_set_term],
     nested_formula_parsers=[parse_set_formula],
