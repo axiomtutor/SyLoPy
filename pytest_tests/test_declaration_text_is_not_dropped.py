@@ -49,6 +49,11 @@ def _declaration_data(text):
             ["X", "an", "b"],
             ["In(an, X)", "In(b, X)"],
             "1. Let X be any set, an, b be in X. (Declaration)\n",
+        ),        (
+            "1. Let X be any set, a, b, and c be in X. (Declaration)\n",
+            ["X", "a", "b", "c"],
+            ["In(a, X)", "In(b, X)", "In(c, X)"],
+            "1. Let X be any set, a, b and c be in X. (Declaration)\n",
         ),
     ],
     ids=["and-joined-membership-names", "and-joined-object-names", "article-like-name"],
