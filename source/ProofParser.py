@@ -622,7 +622,11 @@ def _is_bare_name_list(text: str) -> bool:
     separates two clauses.
     """
     return bool(_BARE_NAME_LIST_RE.match(text.strip()))
-_DECL_START_RE = re.compile(r'^(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b', re.I)
+_DECL_START_RE = re.compile(
+    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*(?:and\s+)?|\s+and\s+))*'
+    r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
+    re.I,
+)
 _FORMULA_START_RE = re.compile(
     r'^(?:not\b|for\s+all\b|forall\b|exists\b|there\s+exists\b|if\b|[A-Za-z_][A-Za-z0-9_]*\s*\()',
     re.I,
@@ -734,16 +738,10 @@ def _split_compound_declaration_items(body: str) -> List[str]:
             if re.match(
                 r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*$',
                 current,
-            ) and re.match(
-                r'^(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*'
-                r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
-                rest,
-                re.I,
-            ):
+            ) and _text_after_is_declaration_start(rest):
                 buf.append(ch)
                 i += 1
                 continue
-
             # A comma followed by another declaration starts a new clause.
             if _text_after_is_declaration_start(rest):
                 flush()
@@ -885,6 +883,14 @@ def parse_surface_declaration_statement(
     if not re.match(r'^let\b', source, re.I):
         return None
 
+    # A declaration justification represents one Let statement. A second
+    # sentence on the same proof line must not be absorbed into a descriptor,
+    # silently discarded, or mistaken for part of a declaration name.
+    if re.search(r'\.\s*let\b', source, re.I):
+        raise ElaborationError(
+            "a declaration line is one sentence; put each Let on its own line",
+            span,
+        )
     body = re.sub(r'^let\s+', '', source, flags=re.I, count=1).strip()
     clauses: List[Any] = []
 
@@ -1023,6 +1029,12 @@ def elaborate_compound_declaration(entry: 'SurfaceLine', context: '_ElaborationC
                     )
                 source_span = run[recipe_index].span or entry.span
                 for declaration in extra_decls:
+                    name = getattr(declaration, "name", None)
+                    if not isinstance(name, str) or not _IDENTIFIER_RE.fullmatch(name):
+                        raise ElaborationError(
+                            f"invalid declared symbol name: {name!r}",
+                            source_span,
+                        )
                     context.register_declaration(declaration, source_span)
                     declarations.append(declaration)
                 formulas.extend(extra_formulas)
