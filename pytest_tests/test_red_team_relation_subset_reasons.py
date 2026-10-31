@@ -43,7 +43,7 @@ REFUSALS = {
     "8": (
         "3",
         RULE_MISMATCH,
-        "UniversalModusPonens' does not justify (In(a, X) ∧ In(b, X))",
+        "UniversalModusPonens' does not justify (In(a, X) ∧ In(b, X)) from the cited line(s) ['2', '1']",
     ),
     "10": (
         "2",
@@ -58,7 +58,7 @@ REFUSALS = {
     "15": (
         "2",
         RULE_MISMATCH,
-        "UniversalInstantiation' does not justify",
+        "UniversalInstantiation' does not justify (∀y. (P(a, y) → (In(a, X) ∧ In(y, X)))) from the cited line(s) ['1']",
     ),
 }
 
@@ -341,6 +341,7 @@ def test_an_explicit_subset_premise_promotes_for_a_binary_predicate_but_not_anot
 """
     proof = _validated_proof(source)
     theorem = pl.promote_theorem(title, proof)
+    assert theorem.generalized_names == ["X", "a", "b"]
 
     # The theorem generalizes the carrier and object names, but not P.
     c = tl.ConstantTerm("c", "c")
