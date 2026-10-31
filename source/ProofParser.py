@@ -742,7 +742,6 @@ def _split_compound_declaration_items(body: str) -> List[str]:
                 buf.append(ch)
                 i += 1
                 continue
-
             # A comma followed by another declaration starts a new clause.
             if _text_after_is_declaration_start(rest):
                 flush()
