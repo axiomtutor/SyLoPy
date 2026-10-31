@@ -28,7 +28,7 @@ REFUSALS = {
     "1": (
         "3",
         BAD_REFERENCE,
-        "cites ['2.2'], which is not defined or not in scope",
+        "cites ['2.5'], which is not defined or not in scope",
     ),
     "4": (
         "2",
@@ -196,6 +196,24 @@ def test_relation_subset_binders_skip_relation_and_carrier_names(relation, carri
     assert (formula.var, formula.body.var) == tuple(expected)
     assert relation not in expected and carrier not in expected
 
+
+
+def test_a_relation_declaration_itself_does_not_escape_its_subproof():
+    text = """1. Let X be any set, a, b be objects. (Declaration)
+2. a = a -> a = a. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. a = a. (Assumption for Conditional Introduction)
+ 2.2. Let R be a relation on X, R(a,b). (Declaration)
+ 2.3. a = a. (Reiteration from 2.1)
+end subproof
+3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 2.2)
+"""
+    ok, error = _check_text(text)
+    assert not ok
+    assert isinstance(error, pl.ValidationError), error
+    assert error.label == "3", error
+    assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL, error
+    assert "predicate/formula symbol 'R' is used but has not been declared" in error.detail
 
 def _sibling_scopes_proof(second_sibling_citation):
     return f"""1. Let X be any set, Y be any set, a, b be objects. (Declaration)
