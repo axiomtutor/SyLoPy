@@ -19,18 +19,18 @@ begin subproof
 end subproof
 3. In(a,X). (Reiteration from 2.5)
 
-# 2: The same membership is available when the relation is declared in the enclosing scope
+# 2: The same derivation works when the relation is declared in the enclosing scope
 ## Proof that
 1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
-2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
-3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
-4. In(a,X). (Conjunction Elimination from 3)
-5. a = a -> a = a. (Conditional Introduction from subproof below)
+2. a = a -> a = a. (Conditional Introduction from subproof below)
 begin subproof
- 5.1. a = a. (Assumption for Conditional Introduction)
- 5.2. a = a. (Reiteration from 5.1)
+ 2.1. a = a. (Assumption for Conditional Introduction)
+ 2.2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+ 2.3. In(a,X) and In(b,X). (Universal Modus Ponens from 2.2, 1)
+ 2.4. In(a,X). (Conjunction Elimination from 2.3)
+ 2.5. a = a. (Reiteration from 2.1)
 end subproof
-6. In(a,X). (Reiteration from 4)
+3. In(a,X). (Reiteration from 2.4)
 
 # 3: Sibling subproofs may declare the same relation name on different carriers
 ## Proof that
