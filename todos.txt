@@ -82,7 +82,7 @@ Constraints and open decisions:
   none; set theory lists no axiom and closes it. A theory with a non-empty list
   needs no flag. `SET_AXIOMS` stays as the four formulas the named rules accept.
   Regression coverage is `pytest_tests/test_closed_axiom_list.py` and
-  `tests/testSetTheory/axioms_cited_by_name.txt`.
+  `tests/testSetTheory/axioms_cited_by_name.txt`; J34 (ChatGPT) red-teams it.
 - **Set property:** the membership characterization and an explicitly matching
   instance determine the inference; the checker must not guess the target term.
   Equality as a direct property disjunct is handled in the supported direction.
