@@ -158,7 +158,7 @@ def test_j30_parser_mutations_are_detected(tmp_path):
         if (parent / "tools" / "mutation_check.py").is_file()
     )
     declaration_start = r"""_DECL_START_RE = re.compile(
-    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*|\s+and\s+))*'
+    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*(?:and\s+)?|\s+and\s+))*'
     r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
     re.I,
 )"""
