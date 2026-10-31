@@ -69,6 +69,22 @@ Status: todo.
 
 Status: todo.
 
+### J33 — Target proofs for arbitrary-property WLOG
+
+**Goal:** The owner approved WLOG for arbitrary properties on 2026-10-30. Today the cited disjunction must be equalities that differ in one constant (`x = a or x = b`, as in `tests/testSetTheory/unique_pairing_with_wlog.txt`). The next version will accept a disjunction whose alternatives are the chosen case with names exchanged, for example `a <= b or b <= a`, and replay the rest of the block with the names exchanged. Write the proofs you would want to be able to write before the rule exists (target files come first in this project).
+
+**Do:** read first (read only): the WLOG parts of `docs/PROOF_FILE_FORMAT.md` and `todos.txt`, and the cases of `tests/testSetTheory/unique_pairing_with_wlog.txt` and `tests/setTheoryProofs/zfc_remaining_axioms.txt`. Then write, in the new file `tests/targets/wlog_arbitrary_properties.txt` (a new directory the fixture runner does not scan; add a two-line `tests/targets/README.md` saying so), the following in the existing syntax (`N. <the chosen disjunct>. (WLOG, M)`):
+
+1. 8 to 12 valid target proofs, each a theorem a textbook proves "without loss of generality", each citing a disjunction that is not a list of equalities differing in one constant: two names exchanged in a relation or predicate (`a <= b or b <= a`, `P(a, b) or P(b, a)`); membership in two sets (`In(x, A) or In(x, B)`) with a conclusion symmetric in `A` and `B`; two pairs exchanged at once; three alternatives; the chosen disjunct in the middle of the disjunction.
+2. 6 to 8 invalid targets, each with a valid twin that differs only in the condition its title names: a step that uses a fact about `a` that has no exchanged counterpart about `b`; a conclusion that mentions `a` but not `b`; an alternative that is not the chosen case with names exchanged (`a <= b or b < a`); an exchange that would capture a bound variable; an exchanged name that is not declared; a WLOG line whose formula is not one of the disjuncts.
+
+To make the targets trustworthy, write for each valid target a twin with the other cases proved by hand (the same proof, no WLOG), in the new informational file `tests/setTheoryProofs/wlog_arbitrary_properties_twins.txt`. Every twin must pass today; it is the proof that the replay the target relies on is a real proof. Add `pytest_tests/test_wlog_arbitrary_properties_twins.py`, in the manner of `pytest_tests/test_mutatis_mutandis_terms_symbols_examples.py`, asserting that every twin passes.
+
+**Allowed scope:** the three new files, the new test, and this tracker. Do not edit source files. If a target already passes, or an invalid target is accepted by the checker as it is, that is a finding: file an issue (rule 5).
+
+**Done when:** the numbers above are met, every twin passes in CI, and the PR description says, for each target, which reading of "the rest of the block is replayed with the names exchanged" it relies on (a swap of two names, or any one-to-one renaming of names; whether symbols may be exchanged too), so the owner and Claude can choose the semantics. CI shows no failing test.
+
+Status: todo.
 
 
 ## Completed jobs

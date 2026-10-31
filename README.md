@@ -71,8 +71,8 @@ Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 Set theory is the active frontier. Named axiom-citation rules for Pairing,
 Union, Power Set, and Infinity are implemented, including the Union and Power
 Set instance forms. The informational ZFC fixture, whose second inclusion repeats
-the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG remains
-deferred.
+the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is approved
+and is the next feature.
 
 ### Number theory
 
@@ -147,8 +147,8 @@ Current maintenance priorities:
   proof patterns and edge cases.
 - Expand mathematical syntax and theory support within approved scope. In
   particular, extending `Mutatis mutandis` beyond names, terms and symbols (to
-  a closed block of several lines, say) remains deferred pending owner
-  approval.
+  a closed block of several lines, say) is not planned for now (owner decision
+  of 2026-10-30).
 
 ## Project structure
 

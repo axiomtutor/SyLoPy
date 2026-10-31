@@ -71,8 +71,12 @@ and `pytest_tests/test_set_enumeration_syntax.py`.
 Constraints and open decisions:
 
 - **Generic axiom citations:** the four set axioms can still be cited by restating
-  them with generic `(Axiom)`, as well as by their named rules. Retiring that
-  compatibility path requires owner approval.
+  them with generic `(Axiom)`, as well as by their named rules. The owner
+  approved retiring that compatibility path on 2026-10-30; Claude takes it
+  first. It needs a kernel change: an empty axiom list means "any formula may
+  be cited as an axiom" (`Proof._validate_membership`), so emptying
+  `SET_AXIOMS` would loosen set-theory proofs instead of retiring the path
+  (checked on 2026-10-30). A theory must be able to close its axiom list.
 - **Set property:** the membership characterization and an explicitly matching
   instance determine the inference; the checker must not guess the target term.
   Equality as a direct property disjunct is handled in the supported direction.
@@ -81,14 +85,16 @@ Constraints and open decisions:
   decision ([issue #69](https://github.com/axiomtutor/SyLoPy/issues/69)).
 - **Unspecified defining properties:** a set declared without a stated
   membership characterization does not yet have a symbolic property usable by
-  `Set property`.
+  `Set property`. The owner approved implementing one on 2026-10-30; the design
+  comes with the declared-function work below.
 - **Infinity semantics:** the citation-shape rule exists, but the broader
   treatment of finite/infinite sets is not implemented. The intended set I has
   an abstract membership property P; being infinite is a separate property of
   I, not its defining membership condition. Finite means bijective with
   {0, ..., n-1} for a metatheoretic natural number n. Quantifying over those
   Python integers is not object-language quantification, a risk to resolve
-  before implementation. Do not implement without owner approval.
+  before implementation. The owner approved implementing it on 2026-10-30. A
+  bijection is a function, so it follows the declared-function work below.
 - **Witnesses:** `Existence from L` names a witness from an existing existential
   through the ordinary scoped declaration path. The axiom citation itself does
   not introduce the witness. The older direct Pairing-witness form remains for
@@ -108,8 +114,9 @@ constants leaves the cited fact invariant (up to commutative ordering of
 `and`/`or`). Nested case blocks are included.
 
 Only equality alternatives differing in one constant term are supported.
-Arbitrary-property WLOG is deferred pending owner approval. Do not weaken the
-negative tests.
+The owner approved arbitrary-property WLOG on 2026-10-30; it is Claude's second
+feature, and J33 writes the target proofs first. Do not weaken the negative
+tests.
 
 ### Mutatis mutandis
 
@@ -219,15 +226,21 @@ The rule explains refusals through those conditions. Regression coverage is in
 `pytest_tests/test_uniqueness_rule.py` and
 `tests/testProofs/uniqueness_red_team.txt`.
 
-Two policy/design questions remain:
+Two policy/design questions remain. Both were explained to the owner on
+2026-10-30, who asked for the explanation and has not decided:
 
 - A witness named by a top-level `Existence from L` line is currently generalized
-  by default, with its defining formula carried as a premise. Whether it should
-  remain fixed is an owner decision.
+  by default, with its defining formula carried as a premise: the promoted
+  theorem is "for any Y with that property", as for `Let X be any set`. Whether it
+  should remain fixed is an owner decision; the recommendation is no change.
 - Promoting theorems over declared relation symbols (for example, a theorem about
   any equivalence relation) needs predicate-symbol generalization and a way to
   require matching properties/carrier on the citing declaration. That capability
-  does not exist; the related theorem is checked but not promoted.
+  does not exist; the related theorem is checked but not promoted. A route that
+  fits the sugar principle: have declarations state a relation's properties as
+  formulas, as they now state `R ⊆ X × X`, so a promoted theorem carries them as
+  premises, and generalize over the relation symbol. The same mechanism is what
+  "any group" needs later.
 
 ## Remaining work
 
@@ -245,22 +258,40 @@ collaboration handoff before starting.
    API and how to run the proof corpus; update it and `docs/PROOF_FILE_FORMAT.md`
    alongside user-visible changes.
 
-## Owner approval required — do not start without approval
+## Owner decisions
 
-- Retiring generic `(Axiom)` citations for the four set axioms.
-- Implementing a symbolic defining property for sets without an explicit
-  characterization.
+The owner answered the earlier approval list on 2026-10-30.
+
+Approved, in the order Claude will take them (one feature at a time):
+
+1. Retiring generic `(Axiom)` citations for the four set axioms (needs a way
+   for a theory to close its axiom list; see the set-theory constraints above).
+2. Extending WLOG to arbitrary properties. J33 (ChatGPT) writes the target
+   proofs first.
+3. Declaring function symbols in proof text and making set operations into
+   terms. The owner's words: "declare everything". There is no agreed design;
+   a design note and the choices that matter go to the owner first.
+4. A symbolic defining property for sets without an explicit characterization
+   (designed together with 3).
+5. The broader Infinity/finite-set semantics (after 3, since a bijection is a
+   function).
+
+Decided against for now:
+
 - Extending `Mutatis mutandis` beyond names, terms and symbols (repeating a
   closed block of several lines; counterpart lines that differ by the symmetry
-  of `=` or `<->`).
-- Extending WLOG to arbitrary properties.
-- Implementing the broader Infinity/finite-set semantics described above.
-- Declaring function symbols in proof text or making set operations into terms;
-  neither has an agreed design.
-- Adding major theory modules such as abstract algebra or topology.
+  of `=` or `<->`). The owner is not sure it is wanted and will raise it if it
+  is. Do not start it.
+- Major theory modules such as abstract algebra or topology: later, not now.
+
+## Owner approval required — do not start without approval
+
+- Extending `Mutatis mutandis` beyond names, terms and symbols (see above).
+- Adding major theory modules such as abstract algebra or topology (later).
 - Generalizing promoted theorems over relation symbols and their declared
-  structure.
-- Changing the current witness-generalization policy.
+  structure (explained to the owner on 2026-10-30; no decision yet).
+- Changing the current witness-generalization policy (explained on 2026-10-30;
+  no change unless the owner asks).
 
 ## Contributor workflow
 
