@@ -1,0 +1,126 @@
+(*
+J31 red-team cases for the formula stated by "Let R be a relation on X".
+Each invalid case has a valid twin that changes only the condition named.
+*)
+
+Use discrete math.
+
+# 1: A fact derived from a relation declared in a closed subproof is not visible outside
+## Invalid: closed scope — the membership line is local to the subproof that declares R.
+1. Let X be any set, a, b be objects. (Declaration)
+2. a = a -> a = a. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. a = a. (Assumption for Conditional Introduction)
+ 2.2. Let R be a relation on X, R(a,b). (Declaration)
+ 2.3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 2.2)
+ 2.4. In(a,X) and In(b,X). (Universal Modus Ponens from 2.3, 2.2)
+ 2.5. In(a,X). (Conjunction Elimination from 2.4)
+ 2.6. a = a. (Reiteration from 2.1)
+end subproof
+3. In(a,X). (Reiteration from 2.5)
+
+# 2: The same membership can be derived with the relation declared in the enclosing scope
+## Proof that
+1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+4. In(a,X). (Conjunction Elimination from 3)
+
+# 3: Sibling subproofs may declare the same relation name on different carriers
+## Proof that
+1. Let X be any set, Y be any set, a, b be objects. (Declaration)
+2. a = a -> a = a. (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. a = a. (Assumption for Conditional Introduction)
+ 2.2. Let R be a relation on X, R(a,b). (Declaration)
+ 2.3. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 2.2)
+ 2.4. In(a,X) and In(b,X). (Universal Modus Ponens from 2.3, 2.2)
+ 2.5. a = a. (Reiteration from 2.1)
+end subproof
+3. b = b -> b = b. (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. b = b. (Assumption for Conditional Introduction)
+ 3.2. Let R be a relation on Y, R(a,b). (Declaration)
+ 3.3. forall y, (R(a,y) -> (In(a,Y) and In(y,Y))). (Universal Instantiation from 3.2)
+ 3.4. In(a,Y) and In(b,Y). (Universal Modus Ponens from 3.3, 3.2)
+ 3.5. b = b. (Reiteration from 3.1)
+end subproof
+
+# 4: The binder names must avoid a relation named x
+## Invalid: wrong bound variable — when the relation is named x, the binders are y and u.
+1. Let X be any set, x be a relation on X, a, b be objects, x(a,b). (Declaration)
+2. forall v, (x(a,v) -> (In(a,X) and In(v,X))). (Universal Instantiation from 1)
+
+# 5: The chosen binder names are y and u when the relation is named x
+## Proof that
+1. Let X be any set, x be a relation on X, a, b be objects, x(a,b). (Declaration)
+2. forall u, (x(a,u) -> (In(a,X) and In(u,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 6: The two membership conjuncts are ordered
+## Invalid: swapped conjuncts — the declaration states In(a,X) and In(y,X), not the reverse.
+1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(y,X) and In(a,X))). (Universal Instantiation from 1)
+
+# 7: The membership conjuncts in the stated order can be instantiated
+## Proof that
+1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 8: The subset fact of R cannot be used for a fact of S
+## Invalid: wrong relation fact — the declaration states both relations on X, but only S(a,b).
+1. Let X be any set, R and S be relations on X, a, b be objects, S(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 9: The subset fact of S applies to S(a,b)
+## Proof that
+1. Let X be any set, R and S be relations on X, a, b be objects, S(a,b). (Declaration)
+2. forall y, (S(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 10: A relation on X does not put its related terms in Y
+## Invalid: wrong set — the subset formula states membership in X, not Y.
+1. Let X be any set, Y be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,Y) and In(y,Y))). (Universal Instantiation from 1)
+
+# 11: A relation on X puts its related terms in X
+## Proof that
+1. Let X be any set, Y be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 12: The subset fact applies only to terms related by R
+## Invalid: unrelated term — R(a,b) does not provide R(c,b).
+1. Let X be any set, R be a relation on X, a, b, c be objects, R(a,b). (Declaration)
+2. forall y, (R(c,y) -> (In(c,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(c,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 13: The subset fact applies to the pair a and b related by R
+## Proof that
+1. Let X be any set, R be a relation on X, a, b, c be objects, R(a,b). (Declaration)
+2. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
+
+# 14: Relation facts derived by symmetry and transitivity also imply membership
+## Proof that
+1. Let X be any set, R be a symmetric and transitive relation on X, a, b, c be objects, R(a,b) and R(b,c). (Declaration)
+2. R(b,a). (Relation Symmetry from 1)
+3. R(a,c). (Relation Transitivity from 1, 1)
+4. forall y, (R(b,y) -> (In(b,X) and In(y,X))). (Universal Instantiation from 1)
+5. In(b,X) and In(a,X). (Universal Modus Ponens from 4, 2)
+6. forall y, (R(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+7. In(a,X) and In(c,X). (Universal Modus Ponens from 6, 3)
+8. In(c,X). (Conjunction Elimination from 7)
+
+# 15: A plain binary predicate does not state a subset formula
+## Invalid: not a relation declaration — a binary predicate has no declared carrier.
+1. Let X be any set, P be a binary predicate, a, b be objects, P(a,b). (Declaration)
+2. forall y, (P(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+
+# 16: A relation declaration states the subset formula
+## Proof that
+1. Let X be any set, P be a relation on X, a, b be objects, P(a,b). (Declaration)
+2. forall y, (P(a,y) -> (In(a,X) and In(y,X))). (Universal Instantiation from 1)
+3. In(a,X) and In(b,X). (Universal Modus Ponens from 2, 1)
