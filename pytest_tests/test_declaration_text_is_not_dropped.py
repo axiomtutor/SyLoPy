@@ -56,7 +56,7 @@ def _declaration_data(text):
             "1. Let X be any set, a, b and c be in X. (Declaration)\n",
         ),
     ],
-    ids=["and-joined-membership-names", "and-joined-object-names", "article-like-name"],
+    ids=["and-joined-membership-names", "and-joined-object-names", "article-like-name", "oxford-comma-membership-group"],
 )
 def test_grouped_names_after_a_declaration_clause_are_not_dropped(
     surface, names, formulas, valid_twin
