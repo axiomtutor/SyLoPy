@@ -342,10 +342,19 @@ def test_an_explicit_subset_premise_promotes_for_a_binary_predicate_but_not_anot
     proof = _validated_proof(source)
     theorem = pl.promote_theorem(title, proof)
 
-    # The promoted schema is usable for its own fixed predicate symbol.
-    assert theorem.applies(list(theorem.premises), theorem.conclusion)
+    # The theorem generalizes the carrier and object names, but not P.
+    c = tl.ConstantTerm("c", "c")
+    d = tl.ConstantTerm("d", "d")
+    y = tl.ConstantTerm("Y", "Y")
+    p_fact = fl.AtomicFormula("P", [c, d])
+    p_subset = dm.relation_subset_formula("P", "Y")
+    target = fl.And(
+        fl.AtomicFormula("In", [c, y]),
+        fl.AtomicFormula("In", [d, y]),
+    )
+    assert theorem.applies([p_fact, p_subset], target)
 
-    # Promotion generalizes top-level object names, not predicate symbols.
-    s_fact = fl.AtomicFormula("S", [tl.ConstantTerm("a", "a"), tl.ConstantTerm("b", "b")])
-    s_subset = dm.relation_subset_formula("S", "X")
-    assert not theorem.applies([s_fact, s_subset], theorem.conclusion)
+    # The same argument does not transfer to another predicate symbol.
+    s_fact = fl.AtomicFormula("S", [c, d])
+    s_subset = dm.relation_subset_formula("S", "Y")
+    assert not theorem.applies([s_fact, s_subset], target)
