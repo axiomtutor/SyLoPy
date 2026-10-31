@@ -135,6 +135,16 @@ def test_declaration_recipe_output_is_subject_to_the_identifier_guard():
         )
 
 
+
+def test_oxford_comma_name_group_remains_one_declaration():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X, Y and Z be sets. (Declaration)\n"
+    )
+    assert [declaration.name for declaration in entries[0][2][1]] == ["X", "Y", "Z"]
+    assert entries[0][1] is None
+    assert pl.Proof(entries).check()[0]
+
+
 def test_j30_parser_mutations_are_detected(tmp_path):
     """Run the repository mutation checker against each new parser guard."""
     project_root = next(
