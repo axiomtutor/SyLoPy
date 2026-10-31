@@ -623,7 +623,7 @@ def _is_bare_name_list(text: str) -> bool:
     """
     return bool(_BARE_NAME_LIST_RE.match(text.strip()))
 _DECL_START_RE = re.compile(
-    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*|\s+and\s+))*'
+    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*(?:and\s+)?|\s+and\s+))*'
     r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
     re.I,
 )
