@@ -5,6 +5,12 @@ into a descriptor or discarded. They must fail at the declaration line or
 produce exactly the declarations and formulas the author wrote.
 """
 
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from SyLoPy.source.ProofElaboration import TheoryEnvironment
@@ -127,3 +133,68 @@ def test_declaration_recipe_output_is_subject_to_the_identifier_guard():
             "1. Let X be a specially marked object. (Declaration)\n",
             environment=environment,
         )
+
+
+def test_j30_parser_mutations_are_detected(tmp_path):
+    """Run the repository mutation checker against each new parser guard."""
+    project_root = next(
+        parent
+        for parent in Path(__file__).resolve().parents
+        if (parent / "tools" / "mutation_check.py").is_file()
+    )
+    declaration_start = r"""_DECL_START_RE = re.compile(
+    r'^(?:[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*|\s+and\s+))*'
+    r'[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b',
+    re.I,
+)"""
+    old_declaration_start = r"""_DECL_START_RE = re.compile(r'^(?:[A-Za-z_][A-Za-z0-9_]*\s*,\s*)*[A-Za-z_][A-Za-z0-9_]*\s+(?:be|are)\b', re.I)"""
+    mutations = [
+        {
+            "id": "and-joined-name-list",
+            "file": "source/ProofParser.py",
+            "old": declaration_start,
+            "new": old_declaration_start,
+        },
+        {
+            "id": "single-sentence-guard",
+            "file": "source/ProofParser.py",
+            "old": r"if re.search(r'\.\s*let\b', source, re.I):",
+            "new": "if False:",
+        },
+        {
+            "id": "recipe-name-guard",
+            "file": "source/ProofParser.py",
+            "old": "if not isinstance(name, str) or not _IDENTIFIER_RE.fullmatch(name):",
+            "new": "if False:",
+        },
+    ]
+    spec = tmp_path / "j30-mutations.json"
+    spec.write_text(json.dumps(mutations), encoding="utf-8")
+    focused_tests = (
+        "python3 -m pytest -q pytest_tests/test_declaration_text_is_not_dropped.py "
+        "-k 'grouped_names_after_a_declaration_clause_are_not_dropped or "
+        "a_declaration_line_rejects_a_second_let_sentence_at_its_source_line or "
+        "declaration_recipe_output_is_subject_to_the_identifier_guard'"
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(project_root / "tools" / "mutation_check.py"),
+            str(spec),
+            "--tests",
+            focused_tests,
+            "--jobs",
+            "3",
+        ],
+        cwd=project_root,
+        env=os.environ.copy(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=150,
+    )
+    assert completed.returncode == 0, (
+        f"mutation checker failed\nstdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
+    )
+    assert "Summary: total=3 killed=3 survived=0 pattern=0 timeout=0 error=0" in completed.stdout
