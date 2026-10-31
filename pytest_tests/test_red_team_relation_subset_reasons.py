@@ -7,9 +7,9 @@ as direct parser/kernel checks: shadowing, sibling-label isolation, simultaneous
 Mutatis mutandis changes, and theorem promotion.
 """
 
+import importlib
 from functools import lru_cache
 from pathlib import Path
-import importlib
 
 import pytest
 
@@ -197,7 +197,6 @@ def test_relation_subset_binders_skip_relation_and_carrier_names(relation, carri
     assert relation not in expected and carrier not in expected
 
 
-
 def test_a_relation_declaration_itself_does_not_escape_its_subproof():
     text = """1. Let X be any set, a, b be objects. (Declaration)
 2. a = a -> a = a. (Conditional Introduction from subproof below)
@@ -214,6 +213,7 @@ end subproof
     assert error.label == "3", error
     assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL, error
     assert "predicate/formula symbol 'R' is used but has not been declared" in error.detail
+
 
 def _sibling_scopes_proof(second_sibling_citation):
     return f"""1. Let X be any set, Y be any set, a, b be objects. (Declaration)
