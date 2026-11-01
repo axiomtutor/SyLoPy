@@ -19,8 +19,13 @@ def _proof_text(name: str) -> str:
 
 def test_set_axioms_are_wired_into_the_environment():
     assert len(st.SET_AXIOMS) == 4
-    assert st.SET_AXIOMS == st.SET_THEORY_ENVIRONMENT.axioms
+    # The four axioms are cited by name, through their rules, and not with
+    # `(Axiom)`: the theory lists none for that, and closes the empty list so
+    # that "none" is not read as "any formula" (`test_closed_axiom_list.py`).
+    assert st.SET_THEORY_ENVIRONMENT.axioms == []
+    assert st.SET_THEORY_ENVIRONMENT.axioms_closed
     rule_names = {rule.name for rule in st.SET_THEORY_ENVIRONMENT.rules}
+    assert {"PairingAxiom", "UnionAxiom", "PowerSetAxiom", "InfinityAxiom"} <= rule_names
     assert {"Separation", "Replacement"} <= rule_names
 
 

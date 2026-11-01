@@ -868,9 +868,15 @@ class InferenceRule:
     A rule with several independent side conditions can also override
     `explain_in_context`, which the validator asks, after the rule has said
     no, for the reason to put in the error message. The default says nothing.
+
+    `citation`, when set, is the phrase a proof cites the rule by if that is
+    not `name` (`name` is the kernel's own name for it, the one error messages
+    use). A refusal that points a line to this rule says it the way a proof
+    writes it.
     """
     name = "base"
     premise_arity = 1
+    citation: Optional[str] = None
 
     def applies(self, candidates: List[fl.Formula], phi: fl.Formula) -> bool:
         raise NotImplementedError
@@ -4523,10 +4529,20 @@ class ProofValidator:
     subproof can be opened).
     """
     def __init__(self, rules, premises, axioms,
-                 declarations: Optional[List[Declaration]] = None):
+                 declarations: Optional[List[Declaration]] = None,
+                 axioms_closed: bool = False):
         self.rules = rules
         self.premises = premises
         self.axioms = axioms
+        # Is `axioms` the whole of what an `(Axiom)` line may state? A proof
+        # given axioms is checked against them; a proof given none takes any
+        # formula as an axiom -- unless its theory closed the list, which is
+        # how a theory with no formula to cite (set theory cites its axioms by
+        # name) says "none" and not "anything". `axioms_closed` is the one
+        # place that question is answered: the axiom check, the record of
+        # which axioms a proof used, and the validators that replay a WLOG
+        # block all read it.
+        self.axioms_closed = bool(axioms) or bool(axioms_closed)
         self.initial_declarations = list(declarations or [])
         # What a rule that generalizes a constant needs to know about the
         # proof so far (see `RuleContext`). `_given_lines` holds what was
@@ -4565,13 +4581,13 @@ class ProofValidator:
     def _take_for_granted(self, *formulas: fl.Formula, theory_axiom: bool = False) -> None:
         """Record `formulas` as hypotheses of the rest of the proof.
 
-        `theory_axiom` marks a line cited with `(Axiom)` when the proof was
-        given a list of axioms to check it against: that line asserts one of
-        the theory's axioms, which every proof in the theory has, so it is
-        recorded as an axiom the proof used rather than as something this
-        proof assumed. Without such a list the validator accepts any formula
-        as an axiom, so the line is only something this proof assumed and is
-        recorded like a premise.
+        `theory_axiom` marks a line cited with `(Axiom)` when the axiom list
+        is closed (`axioms_closed`): that line asserts one of the theory's
+        axioms, which every proof in the theory has, so it is recorded as an
+        axiom the proof used rather than as something this proof assumed.
+        With the list open the validator accepts any formula as an axiom, so
+        the line is only something this proof assumed and is recorded like a
+        premise.
         """
         self._given_lines.extend(formulas)
         if theory_axiom:
@@ -4779,6 +4795,7 @@ class ProofValidator:
             replay = ProofValidator(
                 self.rules, self.premises, self.axioms,
                 declarations=self.initial_declarations,
+                axioms_closed=self.axioms_closed,
             )
             replay._given_lines = list(snapshot["given_lines"])
             replay._assumption_stack = list(snapshot["assumption_stack"])
@@ -5139,7 +5156,8 @@ class ProofValidator:
         elif tag == 'premise':
             err = self._validate_membership(phi, self.premises, 'premises', label, sidx, block_label)
         elif tag == 'axiom':
-            err = self._validate_membership(phi, self.axioms, 'axioms', label, sidx, block_label)
+            err = self._validate_membership(phi, self.axioms, 'axioms', label, sidx, block_label,
+                                            closed=self.axioms_closed, declarations=declarations)
         elif tag == 'rule_below':
             err = self._validate_rule_below(phi, justification, nested_subproof, label, sidx,
                                             block_label, labels, declarations, seen)
@@ -5156,7 +5174,7 @@ class ProofValidator:
             return err
 
         if tag in ('premise', 'axiom'):
-            self._take_for_granted(phi, theory_axiom=(tag == 'axiom' and bool(self.axioms)))
+            self._take_for_granted(phi, theory_axiom=(tag == 'axiom' and self.axioms_closed))
         elif tag == 'rule' and explicit_declarations:
             # A rule line that declares constants names an object *and* says
             # what it satisfies (the direct Pairing witness: `There is a set
@@ -5327,16 +5345,51 @@ class ProofValidator:
         return None
 
     def _validate_membership(self, phi: fl.Formula, allowed: list, kind: str,
-                              label: Optional[str], sidx: int, block_label: Optional[str]) -> Optional[ValidationError]:
+                              label: Optional[str], sidx: int, block_label: Optional[str],
+                              closed: bool = False,
+                              declarations: Optional[DeclarationScope] = None) -> Optional[ValidationError]:
         """Shared check for the 'premise' and 'axiom' tags: `phi` must
         `_ast_eq`-match something in the allowed list (`self.premises` or
         `self.axioms`). An empty/falsy allowed list means "anything goes"
         -- `Proof()` constructed without explicit premises accepts any
-        formula asserted as a premise.
+        formula asserted as a premise -- unless the list is `closed`: then an
+        empty list allows nothing. That is how a theory that cites its axioms
+        by name, and so lists none, keeps `(Axiom)` from asserting anything
+        (`axioms_closed`; premises are never closed).
+
+        With `declarations` given -- the axiom tag gives them, a premise does
+        not, since a premise is not an inference anyone could cite instead -- a
+        refused formula is also pointed to the rules that justify it outright
+        (`_cited_by_name`), so that whoever wrote `(Axiom)` for something the
+        theory cites by name is told what to write.
         """
-        if allowed and not any(_ast_eq(phi, item) for item in allowed):
-            return _mk_error(label, block_label, sidx, CATEGORY_UNREGISTERED_FORMULA, f"asserted as a {kind[:-1]}, but does not match any declared {kind}")
+        if (allowed or closed) and not any(_ast_eq(phi, item) for item in allowed or ()):
+            noun = kind[:-1]
+            detail = f"asserted as {'an' if noun[0] in 'aeiou' else 'a'} {noun}, but does not match any declared {kind}"
+            if declarations is not None:
+                detail += self._cited_by_name(phi, declarations)
+            return _mk_error(label, block_label, sidx, CATEGORY_UNREGISTERED_FORMULA, detail)
         return None
+
+    def _cited_by_name(self, phi: fl.Formula, declarations: DeclarationScope) -> str:
+        """`"; cite it by name instead: (A) or (B)"` when rules this proof
+        allows justify `phi` outright, from no cited line, and the empty
+        string when none do. Only called after a refusal, and an explanation
+        never turns a refusal into a crash: a rule that cannot answer is left
+        out. Asking records nothing (`_ask_rule`): the line was refused, so
+        no rule was used."""
+        names: List[str] = []
+        for rule in self.rules:
+            try:
+                accepted = self._ask_rule(rule, [], phi, declarations)
+            except Exception:
+                continue
+            cited_as = getattr(rule, 'citation', None) or rule.name
+            if accepted and cited_as not in names:
+                names.append(cited_as)
+        if not names:
+            return ""
+        return "; cite it by name instead: " + " or ".join(f"({name})" for name in names)
 
     def _validate_rule_hybrid(self, phi: fl.Formula, justification: tuple,
                                nested_subproof: Optional[list], label: Optional[str],
@@ -5573,12 +5626,13 @@ class ProofValidator:
                          f"'{rule.name}' does not justify {phi!r} from the cited line(s) {indices}"
                          + self._why_not(rule, tried, phi, declarations))
 
-    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula,
-                 declarations: DeclarationScope) -> bool:
+    def _ask_rule(self, rule: InferenceRule, candidates: list, phi: fl.Formula,
+                  declarations: DeclarationScope) -> bool:
         """Ask `rule` whether it justifies `phi` from `candidates`, giving
         it the `RuleContext` of this point in the proof if it wants one
         (`applies_in_context`). The one place the validator calls a rule, so
         a context-aware rule sees the same context however it was cited.
+        It only asks: `_applies` is what records a rule as used.
 
         `declarations` is the scope of the line being justified. It is a
         required argument, not an optional one, so that a call site that
@@ -5587,9 +5641,15 @@ class ProofValidator:
         """
         in_context = getattr(rule, 'applies_in_context', None)
         if in_context is None:
-            accepted = rule.applies(candidates, phi)
-        else:
-            accepted = in_context(candidates, phi, self._context(declarations))
+            return rule.applies(candidates, phi)
+        return in_context(candidates, phi, self._context(declarations))
+
+    def _applies(self, rule: InferenceRule, candidates: list, phi: fl.Formula,
+                 declarations: DeclarationScope) -> bool:
+        """`_ask_rule`, and if the rule justifies the line, record it among
+        the rules the proof used (`used_rules`: what a theorem built from the
+        proof will require)."""
+        accepted = self._ask_rule(rule, candidates, phi, declarations)
         if accepted and not any(rule is used for used in self.used_rules):
             self.used_rules.append(rule)
         return accepted
@@ -5667,6 +5727,11 @@ class Proof:
         for axiom in required_axioms:
             if not any(_ast_eq(axiom, existing) for existing in self.axioms):
                 self.axioms.append(axiom)
+        # An `(Axiom)` line may state only what is listed once there is a list,
+        # and a proof given none takes any formula as an axiom -- unless its
+        # theory says the list is closed, which is how a theory with nothing to
+        # list (it cites its axioms by name) says "none" and not "anything".
+        self.axioms_closed = bool(self.axioms) or bool(getattr(entries, 'axioms_closed', False))
 
         self.rules = list(rules if rules is not None else default_rules())
         for rule in required_rules:
@@ -5724,6 +5789,7 @@ class Proof:
         validator = ProofValidator(
             self.rules, self.premises, self.axioms,
             declarations=self.declarations,
+            axioms_closed=self.axioms_closed,
         )
         ok, err, _ = validator.validate(self.entries)
         if err is not None and err.label in self.origin_by_label:

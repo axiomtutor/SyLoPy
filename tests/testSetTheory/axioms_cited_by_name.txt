@@ -1,0 +1,65 @@
+(*
+The four set axioms -- Pairing, Union, Power Set and Infinity -- are cited by
+name. They are not also cited by restating them with `(Axiom)`: the owner
+retired that path on 2026-10-30, and set theory lists no axiom for `(Axiom)`.
+Each invalid case restates an axiom with `(Axiom)`, and is refused with the name
+to cite instead; its valid twin cites the same formula by that name.
+*)
+
+# 1: Pairing, cited by name
+## Proof that
+### the axiom of pairing says that any a and b have a pair,
+### then forall a, forall b, exists Y, forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. forall a, forall b, exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)
+
+# 2: Pairing, restated with (Axiom)
+## Invalid: retired citation — the axiom is cited as (Axiom of pairing), not with the generic (Axiom).
+### then forall a, forall b, exists Y, forall u, (In(u, Y) iff (u = a or u = b)).
+
+1. forall a, forall b, exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom)
+
+# 3: Union, cited by name
+## Proof that
+### the axiom of union says that every set has a union,
+### then forall X, exists Y, forall u, (In(u, Y) iff (exists v, (In(v, X) and In(u, v)))).
+
+1. forall X, exists Y, forall u, (In(u, Y) iff (exists v, (In(v, X) and In(u, v)))). (Axiom of union)
+
+# 4: Union, restated with (Axiom)
+## Invalid: retired citation — the axiom is cited as (Axiom of union), not with the generic (Axiom).
+### then forall X, exists Y, forall u, (In(u, Y) iff (exists v, (In(v, X) and In(u, v)))).
+
+1. forall X, exists Y, forall u, (In(u, Y) iff (exists v, (In(v, X) and In(u, v)))). (Axiom)
+
+# 5: Power set, cited by name
+## Proof that
+### the axiom of power set says that every set has a power set,
+### then forall X, exists Y, forall u, (In(u, Y) iff (forall v, (In(v, u) -> In(v, X)))).
+
+1. forall X, exists Y, forall u, (In(u, Y) iff (forall v, (In(v, u) -> In(v, X)))). (Axiom of power set)
+
+# 6: Power set, restated with (Axiom)
+## Invalid: retired citation — the axiom is cited as (Axiom of power set), not with the generic (Axiom).
+### then forall X, exists Y, forall u, (In(u, Y) iff (forall v, (In(v, u) -> In(v, X)))).
+
+1. forall X, exists Y, forall u, (In(u, Y) iff (forall v, (In(v, u) -> In(v, X)))). (Axiom)
+
+# 7: Infinity, cited by name
+## Proof that
+### the axiom of infinity says that some set contains the empty set and is closed under successor,
+### then exists X, (In(EmptySet, X) and forall y, (In(y, X) -> exists S, ((forall u, (In(u, S) iff (In(u, y) or u = y))) and In(S, X)))).
+
+1. exists X, (In(EmptySet, X) and forall y, (In(y, X) -> exists S, ((forall u, (In(u, S) iff (In(u, y) or u = y))) and In(S, X)))). (Axiom of infinity)
+
+# 8: Infinity, restated with (Axiom)
+## Invalid: retired citation — the axiom is cited as (Axiom of infinity), not with the generic (Axiom).
+### then exists X, (In(EmptySet, X) and forall y, (In(y, X) -> exists S, ((forall u, (In(u, S) iff (In(u, y) or u = y))) and In(S, X)))).
+
+1. exists X, (In(EmptySet, X) and forall y, (In(y, X) -> exists S, ((forall u, (In(u, S) iff (In(u, y) or u = y))) and In(S, X)))). (Axiom)
+
+# 9: A formula that is no axiom of the theory
+## Invalid: not an axiom — set theory takes no formula as an axiom with (Axiom), true or not.
+### then forall x, not In(x, EmptySet).
+
+1. forall x, not In(x, EmptySet). (Axiom)

@@ -447,7 +447,16 @@ Limits of this form: a name is replaced by a name or a term, and a predicate or 
 ## 8. Premises, axioms, and conclusions
 
 A `Premise` line supplies a formula to the proof's premise context. An
-`Axiom` line must match an axiom supplied to the proof.
+`Axiom` line must match an axiom supplied to the proof: a formula that the
+theory (or the caller) lists, restated exactly. A proof that is given no axioms
+at all takes any formula as an axiom, as a bare proof does. A theory whose
+axioms are all cited by name has nothing to list, and closes its axiom list so
+that having none means that none can be cited this way: set theory does (its four
+axioms are cited as `Axiom of pairing` and so on, see section 5), so there an
+`Axiom` line is refused whatever it states. A refused `Axiom` line also says
+which rules of the proof justify the formula outright, when some do, so that
+restating one of the four set axioms is answered with the name to cite instead
+(`cite it by name instead: (Axiom of pairing)`).
 
 Derived rule lines are checked by the kernel against their cited lines and
 attached subproofs; a rule name is not an unchecked assertion.
@@ -524,7 +533,7 @@ Set-theory surface forms elaborate into ordinary first-order formulas. In partic
 - Bare `(Set property)` invokes the empty-set property and proves that an arbitrary object is not in the empty set. When references are supplied, `(Set property, L, P)` uses the cited characterization `L` and property `P` to derive the required instance.
 - `Set equality` concludes equality from two subset proofs. `Uniqueness` concludes the corresponding exists-unique formula from an existence formula and a conditional uniqueness proof.
 
-Pairing, Union, Power Set, and Infinity have named axiom-citation rules: `Axiom of pairing`, `Axiom of union`, `Axiom of power set`, and `Axiom of infinity`. They check the formula shape of the axiom instance; they do not introduce a witness by themselves. Union and Power Set accept a formula instantiated for a particular set, e.g. `Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, S) and In(u, v)))). (Axiom of union)` and `Exists Y, forall u, (In(u, Y) iff u subset S). (Axiom of power set)`. Infinity has no set parameter. Pairing's instance is `Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)`.
+Pairing, Union, Power Set, and Infinity have named axiom-citation rules: `Axiom of pairing`, `Axiom of union`, `Axiom of power set`, and `Axiom of infinity`. They are the only way to cite these axioms: a line that restates one with `Axiom` is refused. They check the formula shape of the axiom instance; they do not introduce a witness by themselves. Union and Power Set accept a formula instantiated for a particular set, e.g. `Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, S) and In(u, v)))). (Axiom of union)` and `Exists Y, forall u, (In(u, Y) iff u subset S). (Axiom of power set)`. Infinity has no set parameter. Pairing's instance is `Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)`.
 
 After an axiom citation states an existential, name its witness with `Let Y be such a set. (Existence from L)`. The older direct Pairing-witness surface form—`There is a set Y = {a, b}. (Axiom of pairing)`—remains accepted for compatibility, but it is legacy rather than the design to extend. Do not use it as the template for Union, Power Set, or Infinity.
 

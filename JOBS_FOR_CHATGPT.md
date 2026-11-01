@@ -86,6 +86,24 @@ To make the targets trustworthy, write for each valid target a twin with the oth
 
 Status: todo.
 
+### J34 — Red-team "an `(Axiom)` line in set theory states nothing"
+
+**Goal:** Set theory now lists no axiom for `(Axiom)` and closes its axiom list (`TheoryEnvironment.axioms_closed`; owner decision of 2026-10-30), so an `(Axiom)` line is refused in every set-theory proof and the four set axioms are cited by name (`Axiom of pairing`, `Axiom of union`, `Axiom of power set`, `Axiom of infinity`). A refusal says which rules of the proof justify the formula outright (`cite it by name instead: (...)`). Find out whether an `(Axiom)` line can still be accepted in set theory, or whether the pointer can be wrong. Read first (read only): `pytest_tests/test_closed_axiom_list.py`, `tests/testSetTheory/axioms_cited_by_name.txt`, section 8 of `docs/PROOF_FILE_FORMAT.md`, and the comments on `ProofValidator.axioms_closed` and `ProofValidator._cited_by_name` in `source/ProofLogic.py`.
+
+**Do:** at most 12 cases in the new `tests/testSetTheory/red_team_closed_axiom_list.txt` (enforced). Each invalid case has a valid twin that differs from it only in the condition its title names, and is pinned by line, category and reason in the new `pytest_tests/test_red_team_closed_axiom_list_reasons.py`, in the manner of `pytest_tests/test_mutatis_mutandis_red_team_terms_symbols_reasons.py`. Areas:
+
+1. Where the line is: inside a subproof, in a `Proof by Cases` case, in a WLOG case block and in the suffix that WLOG replays, and in an argument that `Mutatis mutandis` repeats (an `(Axiom)` line is a hypothesis, so the repetition must be refused; say what the message is).
+2. Disguises: an axiom written with other bound-variable names, with the conjuncts or disjuncts swapped, with set-builder or enumeration sugar that elaborates to the axiom's formula, and an instance of an axiom (Union or Power Set at a declared set) cited with `(Axiom)`. Each is refused; say what the pointer says.
+3. The pointer: a formula that one rule justifies is pointed to it, and following the pointer is accepted; a formula that two rules justify names both, once each; a formula that a promoted theorem states names the theorem's title; a formula that nothing justifies has no pointer.
+4. Combined theories: in the default environment a number-theory axiom is still cited with `(Axiom)` and a set axiom is not; a proof checked with `check_proof_text(text, axioms=[F])` accepts `(Axiom)` for `F` and for nothing else.
+5. Promotion: a theorem proved from axioms cited by name requires rules, not axioms (`required_rules`, `required_axioms` empty); it cannot be cited in a proof that does not allow those rules. Report what happens; change nothing.
+
+**Allowed scope:** the two new files and this tracker. A defect is a finding, not a reason to change a test: file an issue as rule 5 says (`Owner: Claude`, since the kernel is involved) and add the strict expected-failure case.
+
+**Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1 and 5 turned out to accept, and CI passes.
+
+Status: todo.
+
 
 ## Completed jobs
 

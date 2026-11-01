@@ -70,7 +70,9 @@ Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
 Set theory is the active frontier. Named axiom-citation rules for Pairing,
 Union, Power Set, and Infinity are implemented, including the Union and Power
-Set instance forms. The informational ZFC fixture, whose second inclusion repeats
+Set instance forms, and they are how those axioms are cited: set theory lists no
+formula for `(Axiom)` and closes its axiom list, so restating one with `(Axiom)`
+is refused, with the name to cite instead. The informational ZFC fixture, whose second inclusion repeats
 the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is approved
 and is the next feature.
 

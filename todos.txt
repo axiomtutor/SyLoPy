@@ -56,8 +56,9 @@ Selected passing CI references for this cleanup are [PR #128 run #954](https://g
 
 ### Set theory and proof syntax
 
-Implemented: named Pairing, Union, Power Set, and Infinity axiom-citation rules;
-Union and Power Set instance forms; scoped witness naming with
+Implemented: named Pairing, Union, Power Set, and Infinity axiom-citation rules,
+which are now the only way to cite those axioms (generic `(Axiom)` is retired, see
+below); Union and Power Set instance forms; scoped witness naming with
 `Let Y be such a set. (Existence from L)`; general `Set property`; set equality
 and subset proofs; unique existence; equality-case WLOG replay; set enumeration,
 set-builder notation, bounded quantifiers, and the documented natural-language
@@ -70,13 +71,18 @@ and `pytest_tests/test_set_enumeration_syntax.py`.
 
 Constraints and open decisions:
 
-- **Generic axiom citations:** the four set axioms can still be cited by restating
-  them with generic `(Axiom)`, as well as by their named rules. The owner
-  approved retiring that compatibility path on 2026-10-30; Claude takes it
-  first. It needs a kernel change: an empty axiom list means "any formula may
-  be cited as an axiom" (`Proof._validate_membership`), so emptying
-  `SET_AXIOMS` would loosen set-theory proofs instead of retiring the path
-  (checked on 2026-10-30). A theory must be able to close its axiom list.
+- **Generic axiom citations (retired):** the four set axioms are cited only by
+  their named rules (`Axiom of pairing`, `Axiom of union`, `Axiom of power set`,
+  `Axiom of infinity`); restating one with `(Axiom)` is refused, with the name to
+  cite instead. The owner approved this on 2026-10-30. It needed a kernel change:
+  an empty axiom list meant "any formula may be cited as an axiom", so emptying
+  `SET_AXIOMS` alone would have loosened set-theory proofs. A theory can now close
+  its axiom list (`TheoryEnvironment.axioms_closed`, carried to
+  `ElaboratedEntries`, `Proof` and `ProofValidator`), so that an empty list means
+  none; set theory lists no axiom and closes it. A theory with a non-empty list
+  needs no flag. `SET_AXIOMS` stays as the four formulas the named rules accept.
+  Regression coverage is `pytest_tests/test_closed_axiom_list.py` and
+  `tests/testSetTheory/axioms_cited_by_name.txt`; J34 (ChatGPT) red-teams it.
 - **Set property:** the membership characterization and an explicitly matching
   instance determine the inference; the checker must not guess the target term.
   Equality as a direct property disjunct is handled in the supported direction.
@@ -264,8 +270,8 @@ The owner answered the earlier approval list on 2026-10-30.
 
 Approved, in the order Claude will take them (one feature at a time):
 
-1. Retiring generic `(Axiom)` citations for the four set axioms (needs a way
-   for a theory to close its axiom list; see the set-theory constraints above).
+1. Retiring generic `(Axiom)` citations for the four set axioms. Done: see the
+   set-theory constraints above.
 2. Extending WLOG to arbitrary properties. J33 (ChatGPT) writes the target
    proofs first.
 3. Declaring function symbols in proof text and making set operations into
