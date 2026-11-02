@@ -4902,7 +4902,9 @@ class ProofValidator:
             # repeats, with the line's own label and statement.
             repeating = None
             if _is_mm_entry(entry):
-                e, repeating, err = self._expand_mutatis_mutandis(entry, sidx, block_label, labels)
+                e, repeating, err = self._expand_mutatis_mutandis(
+                    entry, sidx, block_label, labels, declarations
+                )
                 if err:
                     return False, err, None
                 entry = _classify_entry(e)
@@ -5120,7 +5122,7 @@ class ProofValidator:
         return None
 
     def _expand_mutatis_mutandis(self, entry: _ParsedEntry, sidx: int, block_label: Optional[str],
-                                 labels: LabelScope):
+                                 labels: LabelScope, declarations: DeclarationScope):
         """Expand a `Mutatis mutandis` line into the entry that stands for it.
 
         `P. (Mutatis mutandis, A to B)` repeats the argument of line B for
@@ -5249,21 +5251,113 @@ class ProofValidator:
                 return refuse(CATEGORY_BAD_REFERENCE,
                               f"Mutatis mutandis cannot repeat line {model_label}: "
                               f"the closed range {start}-{model_label} is not visible")
+            replay_labels = _clone_label_scope(labels)
+            replay_declarations = _clone_declaration_scope(declarations)
+            replay_seen = []
+            synthetic_for = {}
+
+            def synthetic_label(source_label):
+                return f"__mm_replay_{source_label.replace('.', '_')}"
+
+            for replay_label in range_order[first:last + 1]:
+                synthetic_for[replay_label] = synthetic_label(replay_label)
+
+            replay_entries = []
             for replay_label in range_order[first:last + 1]:
                 replay_entry = labels.source_of(replay_label)
                 classified = _classify_entry(replay_entry) if replay_entry is not None else None
-                if (isinstance(classified, _ParsedEntry)
-                        and not classified.is_subproof_block
-                        and isinstance(classified.justification, tuple)
+                if (not isinstance(classified, _ParsedEntry)
+                        or classified.is_subproof_block
+                        or isinstance(classified.justification, tuple)
                         and classified.justification
-                        and classified.justification[0] not in
-                        ("assume", "arbitrary", "premise")):
-                    try:
-                        _transform_wlog_entry(
-                            replay_entry, sigma, labels, block_label, sidx, sigma,
-                            _ReplayPolicy(_mm_counterpart, no_counterpart, not_rewritable))
-                    except _WLOGReplayError as exc:
-                        return refuse(exc.category, exc.detail)
+                        and classified.justification[0] in ("assume", "arbitrary", "premise", "declare")):
+                    if isinstance(classified, _ParsedEntry):
+                        try:
+                            expected = _substitute_wlog_value(labels[replay_label], sigma)
+                            counterpart = _mm_counterpart(labels, expected)
+                            replay_value = (
+                                labels[counterpart]
+                                if counterpart is not None
+                                else labels[replay_label]
+                            )
+                            replay_labels[synthetic_for[replay_label]] = replay_value
+                        except _UnsafeSubstitution as exc:
+                            return refuse(CATEGORY_RULE_MISMATCH, not_rewritable(replay_label, exc))
+                        except KeyError:
+                            return refuse(CATEGORY_BAD_REFERENCE,
+                                          f"Mutatis mutandis cannot repeat the closed range: "
+                                          f"line {replay_label} has no replay label")
+                    continue
+                try:
+                    transformed = _transform_wlog_entry(
+                        replay_entry, sigma, labels, block_label, sidx, sigma,
+                        _ReplayPolicy(_mm_counterpart, no_counterpart, not_rewritable))
+                except _WLOGReplayError as exc:
+                    return refuse(exc.category, exc.detail)
+                transformed_parts = list(transformed)
+                if isinstance(transformed_parts[2], tuple):
+                    transformed_justification = list(transformed_parts[2])
+                    raw_justification = list(classified.justification)
+                    for index in range(len(transformed_justification)):
+                        transformed_refs = transformed_justification[index]
+                        raw_refs = raw_justification[index] if index < len(raw_justification) else None
+                        if isinstance(transformed_refs, list) and isinstance(raw_refs, list):
+                            remapped = []
+                            for position, transformed_ref in enumerate(transformed_refs):
+                                raw_ref = raw_refs[position] if position < len(raw_refs) else None
+                                if raw_ref in synthetic_for:
+                                    remapped.append(synthetic_for[raw_ref])
+                                elif isinstance(transformed_ref, str) and transformed_ref in synthetic_for:
+                                    remapped.append(synthetic_for[transformed_ref])
+                                else:
+                                    remapped.append(transformed_ref)
+                            transformed_justification[index] = remapped
+                    transformed_parts[2] = tuple(transformed_justification)
+                    transformed = tuple(transformed_parts)
+                if len(transformed) == 3:
+                    transformed = (
+                        synthetic_for[replay_label],
+                        transformed[1],
+                        transformed[2],
+                    )
+                elif len(transformed) == 4:
+                    transformed = (
+                        synthetic_for[replay_label],
+                        transformed[1],
+                        transformed[2],
+                        transformed[3],
+                    )
+                replay_entries.append(transformed)
+
+            replay = ProofValidator(
+                self.rules, self.premises, self.axioms,
+                declarations=self.initial_declarations,
+                axioms_closed=self.axioms_closed,
+            )
+            replay._given_lines = list(self._given_lines)
+            replay._assumption_stack = list(self._assumption_stack)
+            replay._arbitrary_names = list(self._arbitrary_names)
+            replay._constrained_names = set(self._constrained_names)
+            replay.own_givens = list(self.own_givens)
+            replay.own_declarations = list(self.own_declarations)
+            replay.used_axioms = list(self.used_axioms)
+            replay.used_rules = list(self.used_rules)
+
+            ok, err, _ = replay._validate_block(
+                replay_entries,
+                block_label,
+                replay_seen,
+                replay_labels,
+                replay_declarations,
+                replay_seen,
+                is_subproof=False,
+            )
+            if not ok:
+                replay_error = _mk_error(
+                    err.label, block_label, sidx, err.category,
+                    f"Mutatis mutandis cannot replay the closed range {start}-{model_label}: {err.detail}",
+                )
+                return None, None, replay_error
 
         try:
             transformed = _transform_wlog_entry(
