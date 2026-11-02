@@ -55,9 +55,10 @@ What's characterized here
      because divisibility distributing over sums needed it (see that
      axiom's own comment). `Times` commutativity is not characterized, so
      right distributivity isn't implied by this and is separately absent.
-     `Plus` associativity/commutativity remain absent too -- tracked below
-     under "not here yet", to be added the same way these two were: when
-     an actual proof needs one, not speculatively ahead of that.
+  9. Addition associativity and commutativity are characterized by explicit
+     integer axioms.
+ 10. Multiplication has explicit left/right identity and zero-annihilation
+     axioms for `One` and `Zero`.
 
 Divisibility (`a|n`, "a divides n") is *not* a new primitive or a new
 rule. It is definitional sugar, expanded at parse time to
@@ -109,19 +110,15 @@ equations can produce on its own.
 --------------------------------------------------------------------------
 What's deliberately not here yet
 --------------------------------------------------------------------------
-No order relation (`<`, `<=`), no trichotomy, no well-ordering principle,
-no set-builder-driven arguments, no GCD, no quotient-remainder
-decomposition, no `Plus` associativity/commutativity, no `Times`
-commutativity or right distributivity. The order-theory list is what the
-GCD/Bezout argument needs (see `tests/testNumberTheory/`'s docstrings and
-`todos.txt`'s Phase 6/7 entries for the fixture history here) and is a
-substantially larger undertaking -- an order theory plus a well-ordering
-axiom/schema, at minimum -- left for a follow-up rather than attempted
-here. The ring facts are each individually small; each gets added when a
-real proof needs it (this is how `Times` associativity and left
-distributivity, above, got added), not ahead of that. `a|n` iff `n/a` is
-an integer, and divisibility's closure under `Plus`/`Times` (sums and
-transitivity both), do not need any of this and are fully supported.
+Integer `<` and `<=` order is supplied by `OrderTheory.py`: strict-order
+irreflexivity, transitivity, trichotomy, the usual `<=` definition, and
+addition/product compatibility are available as explicit axioms. There is
+still deliberately no GCD, Bezout identity, quotient-remainder decomposition,
+well-ordering principle for arbitrary subsets, `Times` commutativity, or right
+distributivity. Those facts require additional foundations or proof-specific
+machinery rather than implicit algebra shortcuts. `a|n` iff `n/a` is an
+integer, and divisibility's closure under `Plus`/`Times` (sums and transitivity
+both), are fully supported without them.
 """
 
 import SyLoPy.source.FormulaLogic as fl
@@ -134,10 +131,14 @@ from SyLoPy.source.ProofElaboration import TheoryEnvironment
 INT_PREDICATE = "Int"
 EVEN_PREDICATE = "Even"
 ODD_PREDICATE = "Odd"
+PRIME_PREDICATE = "Prime"
+CONGRUENT_PREDICATE = "Congruent"
 PLUS = "Plus"
 TIMES = "Times"
 NEG = "Neg"
 QUOTIENT = "Quotient"
+ONE = "One"
+ZERO = "Zero"
 
 _n = tl.VariableTerm('n')
 _a = tl.VariableTerm('a')
@@ -145,6 +146,10 @@ _m = tl.VariableTerm('m')
 _x = tl.VariableTerm('x')
 _y = tl.VariableTerm('y')
 _z = tl.VariableTerm('z')
+_d = tl.VariableTerm('d')
+_k = tl.VariableTerm('k')
+One = tl.ConstantTerm(ONE, ONE)
+Zero = tl.ConstantTerm(ZERO, ZERO)
 
 
 def _Int(term: tl.Term) -> fl.Formula:
@@ -167,10 +172,20 @@ def _Quotient(x: tl.Term, y: tl.Term) -> tl.Term:
     return tl.FunctionTerm(QUOTIENT, [x, y])
 
 
+def _Prime(term: tl.Term) -> fl.Formula:
+    return fl.AtomicFormula(PRIME_PREDICATE, [term])
+
+
+def _Congruent(a: tl.Term, b: tl.Term, m: tl.Term) -> fl.Formula:
+    return fl.AtomicFormula(CONGRUENT_PREDICATE, [a, b, m])
+
+
 INT_AXIOMS = [
     # 1. Every natural is an integer -- Nat and Int overlap rather than
     #    partition the domain (see the module docstring).
     fl.ForAll('x', fl.Implies(nt._Nat(_x), _Int(_x))),
+    _Int(nt.Zero),
+    _Int(One),
 
     # 2-4. Closure under Plus, Times, and Neg.
     fl.ForAll('x', fl.ForAll('y', fl.Implies(
@@ -180,6 +195,41 @@ INT_AXIOMS = [
         fl.And(_Int(_x), _Int(_y)), _Int(_Times(_x, _y)),
     ))),
     fl.ForAll('x', fl.Implies(_Int(_x), _Int(_Neg(_x)))),
+
+    # 5-10. The ordinary additive/multiplicative identities and basic ring
+    # identities for zero and one.  These are number-theory axioms, not
+    # successor-based Peano or Robinson arithmetic axioms.
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Plus(_x, nt.Zero), _x))),
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Plus(nt.Zero, _x), _x))),
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Times(_x, One), _x))),
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Times(One, _x), _x))),
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Times(_x, nt.Zero), nt.Zero))),
+    fl.ForAll('x', fl.Implies(_Int(_x),
+                              fl.Equals(_Times(nt.Zero, _x), nt.Zero))),
+
+    fl.ForAll('x', fl.ForAll('y', fl.Implies(
+        fl.And(_Int(_x), _Int(_y)),
+        fl.Equals(_Plus(_x, _y), _Plus(_y, _x)),
+    ))),
+    fl.ForAll('x', fl.ForAll('y', fl.ForAll('z', fl.Implies(
+        fl.And(fl.And(_Int(_x), _Int(_y)), _Int(_z)),
+        fl.Equals(
+            _Plus(_Plus(_x, _y), _z),
+            _Plus(_x, _Plus(_y, _z)),
+        ),
+    )))),
+
+    # Multiplication is compatible with additive inversion on the left.
+    # This supplies the law needed for proofs of divisibility by Neg(b).
+    fl.ForAll('x', fl.ForAll('y', fl.Implies(
+        fl.And(_Int(_x), _Int(_y)),
+        fl.Equals(_Neg(_Times(_x, _y)), _Times(_x, _Neg(_y))),
+    ))),
 
     # 5. Quotient defining property: if n/a is (already known to be) an
     #    integer, it satisfies the equation division is supposed to solve.
@@ -237,11 +287,15 @@ INT_DECLARATIONS = [
     pl.Declaration(INT_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
     pl.Declaration(EVEN_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
     pl.Declaration(ODD_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(PRIME_PREDICATE, pl.DeclarationKind.PREDICATE, arity=1),
+    pl.Declaration(CONGRUENT_PREDICATE, pl.DeclarationKind.PREDICATE, arity=3),
+    pl.Declaration(ONE, pl.DeclarationKind.OBJECT),
     pl.Declaration(PLUS, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(TIMES, pl.DeclarationKind.FUNCTION, arity=2),
     pl.Declaration(NEG, pl.DeclarationKind.FUNCTION, arity=1),
     pl.Declaration(QUOTIENT, pl.DeclarationKind.FUNCTION, arity=2),
 ]
+
 
 
 class QuotientDefiningPropertyRule(pl.AxiomSchemaRule):
@@ -337,6 +391,37 @@ def divides_formula(a: tl.Term, n: tl.Term, witness_name: str = "__div_witness")
         suffix += 1
     witness = tl.VariableTerm(witness_name)
     return fl.Exists(witness_name, fl.And(_Int(witness), fl.Equals(n, _Times(a, witness))))
+
+
+INT_DEFINITION_AXIOMS = [
+    fl.ForAll('p', fl.Iff(
+        _Prime(tl.VariableTerm('p')),
+        fl.ForAll('d', fl.Implies(
+            _Int(tl.VariableTerm('d')),
+            fl.Implies(
+                divides_formula(tl.VariableTerm('d'), tl.VariableTerm('p')),
+                fl.Or(
+                    fl.Equals(tl.VariableTerm('d'), One),
+                    fl.Equals(tl.VariableTerm('d'), _Neg(One)),
+                    fl.Equals(tl.VariableTerm('d'), tl.VariableTerm('p')),
+                    fl.Equals(tl.VariableTerm('d'), _Neg(tl.VariableTerm('p'))),
+                ),
+            ),
+        )),
+    )),
+    fl.ForAll('a', fl.ForAll('b', fl.ForAll('m', fl.Iff(
+        _Congruent(tl.VariableTerm('a'), tl.VariableTerm('b'), tl.VariableTerm('m')),
+        fl.Exists('k', fl.And(
+            _Int(_k),
+            fl.Equals(
+                _Plus(tl.VariableTerm('a'), _Neg(tl.VariableTerm('b'))),
+                _Times(tl.VariableTerm('m'), _k),
+            ),
+        )),
+    )))),
+]
+
+INT_TYPE.axioms = INT_AXIOMS + INT_DEFINITION_AXIOMS
 
 
 def _split_top_level(text: str, sep: str):
@@ -460,6 +545,22 @@ def try_parse_int_formula(text: str, bound_vars):
     if m:
         return _Int(pp.parse_term(m.group(1), bound_vars))
 
+    m = re.match(r'^(.+?)\s+is\s+prime$', s, flags=re.I)
+    if m:
+        return _Prime(pp.parse_term(m.group(1), bound_vars))
+
+    m = re.match(
+        r'^(.+?)\s+is\s+congruent\s+to\s+(.+?)\s+modulo\s+(.+)$',
+        s,
+        flags=re.I,
+    )
+    if m:
+        return _Congruent(
+            pp.parse_term(m.group(1), bound_vars),
+            pp.parse_term(m.group(2), bound_vars),
+            pp.parse_term(m.group(3), bound_vars),
+        )
+
     return None
 
 
@@ -469,7 +570,7 @@ NUMBER_THEORY_ENVIRONMENT = TheoryEnvironment(
     phrase_parsers=[try_parse_parity_phrase],
     term_parsers=[try_parse_int_term],
     rules=[QuotientDefiningPropertyRule(), QuotientUniquenessRule()] + list(nt.NAT_TYPE.schema_rules),
-    axioms=list(INT_AXIOMS) + list(nt.NAT_AXIOMS),
+    axioms=list(INT_AXIOMS) + list(INT_DEFINITION_AXIOMS) + list(nt.NAT_AXIOMS),
     declarations=list(INT_DECLARATIONS) + list(nt.NAT_DECLARATIONS),
     declaration_recipes=[
         nt.NAT_TYPE.as_declaration_recipe(),
@@ -514,5 +615,3 @@ end subproof
     proof = pl.Proof(entries)
     ok, err = proof.check_detailed()
     print("NumberTheory self-check:", "PASS" if ok else f"FAIL ({err})")
-
-

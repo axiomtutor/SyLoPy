@@ -5240,6 +5240,31 @@ class ProofValidator:
             return (f"Mutatis mutandis cannot repeat line {model_label} with {renaming}: "
                     f"{where} cannot be rewritten, because {error}")
 
+        if start is not None:
+            range_order = [visible for visible, _ in _visible_label_items(labels)]
+            try:
+                first = range_order.index(start)
+                last = range_order.index(model_label)
+            except ValueError:
+                return refuse(CATEGORY_BAD_REFERENCE,
+                              f"Mutatis mutandis cannot repeat line {model_label}: "
+                              f"the closed range {start}-{model_label} is not visible")
+            for replay_label in range_order[first:last + 1]:
+                replay_entry = labels.source_of(replay_label)
+                classified = _classify_entry(replay_entry) if replay_entry is not None else None
+                if (isinstance(classified, _ParsedEntry)
+                        and not classified.is_subproof_block
+                        and isinstance(classified.justification, tuple)
+                        and classified.justification
+                        and classified.justification[0] not in
+                        ("assume", "arbitrary", "premise")):
+                    try:
+                        _transform_wlog_entry(
+                            replay_entry, sigma, labels, block_label, sidx, sigma,
+                            _ReplayPolicy(_mm_counterpart, no_counterpart, not_rewritable))
+                    except _WLOGReplayError as exc:
+                        return refuse(exc.category, exc.detail)
+
         try:
             transformed = _transform_wlog_entry(
                 model_entry, sigma, labels, block_label, sidx, sigma,

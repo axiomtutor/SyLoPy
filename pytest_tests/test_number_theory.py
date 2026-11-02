@@ -7,11 +7,25 @@ from .support import numt, nt, pl, fl, tl, pp, atom, c, v
 
 
 def test_int_axiom_shapes():
-    nat_subset, plus_closure, times_closure, neg_closure, quotient_defining, quotient_unique, times_assoc, left_distrib = numt.INT_AXIOMS
+    nat_subset, zero_int, one_int, *remaining = numt.INT_AXIOMS
     assert repr(nat_subset) == "(∀x. (Nat(x) → Int(x)))"
+    assert repr(zero_int) == "Int(Zero)"
+    assert repr(one_int) == "Int(One)"
+    plus_closure = remaining[0]
+    times_closure = remaining[1]
+    neg_closure = remaining[2]
     assert "Int(Plus(x, y))" in repr(plus_closure)
     assert "Int(Times(x, y))" in repr(times_closure)
     assert repr(neg_closure) == "(∀x. (Int(x) → Int(Neg(x))))"
+    axioms = [repr(axiom) for axiom in numt.INT_AXIOMS]
+    assert any("Times(x, One) = x" in axiom for axiom in axioms)
+    assert any("Times(One, x) = x" in axiom for axiom in axioms)
+    assert any("Times(x, Zero) = Zero" in axiom for axiom in axioms)
+    assert any("Neg(Times(x, y)) = Times(x, Neg(y))" in axiom for axiom in axioms)
+    quotient_defining = next(a for a in numt.INT_AXIOMS if "Int(Quotient(n, a))" in repr(a))
+    quotient_unique = next(a for a in numt.INT_AXIOMS if "Quotient(n, a) = m" in repr(a))
+    times_assoc = next(a for a in numt.INT_AXIOMS if "Times(Times(x, y), z) = Times(x, Times(y, z))" in repr(a))
+    left_distrib = next(a for a in numt.INT_AXIOMS if "Times(x, Plus(y, z)) = Plus(Times(x, y), Times(x, z))" in repr(a))
     assert "Int(Quotient(n, a))" in repr(quotient_defining)
     assert "n = Times(a, Quotient(n, a))" in repr(quotient_defining)
     assert "Quotient(n, a) = m" in repr(quotient_unique)
@@ -88,7 +102,7 @@ def test_number_theory_environment_includes_nat_and_set_theory():
     assert "QuotientUniqueness" in names
     assert any(isinstance(rule, pl.InductionRule) for rule in numt.NUMBER_THEORY_ENVIRONMENT.rules)
     declared_names = {d.name for d in numt.NUMBER_THEORY_ENVIRONMENT.declarations}
-    assert {"Int", "Plus", "Times", "Neg", "Quotient", "Nat", "Zero", "Succ", "EmptySet", "In"} <= declared_names
+    assert {"Int", "Plus", "Times", "Neg", "Quotient", "Nat", "Zero", "One", "Succ", "EmptySet", "In"} <= declared_names
 
 
 def test_current_number_theory_fixture_corpus():
@@ -133,5 +147,34 @@ def test_algebra_citation_now_resolves_to_the_real_congruence_closure_rule():
     assert isinstance(rule2, pl.AlgebraRule)
 
 
+def test_prime_and_congruence_vocabulary_parses_and_is_declared():
+    prime = pp.parse_formula("p is prime")
+    congruent = pp.parse_formula("a is congruent to b modulo m")
+
+    assert repr(prime) == "Prime(p)"
+    assert repr(congruent) == "Congruent(a, b, m)"
+    declarations = {
+        declaration.name: declaration.arity
+        for declaration in numt.NUMBER_THEORY_ENVIRONMENT.declarations
+    }
+    assert declarations["Prime"] == 1
+    assert declarations["Congruent"] == 3
 
 
+def test_integer_order_vocabulary_parses_and_is_declared():
+    import SyLoPy.source.OrderTheory as ot
+
+    assert repr(pp.parse_formula("a < b")) == "Less(a, b)"
+    assert repr(pp.parse_formula("b > a")) == "Less(a, b)"
+    assert repr(pp.parse_formula("a <= b")) == "LessEqual(a, b)"
+    assert repr(pp.parse_formula("b >= a")) == "LessEqual(a, b)"
+    assert repr(pp.parse_formula("a is less than b")) == "Less(a, b)"
+    assert repr(pp.parse_formula("a is at most b")) == "LessEqual(a, b)"
+
+    declarations = {
+        declaration.name: declaration.arity
+        for declaration in ot.ORDER_THEORY_ENVIRONMENT.declarations
+    }
+    assert declarations["Less"] == 2
+    assert declarations["LessEqual"] == 2
+    assert len(ot.ORDER_AXIOMS) == 6

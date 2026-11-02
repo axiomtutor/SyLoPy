@@ -21,12 +21,13 @@ def test_basic_theorems_fixture_all_pass():
     results = mp.run_multi_proof_file(_proof_text())
     assert [(number, ok) for number, _expected, ok, _msg, _crashed in results] == [
         ("1", True), ("2", True), ("3", True), ("4", True), ("5", True), ("6", True),
+        ("7", True),
     ]
 
 
 def test_basic_theorems_have_titles_matching_their_content():
     cases = mp.parse_multi_proof_file(_proof_text())
-    assert [case.number for case in cases] == ["1", "2", "3", "4", "5", "6"]
+    assert [case.number for case in cases] == ["1", "2", "3", "4", "5", "6", "7"]
     # Each stated "### then ..." conclusion must itself parse as a formula
     # and be the thing the proof actually derives at the top level --
     # run_multi_proof_file's own check (exercised above) already enforces

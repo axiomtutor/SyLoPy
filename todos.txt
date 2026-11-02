@@ -33,8 +33,10 @@ promotion, and regression corpus are implemented.
 ## Project-state update: 2026-11-02
 
 - Named Python test suites are implemented. `default` is the PR/local project
-  suite, `extended` contains the explicitly separated adversarial/audit tests,
-  and `all` runs both suites.
+  suite; `extended` contains red-team, audit, and mutation-tool modules, and
+  `all` runs both suites. The classification is centralized in
+  `pytest_tests/conftest.py` so those modules remain discoverable without
+  adding markers to every test file.
 - `./run_tests.sh` runs the `default` suite plus every enforced and informational
   proof fixture suite.
 - Named set-theory axiom citations now include extensionality, foundation/regularity,
@@ -43,8 +45,8 @@ promotion, and regression corpus are implemented.
 - Replay counterpart matching treats equality and biconditional sides
   symmetrically, while implication remains directional.
 - There are no active pytest `xfail` tests or fixture-expected-failure markers.
-- The complete suite currently verifies 2176 Python tests and 502 proof
-  fixtures (397 enforced and 105 informational).
+- Verification totals change with added tests; report totals from a fresh run
+  of the exact commit instead of maintaining a fixed count here.
 - Symbol/function/predicate replay in `Mutatis mutandis` and promotion over
   declared relation structure are fully integrated. The complete suite has no
   xfailed tests and no fixture-expected-failure results.
@@ -308,6 +310,14 @@ collaboration handoff before starting.
 
    Message from owner: Implement this module and create reasonable axioms.  For example, axioms about 0, 1, addition, multiplication, division.  The number theory module should supply definitions of divisibility, prime, congruence.
 
+   Basic integer ring identities are now implemented in `NumberTheory.py`
+   with explicit `Zero` and `One` constants, additive/multiplicative identities,
+   addition associativity/commutativity, zero annihilation, and compatibility
+   of multiplication with additive inverse. No successor-based axiom was added.
+   Prime and congruence vocabulary is now implemented with declared predicates,
+   textual parsing, and defining axioms: `Prime(p)` and `a is congruent to b
+   modulo m`. Larger arithmetic expansions remain future work.
+
 2. **Finite/infinite-set semantics:** focused declarations, predicates,
    bijections, exact cardinalities, and transfer/closure rules are implemented.
    Cardinal values are metatheoretic nonnegative integers; they are not object-language
@@ -356,9 +366,11 @@ Approved, in the order Claude will take them (one feature at a time):
 Current implementation direction:
 
 - `=` and `<->` counterpart matching in replay is now symmetry-sensitive.
-- Closed multi-line Mutatis range replay is still outstanding implementation
-  work; it requires replaying each suffix line in a fresh validated scope rather
-  than merely repeating the final model entry.
+- Closed multi-line Mutatis range replay is implemented for ordinary derived
+  lines: the replay transforms the full closed suffix after the start counterpart
+  check, remaps internal citations, and rejects unsafe substitutions and missing
+  outside counterparts. Assumptions, declarations, premises, and standalone
+  subproof blocks remain excluded rather than being replayed as new inference.
 - Major theory modules such as abstract algebra or topology: later, not now.
 - Changing the witness-generalization policy: no change (decided 2026-10-31).
 

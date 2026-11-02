@@ -26,6 +26,12 @@ def pytest_collection_modifyitems(config, items):
     suite = config.getoption("--suite")
 
     for item in items:
+        module_name = item.nodeid.rsplit("::", 1)[0]
+        # Red-team findings and audit/mutation tools are deliberately outside
+        # the PR/local default batch, even though they remain in the all suite.
+        if ("red_team" in module_name or "_audit" in module_name
+                or "mutation_check_tool" in module_name):
+            item.add_marker(pytest.mark.extended)
         extended = item.get_closest_marker("extended") is not None
         if not extended:
             item.add_marker(pytest.mark.default)
