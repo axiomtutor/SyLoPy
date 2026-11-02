@@ -1,56 +1,33 @@
 # Collaboration Guide
 
-This file contains stable collaboration rules. The [TODO](todos.txt) is the current-state/design ledger; the [delegated-job tracker](JOBS_FOR_CHATGPT.md) records delegated work; PRs and issues hold implementation details and discussion. The owner has final authority over priorities and semantics.
+The owner has final authority over priorities and mathematical semantics. This file contains stable working rules; current status and decisions belong in `todos.txt`.
 
-## Load only relevant context
+## Before starting
 
-Do not read the full TODO and every architecture document for each task. Start here, inspect current master plus relevant open PRs/branches, and check the project-status/known-issues section at the top of `todos.txt`. Then read only the TODO subsection and reference docs needed for the task.
+- Inspect current `master` and relevant open PRs, branches, and issues. Treat old handoffs and status summaries as potentially stale.
+- Read the status/known-issues section of `todos.txt`, then only the relevant subsection and reference documents. Use `PROJECT_STATE.md` for the project map.
+- Consult the appropriate source of detail: `README.md` for public behavior and API, `docs/PROOF_FILE_FORMAT.md` for proof syntax, and the architecture documents for parser, elaboration, or validation design.
+- Follow `JOBS_FOR_CHATGPT.md` for delegated work. Do not resume completed or archived jobs unless the owner re-queues them.
 
-- Read `PROJECT_STATE.md` for the current project map, source layout, and resume checklist.
-- Read `README.md` for user-facing behavior or API/documentation work.
-- Read `ARCHITECTURE_STATUS.md` for architecture, parser/elaboration boundaries, or validation-context work.
-- Read `ELABORATION_ARCHITECTURE.md` or `TYPE_SYSTEM_DESIGN.md` only when working in those areas.
-- Prefer targeted search or line-range reads over loading long design-history sections. Recheck PR state and CI; handoffs and status snapshots can become stale.
+## Design and correctness
 
-The intended pipeline is surface proof text → parsing/surface AST → elaboration → core proof entries → `ProofLogic` validation. `ProofContext` owns elaboration-time lexical scope; kernel `LabelScope` and `DeclarationScope` remain separate validation-time trust boundaries.
+- Preserve the pipeline: proof text → surface AST → elaboration → core entries → independent `ProofLogic` validation.
+- Keep `ProofContext` as the elaboration-time scope. Kernel `LabelScope` and `DeclarationScope` are separate validation-time authorities; do not merge them.
+- Prefer theory-local syntax, parsers, declaration recipes, and surface sugar that lowers to existing formulas or proof steps. Add generic parser special cases or kernel primitives only when the feature genuinely requires them.
+- Every fact used by a proof must be visible to validation as a premise, hypothesis, ordinary formula, or explicit declaration metadata. Do not create hidden routes around kernel checks.
+- Do not infer authorization from an old proposal, archived task, or example. Follow the current owner decisions in `todos.txt`; raise semantic ambiguity rather than deciding it implicitly.
 
-Keep theory-specific syntax and interpretation in theory environments and declaration recipes. Prefer surface sugar over new AST/kernel primitives unless a genuinely new logical primitive is required. Do not add generic parser/elaboration special cases to rescue one example.
+## Ownership and repository changes
 
-## Coordinate and respect ownership
-
-- Check for active work in the same subsystem before editing. Use one small, isolated branch per task.
+- Check for concurrent work in the same subsystem. Use one small, isolated branch and PR per task.
 - Never rewrite, rebase, force-push, or clean up another agent's branch.
-- Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. Coordinate before changing either file.
-- Owner override recorded 2026-11-01: the owner explicitly granted Copilot/this agent permission to implement and fix Claude-owned kernel code in the current workstream when needed to keep implementation moving. Preserve the same review, testing, and coordination discipline.
-- If semantics are ambiguous or conflict with an owner decision, stop and raise the question; do not decide implicitly in code.
-
-## Keep work status in one place
-
-- `todos.txt` is the source of truth for feature status, correctness invariants, design decisions, and owner-approval requirements. Do not duplicate that feature inventory here; read the relevant subsection before touching WLOG, `Mutatis mutandis`, axiom citations, witness handling, or theorem promotion.
-- `JOBS_FOR_CHATGPT.md` is the delegated-work tracker. Completed task specifications are preserved in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md` for historical context only; an archived specification is not current authorization to work.
-- Do not start an item marked as requiring owner approval in `todos.txt` without explicit approval.
-- Do not confuse number theory with successor-based arithmetic foundations.
-  In this project, number theory includes integers and divisibility; Peano or
-  Robinson arithmetic, successor structure, and their axioms are separate
-  concerns. Do not use `Succ` or invent successor axioms to resolve issue #98
-  divisibility-proof gaps.
+- `source/ProofLogic.py` and `source/ProofJustification.py` are Claude-owned: coordinate before editing. Owner override (2026-11-01) permits this agent to implement or fix kernel code in the current workstream when needed; retain the same coordination, review, and test discipline.
+- Do not start work marked as requiring owner approval without explicit approval.
 
 ## Parser and test discipline
 
-- New surface-syntax cases belong in `parse_oracle/`, with `expect` written as the intended plain-logic reading. Investigate disagreements rather than automatically weakening the oracle.
-- Run `./run_tests.sh` for the default verification suite. It runs the `default`
-  Python suite and every proof fixture suite. Use `./run_tests.sh --suite
-  extended` or `./run_tests.sh --suite all` for the explicitly named slower
-  suites. Preserve the enforced fixture corpus and report known failures
-  separately from regressions.
-- Named suites are `default`, `extended`, and `all`. Use `./run_tests.sh
-  --list-batches` to list them and `./run_tests.sh --list-suites` to list proof
-  fixture suites. The `extended` marker applies only to tests deliberately
-  separated into an extended audit suite.
-- There are currently no active pytest `xfail` tests or strict expected-failure
-  cases. Do not reintroduce `xfail` to conceal a regression; implement or file
-  a finding with the repository's issue/owner policy.
-- Negative proof tests must fail for the intended rule/guard, not due to parsing, undeclared symbols, or unrelated scope errors.
-- Report the exact tested commit/CI run, Python test totals, coverage, enforced fixtures, informational fixtures, and any remaining failures.
+- Add surface-syntax cases to `parse_oracle/` with the intended plain-logic reading specified independently of the parser. Keep malformed-input rejection cases; investigate disagreements instead of weakening expectations.
+- Run `./run_tests.sh` for the default Python suite and all proof-fixture suites. Use `./run_tests.sh --suite extended` for red-team/audit tests and `./run_tests.sh --suite all` for every Python suite plus proof fixtures.
+- Negative proofs must be refused at the intended rule or guard, not because of a parsing, declaration, or scope error. Preserve existing fixtures and expectations; never use `xfail` to hide a regression.
+- Report the exact tested commit and CI run, actual Python test results, coverage, enforced and informational fixture results, and remaining failures. Do not claim counts or coverage without checking the run for that commit.
 
-The aim is composable, reviewable changes that preserve the project's accumulated decisions, not maximum independent activity.
