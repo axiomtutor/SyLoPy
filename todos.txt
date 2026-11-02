@@ -5,7 +5,7 @@ open design decisions, and invariants belong here. Detailed implementation histo
 is in the linked PRs; behavior is specified by the code, tests, README, and
 `docs/PROOF_FILE_FORMAT.md`.
 
-Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
+Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. `PROJECT_STATE.md` is a dated snapshot of the whole project (what exists, what is in flight, known limits, how to resume); where it differs from this file, this file wins. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
 
 ## Current status
 
@@ -24,8 +24,13 @@ in [PR #135](https://github.com/axiomtutor/SyLoPy/pull/135); the J27 survey of w
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
   proofs require arithmetic laws not currently axiomatized. This is an owner
   decision list, **not** authorization to add axioms.
-- [Issue #75](https://github.com/axiomtutor/SyLoPy/issues/75): the WLOG citation
-  replay defect is fixed; the issue remains open for the owner to close.
+- [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): a premise line
+  `A and B are disjoint.` is read as a declaration clause, not as the disjointness
+  formula (parser; can be delegated).
+- [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): the relation
+  property words `irreflexive`, `asymmetric` and `total` are refused after a comma
+  in a declaration, so `a transitive, asymmetric relation` cannot be declared
+  (parser; can be delegated).
 
 Selected passing CI references for this cleanup are [PR #128 run #954](https://github.com/axiomtutor/SyLoPy/actions/runs/40432256483) and [PR #129 run #956](https://github.com/axiomtutor/SyLoPy/actions/runs/40432809533), both run on PR-head commits. The earlier J24 run #939 and J25 run #942 were also on separate PR heads. These are useful verification records, not runs on the resulting merge commits. Use CI on the current commit for a fresh master baseline; do not treat PR-head test totals as the combined master's totals.
 

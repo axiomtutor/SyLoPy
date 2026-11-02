@@ -8,36 +8,6 @@ Completed job specifications and their original task instructions are preserved 
 
 Start a job only after the pull request that adds it has been merged, so the instructions and implementation can be read together. Do not resume a completed or archived task unless the owner explicitly re-queues it or provides new direction.
 
-### J28 — Register every elaborated declaration in ProofContext
-
-**Goal:** Keep the elaboration-time lexical declaration context synchronized with every declaration emitted into core entries, including declarations produced by `Existence from L` and the generic declaration-prefix path used by declaration-like premises.
-
-**Allowed scope:** `source/ProofParser.py`, a focused new regression module under `pytest_tests/`, and this tracker. Do not edit `ProofLogic.py` or `ProofJustification.py`.
-
-**Tests:** Verify that an existence witness and a declaration parsed from a `Premise` with `such that` are visible to a later declaration recipe that refers to them as a carrier; verify duplicate declarations are rejected during elaboration; preserve existing compound-declaration, scope, and typed-declaration behavior.
-
-**Done when:** All declaration objects emitted by an elaborated entry are registered exactly once in the current `ProofContext`, already-registered compound-declaration objects are not re-registered, duplicate names fail at the source line, and CI passes the full test suite and enforced/informational fixture corpus.
-
-Status: in progress (PR #142).
-
-### J30 — Declaration lines must not drop or absorb text
-
-**Goal:** A declaration statement never loses part of what the author wrote. Three inputs are accepted today with text gone or turned into a symbol name. None of them lets the checker accept an invalid derivation (what is lost is only names and facts); each makes the author's proof fail at a later line that points nowhere near the cause. Reproduce them on master first (`pp.parse_proof_text`; the declared names are `entries[0][2][1]`, the stated formulas `entries[0][1]`):
-
-1. `1. Let X be any set, a and b be in X. (Declaration)` declares `X` and `b` and states `In(b, X)` only; `a` is dropped. The same happens with `a and b be objects` and with a name `an`. `Let a and b be objects.`, `Let X be any set, a, b be in X.` and `Let X and Y be any set.` are right. Where to look: `a` and `an` are in `descriptor_words` of `_split_compound_declaration_items`, and `_DECL_START_RE` does not accept a name list joined by `and`, so `, a and b be in X` is read as more of the descriptor of the clause before it.
-2. `1. Let X be any set. Let a be in X. (Declaration)` declares `X` only: the second sentence is dropped.
-3. `1. Let X be any set, a be in X, and a = a. Let R be a relation on X. (Declaration)` declares a symbol named `a = a. Let R`: the declaration recipes in `elaborate_compound_declaration` are not given the `_IDENTIFIER_RE` check that the generic path applies to the names it declares.
-
-Expected: (1) declares and states for both names, with `a` and `an` still articles after `be`; (2) and (3) an `ElaborationError` at the source line saying that a declaration line is one sentence, so each `Let` goes on its own line. Do not add support for several sentences on a line; nobody has decided that it should exist.
-
-**Allowed scope:** `source/ProofParser.py`, a new `pytest_tests/test_declaration_text_is_not_dropped.py`, `parse_oracle/` cases if the oracle can express declaration statements (otherwise the pytest module carries them), and this tracker. Do not edit `ProofLogic.py`, `ProofJustification.py`, `DiscreteMath.py` or `DiscreteMathCore.py`, and do not change an existing expectation.
-
-**Tests:** each input above, failing on master and passing after the change, pinned by (declared names, stated formulas) or by (line, message fragment); a valid twin for each that differs only in the condition the input breaks; the fixture corpus unchanged. Run `tools/mutation_check.py` on the change and give the result in the PR.
-
-**Done when:** the three inputs behave as expected, the whole corpus (enforced and informational) gives the results it gave before, the mutation check has no survivor in the changed code (or the PR says why one is equivalent), and CI passes.
-
-Status: in progress (PR #146).
-
 ### J31 — Red-team "a relation on X is a subset of X × X"
 
 **Goal:** `Let R be a ... relation on X` now states `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))` as a formula of its line (owner decision of 2026-10-29). Find out whether a proof can derive more than that, or less. Read first (read only): `source/DiscreteMath.py` (`relation_subset_formula` and the recipe), `docs/PROOF_FILE_FORMAT.md` section 5 and the note on declaration lines in the Mutatis mutandis section, `tests/testDiscreteMath/relation_subset.txt` (10 cases), `pytest_tests/test_relation_subset_sugar.py`.
@@ -131,6 +101,9 @@ Status: todo.
 | J25 | Where stage 1 of Mutatis mutandis stops | merged ([PR #124](https://github.com/axiomtutor/SyLoPy/pull/124)) |
 | J26 | Red-team Mutatis mutandis stages 2 and 3 | merged ([PR #135](https://github.com/axiomtutor/SyLoPy/pull/135)) |
 | J27 | Where Mutatis mutandis stops, second look | merged ([PR #139](https://github.com/axiomtutor/SyLoPy/pull/139)) |
+| J28 | Register every elaborated declaration in ProofContext | merged ([PR #142](https://github.com/axiomtutor/SyLoPy/pull/142)) |
+| J29 | Consolidate the legacy natural-number fixture runner | merged ([PR #143](https://github.com/axiomtutor/SyLoPy/pull/143)) |
+| J30 | Declaration lines must not drop or absorb text | merged ([PR #146](https://github.com/axiomtutor/SyLoPy/pull/146)) |
 
 ## Rules for new jobs
 
@@ -142,17 +115,3 @@ Status: todo.
 6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
 
 Historical note: this tracker replaces the former long-form queue. Archived job text is retained for provenance, but current repository guidance and explicit owner decisions take precedence.
-
-## Active maintenance
-
-### J29 — Consolidate the legacy natural-number fixture runner
-
-**Goal:** Keep `source/test_runner_NatNum.py` as a compatibility command, but delegate suite execution, theory-resource configuration, reporting, and exit status to `source/validate_all_proofs.py`.
-
-**Allowed scope:** `source/test_runner_NatNum.py`, `pytest_tests/test_import_contract.py`, and this tracker. Do not change proof semantics, fixtures, or kernel code.
-
-**Tests:** Run the compatibility command from the same subprocess/import environment as its existing test; assert successful exit and the full natural-number suite summary.
-
-**Done when:** The duplicate runner implementation is removed, the old command continues to validate `testProofsNat`, regression coverage verifies its result, and full CI passes.
-
-Status: in progress.
