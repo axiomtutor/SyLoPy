@@ -16,6 +16,9 @@ repeats an argument for other names, for names replaced by terms, and for one
 predicate or function symbol replaced by another. The informational ZFC proof
 `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose second inclusion uses
 `Mutatis mutandis`, passes.
+Integer order support is available through `Less` (`<`) and `LessEqual` (`<=`),
+including natural-language greater-than forms and named transitivity,
+irreflexivity, trichotomy, compatibility, and less-than-or-equal axioms.
 
 [PROJECT_STATE.md](PROJECT_STATE.md) maps the project layout and verification
 workflow. The
@@ -304,8 +307,8 @@ all proof fixture suites:
 ### Running specific test batches
 
 Python tests are organized into named suites. The `default` suite is what runs
-on normal PR and local project checks; it contains every Python test not moved
-into an explicitly named suite.
+on normal PR and local project checks. It excludes red-team, audit, and mutation-tool
+modules, which are kept in `extended`.
 
 ```bash
 # List named Python batches

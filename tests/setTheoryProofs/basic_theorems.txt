@@ -89,3 +89,22 @@
 4. x is in X. (Premise)
 5. In(x,X) -> In(x,Y). (Universal Instantiation from 3)
 6. In(x,Y). (Modus Ponens from 5, 4)
+
+
+# 7: Empty set is a left identity for union
+## Proof that
+### If U represents the empty set union A
+### then U = A.
+
+1. Let A, U be any set. (Declaration)
+2. forall u, (In(u, U) iff (In(u, the empty set) or In(u, A))). (Premise)
+3. U is a subset of A. (Subset proof below)
+ 3.1. Let x in U. (Assumption for subset proof)
+ 3.2. In(x, the empty set) or In(x, A). (Set property from 2, 3.1)
+ 3.3. not In(x, the empty set). (Set property)
+ 3.4. In(x, A). (Disjunctive Syllogism from 3.2, 3.3)
+4. A is a subset of U. (Subset proof below)
+ 4.1. Let x in A. (Assumption for subset proof)
+ 4.2. In(x, the empty set) or In(x, A). (Disjunction Introduction from 4.1)
+ 4.3. In(x, U). (Set property from 2, 4.2)
+5. U = A. (Set Equality from 3, 4)

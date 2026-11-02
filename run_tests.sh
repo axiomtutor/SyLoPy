@@ -35,7 +35,7 @@ fi
 if (( $# == 1 )) && [[ "$1" == "--list-batches" ]]; then
     cat <<'EOF'
 default  - current Python tests, run by default
-extended - named adversarial/regression Python tests
+extended - red-team, audit, and mutation-tool Python tests
 all      - every Python test suite
 EOF
     exit 0
