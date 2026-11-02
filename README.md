@@ -17,7 +17,9 @@ predicate or function symbol replaced by another. The informational ZFC proof
 `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose second inclusion uses
 `Mutatis mutandis`, passes.
 
-The [development TODO](todos.txt) is the source of truth for current findings
+[PROJECT_STATE.md](PROJECT_STATE.md) is a dated map of the whole project: what
+exists, what is in flight, the known limits and how to resume. The
+[development TODO](todos.txt) is the source of truth for current findings
 and open design decisions. Verification totals belong with the CI run and pull
 request that tested each change.
 

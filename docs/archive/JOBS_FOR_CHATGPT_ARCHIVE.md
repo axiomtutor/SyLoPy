@@ -1,4 +1,4 @@
-> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; the J26 specification was added on 2026-10-29 after PR #135 merged, and the J27 specification was added on 2026-10-30 after PR #139 merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
+> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; the J26 specification was added on 2026-10-29 after PR #135 merged, the J27 specification was added on 2026-10-30 after PR #139 merged, and J28 to J30 on 2026-11-01 after PRs #142, #143 and #146 merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
 
 ---
 
@@ -318,6 +318,52 @@ Do (read only, except the two new files): go through the proofs under `tests/` a
 Done when: at least 6 proofs shortened with the rule pass in CI (if the survey finds fewer places, the PR says so and lists them), the PR description has a table of the places where it was not enough (kind, file and proof number, number of lines, what is needed), and CI shows no failing test. The table is for the owner. Do not start anything the table suggests.
 
 Result: PR #139 added six passing informational demonstration proofs adapted from existing first-order, relation, and order proof patterns, plus a focused pytest. The survey did not find six additional literal source shortenings after excluding patterns already covered in J25 and earlier set-theory examples; the PR records that distinction explicitly. It documents the remaining closed-block, equality/biconditional-symmetry, and argument-internal mapping limitations without implementing them. CI run [#1035](https://github.com/axiomtutor/SyLoPy/actions/runs/41001782871) passed on the PR head: 1,982 Python tests passed, 1 expected xfail; coverage passed; enforced fixtures 372/372 and informational fixtures 100/100 passed (472 total).
+
+
+## J28. Register every elaborated declaration in ProofContext (merged in PR #142)
+
+**Goal:** Keep the elaboration-time lexical declaration context synchronized with every declaration emitted into core entries, including declarations produced by `Existence from L` and the generic declaration-prefix path used by declaration-like premises.
+
+**Allowed scope:** `source/ProofParser.py`, a focused new regression module under `pytest_tests/`, and this tracker. Do not edit `ProofLogic.py` or `ProofJustification.py`.
+
+**Tests:** Verify that an existence witness and a declaration parsed from a `Premise` with `such that` are visible to a later declaration recipe that refers to them as a carrier; verify duplicate declarations are rejected during elaboration; preserve existing compound-declaration, scope, and typed-declaration behavior.
+
+**Done when:** All declaration objects emitted by an elaborated entry are registered exactly once in the current `ProofContext`, already-registered compound-declaration objects are not re-registered, duplicate names fail at the source line, and CI passes the full test suite and enforced/informational fixture corpus.
+
+
+Result: merged in PR #142; the pull request description holds its verification record.
+
+## J29. Consolidate the legacy natural-number fixture runner (merged in PR #143)
+
+**Goal:** Keep `source/test_runner_NatNum.py` as a compatibility command, but delegate suite execution, theory-resource configuration, reporting, and exit status to `source/validate_all_proofs.py`.
+
+**Allowed scope:** `source/test_runner_NatNum.py`, `pytest_tests/test_import_contract.py`, and this tracker. Do not change proof semantics, fixtures, or kernel code.
+
+**Tests:** Run the compatibility command from the same subprocess/import environment as its existing test; assert successful exit and the full natural-number suite summary.
+
+**Done when:** The duplicate runner implementation is removed, the old command continues to validate `testProofsNat`, regression coverage verifies its result, and full CI passes.
+
+
+Result: merged in PR #143; the pull request description holds its verification record.
+
+## J30. Declaration lines must not drop or absorb text (merged in PR #146)
+
+**Goal:** A declaration statement never loses part of what the author wrote. Three inputs are accepted today with text gone or turned into a symbol name. None of them lets the checker accept an invalid derivation (what is lost is only names and facts); each makes the author's proof fail at a later line that points nowhere near the cause. Reproduce them on master first (`pp.parse_proof_text`; the declared names are `entries[0][2][1]`, the stated formulas `entries[0][1]`):
+
+1. `1. Let X be any set, a and b be in X. (Declaration)` declares `X` and `b` and states `In(b, X)` only; `a` is dropped. The same happens with `a and b be objects` and with a name `an`. `Let a and b be objects.`, `Let X be any set, a, b be in X.` and `Let X and Y be any set.` are right. Where to look: `a` and `an` are in `descriptor_words` of `_split_compound_declaration_items`, and `_DECL_START_RE` does not accept a name list joined by `and`, so `, a and b be in X` is read as more of the descriptor of the clause before it.
+2. `1. Let X be any set. Let a be in X. (Declaration)` declares `X` only: the second sentence is dropped.
+3. `1. Let X be any set, a be in X, and a = a. Let R be a relation on X. (Declaration)` declares a symbol named `a = a. Let R`: the declaration recipes in `elaborate_compound_declaration` are not given the `_IDENTIFIER_RE` check that the generic path applies to the names it declares.
+
+Expected: (1) declares and states for both names, with `a` and `an` still articles after `be`; (2) and (3) an `ElaborationError` at the source line saying that a declaration line is one sentence, so each `Let` goes on its own line. Do not add support for several sentences on a line; nobody has decided that it should exist.
+
+**Allowed scope:** `source/ProofParser.py`, a new `pytest_tests/test_declaration_text_is_not_dropped.py`, `parse_oracle/` cases if the oracle can express declaration statements (otherwise the pytest module carries them), and this tracker. Do not edit `ProofLogic.py`, `ProofJustification.py`, `DiscreteMath.py` or `DiscreteMathCore.py`, and do not change an existing expectation.
+
+**Tests:** each input above, failing on master and passing after the change, pinned by (declared names, stated formulas) or by (line, message fragment); a valid twin for each that differs only in the condition the input breaks; the fixture corpus unchanged. Run `tools/mutation_check.py` on the change and give the result in the PR.
+
+**Done when:** the three inputs behave as expected, the whole corpus (enforced and informational) gives the results it gave before, the mutation check has no survivor in the changed code (or the PR says why one is equivalent), and CI passes.
+
+
+Result: merged in PR #146; the pull request description holds its verification record.
 
 
 ## Not yet at the original 2026-10-26 snapshot (historical; not current guidance)
