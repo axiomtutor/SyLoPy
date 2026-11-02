@@ -215,6 +215,13 @@ visible outside it.
 
 Declarations support multiple names and ordinary typed/set-membership clauses, for example `Let X, Y be any set. (Declaration)`, `Let a be an integer. (Declaration)`, and `Let R be a reflexive relation on X. (Declaration)`. The names are available at that line and throughout its descendant scopes; declarations made in a closed subproof do not escape it.
 
+Typed unary functions use `Let f: X -> Y be a unary function. (Declaration)`.
+The domain and codomain names must already be declared sets; the declaration
+records both names as function metadata. A set can also receive a symbolic
+defining predicate with `Let Y be a set with defining property P. (Declaration)`;
+`P` must already be a declared unary predicate, and this declaration adds the
+ordinary formula `forall u, (In(u, Y) iff P(u))`.
+
 `Let R be a reflexive relation on X` declares R as a relation on X in the usual sense, a subset of X × X, and the declaration line states that as a formula, the way `Let a be in X` states `In(a, X)`: `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))`, one for each relation the declaration names, at the place in the line where the relation is declared. It is the same however the relation is described, and wherever its carrier was declared (in the same statement, on an earlier line, or in an enclosing proof). A proof gets the memberships from a fact `R(a, b)` with the ordinary rules, for terms that were declared in no set at all:
 
 ```text
@@ -330,7 +337,7 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
-Equality-case WLOG is implemented: it handles disjunctions with two or more equality cases, provided the chosen case and each alternative differ in exactly one constant term. It replays the following proof region for each alternative and retains outside citations that are invariant under exchanging the case constants. WLOG for arbitrary properties is approved but not implemented yet. `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
+WLOG replay is implemented for equality cases that differ in exactly one constant term and for arbitrary cases aligned structurally at the formula and term positions. Arbitrary alternatives may exchange one-to-one declared constant names; predicate names, formula structure, function symbols, quantifier structure, and bound-variable names must match. Replay checks each alternative and retains outside citations only when the exchange leaves the cited fact invariant (up to commutative ordering of `and`/`or`). `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
 
 ### Mutatis mutandis: the same argument for other names, terms and symbols
 
@@ -541,7 +548,6 @@ Separation and Replacement are schema citations. For axiom-instance and `Set pro
 
 Features explicitly deferred:
 
-- WLOG for arbitrary properties (approved on 2026-10-30, not implemented yet). Only the equality-case WLOG replay is implemented.
 - `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->` (not planned for now: owner decision of 2026-10-30).
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
 

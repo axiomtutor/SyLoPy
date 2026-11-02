@@ -169,6 +169,27 @@ def test_compound_declaration_supports_comma_coordinated_premises(text, expected
     assert pl.Proof(entries).check()[0]
 
 
+@pytest.mark.parametrize("text", [
+    "1. A and B are disjoint. (Premise)",
+    "1. A is disjoint from B. (Premise)",
+    "1. A and B are not disjoint. (Premise)",
+])
+def test_disjointness_premises_are_not_parsed_as_declarations(text):
+    entries, _ = pp.parse_proof_text(text + "\n")
+    justification = entries[0][2]
+    assert justification[0] == "premise"
+    assert len(justification) == 1 or not justification[1]
+
+
+def test_disjointness_can_follow_a_compound_let_declaration():
+    entries, _ = pp.parse_proof_text(
+        "1. Let A and B be sets, and A and B are disjoint. (Declaration)\n"
+    )
+    assert repr(entries[0][1]) == (
+        "(∀u. ¬(In(u, A) ∧ In(u, B)))"
+    )
+
+
 def test_membership_characterization_requires_fresh_variable_in_default_environment():
     text = """1. Let a be an object. (Declaration)
 2. Let X be a set such that a is in X iff a =/= a. (Declaration)
@@ -190,3 +211,35 @@ def test_membership_characterization_requires_fresh_variable_in_explicit_environ
     ):
         pp.parse_proof_text(text, environment=numt.NUMBER_THEORY_ENVIRONMENT)
 
+
+def test_typed_function_declaration_records_domain_and_codomain():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be any set, Y be any set, "
+        "f: X -> Y be a unary function. (Declaration)\n"
+    )
+    declarations = entries[0][2][1]
+    function = next(d for d in declarations if d.name == "f")
+    assert function.kind == pl.DeclarationKind.FUNCTION
+    assert function.arity == 1
+    assert dict(function.metadata)["domain"] == "X"
+    assert dict(function.metadata)["codomain"] == "Y"
+    assert pl.Proof(entries).check()[0]
+
+
+def test_symbolic_set_defining_property_generates_membership_biconditional():
+    entries, _ = pp.parse_proof_text(
+        "1. Let P be a unary predicate, Y be a set with defining property P. (Declaration)\n"
+    )
+    declarations = entries[0][2][1]
+    set_declaration = next(d for d in declarations if d.name == "Y")
+    assert dict(set_declaration.metadata)["defining_property"] == "P"
+    formula = entries[0][1]
+    assert isinstance(formula, fl.ForAll)
+    assert isinstance(formula.body, fl.Iff)
+
+
+def test_symbolic_set_defining_property_requires_declared_predicate():
+    with pytest.raises(ValueError, match="defining property 'P' has not been declared"):
+        pp.parse_proof_text(
+            "1. Let Y be a set with defining property P. (Declaration)\n"
+        )

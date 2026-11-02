@@ -23,12 +23,12 @@ _sylo_run_tests_completion() {
 
     case "$cur" in
         --*)
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --extended --help" -- "$cur") )
             ;;
         *)
             # If the previous word is not --suite, complete options.  This
             # also allows: ./run_tests.sh --<TAB>
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --extended --help" -- "$cur") )
             ;;
     esac
 }

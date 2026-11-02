@@ -17,8 +17,8 @@ predicate or function symbol replaced by another. The informational ZFC proof
 `tests/setTheoryProofs/zfc_remaining_axioms.txt`, whose second inclusion uses
 `Mutatis mutandis`, passes.
 
-[PROJECT_STATE.md](PROJECT_STATE.md) is a dated map of the whole project: what
-exists, what is in flight, the known limits and how to resume. The
+[PROJECT_STATE.md](PROJECT_STATE.md) maps the project layout and verification
+workflow. The
 [development TODO](todos.txt) is the source of truth for current findings
 and open design decisions. Verification totals belong with the CI run and pull
 request that tested each change.
@@ -288,14 +288,56 @@ Use the `ElaboratedEntries` path for natural-language proofs and the explicit co
 
 ## Running the project
 
+The normal project test run executes the default Python batch, then validates
+all proof fixture suites:
+
 ```bash
 ./run_tests.sh
 ```
 
-Suite names can be listed or selected when needed:
+### Running specific test batches
+
+The Python tests use an `extended` pytest marker. Tests carrying that marker
+are excluded from the default run.
+
+```bash
+# Default Python batch only
+python3 -m pytest -q -m "not extended" pytest_tests
+
+# Only the extended Python batch
+python3 -m pytest -q -m extended pytest_tests
+
+# All Python tests, including the extended batch
+python3 -m pytest -q --extended pytest_tests
+./run_tests.sh --extended
+```
+
+`./run_tests.sh --extended` also runs the proof fixture suites.
+
+To list registered pytest markers and batches:
+
+```bash
+python3 -m pytest --markers
+```
+
+To run one Python test module:
+
+```bash
+python3 -m pytest -q pytest_tests/test_wlog_rule.py
+```
+
+### Running proof fixture suites
+
+List the available proof fixture suite names:
 
 ```bash
 ./run_tests.sh --list-suites
+```
+
+Run one suite, optionally with verbose proof-level output:
+
+```bash
+./run_tests.sh --suite testProofsDeclared
 ./run_tests.sh --suite testProofsDeclared --verbose
 ```
 

@@ -6,7 +6,7 @@ This file contains stable collaboration rules. The [TODO](todos.txt) is the curr
 
 Do not read the full TODO and every architecture document for each task. Start here, inspect current master plus relevant open PRs/branches, and check the project-status/known-issues section at the top of `todos.txt`. Then read only the TODO subsection and reference docs needed for the task.
 
-- Read `PROJECT_STATE.md` for a map of the whole project as of a date: what exists, what is in flight, the known limits, and how to resume. It is a snapshot; the code and the document that owns a subject win where they differ.
+- Read `PROJECT_STATE.md` for the current project map, source layout, and resume checklist.
 - Read `README.md` for user-facing behavior or API/documentation work.
 - Read `ARCHITECTURE_STATUS.md` for architecture, parser/elaboration boundaries, or validation-context work.
 - Read `ELABORATION_ARCHITECTURE.md` or `TYPE_SYSTEM_DESIGN.md` only when working in those areas.
@@ -21,6 +21,7 @@ Keep theory-specific syntax and interpretation in theory environments and declar
 - Check for active work in the same subsystem before editing. Use one small, isolated branch per task.
 - Never rewrite, rebase, force-push, or clean up another agent's branch.
 - Claude owns kernel implementation in `source/ProofLogic.py` and `source/ProofJustification.py`. Coordinate before changing either file.
+- Owner override recorded 2026-11-01: the owner explicitly granted Copilot/this agent permission to implement and fix Claude-owned kernel code in the current workstream when needed to keep implementation moving. Preserve the same review, testing, and coordination discipline.
 - If semantics are ambiguous or conflict with an owner decision, stop and raise the question; do not decide implicitly in code.
 
 ## Keep work status in one place

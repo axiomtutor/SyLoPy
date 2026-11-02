@@ -12,6 +12,7 @@ to Universal Generalization plus Conditional Introduction before
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import List, Optional, Tuple
 
 import SyLoPy.source.FormulaLogic as fl
@@ -38,13 +39,51 @@ def _name_term(name: str, bound_vars: set) -> tl.Term:
     return tl.VariableTerm(name) if name in bound_vars else tl.ConstantTerm(name, name)
 
 
+@lru_cache(maxsize=8192)
+def _try_parse_set_term_cached(
+    text: str,
+    bound_var_names: Tuple[str, ...],
+) -> Optional[tl.Term]:
+    return _try_parse_set_term_impl(text, set(bound_var_names))
+
+
 def try_parse_set_term(text: str, bound_vars: Optional[set] = None) -> Optional[tl.Term]:
+    return _try_parse_set_term_cached(text, tuple(sorted(bound_vars or set())))
+
+
+def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Optional[tl.Term]:
     """Parse the small natural-language set-term vocabulary."""
 
     bound_vars = bound_vars or set()
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
     if re.fullmatch(r"(?:the\s+)?empty\s+set|∅", s, flags=re.I):
         return EMPTY_SET
+    operation_match = re.fullmatch(
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+(union|intersection|cross)\s+([A-Za-z_][A-Za-z0-9_]*)",
+        s,
+        flags=re.I,
+    )
+    if operation_match:
+        left, operation, right = operation_match.groups()
+        symbol = {
+            "union": "Union",
+            "intersection": "Intersection",
+            "cross": "CartesianProduct",
+        }[operation.lower()]
+        return tl.FunctionTerm(symbol, [_name_term(left, bound_vars), _name_term(right, bound_vars)])
+    power_match = re.fullmatch(r"(?:the\s+)?power\s+set\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", s, flags=re.I)
+    if power_match:
+        return tl.FunctionTerm("PowerSet", [_name_term(power_match.group(1), bound_vars)])
+    pair_match = re.fullmatch(
+        r"(?:ordered\s+)?pair\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
+        s,
+        flags=re.I,
+    )
+    if pair_match:
+        return tl.FunctionTerm(
+            "Pair",
+            [_name_term(pair_match.group(1), bound_vars), _name_term(pair_match.group(2), bound_vars)],
+        )
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
         return _name_term(s, bound_vars)
     return None
@@ -653,7 +692,19 @@ def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
     return spans
 
 
+@lru_cache(maxsize=4096)
+def _try_parse_set_expression_cached(
+    text: str,
+    bound_var_names: Tuple[str, ...],
+) -> Optional[SurfaceExpression]:
+    return _try_parse_set_expression_impl(text, set(bound_var_names))
+
+
 def try_parse_set_expression(text: str, bound_vars: set) -> Optional[SurfaceExpression]:
+    return _try_parse_set_expression_cached(text, tuple(sorted(bound_vars)))
+
+
+def _try_parse_set_expression_impl(text: str, bound_vars: set) -> Optional[SurfaceExpression]:
     """Parse membership and subset wording before the generic formula parser."""
 
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
@@ -2369,15 +2420,79 @@ def elaborate_pairing_witness(entry: SurfaceLine, context) -> Optional[tuple]:
     return (entry.label, defining_property, ("rule", rule, [], [declaration]))
 
 
+class SymbolicSetPropertyDeclarationRecipe:
+    """Lower ``Let Y be a set with defining property P`` into a set
+    declaration plus the corresponding universal membership biconditional."""
+
+    name = "symbolic set defining property"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        match = re.fullmatch(
+            r"(?:an?\s+|the\s+)?set(?:s)?(?:\s+with)?\s+defining\s+"
+            r"propert(?:y|ies)\s+([A-Za-z_][A-Za-z0-9_]*)",
+            clause.descriptor,
+            flags=re.I,
+        )
+        if match is None:
+            return None
+
+        property_name = match.group(1)
+        is_declared = getattr(clause, "is_declared", None)
+        if is_declared is None or not is_declared(property_name):
+            raise ValueError(
+                f"defining property '{property_name}' has not been declared"
+            )
+
+        declarations = []
+        formulas = []
+        used_names = {name for previous in clauses for name in getattr(previous, "names", ())}
+        for bound_name in ("u", "v", "w", "x", "y", "z"):
+            if bound_name not in used_names and bound_name != property_name:
+                variable_name = bound_name
+                break
+        variable = tl.VariableTerm(variable_name)
+
+        for set_name in clause.names:
+            declarations.append(pl.Declaration(
+                name=set_name,
+                kind=pl.DeclarationKind.OBJECT,
+                type_name="set",
+                metadata=(("defining_property", property_name),),
+            ))
+            formulas.append(fl.ForAll(
+                variable_name,
+                fl.Iff(
+                    membership_formula(variable, tl.ConstantTerm(set_name, set_name)),
+                    fl.AtomicFormula(property_name, [variable]),
+                ),
+            ))
+        return (1, declarations, formulas, [])
+
+
+SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE = SymbolicSetPropertyDeclarationRecipe()
+
+
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
+    pl.Declaration("Union", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
+    pl.Declaration("Intersection", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
+    pl.Declaration("PowerSet", pl.DeclarationKind.FUNCTION, arity=1, type_name="set operation"),
+    pl.Declaration("CartesianProduct", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
+    pl.Declaration("Pair", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
+    pl.Declaration("Finite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
+    pl.Declaration("Infinite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
+    pl.Declaration("Bijection", pl.DeclarationKind.PREDICATE, arity=3, type_name="bijection relation"),
 ]
 
 SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
     line_elaborators=[elaborate_subset_proof, elaborate_pairing_witness],
+    declaration_recipes=[SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE],
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
     # No formula is cited with `(Axiom)`; the four axioms are cited by name.
@@ -2389,8 +2504,3 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     phrase_parsers=[parse_set_formula],
     phrase_spans=[find_phrase_spans, find_bounded_quantifier_spans],
 )
-
-
-
-
-

@@ -132,7 +132,7 @@ def _split_header_block(block):
     return expected_valid, description, body_start
 
 
-def _stated_conclusion_from(description, proof_number=None):
+def _stated_conclusion_from(description, proof_number=None, warn_unparseable=True):
     """Parse the formula named by a `### then ...` description line, if any.
 
     Deliberately tolerant of a `parse_formula` failure here: this is only
@@ -159,18 +159,19 @@ def _stated_conclusion_from(description, proof_number=None):
                 try:
                     return pp.parse_formula(text)
                 except Exception as exc:
-                    label = f"#{proof_number} " if proof_number else ""
-                    print(
-                        f"Warning: proof {label}has a 'then' description "
-                        f"({text!r}) that doesn't parse as a formula "
-                        f"({type(exc).__name__}: {exc}) -- skipping the "
-                        "stated-conclusion check for this proof"
-                    )
+                    if warn_unparseable:
+                        label = f"#{proof_number} " if proof_number else ""
+                        print(
+                            f"Warning: proof {label}has a 'then' description "
+                            f"({text!r}) that doesn't parse as a formula "
+                            f"({type(exc).__name__}: {exc}) -- skipping the "
+                            "stated-conclusion check for this proof"
+                        )
                     return None
     return None
 
 
-def parse_multi_proof_file(text):
+def parse_multi_proof_file(text, *, warn_unparseable_description=True):
     """Parse a fixture file containing ``# N`` proof blocks."""
     text = _COMMENT_RE.sub(" ", text)
     lines = text.splitlines()
@@ -207,7 +208,11 @@ def parse_multi_proof_file(text):
                 header.group(1),
                 expected,
                 description,
-                _stated_conclusion_from(description, header.group(1)),
+                _stated_conclusion_from(
+                    description,
+                    header.group(1),
+                    warn_unparseable=warn_unparseable_description,
+                ),
                 entries,
                 raw_lines,
                 title,
@@ -217,7 +222,16 @@ def parse_multi_proof_file(text):
     return cases
 
 
-def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
+def run_multi_proof_file(
+    text,
+    axioms=None,
+    rules=None,
+    declarations=None,
+    *,
+    warn_on_unpromoted=True,
+    warn_unparseable_description=True,
+    warn_duplicate_number=True,
+):
     """Parse and validate all proof blocks, promoting titled proofs in order.
 
     Each result is `(number, expected_valid, ok, message, rule_crashed)`.
@@ -228,12 +242,15 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
     crashed while looking at it" even on the cases where both happen to
     produce the same `ok` value.
     """
-    cases = parse_multi_proof_file(text)
+    cases = parse_multi_proof_file(
+        text,
+        warn_unparseable_description=warn_unparseable_description,
+    )
     results = []
     promoted = []
     seen = set()
     for case in cases:
-        if case.number in seen:
+        if case.number in seen and warn_duplicate_number:
             print(f"Warning: proof number '{case.number}' appears more than once in this file")
         seen.add(case.number)
         if case.parse_error:
@@ -260,7 +277,8 @@ def run_multi_proof_file(text, axioms=None, rules=None, declarations=None):
                 try:
                     promoted.append(pl.promote_theorem(case.title, proof))
                 except ValueError as exc:
-                    print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
+                    if warn_on_unpromoted:
+                        print(f"Warning: proof #{case.number} ({case.title!r}) was not promoted: {exc}")
         except Exception as exc:
             ok, message, rule_crashed = False, f"parse/check error: {exc}", False
         results.append((case.number, case.expected_valid, ok, message, rule_crashed))
@@ -354,6 +372,9 @@ def _check_multi_proof_file(path: Path) -> List[ProofResult]:
             axioms=BARE_PROOF_AXIOMS,
             rules=BARE_PROOF_RULES,
             declarations=BARE_PROOF_DECLARATIONS,
+            warn_on_unpromoted=False,
+            warn_unparseable_description=False,
+            warn_duplicate_number=False,
         )
     except Exception as exc:
         return [ProofResult(path.name, "?", True, False, f"{type(exc).__name__}: {exc}", True)]

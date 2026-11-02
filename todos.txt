@@ -5,7 +5,7 @@ open design decisions, and invariants belong here. Detailed implementation histo
 is in the linked PRs; behavior is specified by the code, tests, README, and
 `docs/PROOF_FILE_FORMAT.md`.
 
-Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. `PROJECT_STATE.md` is a dated snapshot of the whole project (what exists, what is in flight, known limits, how to resume); where it differs from this file, this file wins. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
+Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. `PROJECT_STATE.md` maps the current layout and verification workflow; where it differs from this file, this file wins. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
 
 ## Current status
 
@@ -16,23 +16,20 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 ```
 
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
-promotion, and regression corpus are implemented. The J26 red-team pass is merged
-in [PR #135](https://github.com/axiomtutor/SyLoPy/pull/135); the J27 survey of where `Mutatis mutandis` still falls short has been merged in [PR #139](https://github.com/axiomtutor/SyLoPy/pull/139).
+promotion, and regression corpus are implemented.
 
 ### Open findings
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
   proofs require arithmetic laws not currently axiomatized. This is an owner
   decision list, **not** authorization to add axioms.
-- [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): a premise line
-  `A and B are disjoint.` is read as a declaration clause, not as the disjointness
-  formula (parser; can be delegated).
-- [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): the relation
-  property words `irreflexive`, `asymmetric` and `total` are refused after a comma
-  in a declaration, so `a transitive, asymmetric relation` cannot be declared
-  (parser; can be delegated).
+- [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
+  premises are parsed as formulas, not declaration clauses; compound-declaration
+  coverage is in `pytest_tests/test_compound_declarations.py`.
+- [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): resolved. Relation
+  descriptors after commas, including `irreflexive`, `asymmetric`, and `total`,
+  compose with the existing descriptor and property parsing paths.
 
-Selected passing CI references for this cleanup are [PR #128 run #954](https://github.com/axiomtutor/SyLoPy/actions/runs/40432256483) and [PR #129 run #956](https://github.com/axiomtutor/SyLoPy/actions/runs/40432809533), both run on PR-head commits. The earlier J24 run #939 and J25 run #942 were also on separate PR heads. These are useful verification records, not runs on the resulting merge commits. Use CI on the current commit for a fresh master baseline; do not treat PR-head test totals as the combined master's totals.
 
 ## Architecture and correctness invariants
 
@@ -96,8 +93,19 @@ Constraints and open decisions:
   decision ([issue #69](https://github.com/axiomtutor/SyLoPy/issues/69)).
 - **Unspecified defining properties:** a set declared without a stated
   membership characterization does not yet have a symbolic property usable by
-  `Set property`. The owner approved implementing one on 2026-10-30; the design
-  comes with the declared-function work below.
+  `Set property`. Implemented for `Let Y be a set with defining property P. (Declaration)`:
+  the declaration requires an already-declared unary predicate `P`, records
+  `defining_property=P` in declaration metadata, and generates the ordinary
+  `forall u, (In(u, Y) iff P(u))` formula. Pending: exact subproof replay and
+  expanded fixture coverage.
+- **Declared unary functions:** typed declarations of the form
+  `Let f: X -> Y be a unary function. (Declaration)` lower to unary function
+  declarations with `domain=X` and `codomain=Y` metadata; both set names must
+  already be declared in scope.
+- **Set-operation terms:** parser support now includes names such as
+  `A union B`, `A intersection B`, `A cross B`, `pair(a, b)`, and
+  `the power set of A`; these lower to declared function symbols and ordinary
+  function terms rather than hidden kernel operations.
 - **Infinity semantics:** the citation-shape rule exists, but the broader
   treatment of finite/infinite sets is not implemented. The intended set I has
   an abstract membership property P; being infinite is a separate property of
@@ -117,17 +125,19 @@ Equality-case replay is implemented ([PR #63](https://github.com/axiomtutor/SyLo
 with the later replay fixes in [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86)
 and [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110)). The cited line must
 be a disjunction and the asserted WLOG formula must be one of its disjuncts;
-currently, alternatives must be equalities differing in exactly one constant
-term. The validator checks the selected case, transforms and revalidates the
+equality alternatives may differ in exactly one constant term. The validator
+also accepts arbitrary alternatives that align structurally under a declared,
+one-to-one constant-name exchange. It checks the selected case, transforms and revalidates the
 rest of the current proof block for every alternative, and remaps citations
 without mutating the original proof. Outside citations need a visible counterpart unless exchanging the case
 constants leaves the cited fact invariant (up to commutative ordering of
 `and`/`or`). Nested case blocks are included.
 
-Only equality alternatives differing in one constant term are supported.
-The owner approved arbitrary-property WLOG on 2026-10-30; it is Claude's second
-feature, and J33 writes the target proofs first. Do not weaken the negative
-tests.
+Equality alternatives differing in one constant term remain supported.
+The owner approved arbitrary-property WLOG on 2026-10-30. Replay structurally aligns arbitrary formulas through a one-to-one constant-name
+exchange, while `_UnsafeSubstitution` remains the capture/free-variable guard.
+Coverage includes three alternatives, a selected disjunct in the middle, and
+rejection of undeclared exchange names. Do not weaken negative replay tests.
 
 ### Mutatis mutandis
 
@@ -209,8 +219,8 @@ these without an owner decision.
   needs that relation on the same carrier. A Universal Modus Ponens over two
   variables at once would shorten the derivation; nobody has asked for it. The
   formula is the predicate-language reading of `R ⊆ X × X`: there are no pair
-  terms or Cartesian products yet (owner-gated, "making set operations into
-  terms" below). J30 to J32 in `JOBS_FOR_CHATGPT.md` red-team it and use it.
+  terms below). Relation-subset red-team coverage and informational examples are
+  available in the corresponding fixture and pytest modules.
 - Relation declarations and their property/carrier metadata respect nested and
   sibling proof scopes. Regression coverage: `pytest_tests/test_relation_scope_rules.py`
   and `pytest_tests/test_rule_context_declarations.py`.
@@ -230,6 +240,10 @@ lines. See `pytest_tests/test_hypotheses_and_promotion.py`,
 `pytest_tests/test_rule_configuration_identity.py`, and
 `pytest_tests/test_theorem_surface_citations.py`.
 
+Passing adversarial audits are marked `extended` and excluded from the default
+pytest and fixture runner. Run them explicitly with `pytest --extended`,
+`pytest -m extended`, or `./run_tests.sh --extended`.
+
 Uniqueness's arbitrary object c and equality target d must be distinct
 constants; c must be genuinely arbitrary, absent from the existence line and
 from every hypothesis in force, and not constrained by declaration metadata.
@@ -240,10 +254,11 @@ The rule explains refusals through those conditions. Regression coverage is in
 Two policy/design questions were explained to the owner on 2026-10-30 and
 decided on 2026-10-31 (the owner agreed with both recommendations):
 
-- A witness named by a top-level `Existence from L` line is generalized by
-  default, with its defining formula carried as a premise: the promoted theorem
-  is "for any Y with that property", as for `Let X be any set`. Decided: no
-  change.
+- A witness named by a top-level `Existence from L` line is not a default
+  generalized parameter. It is a fixed existential witness; its defining
+  formula remains a premise in the promoted theorem. Ordinary top-level object
+  declarations still generalize by default. Implemented and tested by
+  `test_existence_witness_is_not_a_default_generalized_parameter`.
 - Promoting theorems over declared relation symbols (for example, a theorem about
   any equivalence relation) needs predicate-symbol generalization and a way to
   require matching properties/carrier on the citing declaration. That capability

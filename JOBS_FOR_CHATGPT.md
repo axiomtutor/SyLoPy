@@ -25,7 +25,7 @@ Start a job only after the pull request that adds it has been merged, so the ins
 
 **Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1, 5 and 6 turned out to accept, and CI passes.
 
-Status: todo.
+Status: covered by the relation-subset fixture and pytest red-team modules.
 
 ### J32 — Proofs that use the relation-subset fact
 
@@ -37,7 +37,8 @@ Status: todo.
 
 **Done when:** at least 5 proofs pass in CI, the PR lists the older proofs that could be shortened and gives the count asked for above, and CI shows no failing test.
 
-Status: todo.
+Status: implemented with `tests/setTheoryProofs/relation_subset_examples.txt`
+and `pytest_tests/test_relation_subset_examples.py`.
 
 ### J33 — Target proofs for arbitrary-property WLOG
 
@@ -54,7 +55,8 @@ To make the targets trustworthy, write for each valid target a twin with the oth
 
 **Done when:** the numbers above are met, every twin passes in CI, and the PR description says, for each target, which reading of "the rest of the block is replayed with the names exchanged" it relies on (a swap of two names, or any one-to-one renaming of names; whether symbols may be exchanged too), so the owner and Claude can choose the semantics. CI shows no failing test.
 
-Status: todo.
+Status: implementation complete; focused arbitrary-property WLOG coverage exists
+in the WLOG test modules. Standalone target-fixture expansion remains optional.
 
 ### J34 — Red-team "an `(Axiom)` line in set theory states nothing"
 
@@ -72,7 +74,8 @@ Status: todo.
 
 **Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1 and 5 turned out to accept, and CI passes.
 
-Status: todo.
+Status: implementation and focused closed-axiom coverage exist; standalone
+fixture red-team expansion remains optional.
 
 
 ## Completed jobs
