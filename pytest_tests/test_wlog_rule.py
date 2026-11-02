@@ -110,6 +110,79 @@ def test_wlog_rejects_non_disjunct_assertions():
     assert "exactly one disjunct" in err.detail
 
 
+def test_wlog_replays_an_arbitrary_two_name_relation_case():
+    text = """1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. Let P be a binary predicate. (Declaration)
+4. Let Q be a closed formula. (Declaration)
+5. P(a,b). (Premise)
+6. P(b,a). (Premise)
+7. P(a,b) -> Q. (Premise)
+8. P(b,a) -> Q. (Premise)
+9. P(a,b) or P(b,a). (Premise)
+10. P(a,b). (WLOG from 9)
+11. Q. (Modus Ponens from 5, 7)
+"""
+    _entries, (ok, err) = _check(text)
+    assert ok, err
+
+
+def test_wlog_rejects_a_disjunction_that_cannot_be_aligned_structurally():
+    text = """1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. Let P be a binary predicate. (Declaration)
+4. Let Q be a binary predicate. (Declaration)
+5. P(a,b) or Q(b,a). (Premise)
+6. P(a,b). (WLOG from 5)
+"""
+    _entries, (ok, err) = _check(text)
+    assert not ok
+    assert err is not None
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert err.label == "6"
+    assert "cannot replay this case" in err.detail
+
+
+def test_wlog_replays_three_alternatives_when_chosen_is_in_the_middle():
+    text = """1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. Let c be any object. (Declaration)
+4. Let P be a binary predicate. (Declaration)
+5. Let Q be a closed formula. (Declaration)
+6. P(a,b). (Premise)
+7. P(b,c). (Premise)
+8. P(c,a). (Premise)
+9. P(a,b) -> Q. (Premise)
+10. P(b,c) -> Q. (Premise)
+11. P(c,a) -> Q. (Premise)
+12. P(a,b) or P(b,c) or P(c,a). (Premise)
+13. P(b,c). (WLOG from 12)
+14. Q. (Modus Ponens from 7, 10)
+"""
+    _entries, (ok, err) = _check(text)
+    assert ok, err
+
+
+def test_wlog_rejects_an_undeclared_exchange_name():
+    text = """1. Let a be any object. (Declaration)
+2. Let b be any object. (Declaration)
+3. Let P be a binary predicate. (Declaration)
+4. Let Q be a closed formula. (Declaration)
+5. P(a,b). (Premise)
+6. P(b,z). (Premise)
+7. P(a,b) -> Q. (Premise)
+8. P(b,z) -> Q. (Premise)
+9. P(a,b) or P(b,z). (Premise)
+10. P(a,b). (WLOG from 9)
+11. Q. (Modus Ponens from 5, 7)
+"""
+    _entries, (ok, err) = _check(text)
+    assert not ok
+    assert err is not None
+    assert err.category == pl.CATEGORY_UNDECLARED_SYMBOL
+    assert "constant 'z' is used but has not been declared" in err.detail
+
+
 def test_wlog_replay_transforms_structured_declaration_metadata():
     text = """
 1. Let a be any object. (Declaration)

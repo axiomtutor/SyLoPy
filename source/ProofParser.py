@@ -453,6 +453,8 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     
     # Try to parse as a plain declaration like "X and Y are sets" without "Let"
     if re.search(r'\b(?:be|are)\b', s, flags=re.I):
+        if _looks_like_disjointness_formula(s):
+            return [], None
         m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
         if m:
             declaration_text = s[:m.start()].strip()
@@ -609,6 +611,48 @@ def parse_declaration_clause(clause: str) -> DeclarationClause:
     raise ValueError(f"Invalid declaration clause: {clause!r}")
 
 
+class TypedFunctionDeclarationRecipe:
+    """Lower a typed unary function declaration to a FUNCTION declaration."""
+
+    name = "typed function"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        if clause.domain is None or clause.codomain is None:
+            return None
+        if not re.search(r"\bfunction\b|\bmap\b|\bmapping\b", clause.normalized_descriptor):
+            return None
+
+        is_declared = getattr(clause, "is_declared", None)
+        for set_name in (clause.domain, clause.codomain):
+            previous_names = {
+                name
+                for previous in clauses[:index]
+                for name in getattr(previous, "names", ())
+            }
+            if set_name not in previous_names and not (
+                is_declared is not None and is_declared(set_name)
+            ):
+                return None
+
+        declarations = [
+            pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.FUNCTION,
+                arity=1,
+                type_name=clause.descriptor.strip(),
+                metadata=(
+                    ("domain", clause.domain),
+                    ("codomain", clause.codomain),
+                ),
+            )
+            for name in clause.names
+        ]
+        return (1, declarations, [], [])
+
+
 
 _IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 _BARE_NAME_LIST_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*\s*,?$')
@@ -633,7 +677,20 @@ _FORMULA_START_RE = re.compile(
 )
 
 
+def _looks_like_disjointness_formula(text: str) -> bool:
+    s = text.strip().rstrip('.').strip()
+    return bool(re.match(
+        r'^[A-Za-z_][A-Za-z0-9_]*\s+and\s+[A-Za-z_][A-Za-z0-9_]*\s+are\s+(?:not\s+)?disjoint(?:\b|$)',
+        s, flags=re.I,
+    ) or re.match(
+        r'^[A-Za-z_][A-Za-z0-9_]*\s+is\s+disjoint\s+from\s+[A-Za-z_][A-Za-z0-9_]*(?:\b|$)',
+        s, flags=re.I,
+    ))
+
+
 def _text_after_is_declaration_start(s: str) -> bool:
+    if _looks_like_disjointness_formula(s):
+        return False
     return bool(_DECL_START_RE.match(s.strip()))
 
 
@@ -661,7 +718,8 @@ def _split_compound_declaration_items(body: str) -> List[str]:
         "formula", "formulas", "predicate", "predicates", "property",
         "properties", "function", "functions", "relation", "relations",
         "reflexive", "symmetric", "antisymmetric", "transitive", "unary",
-        "binary", "on", "from", "to", "such", "that",
+        "binary", "irreflexive", "asymmetric", "total", "connected",
+        "on", "from", "to", "such", "that",
     }
 
     def flush() -> None:
@@ -907,7 +965,9 @@ def parse_surface_declaration_statement(
 
     for item in _split_compound_declaration_items(body):
         item = item.strip()
-        if re.search(r'\b(?:be|are)\b', item, re.I):
+        if _looks_like_disjointness_formula(item):
+            clauses.append(SurfacePremiseClause(item.rstrip('.'), span))
+        elif re.search(r'\b(?:be|are)\b', item, re.I):
             clauses.append(_surface_declaration_from_clause(item, span))
         else:
             # In a "Let ..." statement, "a in X" is a membership declaration,
@@ -1497,6 +1557,7 @@ def default_theory_environment() -> TheoryEnvironment:
     environment = TheoryEnvironment(
         line_elaborators=list(_base_line_elaborators()),
         rules=[pl.AlgebraRule()],
+        declaration_recipes=[TypedFunctionDeclarationRecipe()],
     )
     try:
         import SyLoPy.source.SetTheory as st
@@ -1832,7 +1893,7 @@ def elaborate_proof(
     `theorem_names` are the titles of the proved theorems the proof may cite
     by name, with the lines that state their premises if they have any."""
     if environment is None:
-        environment = default_theory_environment()
+        environment = _cached_default_environment()
     else:
         environment = _with_base_line_elaborators(environment)
     context = _ElaborationContext(environment, theorem_names)
@@ -2010,8 +2071,3 @@ if __name__ == '__main__':
         run_file(sys.argv[1])
     else:
         print("Run with a proof text file as an argument.")
-
-
-
-
-

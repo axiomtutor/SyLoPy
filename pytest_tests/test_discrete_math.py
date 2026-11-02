@@ -22,6 +22,20 @@ def test_relation_properties_are_attached_to_declarations():
     assert set(dict(relation.metadata)["properties"]) == {"reflexive", "antisymmetric", "transitive"}
 
 
+@pytest.mark.parametrize("properties", [
+    "transitive, asymmetric",
+    "irreflexive, symmetric",
+    "symmetric, total",
+])
+def test_relation_properties_after_commas_are_descriptors(properties):
+    entries, _ = pp.parse_proof_text(
+        f"1. Let X be any set, R be a {properties} relation on X. (Declaration)\n"
+    )
+    relation = next(d for d in entries[0][2][1] if d.name == "R")
+    declared_properties = set(dict(relation.metadata)["properties"])
+    assert declared_properties == set(properties.replace(" ", "").split(","))
+
+
 def test_relation_reflexivity_requires_membership_in_the_carrier():
     ok, err = check("""
 1. Let X be any set, R be a reflexive relation on X, a be in X. (Declaration)

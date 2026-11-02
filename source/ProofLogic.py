@@ -3409,7 +3409,12 @@ def _top_level_object_declarations(entries: list) -> List[str]:
             continue
         justification = parsed.justification
         if isinstance(justification, tuple) and len(justification) >= 2 and isinstance(justification[1], list):
-            names.extend(d.name for d in justification[1] if d.kind == DeclarationKind.OBJECT)
+            names.extend(
+                d.name
+                for d in justification[1]
+                if d.kind == DeclarationKind.OBJECT
+                and d.type_name not in {"existential witness", "definition"}
+            )
     return names
 
 class DeclarationRecipe:
@@ -3915,19 +3920,101 @@ def _wlog_changed_terms(chosen: fl.Formula, alternative: fl.Formula) -> Tuple[tl
 
 def _wlog_substitution(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
     """Derive the first supported equality-case constant substitution."""
-    source, target = _wlog_changed_terms(chosen, alternative)
-    return {source.name: target}
+    if isinstance(chosen, fl.Equals) and isinstance(alternative, fl.Equals):
+        source, target = _wlog_changed_terms(chosen, alternative)
+        return {source.name: target}
+    return _wlog_arbitrary_exchange(chosen, alternative)
+
+
+def _wlog_arbitrary_exchange(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
+    """Derive a one-to-one constant-name exchange from two arbitrary cases.
+
+    Constants are aligned structurally at corresponding formula and term
+    positions. The result must be a permutation and may exchange more than
+    two names; bound variables are never included.
+    """
+    mapping: Dict[str, str] = {}
+    reverse: Dict[str, str] = {}
+
+    def add(source: str, target: str) -> None:
+        if source == target:
+            return
+        if source in mapping and mapping[source] != target:
+            raise ValueError("WLOG alternatives do not give a consistent name exchange")
+        if target in reverse and reverse[target] != source:
+            raise ValueError("WLOG alternatives require a one-to-one name exchange")
+        mapping[source] = target
+        reverse[target] = source
+
+    def align_term(left: tl.Term, right: tl.Term) -> None:
+        if isinstance(left, tl.ConstantTerm) and isinstance(right, tl.ConstantTerm):
+            add(left.name, right.name)
+            return
+        if isinstance(left, tl.VariableTerm) and isinstance(right, tl.VariableTerm):
+            if left.name != right.name:
+                raise ValueError("WLOG alternatives cannot exchange bound variables")
+            return
+        if isinstance(left, tl.FunctionTerm) and isinstance(right, tl.FunctionTerm):
+            if left.symbol != right.symbol or len(left.args) != len(right.args):
+                raise ValueError("WLOG alternatives do not align as the same term structure")
+            for left_arg, right_arg in zip(left.args, right.args):
+                align_term(left_arg, right_arg)
+            return
+        if not _ast_eq(left, right):
+            raise ValueError("WLOG alternatives do not align at the same term position")
+
+    def align_formula(left: fl.Formula, right: fl.Formula) -> None:
+        if type(left) is not type(right):
+            raise ValueError("WLOG alternatives do not have the same formula structure")
+        if isinstance(left, fl.AtomicFormula):
+            if left.predicate != right.predicate or len(left.args) != len(right.args):
+                raise ValueError("WLOG alternatives do not name the same predicate")
+            for left_arg, right_arg in zip(left.args, right.args):
+                align_term(left_arg, right_arg)
+        elif isinstance(left, fl.Equals):
+            align_term(left.left, right.left)
+            align_term(left.right, right.right)
+        elif isinstance(left, fl.And):
+            if len(left.conjuncts) != len(right.conjuncts):
+                raise ValueError("WLOG alternatives do not have the same conjunction structure")
+            for left_item, right_item in zip(left.conjuncts, right.conjuncts):
+                align_formula(left_item, right_item)
+        elif isinstance(left, fl.Or):
+            if len(left.disjuncts) != len(right.disjuncts):
+                raise ValueError("WLOG alternatives do not have the same disjunction structure")
+            for left_item, right_item in zip(left.disjuncts, right.disjuncts):
+                align_formula(left_item, right_item)
+        elif isinstance(left, fl.Not):
+            align_formula(left.sub, right.sub)
+        elif isinstance(left, fl.Implies):
+            align_formula(left.antecedent, right.antecedent)
+            align_formula(left.consequent, right.consequent)
+        elif isinstance(left, fl.Iff):
+            align_formula(left.left, right.left)
+            align_formula(left.right, right.right)
+        elif isinstance(left, (fl.ForAll, fl.Exists)):
+            if left.var != right.var:
+                raise ValueError("WLOG alternatives cannot exchange a bound variable name")
+            align_formula(left.body, right.body)
+        else:
+            raise ValueError("WLOG alternative formulas must have supported structure")
+
+    align_formula(chosen, alternative)
+    if not mapping:
+        raise ValueError("WLOG alternatives must differ by declared names")
+    return {source: tl.ConstantTerm(target, target) for source, target in mapping.items()}
 
 
 def _wlog_exchange(chosen: fl.Formula, alternative: fl.Formula) -> Dict[str, tl.Term]:
-    """The substitution that trades the two case constants, both replaced at
-    once (`_substitute_constants_in_formula` looks each constant up once, so
-    `a -> b` and `b -> a` do not chain). A line that this leaves unchanged,
-    up to the order of `and` and `or`, says the same thing of both cases:
-    `forall u, (In(u, Y) iff (u = a or u = b))` is such a line for the cases
-    `x = a` and `x = b`, and `P(a)` is not."""
-    source, target = _wlog_changed_terms(chosen, alternative)
-    return {source.name: target, target.name: source}
+    """Return the full name exchange used to recognize invariant facts."""
+    if isinstance(chosen, fl.Equals) and isinstance(alternative, fl.Equals):
+        source, target = _wlog_changed_terms(chosen, alternative)
+        return {source.name: target, target.name: source}
+    substitution = _wlog_arbitrary_exchange(chosen, alternative)
+    exchange = dict(substitution)
+    for source, target in substitution.items():
+        exchange.setdefault(target.name, tl.ConstantTerm(source, source))
+    return exchange
 
 
 def _substitute_wlog_metadata(value, mapping):
@@ -4764,6 +4851,23 @@ class ProofValidator:
                     CATEGORY_RULE_MISMATCH, f"WLOG cannot replay this case: {exc}",
                 )
 
+            for source_name, target in mapping.items():
+                if not isinstance(target, tl.ConstantTerm):
+                    continue
+                target_name = target.name
+                if snapshot["declarations"].lookup(source_name) is None:
+                    return _mk_error(
+                        wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                        CATEGORY_RULE_MISMATCH,
+                        f"WLOG exchange uses undeclared name '{source_name}'",
+                    )
+                if snapshot["declarations"].lookup(target_name) is None:
+                    return _mk_error(
+                        wlog_entry.label, snapshot["block_label"], snapshot["index"],
+                        CATEGORY_RULE_MISMATCH,
+                        f"WLOG exchange uses undeclared name '{target_name}'",
+                    )
+
             try:
                 transformed_suffix = [
                     _transform_wlog_entry(
@@ -5548,9 +5652,6 @@ class ProofValidator:
             if not isinstance(disjunction, fl.Or) or len(disjunction.disjuncts) < 2:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
                                  "WLOG must cite a disjunction with at least two cases")
-            if not all(isinstance(disjunct, fl.Equals) for disjunct in disjunction.disjuncts):
-                return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
-                                 "this WLOG implementation requires equality disjuncts")
             selected_count = sum(1 for disjunct in disjunction.disjuncts if _ast_eq(disjunct, phi))
             if selected_count != 1:
                 return _mk_error(label, block_label, sidx, CATEGORY_RULE_MISMATCH,
@@ -5805,8 +5906,3 @@ class Proof:
 
 if __name__ == "__main__":
     print("=== ProofLogic module loaded successfully ===")
-
-
-
-
-

@@ -11,6 +11,8 @@ import SyLoPy.source.SetTheory as st
 
 from .support import c, fl, pl, pp
 
+pytestmark = pytest.mark.extended
+
 
 def _induction_case(type_predicate, zero, successor, extra_declarations=()):
     declarations = [
@@ -53,13 +55,7 @@ def test_direct_citation_cannot_use_an_unregistered_parameterized_rule():
     )
 
     ok, error = proof.check_detailed()
-    if ok:
-        pytest.xfail(
-            "the proof cited Nat induction successfully although its rule "
-            "environment registers only Int induction; _rule_is_registered "
-            "currently checks the Python class rather than the parameters"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "3"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
@@ -110,13 +106,7 @@ def test_direct_citation_cannot_use_an_unregistered_theorem_instance():
     )
 
     ok, error = proof.check_detailed()
-    if ok:
-        pytest.xfail(
-            "the kernel accepted an unregistered TheoremRule instance because "
-            "another validated TheoremRule instance of the same Python class "
-            "was allowed"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
@@ -137,12 +127,7 @@ def test_proof_keeps_distinct_parameterized_rules_from_elaboration_metadata():
     configured = [
         rule for rule in proof.rules if isinstance(rule, pl.InductionRule)
     ]
-    if len(configured) != 2:
-        pytest.xfail(
-            "Proof.__init__ discarded a distinct required InductionRule "
-            "because its deduplication compares only type and name"
-        )
-
+    assert len(configured) == 2
     assert {_induction_configuration(rule) for rule in configured} == {
         _induction_configuration(nat),
         _induction_configuration(integer),
@@ -167,12 +152,7 @@ def test_unregistered_subclass_cannot_override_a_standard_rule():
     )
 
     ok, error = proof.check_detailed()
-    if ok:
-        pytest.xfail(
-            "an unregistered subclass overrode ReiterationRule to assert Q "
-            "without premises, but passed the class-based rule allowlist"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
@@ -209,12 +189,7 @@ def test_theorem_cannot_replace_a_required_rule_subclass_with_its_parent():
         declarations=declarations,
     )
     ok, error = caller.check_detailed()
-    if ok:
-        pytest.xfail(
-            "RuleContext.allows_rule treated the unregistered ForgedReiterationRule "
-            "requirement as available because default_rules() contains its parent"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -240,12 +215,7 @@ def test_pairing_witness_rule_is_exported_as_a_required_rule():
         if isinstance(rule, st.PairingAxiomRule)
         and rule.witness_name == "Y"
     ]
-    if not registered:
-        pytest.xfail(
-            "the elaborator embeds PairingAxiomRule(witness_name='Y') in the "
-            "line justification but exports only generic PairingAxiomRule(); "
-            "class-based authorization currently masks the missing registration"
-        )
+    assert registered
 
     # Keep the ordinary schema rule as well as the generated witness instance
     # both in the intermediate metadata and in the final Proof allowlist.
@@ -294,12 +264,7 @@ def test_unregistered_subclass_cannot_override_a_rule_below_citation():
         declarations=declarations,
     )
     ok, error = proof.check_detailed()
-    if ok:
-        pytest.xfail(
-            "_validate_rule_below authorized an unregistered subclass of "
-            "ConditionalIntroductionRule through isinstance matching"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
@@ -333,13 +298,7 @@ def test_unregistered_subclass_cannot_override_a_hybrid_rule_citation():
         declarations=declarations,
     )
     ok, error = proof.check_detailed()
-    if ok:
-        pytest.xfail(
-            "_validate_rule_hybrid authorized an unregistered subclass of "
-            "ConjunctionEliminationRule through isinstance matching"
-        )
-
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_UNRECOGNIZED_RULE
-

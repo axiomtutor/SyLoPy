@@ -9,6 +9,8 @@ import pytest
 
 from .support import c, fl, pl, pp
 
+pytestmark = pytest.mark.extended
+
 
 def _checked_proof(text):
     entries, _ = pp.parse_proof_text(text)
@@ -102,13 +104,6 @@ def test_existence_witness_is_not_a_default_generalized_parameter():
 
     theorem = pl.promote_theorem("Existence witness audit", proof)
 
-    # This is a promotion-policy question, not a demonstrated soundness hole:
-    # the witness formula is retained as a premise. Mark only the exact current
-    # behavior for review rather than xfail-ing the whole test function.
-    if theorem.generalized_names == ["a", "Y"]:
-        pytest.xfail(
-            "promotion currently lists the top-level Existence-from-line witness as generalized"
-        )
     assert theorem.generalized_names == ["a"]
 
 
@@ -224,10 +219,7 @@ def test_an_explicit_promotion_conclusion_must_have_been_derived():
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-    if ok:
-        pytest.xfail(
-            "promote_theorem accepted an explicit conclusion absent from the proof"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -259,10 +251,7 @@ def test_explicit_generalized_names_cannot_generalize_the_empty_set():
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-    if ok:
-        pytest.xfail(
-            "generalized_names override turned EmptySet's property into a universal set rule"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "3"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -295,10 +284,7 @@ def test_promotion_cannot_export_a_direct_pairing_witness_as_a_free_constant():
     ok, error = pl.Proof(
         entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-    if ok:
-        pytest.xfail(
-            "promotion dropped the direct Pairing witness's defining property"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "3"
     assert error.category in {pl.CATEGORY_RULE_MISMATCH, pl.CATEGORY_ARITY_MISMATCH}
@@ -332,11 +318,7 @@ def test_promotion_does_not_erase_a_custom_axiom_dependency():
     ok, error = pl.Proof(
         target_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "promotion discarded the custom axiom Q and exported Q as a zero-premise theorem"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -377,11 +359,7 @@ end subproof
     ok, error = pl.Proof(
         target_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            f"promotion dropped a nested {dependency_tag} dependency and made P -> Q a zero-premise theorem"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category in {pl.CATEGORY_RULE_MISMATCH, pl.CATEGORY_ARITY_MISMATCH}
@@ -408,11 +386,7 @@ def test_promotion_does_not_drop_relation_property_declaration_dependencies():
     ok, error = pl.Proof(
         target_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "promotion forgot that R was declared reflexive and reused R(a,a) under only symmetry"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -467,13 +441,7 @@ def test_promotion_requires_the_same_parameterized_induction_rule():
         rules=pl.default_rules() + [theorem, int_induction],
         declarations=declarations,
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "a theorem proved using Nat induction was accepted where only Int "
-            "induction is registered; the required-rule check may ignore "
-            "parameter differences between instances of InductionRule"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "3"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -533,13 +501,7 @@ def test_promotion_preserves_each_parameterized_rule_requirement():
         rules=pl.default_rules() + [theorem, nat_induction],
         declarations=declarations,
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "promotion did not enforce every distinct parameterized induction "
-            "requirement; theorem using both Nat and Int induction was accepted "
-            "where only Nat induction was registered"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "5"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
@@ -584,13 +546,7 @@ def test_promotion_does_not_drop_a_custom_inference_rule_dependency():
     ok, error = pl.Proof(
         target_entries, rules=pl.default_rules() + [theorem]
     ).check_detailed()
-
-    if ok:
-        pytest.xfail(
-            "promotion discarded the source proof's custom inference rule and "
-            "made its conclusion available without that rule"
-        )
+    assert not ok
     assert error is not None
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
-
