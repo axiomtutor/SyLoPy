@@ -215,6 +215,43 @@ def _without_label(entry):
     return (phi, justification)
 
 
+def test_symbolic_set_declaration_inside_replayed_subproof_is_kept_exact():
+    _accepted("""1. Let a, b be objects. (Declaration)
+2. Let P be a unary predicate. (Declaration)
+3. Let H, Q be closed formulas. (Declaration)
+4. H -> Q. (Premise)
+5. P(a). (Premise)
+6. P(b). (Premise)
+7. P(a) or P(b). (Premise)
+8. P(a). (WLOG from 7)
+9. H -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 9.1. H. (Assumption for Conditional Introduction)
+ 9.2. Let Y be a set with defining property P. (Declaration)
+ 9.3. P(a). (Reiteration from 5)
+ 9.4. Q. (Modus Ponens from 9.1, 4)
+end subproof
+""")
+
+
+def test_symbolic_set_declaration_replay_still_needs_the_case_counterpart():
+    _refused_for_lack_of_a_counterpart("""1. Let a, b be objects. (Declaration)
+2. Let P be a unary predicate. (Declaration)
+3. Let H, Q be closed formulas. (Declaration)
+4. H -> Q. (Premise)
+5. P(a). (Premise)
+6. P(a) or P(b). (Premise)
+7. P(a). (WLOG from 6)
+8. H -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 8.1. H. (Assumption for Conditional Introduction)
+ 8.2. Let Y be a set with defining property P. (Declaration)
+ 8.3. P(a). (Reiteration from 5)
+ 8.4. Q. (Modus Ponens from 8.1, 4)
+end subproof
+""", "8.3")
+
+
 def test_an_unlabeled_line_in_the_block_below_a_line_is_located_by_its_position():
     entries, _ = pp.parse_proof_text(DECLARATIONS + """8. P(a). (Premise)
 9. P(a) -> Q. (Premise)

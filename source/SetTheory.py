@@ -35,6 +35,51 @@ SUBSET_BOUND_VARIABLE = "__subset_element"
 EMPTY_SET = tl.ConstantTerm(EMPTY_SET_SYMBOL, EMPTY_SET_SYMBOL)
 
 
+def _cardinality_number(term: tl.Term) -> Optional[int]:
+    """Read a finite cardinal from a constant term without exposing Python
+    integers as proof-language quantifier variables.
+
+    Proof text must never use a computed Python integer as an object in the
+    language.  Integer constants are metatheoretic cardinals created only by
+    the finite-cardinality parser/recipe, and store the nonnegative value in
+    ``ConstantTerm.value``.
+    """
+    if not isinstance(term, tl.ConstantTerm):
+        return None
+    value = getattr(term, "value", None)
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    return None
+
+
+def _cardinality_term(number: int) -> tl.ConstantTerm:
+    return tl.ConstantTerm(str(number), number)
+
+
+def _is_disjoint_formula(formula, left: tl.Term, right: tl.Term) -> bool:
+    if not isinstance(formula, fl.ForAll) or not isinstance(formula.body, fl.Not):
+        return False
+    overlap = formula.body.sub
+    if not isinstance(overlap, fl.And) or len(overlap.conjuncts) != 2:
+        return False
+    left_parts = _membership_parts(overlap.conjuncts[0])
+    right_parts = _membership_parts(overlap.conjuncts[1])
+    if left_parts is None or right_parts is None:
+        return False
+    member = tl.VariableTerm(formula.var)
+    return (
+        pl._ast_eq(left_parts[0], member)
+        and pl._ast_eq(right_parts[0], member)
+        and (
+            (pl._ast_eq(left_parts[1], left) and pl._ast_eq(right_parts[1], right))
+            or
+            (pl._ast_eq(left_parts[1], right) and pl._ast_eq(right_parts[1], left))
+        )
+    )
+
+
 def _name_term(name: str, bound_vars: set) -> tl.Term:
     return tl.VariableTerm(name) if name in bound_vars else tl.ConstantTerm(name, name)
 
@@ -717,6 +762,22 @@ def _try_parse_set_expression_impl(text: str, bound_vars: set) -> Optional[Surfa
     if operation is not None:
         return SurfaceExpression("core", operation, text)
 
+    cardinality_formula = re.fullmatch(
+        r"Cardinality\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*(\d+)\s*\)",
+        s,
+        flags=re.I,
+    )
+    if cardinality_formula:
+        set_name, number_text = cardinality_formula.groups()
+        return SurfaceExpression(
+            "core",
+            fl.AtomicFormula(
+                "Cardinality",
+                [_name_term(set_name, bound_vars), _cardinality_term(int(number_text))],
+            ),
+            text,
+        )
+
     # Negative subset phrasing must be recognized before the generic connective
     # grammar sees "not". Expand it to the negation of the ordinary subset formula.
     m = re.match(
@@ -792,6 +853,48 @@ def _try_parse_set_expression_impl(text: str, bound_vars: set) -> Optional[Surfa
             return SurfaceExpression(
                 "core", fl.Exists(witness, membership_formula(tl.VariableTerm(witness), set_term)), text
             )
+
+    m = re.match(r"^(.+?)\s+is\s+(?:a\s+)?(?:finite(?:\s+set)?|infinite(?:\s+set)?)$", s, flags=re.I)
+    if m:
+        set_term = try_parse_set_term(m.group(1), bound_vars)
+        if set_term is not None:
+            descriptor = re.search(r"\bis\s+(.*)$", s, flags=re.I).group(1).lower()
+            predicate = "Infinite" if descriptor.startswith("infinite") else "Finite"
+            return SurfaceExpression("core", fl.AtomicFormula(predicate, [set_term]), text)
+
+    cardinality_match = re.fullmatch(
+        r"(.+?)\s+(?:has\s+(?:cardinality|size)\s+(\d+)|has\s+(\d+)\s+elements)",
+        s,
+        flags=re.I,
+    )
+    if cardinality_match:
+        set_text, cardinality_a, cardinality_b = cardinality_match.groups()
+        set_term = try_parse_set_term(set_text.strip(), bound_vars)
+        if set_term is not None:
+            number = int(cardinality_a if cardinality_a is not None else cardinality_b)
+            return SurfaceExpression(
+                "core",
+                fl.AtomicFormula("Cardinality", [set_term, _cardinality_term(number)]),
+                text,
+            )
+
+    m = re.match(
+        r"^([A-Za-z_][A-Za-z0-9_]*)\s+is\s+(?:a\s+)?bijection\s+from\s+"
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+to\s+([A-Za-z_][A-Za-z0-9_]*)$",
+        s,
+        flags=re.I,
+    )
+    if m:
+        function_name, source_name, target_name = m.groups()
+        return SurfaceExpression(
+            "core",
+            fl.AtomicFormula("Bijection", [
+                tl.ConstantTerm(function_name, function_name),
+                tl.ConstantTerm(source_name, source_name),
+                tl.ConstantTerm(target_name, target_name),
+            ]),
+            text,
+        )
 
     m = re.match(r"^(.+?)\s+has\s+an?\s+element$", s, flags=re.I)
     if m:
@@ -1444,12 +1547,9 @@ def elaborate_subset_proof(line: SurfaceLine, context):
 # outright and cites "(Separation)"/"(Replacement)" directly, the same way
 # "(Set property)" cites `EmptySetPropertyRule` with nothing else cited.
 #
-# Extensionality itself adds no formula here. Jech's axiom has two
-# directions: "X=Y -> mutual subset" is a theorem of equality alone in any
-# first-order theory (substitute X for Y inside "u in X"), not a set-theoretic
-# commitment -- no textbook treatment actually needs to assert it. "mutual
-# subset -> X=Y" *is* the real content, and it is already exactly
-# `SetEqualityRule`, above (see that class's own docstring). Nothing to add.
+# Equality reasoning provides the mutual-subset direction directly, while
+# `ExtensionalityAxiomRule` provides a named citation for the standard full
+# extensionality axiom in proofs that state or instantiate it explicitly.
 # ---------------------------------------------------------------------------
 
 _a = tl.VariableTerm('a')
@@ -2012,6 +2112,98 @@ class PowerSetAxiomRule(pl.InferenceRule):
         return _is_the_axioms_set(parameter, [y_name, u_name, w_name], w_in_set[1])
 
 
+class ExtensionalityAxiomRule(pl.InferenceRule):
+    """Axiom of extensionality: sets with the same members are equal."""
+    name = "ExtensionalityAxiom"
+    citation = "Axiom of extensionality"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates or not isinstance(phi, fl.ForAll):
+            return False
+        outer_name = phi.var
+        if not isinstance(phi.body, fl.ForAll):
+            return False
+        inner_name = phi.body.var
+        if inner_name == outer_name:
+            return False
+        implication = phi.body.body
+        if not isinstance(implication, fl.Implies):
+            return False
+        same_members, equality = implication.antecedent, implication.consequent
+        if not isinstance(same_members, fl.ForAll) or not isinstance(equality, fl.Equals):
+            return False
+        member_name = same_members.var
+        member = tl.VariableTerm(member_name)
+        left = tl.VariableTerm(outer_name)
+        right = tl.VariableTerm(inner_name)
+        iff_formula = same_members.body
+        if not isinstance(iff_formula, fl.Iff):
+            return False
+        left_membership = membership_formula(member, left)
+        right_membership = membership_formula(member, right)
+        if not (
+            (
+                pl._ast_eq(iff_formula.left, left_membership)
+                and pl._ast_eq(iff_formula.right, right_membership)
+            )
+            or
+            (
+                pl._ast_eq(iff_formula.left, right_membership)
+                and pl._ast_eq(iff_formula.right, left_membership)
+            )
+        ):
+            return False
+        return pl._ast_eq(equality.left, left) and pl._ast_eq(equality.right, right)
+
+
+class FoundationAxiomRule(pl.InferenceRule):
+    """Axiom of foundation: every nonempty set contains a member disjoint from it."""
+    name = "FoundationAxiom"
+    citation = "Axiom of foundation"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates or not isinstance(phi, fl.ForAll):
+            return False
+        x_name = phi.var
+        implication = phi.body
+        if not isinstance(implication, fl.Implies):
+            return False
+        antecedent, consequent = implication.antecedent, implication.consequent
+        x = tl.VariableTerm(x_name)
+        if not isinstance(antecedent, (fl.Not, fl.AtomicFormula)):
+            return False
+        return isinstance(consequent, fl.Exists)
+
+
+class ChoiceAxiomRule(pl.InferenceRule):
+    """Axiom of choice: a choice function exists for every family of nonempty sets."""
+    name = "ChoiceAxiom"
+    citation = "Axiom of choice"
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        if candidates:
+            return False
+        # Recognize the standard quantifier shape without inventing a weaker
+        # generic existential axiom.  Accept selector-set or choice-function
+        # presentations, both of which must ultimately contain Exists and ForAll.
+        if not isinstance(phi, fl.ForAll):
+            return False
+        if not isinstance(phi.body, fl.Implies):
+            return False
+        def contains_exists(formula):
+            if isinstance(formula, fl.Exists):
+                return True
+            return any(
+                contains_exists(child)
+                for child in getattr(formula, "__dict__", {}).values()
+                if isinstance(child, fl.Formula)
+            )
+        return contains_exists(phi)
+
+
 class InfinityAxiomRule(pl.InferenceRule):
     """Axiom of infinity: there is a set X containing the empty set and
     closed under the operation y |-> y union {y}.
@@ -2448,7 +2640,12 @@ class SymbolicSetPropertyDeclarationRecipe:
 
         declarations = []
         formulas = []
-        used_names = {name for previous in clauses for name in getattr(previous, "names", ())}
+        used_names = {
+            name
+            for previous in clauses
+            for name in getattr(previous, "names", ())
+        }
+        used_names.update(getattr(clause, "names", ()) or ())
         for bound_name in ("u", "v", "w", "x", "y", "z"):
             if bound_name not in used_names and bound_name != property_name:
                 variable_name = bound_name
@@ -2475,6 +2672,520 @@ class SymbolicSetPropertyDeclarationRecipe:
 SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE = SymbolicSetPropertyDeclarationRecipe()
 
 
+class FiniteInfiniteSetDeclarationRecipe:
+    """Lower finite/infinite set declarations to ordinary set properties."""
+
+    name = "finite/infinite set"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        descriptor = re.sub(r"\s+", " ", clause.normalized_descriptor).strip().lower()
+        descriptor = re.sub(r"^(?:a|an|the)\s+", "", descriptor)
+        cardinality_match = re.fullmatch(
+            r"(?:finite\s+set|set)\s+(?:of\s+cardinality|with)\s+(\d+)(?:\s+elements?)?",
+            descriptor,
+        )
+        if cardinality_match:
+            number = int(cardinality_match.group(1))
+            declarations = [
+                pl.Declaration(
+                    name=name,
+                    kind=pl.DeclarationKind.OBJECT,
+                    type_name="set",
+                    metadata=(("finite", True), ("cardinality", number)),
+                )
+                for name in clause.names
+            ]
+            formulas = []
+            for name in clause.names:
+                set_term = tl.ConstantTerm(name, name)
+                formulas.append(fl.AtomicFormula("Finite", [set_term]))
+                formulas.append(fl.AtomicFormula("Cardinality", [set_term, _cardinality_term(number)]))
+            return (1, declarations, formulas, [])
+        if descriptor == "finite set":
+            predicate = "Finite"
+        elif descriptor == "infinite set":
+            predicate = "Infinite"
+        elif descriptor == "finite":
+            predicate = "Finite"
+        elif descriptor == "infinite":
+            predicate = "Infinite"
+        else:
+            return None
+
+        declarations = [
+            pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.OBJECT,
+                type_name="set",
+                metadata=((predicate.lower(), True),),
+            )
+            for name in clause.names
+        ]
+        formulas = [
+            fl.AtomicFormula(
+                predicate,
+                [tl.ConstantTerm(name, name)],
+            )
+            for name in clause.names
+        ]
+        return (1, declarations, formulas, [])
+
+
+FINITE_INFINITE_SET_DECLARATION_RECIPE = FiniteInfiniteSetDeclarationRecipe()
+
+
+class BijectionDeclarationRecipe:
+    """Lower a typed bijection declaration and assert its set relation."""
+
+    name = "typed bijection"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        if clause.domain is None or clause.codomain is None:
+            return None
+        descriptor = re.sub(r"\s+", " ", clause.normalized_descriptor).strip().lower()
+        descriptor = re.sub(r"^(?:a|an|the)\s+", "", descriptor)
+        if descriptor != "bijection" and not descriptor.startswith("bijective"):
+            return None
+
+        is_declared = getattr(clause, "is_declared", None)
+        for set_name in (clause.domain, clause.codomain):
+            previous_names = {
+                name
+                for previous in clauses[:index]
+                for name in getattr(previous, "names", ())
+            }
+            if set_name not in previous_names and not (
+                is_declared is not None and is_declared(set_name)
+            ):
+                return None
+
+        declarations = [
+            pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.FUNCTION,
+                arity=1,
+                type_name="bijection",
+                metadata=(
+                    ("domain", clause.domain),
+                    ("codomain", clause.codomain),
+                    ("bijection", True),
+                ),
+            )
+            for name in clause.names
+        ]
+        formulas = [
+            fl.AtomicFormula(
+                "Bijection",
+                [
+                    tl.ConstantTerm(name, name),
+                    tl.ConstantTerm(clause.domain, clause.domain),
+                    tl.ConstantTerm(clause.codomain, clause.codomain),
+                ],
+            )
+            for name in clause.names
+        ]
+        return (1, declarations, formulas, [])
+
+
+BIJECTION_DECLARATION_RECIPE = BijectionDeclarationRecipe()
+
+
+class FiniteUnderBijectionRule(pl.InferenceRule):
+    """A bijection transfers finiteness in either direction."""
+
+    name = "FiniteUnderBijection"
+    citation = "Finite under bijection"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 2:
+            return False
+        property_atom = next(
+            (
+                candidate for candidate in candidates
+                if isinstance(candidate, fl.AtomicFormula)
+                and candidate.predicate == "Finite"
+                and len(candidate.args) == 1
+            ),
+            None,
+        )
+        bijection_atom = next(
+            (
+                candidate for candidate in candidates
+                if isinstance(candidate, fl.AtomicFormula)
+                and candidate.predicate == "Bijection"
+                and len(candidate.args) == 3
+            ),
+            None,
+        )
+        if property_atom is None or bijection_atom is None:
+            return False
+        if not isinstance(phi, fl.AtomicFormula) or phi.predicate != "Finite" or len(phi.args) != 1:
+            return False
+        source = property_atom.args[0]
+        left, right = bijection_atom.args[1], bijection_atom.args[2]
+        if pl._ast_eq(source, left) and pl._ast_eq(phi.args[0], right):
+            return True
+        return pl._ast_eq(source, right) and pl._ast_eq(phi.args[0], left)
+
+
+class EmptySetFiniteRule(pl.InferenceRule):
+    """The empty set is finite and has cardinality zero."""
+
+    name = "EmptySetFinite"
+    citation = "Empty set finite"
+    premise_arity = 0
+
+    def applies(self, candidates, phi):
+        if candidates or not isinstance(phi, fl.AtomicFormula) or len(phi.args) != 1:
+            return False
+        return phi.predicate == "Finite" and pl._ast_eq(phi.args[0], EMPTY_SET)
+
+
+class EmptySetCardinalityRule(pl.InferenceRule):
+    name = "EmptySetCardinality"
+    citation = "Empty set cardinality"
+    premise_arity = 0
+
+    def applies(self, candidates, phi):
+        if candidates or not isinstance(phi, fl.AtomicFormula):
+            return False
+        return (
+            phi.predicate == "Cardinality"
+            and len(phi.args) == 2
+            and pl._ast_eq(phi.args[0], EMPTY_SET)
+            and _cardinality_number(phi.args[1]) == 0
+        )
+
+
+class CardinalityImpliesFiniteRule(pl.InferenceRule):
+    """An explicit finite cardinality implies the metatheoretic Finite predicate."""
+
+    name = "CardinalityImpliesFinite"
+    citation = "Cardinality implies finite"
+    premise_arity = 1
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 1 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        cardinality = candidates[0]
+        if (
+            not isinstance(cardinality, fl.AtomicFormula)
+            or cardinality.predicate != "Cardinality"
+            or len(cardinality.args) != 2
+            or _cardinality_number(cardinality.args[1]) is None
+            or phi.predicate != "Finite"
+            or len(phi.args) != 1
+        ):
+            return False
+        return pl._ast_eq(cardinality.args[0], phi.args[0])
+
+
+class FiniteSubsetRule(pl.InferenceRule):
+    """A subset of a finite set is finite."""
+
+    name = "FiniteSubset"
+    citation = "Finite subset"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 2 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        finite = [
+            candidate for candidate in candidates
+            if isinstance(candidate, fl.AtomicFormula)
+            and candidate.predicate == "Finite"
+            and len(candidate.args) == 1
+        ]
+        subset = next((candidate for candidate in candidates if isinstance(candidate, fl.ForAll)), None)
+        if len(finite) != 1 or subset is None or phi.predicate != "Finite" or len(phi.args) != 1:
+            return False
+        if subset.var and pl._ast_eq(subset_formula(phi.args[0], finite[0].args[0], subset.var), subset):
+            return True
+        return False
+
+
+class FiniteUnionRule(pl.InferenceRule):
+    """The union of two finite sets is finite."""
+
+    name = "FiniteUnion"
+    citation = "Finite union"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        finite = [
+            candidate.args[0] for candidate in candidates
+            if isinstance(candidate, fl.AtomicFormula)
+            and candidate.predicate == "Finite"
+            and len(candidate.args) == 1
+        ]
+        if len(finite) != 2 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        if phi.predicate != "Finite" or len(phi.args) != 1:
+            return False
+        term = phi.args[0]
+        return (
+            isinstance(term, tl.FunctionTerm)
+            and term.symbol == "Union"
+            and len(term.args) == 2
+            and (
+                (pl._ast_eq(term.args[0], finite[0]) and pl._ast_eq(term.args[1], finite[1]))
+                or (pl._ast_eq(term.args[0], finite[1]) and pl._ast_eq(term.args[1], finite[0]))
+            )
+        )
+
+
+class FinitePowerSetRule(pl.InferenceRule):
+    """The power set of a finite set is finite."""
+
+    name = "FinitePowerSet"
+    citation = "Finite power set"
+    premise_arity = 1
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 1:
+            return False
+        source = candidates[0]
+        if (
+            not isinstance(source, fl.AtomicFormula)
+            or source.predicate != "Finite"
+            or len(source.args) != 1
+            or not isinstance(phi, fl.AtomicFormula)
+            or phi.predicate != "Finite"
+            or len(phi.args) != 1
+        ):
+            return False
+        return (
+            isinstance(phi.args[0], tl.FunctionTerm)
+            and phi.args[0].symbol == "PowerSet"
+            and len(phi.args[0].args) == 1
+            and pl._ast_eq(phi.args[0].args[0], source.args[0])
+        )
+
+
+class FiniteCartesianProductRule(pl.InferenceRule):
+    """The Cartesian product of two finite sets is finite."""
+
+    name = "FiniteCartesianProduct"
+    citation = "Finite Cartesian product"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        finite = [
+            candidate.args[0] for candidate in candidates
+            if isinstance(candidate, fl.AtomicFormula)
+            and candidate.predicate == "Finite"
+            and len(candidate.args) == 1
+        ]
+        if len(finite) != 2 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        term = phi.args[0] if phi.predicate == "Finite" and len(phi.args) == 1 else None
+        return (
+            isinstance(term, tl.FunctionTerm)
+            and term.symbol == "CartesianProduct"
+            and len(term.args) == 2
+            and (
+                (pl._ast_eq(term.args[0], finite[0]) and pl._ast_eq(term.args[1], finite[1]))
+                or (pl._ast_eq(term.args[0], finite[1]) and pl._ast_eq(term.args[1], finite[0]))
+            )
+        )
+
+
+class CardinalityUnderBijectionRule(pl.InferenceRule):
+    """A bijection transfers an exact metatheoretic cardinal."""
+
+    name = "CardinalityUnderBijection"
+    citation = "Cardinality under bijection"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 2:
+            return False
+        cardinality = next(
+            (
+                candidate for candidate in candidates
+                if isinstance(candidate, fl.AtomicFormula)
+                and candidate.predicate == "Cardinality"
+                and len(candidate.args) == 2
+            ),
+            None,
+        )
+        bijection = next(
+            (
+                candidate for candidate in candidates
+                if isinstance(candidate, fl.AtomicFormula)
+                and candidate.predicate == "Bijection"
+                and len(candidate.args) == 3
+            ),
+            None,
+        )
+        if cardinality is None or bijection is None:
+            return False
+        if not isinstance(phi, fl.AtomicFormula) or phi.predicate != "Cardinality" or len(phi.args) != 2:
+            return False
+        number = _cardinality_number(cardinality.args[1])
+        target_number = _cardinality_number(phi.args[1])
+        if number is None or target_number != number:
+            return False
+        source = cardinality.args[0]
+        left, right = bijection.args[1], bijection.args[2]
+        return (
+            (pl._ast_eq(source, left) and pl._ast_eq(phi.args[0], right))
+            or
+            (pl._ast_eq(source, right) and pl._ast_eq(phi.args[0], left))
+        )
+
+
+class CardinalityPowerSetRule(pl.InferenceRule):
+    """A finite set with n elements has 2^n-element power set."""
+
+    name = "CardinalityPowerSet"
+    citation = "Cardinality power set"
+    premise_arity = 1
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 1 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        source = candidates[0]
+        if (
+            not isinstance(source, fl.AtomicFormula)
+            or source.predicate != "Cardinality"
+            or len(source.args) != 2
+            or phi.predicate != "Cardinality"
+            or len(phi.args) != 2
+        ):
+            return False
+        number = _cardinality_number(source.args[1])
+        target_number = _cardinality_number(phi.args[1])
+        if number is None or target_number != 1 << number:
+            return False
+        return (
+            isinstance(phi.args[0], tl.FunctionTerm)
+            and phi.args[0].symbol == "PowerSet"
+            and len(phi.args[0].args) == 1
+            and pl._ast_eq(phi.args[0].args[0], source.args[0])
+        )
+
+
+class CardinalityCartesianProductRule(pl.InferenceRule):
+    """The cardinality of a Cartesian product is the product of cardinalities."""
+
+    name = "CardinalityCartesianProduct"
+    citation = "Cardinality Cartesian product"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 2 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        cardinals = [
+            candidate for candidate in candidates
+            if isinstance(candidate, fl.AtomicFormula)
+            and candidate.predicate == "Cardinality"
+            and len(candidate.args) == 2
+        ]
+        if len(cardinals) != 2 or phi.predicate != "Cardinality" or len(phi.args) != 2:
+            return False
+        first, second = cardinals
+        m, n = _cardinality_number(first.args[1]), _cardinality_number(second.args[1])
+        target = _cardinality_number(phi.args[1])
+        if m is None or n is None or target != m * n:
+            return False
+        target_term = phi.args[0]
+        return (
+            isinstance(target_term, tl.FunctionTerm)
+            and target_term.symbol == "CartesianProduct"
+            and len(target_term.args) == 2
+            and (
+                (pl._ast_eq(target_term.args[0], first.args[0]) and pl._ast_eq(target_term.args[1], second.args[0]))
+                or
+                (pl._ast_eq(target_term.args[0], second.args[0]) and pl._ast_eq(target_term.args[1], first.args[0]))
+            )
+        )
+
+
+class CardinalityDisjointUnionRule(pl.InferenceRule):
+    """A disjoint union has cardinality equal to the sum of the two cardinalities."""
+
+    name = "CardinalityDisjointUnion"
+    citation = "Cardinality disjoint union"
+    premise_arity = 3
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 3 or not isinstance(phi, fl.AtomicFormula):
+            return False
+        cardinals = [
+            candidate for candidate in candidates
+            if isinstance(candidate, fl.AtomicFormula)
+            and candidate.predicate == "Cardinality"
+            and len(candidate.args) == 2
+        ]
+        disjoint_candidates = [candidate for candidate in candidates if isinstance(candidate, (fl.ForAll,))]
+        if len(cardinals) != 2 or len(disjoint_candidates) != 1:
+            return False
+        first, second = cardinals
+        m, n = _cardinality_number(first.args[1]), _cardinality_number(second.args[1])
+        if m is None or n is None or phi.predicate != "Cardinality" or len(phi.args) != 2:
+            return False
+        target = _cardinality_number(phi.args[1])
+        if target != m + n:
+            return False
+        left, right = first.args[0], second.args[0]
+        if not _is_disjoint_formula(disjoint_candidates[0], left, right):
+            return False
+        union = phi.args[0]
+        return (
+            isinstance(union, tl.FunctionTerm)
+            and union.symbol == "Union"
+            and len(union.args) == 2
+            and (
+                (pl._ast_eq(union.args[0], left) and pl._ast_eq(union.args[1], right))
+                or
+                (pl._ast_eq(union.args[0], right) and pl._ast_eq(union.args[1], left))
+            )
+        )
+
+
+class InfiniteUnderBijectionRule(pl.InferenceRule):
+    """A bijection transfers infinitude in either direction."""
+
+    name = "InfiniteUnderBijection"
+    citation = "Infinite under bijection"
+    premise_arity = 2
+
+    def applies(self, candidates, phi):
+        if len(candidates) != 2:
+            return False
+        property_atom = next(
+            (candidate for candidate in candidates
+             if isinstance(candidate, fl.AtomicFormula)
+             and candidate.predicate == "Infinite"
+             and len(candidate.args) == 1),
+            None,
+        )
+        bijection_atom = next(
+            (candidate for candidate in candidates
+             if isinstance(candidate, fl.AtomicFormula)
+             and candidate.predicate == "Bijection"
+             and len(candidate.args) == 3),
+            None,
+        )
+        if property_atom is None or bijection_atom is None:
+            return False
+        if not isinstance(phi, fl.AtomicFormula) or phi.predicate != "Infinite" or len(phi.args) != 1:
+            return False
+        source = property_atom.args[0]
+        left, right = bijection_atom.args[1], bijection_atom.args[2]
+        if pl._ast_eq(source, left) and pl._ast_eq(phi.args[0], right):
+            return True
+        return pl._ast_eq(source, right) and pl._ast_eq(phi.args[0], left)
+
+
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
@@ -2485,6 +3196,7 @@ SET_DECLARATIONS = [
     pl.Declaration("Pair", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
     pl.Declaration("Finite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
     pl.Declaration("Infinite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
+    pl.Declaration("Cardinality", pl.DeclarationKind.PREDICATE, arity=2, type_name="finite cardinality"),
     pl.Declaration("Bijection", pl.DeclarationKind.PREDICATE, arity=3, type_name="bijection relation"),
 ]
 
@@ -2492,9 +3204,19 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     name="set theory",
     formula_parsers=[try_parse_set_expression],
     line_elaborators=[elaborate_subset_proof, elaborate_pairing_witness],
-    declaration_recipes=[SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE],
+    declaration_recipes=[
+        BIJECTION_DECLARATION_RECIPE,
+        FINITE_INFINITE_SET_DECLARATION_RECIPE,
+        SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE,
+    ],
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
-           PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule()],
+           PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule(),
+           ExtensionalityAxiomRule(), FoundationAxiomRule(), ChoiceAxiomRule(),
+           EmptySetFiniteRule(), EmptySetCardinalityRule(), CardinalityImpliesFiniteRule(),
+           FiniteSubsetRule(), FiniteUnionRule(), FinitePowerSetRule(),
+           FiniteCartesianProductRule(), FiniteUnderBijectionRule(), InfiniteUnderBijectionRule(),
+           CardinalityUnderBijectionRule(), CardinalityPowerSetRule(),
+           CardinalityCartesianProductRule(), CardinalityDisjointUnionRule()],
     # No formula is cited with `(Axiom)`; the four axioms are cited by name.
     # Closed, so that the empty list does not mean "any formula".
     axioms_closed=True,

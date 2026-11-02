@@ -5,7 +5,7 @@ on:
     branches:
       - '*'
     # Skip redundant branch-push runs for documentation-only changes.
-    # Pull requests below still run the full suite for every change.
+    # Pull requests below run the named default suite for each change.
     paths-ignore:
       - '*.md'
       - '**/*.md'

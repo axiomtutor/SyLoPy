@@ -243,3 +243,12 @@ def test_symbolic_set_defining_property_requires_declared_predicate():
         pp.parse_proof_text(
             "1. Let Y be a set with defining property P. (Declaration)\n"
         )
+
+
+def test_symbolic_set_defining_property_avoids_a_set_name_as_bound_variable():
+    entries, _ = pp.parse_proof_text(
+        "1. Let P be a unary predicate, u be a set with defining property P. (Declaration)\n"
+    )
+    formula = entries[0][1]
+    assert isinstance(formula, fl.ForAll)
+    assert formula.var != "u"

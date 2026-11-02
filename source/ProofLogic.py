@@ -1722,6 +1722,26 @@ def _term_occurs_in_term(needle: tl.Term, haystack: tl.Term) -> bool:
     return False
 
 
+def _predicate_occurs_in_formula(name: str, formula) -> bool:
+    if isinstance(formula, fl.AtomicFormula):
+        return formula.predicate == name
+    if isinstance(formula, fl.And):
+        return any(_predicate_occurs_in_formula(name, item) for item in formula.conjuncts)
+    if isinstance(formula, fl.Or):
+        return any(_predicate_occurs_in_formula(name, item) for item in formula.disjuncts)
+    if isinstance(formula, fl.Not):
+        return _predicate_occurs_in_formula(name, formula.sub)
+    if isinstance(formula, fl.Implies):
+        return (_predicate_occurs_in_formula(name, formula.antecedent)
+                or _predicate_occurs_in_formula(name, formula.consequent))
+    if isinstance(formula, fl.Iff):
+        return (_predicate_occurs_in_formula(name, formula.left)
+                or _predicate_occurs_in_formula(name, formula.right))
+    if isinstance(formula, (fl.ForAll, fl.Exists)):
+        return _predicate_occurs_in_formula(name, formula.body)
+    return False
+
+
 def _term_occurs_in_formula(needle: tl.Term, formula) -> bool:
     """True if the term `needle` occurs anywhere inside `formula`.
 
@@ -2923,7 +2943,19 @@ class ConstantGeneralizingMatcher:
             return False
 
         if isinstance(pattern, fl.AtomicFormula):
-            if pattern.predicate != target.predicate or len(pattern.args) != len(target.args): return False
+            if len(pattern.args) != len(target.args): return False
+            if isinstance(pattern.predicate, str):
+                if pattern.predicate in self.names:
+                    if not isinstance(target.predicate, str):
+                        return False
+                    if pattern.predicate not in self.mapping:
+                        self.mapping[pattern.predicate] = target.predicate
+                    elif self.mapping[pattern.predicate] != target.predicate:
+                        return False
+                elif pattern.predicate != target.predicate:
+                    return False
+            elif pattern.predicate != target.predicate:
+                return False
             for pa, ta in zip(pattern.args, target.args):
                 if isinstance(pa, tl.Term) and isinstance(ta, tl.Term):
                     if not self.match_term(pa, ta): return False
@@ -3037,7 +3069,9 @@ def _substitute_constants_in_formula(formula: fl.Formula, mapping: Dict[str, tl.
     if isinstance(formula, fl.AtomicFormula):
         predicate = formula.predicate
         if isinstance(predicate, str):
-            predicate = getattr(mapping, "predicates", {}).get(predicate, predicate)
+            replacement = getattr(mapping, "predicates", {}).get(predicate, predicate)
+            if isinstance(replacement, str):
+                predicate = replacement
         return fl.AtomicFormula(predicate, [
             _substitute_constants_in_term(a, mapping, bound) if isinstance(a, tl.Term) else a
             for a in formula.args
@@ -3124,13 +3158,17 @@ class TheoremRule(AxiomSchemaRule):
 
     def __init__(self, name: str, premises: List[fl.Formula], conclusion: fl.Formula,
                  generalized_names: List[str], required_axioms: Iterable[fl.Formula] = (),
-                 required_rules: Iterable[InferenceRule] = ()):
+                 required_rules: Iterable[InferenceRule] = (),
+                 declaration_requirements: Iterable[Declaration] = (),
+                 relation_requirements: Iterable[dict] = ()):
         self.name = name
         self.premises = list(premises)
         self.conclusion = conclusion
         self.generalized_names = list(generalized_names)
         self.required_axioms = list(required_axioms)
         self.required_rules = list(required_rules)
+        self.declaration_requirements = list(declaration_requirements)
+        self.relation_requirements = list(relation_requirements)
         self.premise_arity = len(self.premises)
 
     def same_configuration(self, other: Any) -> bool:
@@ -3159,6 +3197,19 @@ class TheoremRule(AxiomSchemaRule):
             # them. The theorem is not citable at this instance.
             return None
 
+    def _match_instance(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[tuple]:
+        matcher = ConstantGeneralizingMatcher(self.generalized_names)
+        if not matcher.match_formula(self.conclusion, phi):
+            return None
+        try:
+            expected = [
+                _substitute_constants_in_formula(p, matcher.mapping)
+                for p in self.premises
+            ]
+        except _UnsafeSubstitution:
+            return None
+        return matcher.mapping, expected
+
     def _unavailable(self, context: "RuleContext") -> List[str]:
         """What this theorem's proof used that the proof around `context`
         does not have, one phrase each."""
@@ -3175,12 +3226,49 @@ class TheoremRule(AxiomSchemaRule):
                            context: "RuleContext") -> bool:
         if self._unavailable(context):
             return False
-        return super().applies(candidates, phi)
+        instance = self._match_instance(phi, candidates)
+        if instance is None:
+            return False
+        mapping, expected = instance
+        if len(candidates) != len(expected):
+            return False
+        if not all(_ast_eq(c, e) for c, e in zip(candidates, expected)):
+            return False
+        return self._relation_requirements_hold(mapping, context)
+
+    def _relation_requirements_hold(self, mapping: Dict[str, Any], context: "RuleContext") -> bool:
+        for requirement in self.relation_requirements:
+            relation = mapping.get(requirement["relation"], requirement["relation"])
+            if not isinstance(relation, str):
+                return False
+            declaration = context.declaration(relation)
+            if declaration is None:
+                return False
+            if declaration.kind != DeclarationKind.PREDICATE or declaration.arity != 2:
+                return False
+            metadata = dict(getattr(declaration, "metadata", ()) or ())
+            target_carrier = metadata.get("carrier")
+            carrier = requirement["carrier"]
+            if isinstance(mapping.get(carrier), tl.ConstantTerm):
+                carrier = mapping[carrier].name
+            elif isinstance(mapping.get(carrier), str):
+                carrier = mapping[carrier]
+            if target_carrier != carrier:
+                return False
+            properties = set(metadata.get("properties", ()) or ())
+            if not set(requirement["properties"]).issubset(properties):
+                return False
+        return True
 
     def explain_in_context(self, candidates: List[fl.Formula], phi: fl.Formula,
                            context: "RuleContext") -> Optional[str]:
         missing = self._unavailable(context)
         if not missing:
+            if self.relation_requirements:
+                instance = self._match_instance(phi, candidates)
+                if instance is not None and not self._relation_requirements_hold(instance[0], context):
+                    return (f"the theorem {self.name!r} requires a matching declared relation carrier "
+                            "and properties at the citation")
             return None
         return (f"the theorem {self.name!r} was proved using {' and '.join(missing)}, "
                 f"which this proof does not have")
@@ -3226,11 +3314,10 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     constant the theorem generalizes: the axiom would then be a hypothesis
     about it, and the constant would not be arbitrary.
 
-    Promotion refuses a proof that relied on structure recorded in a
-    declaration and stated by no formula -- a relation declared symmetric, a
-    carrier -- because the theorem would lose it and could then be cited for a
-    relation that is not symmetric (see `_structure_no_formula_states`). State
-    the property as a premise formula instead.
+    Promotion over relation declarations carries the relation's carrier and
+    properties as citation requirements checked against the declaration in the
+    citing proof's lexical scope. Other unformula-backed declaration structure
+    remains subject to the existing strict guards.
 
     `generalized_names` defaults to every symbol the proof's own top-level
     entries declare as an `OBJECT` (typically via `Let X be any ....`,
@@ -3258,31 +3345,42 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
             + (", ".join(repr(formula) for formula in derived) if derived else "nothing") + ")"
         )
 
-    uncarried = _structure_no_formula_states(validator.own_declarations)
-    if uncarried:
-        raise ValueError(
-            "cannot promote a proof that relies on structure recorded in its declarations, "
-            "which a theorem would lose: " + "; ".join(uncarried)
-            + ". State the property as a premise formula instead (todos.txt, item 8)"
-        )
-
     premises: List[fl.Formula] = []
     for given in validator.own_givens:
         if not any(_ast_eq(given, kept) for kept in premises):
             premises.append(given)
 
     declared_objects = _top_level_object_declarations(proof.entries)
+    declared_predicates = _top_level_predicate_declarations(proof.entries)
+    declared_symbols = declared_objects + declared_predicates
     if generalized_names is None:
-        generalized_names = declared_objects
+        generalized_names = declared_symbols
     else:
-        foreign = [n for n in dict.fromkeys(generalized_names) if n not in declared_objects]
+        foreign = [n for n in dict.fromkeys(generalized_names) if n not in declared_symbols]
         if foreign:
             raise ValueError(
-                f"cannot generalize over {', '.join(map(repr, foreign))}: only an object the proof declares "
-                f"at its top level can be generalized (here: "
-                + (", ".join(map(repr, declared_objects)) if declared_objects else "none") + ")"
+                f"cannot generalize over {', '.join(map(repr, foreign))}: only an object or predicate symbol "
+                f"the proof declares at its top level can be generalized (here: "
+                + (", ".join(map(repr, declared_symbols)) if declared_symbols else "none") + ")"
             )
         generalized_names = list(dict.fromkeys(generalized_names))
+
+    relation_requirements: List[dict] = []
+    declaration_requirements: List[Declaration] = []
+    for declaration in validator.own_declarations:
+        if declaration.kind != DeclarationKind.PREDICATE or declaration.arity != 2:
+            continue
+        if declaration.name not in declared_predicates:
+            continue
+        metadata = dict(getattr(declaration, "metadata", ()) or ())
+        if "carrier" not in metadata:
+            continue
+        declaration_requirements.append(declaration)
+        relation_requirements.append({
+            "relation": declaration.name,
+            "carrier": metadata["carrier"],
+            "properties": tuple(metadata.get("properties", ()) or ()),
+        })
 
     required_axioms, required_rules = _promotion_requirements(validator)
     for axiom in required_axioms:
@@ -3293,8 +3391,22 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
                 f"cannot generalize over {entangled!r}: the theorem requires the axiom {axiom!r}, "
                 f"which mentions it, so {entangled!r} is not arbitrary"
             )
+        entangled_predicate = next(
+            (n for n in generalized_names
+             if _predicate_occurs_in_formula(n, axiom)),
+            None,
+        )
+        if entangled_predicate is not None:
+            raise ValueError(
+                f"cannot generalize over {entangled_predicate!r}: the theorem requires the axiom "
+                f"{axiom!r}, which mentions it, so {entangled_predicate!r} is not arbitrary"
+            )
 
-    return TheoremRule(name, premises, conclusion, generalized_names, required_axioms, required_rules)
+    return TheoremRule(
+        name, premises, conclusion, generalized_names, required_axioms, required_rules,
+        declaration_requirements=declaration_requirements,
+        relation_requirements=relation_requirements,
+    )
 
 
 def _promotion_requirements(validator: "ProofValidator") -> Tuple[List[fl.Formula], List[InferenceRule]]:
@@ -3414,6 +3526,29 @@ def _top_level_object_declarations(entries: list) -> List[str]:
                 for d in justification[1]
                 if d.kind == DeclarationKind.OBJECT
                 and d.type_name not in {"existential witness", "definition"}
+            )
+    return names
+
+def _top_level_predicate_declarations(entries: list) -> List[str]:
+    """Names of every top-level declared relation symbol.
+
+    Plain predicates are fixed vocabulary: they do not acquire an independent
+    carrier/property claim merely by being declared.  Relation declarations
+    carry carrier metadata and are the predicate-shaped declarations whose
+    symbol may be promoted with matching citation requirements.
+    """
+    names: List[str] = []
+    for e in entries:
+        parsed = _classify_entry(e)
+        if isinstance(parsed, str) or parsed.is_subproof_block:
+            continue
+        justification = parsed.justification
+        if isinstance(justification, tuple) and len(justification) >= 2 and isinstance(justification[1], list):
+            names.extend(
+                d.name
+                for d in justification[1]
+                if d.kind == DeclarationKind.PREDICATE
+                and "carrier" in dict(getattr(d, "metadata", ()) or ())
             )
     return names
 
@@ -3869,13 +4004,35 @@ def _wlog_matches_in(left, right, env_left: dict, env_right: dict, depth: int) -
     if isinstance(left, fl.Implies):
         return (_wlog_matches_in(left.antecedent, right.antecedent, env_left, env_right, depth)
                 and _wlog_matches_in(left.consequent, right.consequent, env_left, env_right, depth))
+    if isinstance(left, fl.Equals):
+        return (
+            (_wlog_matches_in(left.left, right.left, env_left, env_right, depth)
+             and _wlog_matches_in(left.right, right.right, env_left, env_right, depth))
+            or
+            (_wlog_matches_in(left.left, right.right, env_left, env_right, depth)
+             and _wlog_matches_in(left.right, right.left, env_left, env_right, depth))
+        )
     if isinstance(left, fl.Iff):
-        return (_wlog_matches_in(left.left, right.left, env_left, env_right, depth)
-                and _wlog_matches_in(left.right, right.right, env_left, env_right, depth))
+        return (
+            (_wlog_matches_in(left.left, right.left, env_left, env_right, depth)
+             and _wlog_matches_in(left.right, right.right, env_left, env_right, depth))
+            or
+            (_wlog_matches_in(left.left, right.right, env_left, env_right, depth)
+             and _wlog_matches_in(left.right, right.left, env_left, env_right, depth))
+        )
     if isinstance(left, (fl.ForAll, fl.Exists)):
         return _wlog_matches_in(
             left.body, right.body,
             {**env_left, left.var: depth}, {**env_right, right.var: depth}, depth + 1)
+    if isinstance(left, fl.AtomicFormula) and isinstance(right, fl.AtomicFormula):
+        if left.predicate == right.predicate == "=" and len(left.args) == len(right.args) == 2:
+            return (
+                (_alpha_eq_in(left.args[0], right.args[0], env_left, env_right, depth)
+                 and _alpha_eq_in(left.args[1], right.args[1], env_left, env_right, depth))
+                or
+                (_alpha_eq_in(left.args[0], right.args[1], env_left, env_right, depth)
+                 and _alpha_eq_in(left.args[1], right.args[0], env_left, env_right, depth))
+            )
     return _alpha_eq_in(left, right, env_left, env_right, depth)
 
 
@@ -5402,8 +5559,15 @@ class ProofValidator:
                 elif decl.kind not in (DeclarationKind.CLOSED_FORMULA, DeclarationKind.PREDICATE):
                     return make_error(CATEGORY_DECLARATION_KIND_MISMATCH,
                                       f"symbol '{phi.predicate}' is declared as {decl.kind}, but is used as a proposition")
-            for arg in phi.args:
+            for arg_index, arg in enumerate(phi.args):
                 if isinstance(arg, tl.Term):
+                    if (phi.predicate == "Bijection" and arg_index == 0
+                            and isinstance(arg, tl.ConstantTerm)):
+                        function_decl = declarations.lookup(arg.name)
+                        if (function_decl is not None
+                                and function_decl.kind == DeclarationKind.FUNCTION
+                                and function_decl.arity == 1):
+                            continue
                     err = check_term(arg)
                     if err:
                         return err

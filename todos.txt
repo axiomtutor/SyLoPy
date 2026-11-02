@@ -21,7 +21,7 @@ promotion, and regression corpus are implemented.
 ### Open findings
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
-  proofs require arithmetic laws not currently axiomatized. This is an owner
+  proofs require divisibility-related laws not currently axiomatized. This is an owner
   decision list, **not** authorization to add axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
   premises are parsed as formulas, not declaration clauses; compound-declaration
@@ -29,6 +29,25 @@ promotion, and regression corpus are implemented.
 - [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): resolved. Relation
   descriptors after commas, including `irreflexive`, `asymmetric`, and `total`,
   compose with the existing descriptor and property parsing paths.
+
+## Project-state update: 2026-11-02
+
+- Named Python test suites are implemented. `default` is the PR/local project
+  suite, `extended` contains the explicitly separated adversarial/audit tests,
+  and `all` runs both suites.
+- `./run_tests.sh` runs the `default` suite plus every enforced and informational
+  proof fixture suite.
+- Named set-theory axiom citations now include extensionality, foundation/regularity,
+  and choice. Existing equality/subset reasoning remains the implementation of
+  the extensionality theorem's mutual-subset direction.
+- Replay counterpart matching treats equality and biconditional sides
+  symmetrically, while implication remains directional.
+- There are no active pytest `xfail` tests or fixture-expected-failure markers.
+- The complete suite currently verifies 2176 Python tests and 502 proof
+  fixtures (397 enforced and 105 informational).
+- Symbol/function/predicate replay in `Mutatis mutandis` and promotion over
+  declared relation structure are fully integrated. The complete suite has no
+  xfailed tests and no fixture-expected-failure results.
 
 
 ## Architecture and correctness invariants
@@ -96,8 +115,8 @@ Constraints and open decisions:
   `Set property`. Implemented for `Let Y be a set with defining property P. (Declaration)`:
   the declaration requires an already-declared unary predicate `P`, records
   `defining_property=P` in declaration metadata, and generates the ordinary
-  `forall u, (In(u, Y) iff P(u))` formula. Pending: exact subproof replay and
-  expanded fixture coverage.
+  `forall u, (In(u, Y) iff P(u))` formula. Exact WLOG and Mutatis replay
+  coverage is included in focused tests and proof fixtures.
 - **Declared unary functions:** typed declarations of the form
   `Let f: X -> Y be a unary function. (Declaration)` lower to unary function
   declarations with `domain=X` and `codomain=Y` metadata; both set names must
@@ -106,14 +125,14 @@ Constraints and open decisions:
   `A union B`, `A intersection B`, `A cross B`, `pair(a, b)`, and
   `the power set of A`; these lower to declared function symbols and ordinary
   function terms rather than hidden kernel operations.
-- **Infinity semantics:** the citation-shape rule exists, but the broader
-  treatment of finite/infinite sets is not implemented. The intended set I has
-  an abstract membership property P; being infinite is a separate property of
-  I, not its defining membership condition. Finite means bijective with
-  {0, ..., n-1} for a metatheoretic natural number n. Quantifying over those
-  Python integers is not object-language quantification, a risk to resolve
-  before implementation. The owner approved implementing it on 2026-10-30. A
-  bijection is a function, so it follows the declared-function work below.
+- **Infinity and finite semantics:** focused support is implemented for
+  `A is finite`, `A is infinite`, `Finite(A)`, `Infinite(A)`, typed finite/infinite
+  and bijection declarations, `Bijection(f, A, B)` claims, and finite/infinite
+  transfer across a bijection. Explicit metatheoretic cardinalities use
+  `Cardinality(A, n)`, zero/successor-free integer arithmetic for finite
+  cardinal operations, cardinal transfer under bijections, and closure rules for
+  subsets, unions, products, and power sets. Python integers remain metadata
+  values rather than object-language quantifiers or proof variables.
 - **Witnesses:** `Existence from L` names a witness from an existing existential
   through the ordinary scoped declaration path. The axiom citation itself does
   not introduce the witness. The older direct Pairing-witness form remains for
@@ -198,10 +217,17 @@ these without an owner decision.
 
 ### Number theory and discrete mathematics
 
-- Number theory deliberately supplies only its documented arithmetic laws.
+- Number theory is about integers, divisibility, primes, and related properties;
+  it is separate from arithmetic foundations such as Peano or Robinson
+  arithmetic. Number theory deliberately supplies only its documented
+  divisibility and integer-operation laws.
   Check the header of `source/NumberTheory.py` and [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98)
   before writing a proof that appears to require another law. Do not add axioms
   as part of an example-writing task.
+- A successor function belongs to natural-number/arithmetic foundations and is
+  not missing machinery for implementing issue #98. Do not infer or propose a
+  `Succ`-based axiom for a divisibility proof merely because successor,
+  induction, or arithmetic was mentioned.
 - A relation on X is a subset of X × X (owner decisions, 2026-10-29, which settled
   [issue #136](https://github.com/axiomtutor/SyLoPy/issues/136) as no defect and
   made the subset a fact of the declaration). `Let R be a relation on X` states
@@ -260,11 +286,10 @@ decided on 2026-10-31 (the owner agreed with both recommendations):
   declarations still generalize by default. Implemented and tested by
   `test_existence_witness_is_not_a_default_generalized_parameter`.
 - Promoting theorems over declared relation symbols (for example, a theorem about
-  any equivalence relation) needs predicate-symbol generalization and a way to
-  require matching properties/carrier on the citing declaration. That capability
-  does not exist yet; the related theorem is checked but not promoted. Decided:
-  yes, after the declared-function work (item 3 of the owner decisions below). The
-  route that fits the sugar principle: have declarations state a relation's
+  any equivalence relation) generalizes relation predicate symbols and carries
+  the source relation's carrier and property metadata as citation requirements.
+  Citing declarations must provide the matching carrier and at least the declared
+  properties. The route fits the sugar principle: declarations state a relation's
   properties as formulas, as they now state `R ⊆ X × X`, so a promoted theorem
   carries them as premises, and generalize over the relation symbol. The same
   mechanism is what "any group" needs later.
@@ -275,15 +300,34 @@ These are directions, not an automatically authorized feature queue. Prefer
 small, independently testable increments; check the current issues, PRs, and
 collaboration handoff before starting.
 
-1. **Grow examples and regression coverage.** Continue adding useful informational
-   proof patterns, especially algebraic and order-theoretic examples, without
-   duplicating existing fixtures or changing expected results to hide failures.
-2. **Use theory-local extension points.** New syntax and mathematical structures
-   should use theory environments, phrase parsers, declaration recipes, rules,
-   and focused examples rather than generic parser/elaboration special cases.
-3. **Keep the public API and docs aligned.** The README documents the recommended
-   API and how to run the proof corpus; update it and `docs/PROOF_FILE_FORMAT.md`
-   alongside user-visible changes.
+1. **Issue #98 divisibility laws:** the remaining divisibility-related laws and
+   proof coverage they require are an owner decision, not permission to invent
+   axioms. Number theory here concerns divisibility and integer properties;
+   successor-based Peano/Robinson arithmetic is a separate foundation and not
+   implicit machinery for resolving issue #98. Preserve the owner-list policy.
+
+   Message from owner: Implement this module and create reasonable axioms.  For example, axioms about 0, 1, addition, multiplication, division.  The number theory module should supply definitions of divisibility, prime, congruence.
+
+2. **Finite/infinite-set semantics:** focused declarations, predicates,
+   bijections, exact cardinalities, and transfer/closure rules are implemented.
+   Cardinal values are metatheoretic nonnegative integers; they are not object-language
+   terms or Python quantifiers inside a proof.
+3. **Relation-symbol and declared-structure theorem promotion:** implemented.
+   Promoted theorems generalize top-level declared predicate/relation symbols and
+   require matching carrier/property metadata on declarations at citation sites.
+4. **Symbolic defining-property coverage:** the basic declaration formula,
+   metadata, exact nested WLOG replay coverage, and positive/negative Mutatis
+   replay fixtures are implemented.
+5. **Standalone target/red-team fixtures:** the implementation work for
+   arbitrary-property WLOG and closed `(Axiom)` behavior is covered by focused
+   tests. Expanding optional standalone J33/J34 target fixtures is still
+   available work, not a correctness blocker.
+6. **Example coverage:** continue adding useful informational proof patterns,
+   especially algebraic and order-theoretic examples, without duplicating
+   fixtures or changing expected outcomes to conceal failures.
+7. **Public API and documentation alignment:** keep README and
+   `docs/PROOF_FILE_FORMAT.md` synchronized with new syntax, suites, declaration
+   behavior, and verification commands.
 
 ## Owner decisions
 
@@ -297,28 +341,29 @@ Approved, in the order Claude will take them (one feature at a time):
    set-theory constraints above.
 2. Extending WLOG to arbitrary properties. J33 (ChatGPT) writes the target
    proofs first.
-3. Declaring function symbols in proof text and making set operations into
-   terms. The owner's words: "declare everything". There is no agreed design;
-   a design note and the choices that matter go to the owner first.
-4. A symbolic defining property for sets without an explicit characterization
-   (designed together with 3).
+3. Declared function symbols in proof text and making set operations into terms.
+   Implemented for typed unary declarations and the documented set-operation
+   term forms. The general declared-symbol and API design remains subject to the
+   existing owner guidance; relation-symbol promotion follows this work.
+4. A symbolic defining property for sets without an explicit characterization.
+   Basic declaration lowering and metadata are implemented; exact replay and
+   expanded fixture coverage remain TODO items.
 5. The broader Infinity/finite-set semantics (after 3, since a bijection is a
    function).
 6. Generalizing promoted theorems over relation symbols and their declared
    structure (after 3; see the policy questions above).
 
-Decided against for now:
+Current implementation direction:
 
-- Extending `Mutatis mutandis` beyond names, terms and symbols (repeating a
-  closed block of several lines; counterpart lines that differ by the symmetry
-  of `=` or `<->`). The owner is not sure it is wanted and will raise it if it
-  is. Do not start it.
+- `=` and `<->` counterpart matching in replay is now symmetry-sensitive.
+- Closed multi-line Mutatis range replay is still outstanding implementation
+  work; it requires replaying each suffix line in a fresh validated scope rather
+  than merely repeating the final model entry.
 - Major theory modules such as abstract algebra or topology: later, not now.
 - Changing the witness-generalization policy: no change (decided 2026-10-31).
 
 ## Owner approval required — do not start without approval
 
-- Extending `Mutatis mutandis` beyond names, terms and symbols (see above).
 - Adding major theory modules such as abstract algebra or topology (later).
 
 ## Contributor workflow

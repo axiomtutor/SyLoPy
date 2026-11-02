@@ -29,11 +29,27 @@ Keep theory-specific syntax and interpretation in theory environments and declar
 - `todos.txt` is the source of truth for feature status, correctness invariants, design decisions, and owner-approval requirements. Do not duplicate that feature inventory here; read the relevant subsection before touching WLOG, `Mutatis mutandis`, axiom citations, witness handling, or theorem promotion.
 - `JOBS_FOR_CHATGPT.md` is the delegated-work tracker. Completed task specifications are preserved in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md` for historical context only; an archived specification is not current authorization to work.
 - Do not start an item marked as requiring owner approval in `todos.txt` without explicit approval.
+- Do not confuse number theory with successor-based arithmetic foundations.
+  In this project, number theory includes integers and divisibility; Peano or
+  Robinson arithmetic, successor structure, and their axioms are separate
+  concerns. Do not use `Succ` or invent successor axioms to resolve issue #98
+  divisibility-proof gaps.
 
 ## Parser and test discipline
 
 - New surface-syntax cases belong in `parse_oracle/`, with `expect` written as the intended plain-logic reading. Investigate disagreements rather than automatically weakening the oracle.
-- Run `./run_tests.sh` for full verification. Preserve the enforced fixture corpus and report known failures separately from regressions.
+- Run `./run_tests.sh` for the default verification suite. It runs the `default`
+  Python suite and every proof fixture suite. Use `./run_tests.sh --suite
+  extended` or `./run_tests.sh --suite all` for the explicitly named slower
+  suites. Preserve the enforced fixture corpus and report known failures
+  separately from regressions.
+- Named suites are `default`, `extended`, and `all`. Use `./run_tests.sh
+  --list-batches` to list them and `./run_tests.sh --list-suites` to list proof
+  fixture suites. The `extended` marker applies only to tests deliberately
+  separated into an extended audit suite.
+- There are currently no active pytest `xfail` tests or strict expected-failure
+  cases. Do not reintroduce `xfail` to conceal a regression; implement or file
+  a finding with the repository's issue/owner policy.
 - Negative proof tests must fail for the intended rule/guard, not due to parsing, undeclared symbols, or unrelated scope errors.
 - Report the exact tested commit/CI run, Python test totals, coverage, enforced fixtures, informational fixtures, and any remaining failures.
 

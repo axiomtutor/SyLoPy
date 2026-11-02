@@ -20,8 +20,8 @@ stated, and cases 21 to 23 are their valid twins.
 2. a = b. (Reiteration from 1)
 3. b = a. (Mutatis mutandis, 2)
 
-# 2: Exchanging equality sides still needs a counterpart for the cited equality
-## Invalid: cited equality — the repeated Reiteration needs a visible line saying b = a.
+# 2: Exchanging equality sides cannot turn Reiteration into a symmetry proof
+## Invalid: replayed equality — the repeated Reiteration does not derive the reversed equality.
 ### then b = a.
 
 1. Let a and b be objects such that: a = b. (Premise)
