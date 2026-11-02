@@ -508,12 +508,17 @@ PLAIN_RELATION_CLAIMS_SYMMETRY = """
 """
 
 
-def test_a_theorem_that_relied_on_relation_properties_is_not_promoted():
+def test_a_theorem_that_relied_on_relation_properties_is_promoted_with_metadata_requirements():
     entries, _ = pp.parse_proof_text(SYMMETRY_PROOF)
     proof = pl.Proof(entries)
-    assert proof.check()[0], "the proof itself is fine; only promoting it is refused"
-    with pytest.raises(ValueError, match=r"'R'.*symmetric"):
-        pl.promote_theorem("Symmetric relations reverse every pair", proof)
+    assert proof.check()[0]
+    theorem = pl.promote_theorem("Symmetric relations reverse every pair", proof)
+    assert "R" in theorem.generalized_names
+    assert theorem.relation_requirements == [{
+        "relation": "R",
+        "carrier": "X",
+        "properties": ("symmetric",),
+    }]
 
 
 def test_the_text_exploit_that_proved_a_plain_relation_symmetric_no_longer_works(capsys):
@@ -529,8 +534,7 @@ def test_the_text_exploit_that_proved_a_plain_relation_symmetric_no_longer_works
 """)
     assert first[:2] == ("1", True)
     assert second[:2] == ("2", False)
-    assert "no rule named 'Symmetric relations reverse every pair'" in second[2]
-    assert "was not promoted" in capsys.readouterr().out
+    assert "requires exactly 1 candidate premise(s)" in second[2]
 
 
 def test_a_theorem_about_a_predicate_whose_property_is_a_premise_is_promoted():
@@ -550,13 +554,15 @@ end subproof
     assert premises_of(theorem)[0].startswith("(∀a. (∀b.")
 
 
-def test_a_relation_declared_without_properties_still_refuses_promotion_by_default():
-    # Its carrier is structure a rule reads (the relation rules check it), so
-    # promotion refuses rather than guess that nothing depends on it.
+def test_a_relation_declared_without_properties_is_promoted_with_carrier_requirement():
     entries, _ = pp.parse_proof_text("""
 1. Let X be any set, R be a relation on X. (Declaration)
 2. Let a be in X. (Declaration)
 3. In(a, X) or In(a, X). (Disjunction Introduction from 2)
 """)
-    with pytest.raises(ValueError, match=r"'R'"):
-        pl.promote_theorem("About a plain relation", pl.Proof(entries))
+    theorem = pl.promote_theorem("About a plain relation", pl.Proof(entries))
+    assert theorem.relation_requirements == [{
+        "relation": "R",
+        "carrier": "X",
+        "properties": (),
+    }]

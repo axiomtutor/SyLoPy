@@ -1,0 +1,71 @@
+(
+Symbolic defining-property replay in nested subproofs. Cases 1 and 3 are
+positive; cases 2 and 4 keep the Mutatis and WLOG replay guards strict.
+)
+
+# 1: Symbolic declaration cited outside a repeated subproof
+## Proof that
+### a symbolic set property can be replayed by Mutatis mutandis inside a subproof.
+
+1. Let P be a unary predicate. (Declaration)
+2. Let a, b be objects. (Declaration)
+3. Let Y be a set with defining property P. (Declaration)
+4. In(a, Y). (Premise)
+5. In(b, Y). (Premise)
+6. P(a) -> P(a). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. P(a). (Assumption for Conditional Introduction)
+ 6.2. P(a). (Set property from 3, 4)
+end subproof
+7. P(b) -> P(b). (Mutatis mutandis, 6)
+
+# 2: Mutatis must not repeat a declaration added inside its argument
+## Invalid: the nested declaration is new structure in the argument.
+
+1. Let P be a unary predicate. (Declaration)
+2. Let a, b be objects. (Declaration)
+3. P(a) -> P(a). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. P(a). (Assumption for Conditional Introduction)
+ 3.2. Let Y be a set with defining property P. (Declaration)
+ 3.3. P(a). (Reiteration from 3.1)
+end subproof
+4. P(b) -> P(b). (Mutatis mutandis, 3)
+
+# 3: WLOG replay with an exact symbolic declaration in a nested subproof
+## Proof that
+### a nested symbolic declaration and its citation replay to the other WLOG case.
+
+1. Let a, b be objects. (Declaration)
+2. Let P be a unary predicate. (Declaration)
+3. Let H, Q be closed formulas. (Declaration)
+4. H -> Q. (Premise)
+5. P(a). (Premise)
+6. P(b). (Premise)
+7. P(a) or P(b). (Premise)
+8. P(a). (WLOG from 7)
+9. H -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 9.1. H. (Assumption for Conditional Introduction)
+ 9.2. Let Y be a set with defining property P. (Declaration)
+ 9.3. P(a). (Reiteration from 5)
+ 9.4. Q. (Modus Ponens from 9.1, 4)
+end subproof
+
+# 4: WLOG replay rejects a missing counterpart in the nested case
+## Invalid: P(b) has no visible counterpart for the replay of line 5.
+
+1. Let a, b be objects. (Declaration)
+2. Let P be a unary predicate. (Declaration)
+3. Let H, Q be closed formulas. (Declaration)
+4. H -> Q. (Premise)
+5. P(a). (Premise)
+6. P(a) or P(b). (Premise)
+7. P(a). (WLOG from 6)
+8. H -> Q. (Conditional Introduction from subproof below)
+begin subproof
+ 8.1. H. (Assumption for Conditional Introduction)
+ 8.2. Let Y be a set with defining property P. (Declaration)
+ 8.3. P(a). (Reiteration from 5)
+ 8.4. Q. (Modus Ponens from 8.1, 4)
+end subproof

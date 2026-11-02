@@ -118,3 +118,14 @@ fixture red-team expansion remains optional.
 6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
 
 Historical note: this tracker replaces the former long-form queue. Archived job text is retained for provenance, but current repository guidance and explicit owner decisions take precedence.
+
+## Current project infrastructure
+
+- The default CI/local project run is named `default`; it runs the standard
+  Python tests and all proof fixture suites.
+- The slower audit/adversarial tests are named `extended`; they are not run by
+  `./run_tests.sh` unless `--suite extended`, `--suite all`, or the compatibility
+  flag `--extended` is requested.
+- There are currently no active pytest `xfail` tests or strict expected-failure
+  cases. Standalone J33/J34 fixture expansion remains optional coverage work
+  rather than an unresolved correctness blocker.

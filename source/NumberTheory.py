@@ -66,7 +66,7 @@ subset notation already follows (see `ELABORATION_ARCHITECTURE.md`).
 
 Parity wording has an intentionally smaller commitment: `n is even` and
 `n is odd` lower to the unary predicates `Even(n)` and `Odd(n)`.
-These predicates are vocabulary only; this module adds no arithmetic axioms
+These predicates are vocabulary only; this module adds no axioms
 characterizing parity. The ambiguous shorthand `n is even or odd` remains
 rejected; write the subject explicitly in both alternatives.
 Existential Introduction/Elimination, already in `ProofLogic.default_rules()`,
@@ -514,7 +514,5 @@ end subproof
     proof = pl.Proof(entries)
     ok, err = proof.check_detailed()
     print("NumberTheory self-check:", "PASS" if ok else f"FAIL ({err})")
-
-
 
 

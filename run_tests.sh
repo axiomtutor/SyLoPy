@@ -9,9 +9,87 @@ export PYTHONPATH="$(cd "$ROOT/.." && pwd)${PYTHONPATH:+:$PYTHONPATH}"
 #   ./run_tests.sh --suite testDiscreteMath
 #   ./run_tests.sh --suite testDiscreteMath --verbose
 #   ./run_tests.sh --list-suites
+#   ./run_tests.sh --list-batches
+#   ./run_tests.sh --suite default
+#   ./run_tests.sh --suite extended
 #   ./run_tests.sh --extended
+if (( $# == 1 )) && [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    cat <<'EOF'
+Usage: ./run_tests.sh [options]
+
+Python test suite options:
+  --suite default     Run the current default Python suite
+  --suite extended    Run the named extended Python suite
+  --suite all         Run every Python suite
+  --extended          Compatibility alias for --suite all
+  --list-batches      List named Python test suites
+
+Proof fixture options:
+  --suite NAME        Run one proof fixture suite
+  --list-suites       List proof fixture suite names
+  --verbose           Show proof-level fixture output
+EOF
+    exit 0
+fi
+
+if (( $# == 1 )) && [[ "$1" == "--list-batches" ]]; then
+    cat <<'EOF'
+default  - current Python tests, run by default
+extended - named adversarial/regression Python tests
+all      - every Python test suite
+EOF
+    exit 0
+fi
+
+if (( $# == 1 )) && [[ "$1" == "--suite" || "$1" == "--extended" ]]; then
+    if [[ "$1" == "--suite" ]]; then
+        echo "Missing suite name. Use --list-batches or --list-suites." >&2
+        exit 2
+    fi
+fi
+
+if (( $# == 2 )) && [[ "$1" == "--suite" ]]; then
+    case "$2" in
+        default)
+            python3 -m coverage run --source="$ROOT/source" -m pytest -q --suite default pytest_tests
+            status=$?
+            python3 -m coverage report --format=total >/dev/null
+            coverage_status=$?
+            python3 "$ROOT/source/validate_all_proofs.py"
+            fixture_status=$?
+            if (( status != 0 || coverage_status != 0 || fixture_status != 0)); then
+                exit 1
+            fi
+            exit 0
+            ;;
+        extended)
+            python3 -m coverage run --source="$ROOT/source" -m pytest -q --suite extended pytest_tests
+            status=$?
+            python3 -m coverage report --format=total >/dev/null
+            coverage_status=$?
+            python3 "$ROOT/source/validate_all_proofs.py"
+            fixture_status=$?
+            if (( status != 0 || coverage_status != 0 || fixture_status != 0)); then
+                exit 1
+            fi
+            exit 0
+            ;;
+        all)
+            python3 -m coverage run --source="$ROOT/source" -m pytest -q --suite all pytest_tests
+            status=$?
+            python3 -m coverage report --format=total >/dev/null
+            python3 "$ROOT/source/validate_all_proofs.py"
+            fixture_status=$?
+            if (( status != 0 || fixture_status != 0)); then
+                exit 1
+            fi
+            exit 0
+            ;;
+    esac
+fi
+
 if (( $# == 1 )) && [[ "$1" == "--extended" ]]; then
-    python3 -m coverage run --source="$ROOT/source" -m pytest -q --extended pytest_tests
+    python3 -m coverage run --source="$ROOT/source" -m pytest -q --suite all pytest_tests
     status=$?
     python3 -m coverage report --format=total >/dev/null
     fixture_status=0
@@ -37,7 +115,7 @@ trap 'rm -f "$pytest_log"' EXIT
 # Keep the normal test run compact. Full pytest diagnostics remain available
 # by running pytest directly; fixture suites have their own --verbose mode
 # through this script.
-python3 -m coverage run --source="$ROOT/source" -m pytest -q --tb=no -m "not extended" pytest_tests >"$pytest_log" 2>&1
+python3 -m coverage run --source="$ROOT/source" -m pytest -q --tb=no --suite default pytest_tests >"$pytest_log" 2>&1
 pytest_status=$?
 
 if (( pytest_status == 0 )); then

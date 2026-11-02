@@ -184,6 +184,37 @@ def test_the_earliest_line_that_says_the_new_thing_is_cited(monkeypatch):
     assert seen[0].justification[2] == ["4", "5"]
 
 
+def test_symbolic_set_property_is_repeated_inside_a_subproof():
+    _accepted("""1. Let P be a unary predicate. (Declaration)
+2. Let a, b be objects. (Declaration)
+3. Let Y be a set with defining property P. (Declaration)
+4. In(a, Y). (Premise)
+5. In(b, Y). (Premise)
+6. P(a) -> P(a). (Conditional Introduction from subproof below)
+begin subproof
+ 6.1. P(a). (Assumption for Conditional Introduction)
+ 6.2. P(a). (Set property from 3, 4)
+end subproof
+7. P(b) -> P(b). (Mutatis mutandis, 6)
+""")
+
+
+def test_mutatis_does_not_repeat_a_symbolic_declaration_added_inside_the_argument():
+    err = _refused("""1. Let P be a unary predicate. (Declaration)
+2. Let a, b be objects. (Declaration)
+3. P(a) -> P(a). (Conditional Introduction from subproof below)
+begin subproof
+ 3.1. P(a). (Assumption for Conditional Introduction)
+ 3.2. Let Y be a set with defining property P. (Declaration)
+ 3.3. P(a). (Reiteration from 3.1)
+end subproof
+4. P(b) -> P(b). (Mutatis mutandis, 3)
+""")
+    assert err.category == pl.CATEGORY_RULE_MISMATCH
+    assert err.label == "4"
+    assert "may not add a hypothesis" in err.detail
+
+
 def test_inside_an_argument_with_a_subproof_only_the_outside_citations_change(monkeypatch):
     text = """1. Let a and b be objects. (Declare)
 2. Let P, Q and R be predicates. (Declare)
@@ -1545,11 +1576,11 @@ def test_conjuncts_and_disjuncts_may_come_in_another_order_even_below_a_quantifi
     assert pl._wlog_formula_matches(both, fl.And(_a("Q", "a"), _a("P", "a")))
 
 
-def test_a_conditional_and_a_biconditional_are_not_read_in_the_other_direction():
+def test_a_conditional_is_not_reversed_but_a_biconditional_is():
     forward = fl.Implies(_a("P", "a"), _a("Q", "a"))
     backward = fl.Implies(_a("Q", "a"), _a("P", "a"))
     assert not pl._wlog_formula_matches(forward, backward)
-    assert not pl._wlog_formula_matches(
+    assert pl._wlog_formula_matches(
         fl.Iff(_a("P", "a"), _a("Q", "a")), fl.Iff(_a("Q", "a"), _a("P", "a")))
 
 

@@ -48,6 +48,14 @@ authorization to implement old work.
 - `source/testProofs/`, `tests/setTheoryProofs/` - informational fixtures
 - `parse_oracle/` - independent parser cases
 
+## Set-theory cardinality status
+
+Set theory supports exact finite cardinalities through `Cardinality(A, n)`.
+Cardinal values are nonnegative metatheoretic integers, not object-language
+terms. The implementation provides finite-set closure and cardinal arithmetic
+for subsets, unions, Cartesian products, power sets, disjoint unions, and
+bijection transfer.
+
 ## Architecture invariants
 
 - Surface elaboration may change syntax into core formulas and entries, but it
@@ -69,19 +77,36 @@ Run the default batch:
 
 ```bash
 ./run_tests.sh
+# equivalent named suite
+./run_tests.sh --suite default
 ```
 
 Run only the standard Python tests:
 
 ```bash
-python3 -m pytest -q -m "not extended" pytest_tests
+python3 -m pytest -q -m default pytest_tests
+./run_tests.sh --suite default
 ```
 
 Run only extended adversarial tests or the complete suite:
 
 ```bash
 python3 -m pytest -q -m extended pytest_tests
-./run_tests.sh --extended
+./run_tests.sh --suite extended
+
+Run every Python suite:
+
+```bash
+python3 -m pytest -q --suite all pytest_tests
+./run_tests.sh --suite all
+./run_tests.sh --extended  # compatibility alias for --suite all
+```
+
+List suites with:
+
+```bash
+./run_tests.sh --list-batches
+```
 ```
 
 List and run fixture suites:

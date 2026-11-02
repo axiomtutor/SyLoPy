@@ -17,7 +17,7 @@ RULE_MISMATCH = pl.CATEGORY_RULE_MISMATCH
 # not allowed. Stages 2 and 3 allow it, so they are refused because the facts
 # that the repeated argument cites about the new symbols or term are not stated.
 REFUSALS = {
-    "2": ("3", BAD_REFERENCE, "no visible line says b = a"),
+    "2": ("3", RULE_MISMATCH, "'Reiteration' does not justify b = a"),
     "4": ("3", BAD_REFERENCE, "no visible line says R(g(b), b)"),
     "6": ("3", RULE_MISMATCH, "only a term without variables can replace a name"),
     "8": ("4", RULE_MISMATCH, "a repeated argument may not add a hypothesis"),

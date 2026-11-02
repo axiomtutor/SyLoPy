@@ -16,19 +16,18 @@ _sylo_run_tests_completion() {
     if [[ "$prev" == "--suite" ]]; then
         if [[ -x "$script" ]]; then
             suites="$("$script" --list-suites 2>/dev/null | awk '/^[[:space:]]+test/ {print $1}')"
-            COMPREPLY=( $(compgen -W "$suites" -- "$cur") )
+            python_suites="default extended all"
+            COMPREPLY=( $(compgen -W "$python_suites $suites" -- "$cur") )
         fi
         return 0
     fi
 
     case "$cur" in
         --*)
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --extended --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --help" -- "$cur") )
             ;;
         *)
-            # If the previous word is not --suite, complete options.  This
-            # also allows: ./run_tests.sh --<TAB>
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --extended --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --help" -- "$cur") )
             ;;
     esac
 }

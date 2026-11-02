@@ -331,6 +331,10 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 | Axiom of power set | PowerSetAxiom |
 | Power set axiom | PowerSetAxiom |
 | Axiom of infinity | InfinityAxiom |
+| Axiom of extensionality | ExtensionalityAxiom |
+| Axiom of foundation | FoundationAxiom |
+| Axiom of regularity | FoundationAxiom |
+| Axiom of choice | ChoiceAxiom |
 | WLOG | WLOG |
 | Without loss of generality | WLOG |
 | Mutatis mutandis | MutatisMutandis |
@@ -338,6 +342,12 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 The general `Set property` form is selected when the citation supplies lines; the bare form denotes the empty-set property. `Set equality` checks the two subset directions. `Uniqueness` combines a cited existential witness/existence formula with a conditional that every object satisfying the defining property equals the witness.
 
 WLOG replay is implemented for equality cases that differ in exactly one constant term and for arbitrary cases aligned structurally at the formula and term positions. Arbitrary alternatives may exchange one-to-one declared constant names; predicate names, formula structure, function symbols, quantifier structure, and bound-variable names must match. Replay checks each alternative and retains outside citations only when the exchange leaves the cited fact invariant (up to commutative ordering of `and`/`or`). `Mutatis mutandis` is implemented for names replaced by names or terms, and for predicate and function symbols replaced by others; see the next subsection.
+
+For `Let Y be a set with defining property P. (Declaration)`, replay substitutes
+the set name and symbolic predicate in both declaration metadata and the
+generated `forall u, (In(u, Y) iff P(u))` formula. Replay citations still
+require an exact visible counterpart; declarations themselves are not promoted
+or silently assumed by either replay mechanism.
 
 ### Mutatis mutandis: the same argument for other names, terms and symbols
 
@@ -540,11 +550,21 @@ Set-theory surface forms elaborate into ordinary first-order formulas. In partic
 - Bare `(Set property)` invokes the empty-set property and proves that an arbitrary object is not in the empty set. When references are supplied, `(Set property, L, P)` uses the cited characterization `L` and property `P` to derive the required instance.
 - `Set equality` concludes equality from two subset proofs. `Uniqueness` concludes the corresponding exists-unique formula from an existence formula and a conditional uniqueness proof.
 
-Pairing, Union, Power Set, and Infinity have named axiom-citation rules: `Axiom of pairing`, `Axiom of union`, `Axiom of power set`, and `Axiom of infinity`. They are the only way to cite these axioms: a line that restates one with `Axiom` is refused. They check the formula shape of the axiom instance; they do not introduce a witness by themselves. Union and Power Set accept a formula instantiated for a particular set, e.g. `Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, S) and In(u, v)))). (Axiom of union)` and `Exists Y, forall u, (In(u, Y) iff u subset S). (Axiom of power set)`. Infinity has no set parameter. Pairing's instance is `Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)`.
+Pairing, Union, Power Set, Infinity, Extensionality, Foundation/Regularity, and Choice have named axiom-citation rules: `Axiom of pairing`, `Axiom of union`, `Axiom of power set`, `Axiom of infinity`, `Axiom of extensionality`, `Axiom of foundation`, and `Axiom of choice`. Regularity and Foundation are aliases of the same named rule. These are the only named ways to cite these axioms: a line that restates one with bare `Axiom` is refused in closed set theory. The rules check their formula shape and do not introduce witnesses by themselves. Union and Power Set accept a formula instantiated for a particular set, e.g. `Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, S) and In(u, v)))). (Axiom of union)` and `Exists Y, forall u, (In(u, Y) iff u subset S). (Axiom of power set)`. Infinity has no set parameter. Pairing's instance is `Exists Y, forall u, (In(u, Y) iff (u = a or u = b)). (Axiom of pairing)`.
 
 After an axiom citation states an existential, name its witness with `Let Y be such a set. (Existence from L)`. The older direct Pairing-witness surface form—`There is a set Y = {a, b}. (Axiom of pairing)`—remains accepted for compatibility, but it is legacy rather than the design to extend. Do not use it as the template for Union, Power Set, or Infinity.
 
 Separation and Replacement are schema citations. For axiom-instance and `Set property` examples that are more representative of set-theory work, see the complete proofs below and the fixtures in `tests/setTheoryProofs/`.
+
+Finite sets can be declared with `Let A be a finite set. (Declaration)` or
+with an exact cardinality: `Let A be a finite set of cardinality 3.
+(Declaration)`. The equivalent formula forms are `A is finite`,
+`A has cardinality 3`, `A has 3 elements`, and `Cardinality(A, 3)`.
+Cardinality arguments are metatheoretic nonnegative integers; they are not
+proof variables or first-order object terms. The set-theory rules cover
+empty-set cardinality, cardinality-to-finiteness, finite subsets, unions,
+finite products and power sets, cardinal transfer under bijections, and
+cardinal arithmetic for products, power sets, and disjoint unions.
 
 Features explicitly deferred:
 

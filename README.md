@@ -78,6 +78,12 @@ is refused, with the name to cite instead. The informational ZFC fixture, whose 
 the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is approved
 and is the next feature.
 
+Finite/infinite set claims use the focused forms `A is finite`, `A is infinite`,
+and `Finite(A)`/`Infinite(A)`. Typed declarations such as
+`Let A be a finite set` or `Let f: A -> B be a bijection` register the
+corresponding property relation, and bijections transfer finite or infinite
+status between their declared domain and codomain.
+
 ### Number theory
 
 `source/NumberTheory.py` extends the base logic with natural-number reasoning,
@@ -297,22 +303,35 @@ all proof fixture suites:
 
 ### Running specific test batches
 
-The Python tests use an `extended` pytest marker. Tests carrying that marker
-are excluded from the default run.
+Python tests are organized into named suites. The `default` suite is what runs
+on normal PR and local project checks; it contains every Python test not moved
+into an explicitly named suite.
 
 ```bash
-# Default Python batch only
-python3 -m pytest -q -m "not extended" pytest_tests
+# List named Python batches
+./run_tests.sh --list-batches
 
-# Only the extended Python batch
+# Project runner: default suite plus all proof fixtures
+./run_tests.sh
+./run_tests.sh --suite default
+
+# Run one named Python suite
+python3 -m pytest -q -m default pytest_tests
 python3 -m pytest -q -m extended pytest_tests
+./run_tests.sh --suite extended
 
-# All Python tests, including the extended batch
-python3 -m pytest -q --extended pytest_tests
-./run_tests.sh --extended
+# Run every Python suite
+python3 -m pytest -q -m "default or extended" pytest_tests
+./run_tests.sh --suite all
+./run_tests.sh --extended  # compatibility alias for --suite all
 ```
 
-`./run_tests.sh --extended` also runs the proof fixture suites.
+`./run_tests.sh --suite extended` and `./run_tests.sh --suite all` also run the
+proof fixture suites.
+
+The project currently has no pytest `xfail` tests. Strict xfail mode remains
+enabled, so an unexpected future expected-failure marker should be treated as
+a test configuration or implementation issue rather than silently accepted.
 
 To list registered pytest markers and batches:
 
