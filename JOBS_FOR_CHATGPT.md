@@ -78,6 +78,41 @@ Status: implementation and focused closed-axiom coverage exist; standalone
 fixture red-team expansion remains optional.
 
 
+
+### J35 — Basic divisibility identity proofs
+
+**Goal:** Add checked proof examples for four elementary divisibility facts using only the
+integer laws already present in `source/NumberTheory.py`:
+
+1. If `Int(a)`, then `a|a`.
+2. If `Int(a)`, then `One|a`.
+3. If `Int(a)`, then `a|Zero`.
+4. If `Int(a)` and `a|b`, then `a|Neg(b)`.
+
+These correspond to the four candidates in [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98).
+The missing laws listed there are now present in `INT_AXIOMS`: left/right multiplicative
+identity, left/right zero annihilation, and compatibility of multiplication with additive
+inversion. This job is proof coverage only; it does not authorize new axioms.
+
+**Do:** add one enforced fixture, `tests/testNumberTheory/divisibility_basic_properties.txt`,
+with one proof for each result, and a focused runner test
+`pytest_tests/test_divisibility_basic_properties.py` that asserts all four proofs pass.
+Use the existing integer axioms and ordinary inference rules, making the witnesses explicit.
+The final proof should obtain `Neg(b)` with witness `Neg(m)` from a witness `m` for
+`a|b`.
+
+**Allowed scope:** the new fixture, the new focused pytest module, and this tracker.
+Do not edit `source/NumberTheory.py`, alter existing fixtures, add axioms, or change
+the meaning of divisibility. A failure that reveals a checker defect is a finding; do
+not weaken the proof or tests to hide it.
+
+**Done when:** all four proofs pass under the fixture runner; the focused pytest test
+asserts the exact four proof numbers and reports any failure; the default CI suite and
+all proof-fixture suites pass; and the PR confirms no production code or existing
+expectations changed.
+
+Status: queued. Do not begin implementation until the PR adding this job is merged.
+
 ## Completed jobs
 
 | Job | Title | Result |
