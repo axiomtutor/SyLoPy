@@ -123,10 +123,15 @@ the axioms its proof cited and the rules it used beyond the standard logical
 ones, and can only be cited in a proof that lists those axioms and allows those
 rules: a theorem is a theorem of the theory it was proved in. An explicit
 conclusion must be a formula the proof derived at the top level, and generalized
-names must be objects the proof declared at its top level. Promotion refuses a
-proof that relied on structure recorded in a declaration and stated by no
-formula (a relation declared symmetric); state the property as a premise
-formula instead. See `todos.txt`, item 8.
+names must be objects or relation symbols the proof declared at its top level.
+A theorem proved about a declared relation (`Let R be a symmetric relation on
+X`) generalizes the relation symbol. The carrier and the properties its proof
+read from that declaration are stated by no formula, so they travel as
+requirements: the theorem is cited for a relation only where the declaration
+visible at the citation gives that relation the same carrier (a set's name, not
+a compound term such as `A union B`) and at least those properties, and the
+premises it needs are then said of that relation, not of the theorem's own. See
+`tests/testDiscreteMath/promoted_relation_theorems.txt`.
 
 ### Proof context and lexical scoping
 

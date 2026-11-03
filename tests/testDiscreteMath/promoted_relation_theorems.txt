@@ -1,0 +1,108 @@
+Use discrete math.
+
+(*
+A theorem proved about the relation of a declaration can be cited for another
+relation. What it needs of the citation:
+
+  - its premises, said about the relation it is cited for (a premise about the
+    theorem's own relation is no premise about the other one);
+  - a declaration of that relation, visible at the citation, with the carrier
+    and the properties that the theorem's proof read from its own declaration
+    (the relation rules read them, and no premise states them). The carrier is
+    a name: a compound term such as `A union B` is not what a declaration says.
+
+Each invalid proof has a valid twin in this file that differs by the one thing
+the invalid proof lacks, so the refusal cannot come from parsing, declarations
+or scope.
+*)
+
+# 1: Symmetric relations reverse every pair
+## Proof that
+### a symmetric relation reverses every pair
+1. Let X be any set, R be a symmetric relation on X. (Declaration)
+2. forall a, forall b, (R(a,b) -> R(b,a)). (Universal Generalization from subproof below)
+begin subproof
+ 2.0. let a be arbitrary. (Fresh Variable)
+ 2.1. forall b, (R(a,b) -> R(b,a)). (Universal Generalization from subproof below)
+ begin subproof
+  2.1.0. let b be arbitrary. (Fresh Variable)
+  2.1.1. R(a,b) -> R(b,a). (Conditional Introduction from subproof below)
+  begin subproof
+   2.1.1.1. R(a,b). (Assumption for Conditional Introduction)
+   2.1.1.2. R(b,a). (Relation Symmetry from 2.1.1.1)
+  end subproof
+ end subproof
+end subproof
+
+# 2: Reflexive relations relate each element of the carrier to itself
+## Proof that
+### a is in X and R(a,a)
+1. Let X be any set, R be a reflexive relation on X, a be in X. (Declaration)
+2. R(a,a). (Relation Reflexivity from 1)
+3. In(a,X) and R(a,a). (Conjunction Introduction from 1, 2)
+
+# 3: Symmetry from a premise
+## Proof that
+### R(u,v) -> R(v,u) from a symmetry premise
+1. Let X be any set, R be a relation on X. (Declaration)
+2. forall a, forall b, (R(a,b) -> R(b,a)). (Premise)
+3. Let u, v be in X. (Declaration)
+4. forall b, (R(u,b) -> R(b,u)). (Universal Instantiation from 2)
+5. R(u,v) -> R(v,u). (Universal Instantiation from 4)
+
+# 4
+## Proof that
+### the theorem is cited for a different symmetric relation on the same carrier
+1. Let X be any set, S be a symmetric relation on X. (Declaration)
+2. forall a, forall b, (S(a,b) -> S(b,a)). (Symmetric relations reverse every pair from 1)
+
+# 5
+## Proof that
+### the theorem is cited for its own relation symbol
+1. Let X be any set, R be a symmetric relation on X. (Declaration)
+2. forall a, forall b, (R(a,b) -> R(b,a)). (Symmetric relations reverse every pair from 1)
+
+# 6
+## Proof that
+### the carrier the theorem is cited with is a different set
+1. Let X be any set, Z be any set, S be a reflexive relation on Z, a be in Z. (Declaration)
+2. In(a,Z) and S(a,a). (Reflexive relations relate each element of the carrier to itself from 1)
+
+# 7
+## Proof that
+### premises about the relation the theorem is cited for give its conclusion
+1. Let X be any set, S be a relation on X. (Declaration)
+2. forall a, forall b, (S(a,b) -> S(b,a)). (Premise)
+3. Let u, v be in X. (Declaration)
+4. S(u,v) -> S(v,u). (Symmetry from a premise from 1, 2, 3)
+
+# 8
+## Invalid proof that
+### premises about the theorem's own relation do not give its conclusion for another relation
+1. Let X be any set, R be a relation on X. (Declaration)
+2. forall a, forall b, (R(a,b) -> R(b,a)). (Premise)
+3. Let S be a relation on X. (Declaration)
+4. Let u, v be in X. (Declaration)
+5. S(u,v) -> S(v,u). (Symmetry from a premise from 1, 2, 4)
+
+# 9
+## Invalid proof that
+### a plain relation does not reverse every pair, whatever the theorem says of another
+1. Let X be any set, S be a relation on X. (Declaration)
+2. forall a, forall b, (S(a,b) -> S(b,a)). (Symmetric relations reverse every pair from 1)
+
+# 10
+## Invalid proof that
+### a relation reflexive on X is not reflexive on A union B
+1. Let A, B, X be any sets, R be a reflexive relation on X, a be an object. (Declaration)
+2. forall x, forall y, (R(x,y) -> (In(x, A union B) and In(y, A union B))). (Premise)
+3. In(a, A union B). (Premise)
+4. In(a, A union B) and R(a,a). (Reflexive relations relate each element of the carrier to itself from 2, 3)
+
+# 11
+## Invalid proof that
+### a relation reflexive on Y is not reflexive on X, whatever a premise says of its pairs
+1. Let X, Y be any sets, R be a reflexive relation on Y, a be an object. (Declaration)
+2. forall x, forall y, (R(x,y) -> (In(x,X) and In(y,X))). (Premise)
+3. In(a,X). (Premise)
+4. In(a,X) and R(a,a). (Reflexive relations relate each element of the carrier to itself from 2, 3)
