@@ -1,0 +1,71 @@
+# 1: Every integer divides itself
+## Proof that
+### if a is an integer
+### then a divides a.
+
+1. Let a be an object. (Declaration)
+2. Int(a). (Premise)
+3. forall x, (Int(x) -> Times(x, One) = x). (Axiom)
+4. Int(One). (Axiom)
+5. Int(a) -> Times(a, One) = a. (Universal Instantiation from 3)
+6. Times(a, One) = a. (Modus Ponens from 2, 5)
+7. a = Times(a, One). (Symmetry from 6)
+8. Int(One) and a = Times(a, One). (Conjunction Introduction from 4, 7)
+9. a|a. (Existential Introduction from 8)
+
+# 2: One divides every integer
+## Proof that
+### if a is an integer
+### then One divides a.
+
+1. Let a be an object. (Declaration)
+2. Int(a). (Premise)
+3. forall x, (Int(x) -> Times(One, x) = x). (Axiom)
+4. Int(a) -> Times(One, a) = a. (Universal Instantiation from 3)
+5. Times(One, a) = a. (Modus Ponens from 2, 4)
+6. a = Times(One, a). (Symmetry from 5)
+7. Int(a) and a = Times(One, a). (Conjunction Introduction from 2, 6)
+8. One|a. (Existential Introduction from 7)
+
+# 3: Every integer divides zero
+## Proof that
+### if a is an integer
+### then a divides Zero.
+
+1. Let a be an object. (Declaration)
+2. Int(a). (Premise)
+3. Int(Zero). (Axiom)
+4. forall x, (Int(x) -> Times(x, Zero) = Zero). (Axiom)
+5. Int(a) -> Times(a, Zero) = Zero. (Universal Instantiation from 4)
+6. Times(a, Zero) = Zero. (Modus Ponens from 2, 5)
+7. Zero = Times(a, Zero). (Symmetry from 6)
+8. Int(Zero) and Zero = Times(a, Zero). (Conjunction Introduction from 3, 7)
+9. a|Zero. (Existential Introduction from 8)
+
+# 4: Divisibility is preserved by additive inverse
+## Proof that
+### if a is an integer and a divides b
+### then a divides Neg(b).
+
+1. Let a, b be objects. (Declaration)
+2. Int(a). (Premise)
+3. a|b. (Premise)
+4. Let m be an object. (Declare)
+5. a|Neg(b). (Existential Elimination from 3, subproof below)
+begin subproof
+ 5.1. Int(m) and b = Times(a, m). (Assumption for Existential Elimination)
+ 5.2. Int(m). (Conjunction Elimination from 5.1)
+ 5.3. b = Times(a, m). (Conjunction Elimination from 5.1)
+ 5.4. forall x, (Int(x) -> Int(Neg(x))). (Axiom)
+ 5.5. Int(m) -> Int(Neg(m)). (Universal Instantiation from 5.4)
+ 5.6. Int(Neg(m)). (Modus Ponens from 5.2, 5.5)
+ 5.7. forall x, forall y, ((Int(x) and Int(y)) -> Neg(Times(x, y)) = Times(x, Neg(y))). (Axiom)
+ 5.8. forall y, ((Int(a) and Int(y)) -> Neg(Times(a, y)) = Times(a, Neg(y))). (Universal Instantiation from 5.7)
+ 5.9. (Int(a) and Int(m)) -> Neg(Times(a, m)) = Times(a, Neg(m)). (Universal Instantiation from 5.8)
+ 5.10. Int(a) and Int(m). (Conjunction Introduction from 2, 5.2)
+ 5.11. Neg(Times(a, m)) = Times(a, Neg(m)). (Modus Ponens from 5.10, 5.9)
+ 5.12. Neg(b) = Neg(Times(a, m)). (Algebra from 5.3)
+ 5.13. Neg(b) = Times(a, Neg(m)). (Transitivity from 5.12, 5.11)
+ 5.14. Int(Neg(m)) and Neg(b) = Times(a, Neg(m)). (Conjunction Introduction from 5.6, 5.13)
+ 5.15. a|Neg(b). (Existential Introduction from 5.14)
+end subproof
