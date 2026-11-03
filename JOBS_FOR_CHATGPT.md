@@ -25,7 +25,7 @@ Start a job only after the pull request that adds it has been merged, so the ins
 
 **Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1, 5 and 6 turned out to accept, and CI passes.
 
-Status: covered by the relation-subset fixture and pytest red-team modules.
+Status: current master has baseline coverage in `relation_subset.txt` and the focused relation-subset pytest modules. The dedicated J31 red-team expansion is in draft PR #148 and is not merged.
 
 ### J32 — Proofs that use the relation-subset fact
 
