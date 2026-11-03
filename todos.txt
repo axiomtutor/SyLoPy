@@ -20,9 +20,12 @@ promotion, and regression corpus are implemented.
 
 ### Open findings
 
-- [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): several divisibility
-  proofs require divisibility-related laws not currently axiomatized. This is an owner
-  decision list, **not** authorization to add axioms.
+- [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): the four candidate
+  algebraic laws listed there are now present in `source/NumberTheory.py`'s
+  `INT_AXIOMS` (multiplicative identities, zero annihilation, and compatibility
+  with additive negation). The remaining work is checked proof coverage for the
+  four candidate divisibility facts, proposed as J35 in the pending job-entry PR.
+  This is not authorization to add any further axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
   premises are parsed as formulas, not declaration clauses; compound-declaration
   coverage is in `pytest_tests/test_compound_declarations.py`.
