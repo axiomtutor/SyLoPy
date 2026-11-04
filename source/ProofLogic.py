@@ -2902,22 +2902,38 @@ class ConstantGeneralizingMatcher:
 
     Construct with the set of names to generalize (`{"X"}`), then call
     `match_formula`/`match_term` once; on success, `.mapping` holds what
-    each generalized name matched to. See `TheoremRule` for how this is
-    used to promote a proved theorem into a citable rule.
+    each generalized constant matched to and `.predicates` the predicate
+    symbol each generalized predicate symbol matched to (a relation symbol
+    that a theorem generalizes, `R`, matched to the `S` of the citation).
+    `.substitution()` is both as one replacement, which is what must be
+    applied to the theorem's *premises*: a premise about `R` has to become a
+    premise about `S`, or facts about `R` would stand in for facts about `S`.
+    See `TheoremRule` for how this is used to promote a proved theorem into a
+    citable rule.
 
     As in `FormulaMatcher`, a name is never generalized to a term whose free
     variable a quantifier enclosing that occurrence would capture: a theorem
     about `exists y, not (y = a)` for an arbitrary `a` does not become a
     theorem about `exists y, not (y = y)`.
     """
-    __slots__ = ("names", "mapping", "_bound")
+    __slots__ = ("names", "mapping", "predicates", "_bound")
 
     def __init__(self, names):
         self.names = set(names)
         self.mapping: Dict[str, tl.Term] = {}
+        self.predicates: Dict[str, str] = {}
         # Names bound by the quantifiers enclosing the position being matched
         # (the target's spelling of them); see `FormulaMatcher._is_capture_free`.
         self._bound = []
+
+    def substitution(self) -> "_Replacement":
+        """What the match found, as the replacement that `_substitute_constants_in_formula`
+        applies: each generalized constant by its term, each generalized
+        predicate symbol by the symbol it matched."""
+        replacement = _Replacement()
+        replacement.update(self.mapping)
+        replacement.predicates.update(self.predicates)
+        return replacement
 
     def match_term(self, pattern: tl.Term, target: tl.Term) -> bool:
         if isinstance(pattern, tl.ConstantTerm) and pattern.name in self.names:
@@ -2948,9 +2964,9 @@ class ConstantGeneralizingMatcher:
                 if pattern.predicate in self.names:
                     if not isinstance(target.predicate, str):
                         return False
-                    if pattern.predicate not in self.mapping:
-                        self.mapping[pattern.predicate] = target.predicate
-                    elif self.mapping[pattern.predicate] != target.predicate:
+                    if pattern.predicate not in self.predicates:
+                        self.predicates[pattern.predicate] = target.predicate
+                    elif self.predicates[pattern.predicate] != target.predicate:
                         return False
                 elif pattern.predicate != target.predicate:
                     return False
@@ -3186,29 +3202,34 @@ class TheoremRule(AxiomSchemaRule):
         return self is other
 
     def _expected(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[List[fl.Formula]]:
+        instance = self._match_instance(phi, candidates)
+        return None if instance is None else instance[1]
+
+    def _match_instance(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[tuple]:
+        """The instance of this theorem that `phi` is: what each generalized
+        name stands for (a `_Replacement`) and the premises that instance
+        needs, in order. None if `phi` is not an instance.
+
+        A premise says of the instance what it said of the theorem's own
+        names, so the replacement is applied to the premises as it was found
+        in the conclusion -- the relation symbols a theorem generalizes
+        included. Premises left about the theorem's own relation symbol `R`
+        would be satisfied by facts about `R` while the conclusion speaks of
+        another relation `S`, and a plain relation would be proved to have
+        whatever `R` was assumed to have.
+        """
         matcher = ConstantGeneralizingMatcher(self.generalized_names)
         if not matcher.match_formula(self.conclusion, phi):
             return None
+        substitution = matcher.substitution()
         try:
-            return [_substitute_constants_in_formula(p, matcher.mapping) for p in self.premises]
+            expected = [_substitute_constants_in_formula(p, substitution) for p in self.premises]
         except _UnsafeSubstitution:
             # The matcher checked the conclusion's quantifiers; the premises
             # have their own, and a term with a variable in it does not fit
             # them. The theorem is not citable at this instance.
             return None
-
-    def _match_instance(self, phi: fl.Formula, candidates: List[fl.Formula]) -> Optional[tuple]:
-        matcher = ConstantGeneralizingMatcher(self.generalized_names)
-        if not matcher.match_formula(self.conclusion, phi):
-            return None
-        try:
-            expected = [
-                _substitute_constants_in_formula(p, matcher.mapping)
-                for p in self.premises
-            ]
-        except _UnsafeSubstitution:
-            return None
-        return matcher.mapping, expected
+        return substitution, expected
 
     def _unavailable(self, context: "RuleContext") -> List[str]:
         """What this theorem's proof used that the proof around `context`
@@ -3229,18 +3250,20 @@ class TheoremRule(AxiomSchemaRule):
         instance = self._match_instance(phi, candidates)
         if instance is None:
             return False
-        mapping, expected = instance
+        substitution, expected = instance
         if len(candidates) != len(expected):
             return False
         if not all(_ast_eq(c, e) for c, e in zip(candidates, expected)):
             return False
-        return self._relation_requirements_hold(mapping, context)
+        return self._relation_requirements_hold(substitution, context)
 
-    def _relation_requirements_hold(self, mapping: Dict[str, Any], context: "RuleContext") -> bool:
+    def _relation_requirements_hold(self, substitution: "_Replacement", context: "RuleContext") -> bool:
+        """The relation the citation uses has, in the declaration visible at
+        the citation, the carrier and the properties the theorem's proof read
+        from the declaration of its own relation: the metadata is read by the
+        relation rules, and no premise states it."""
         for requirement in self.relation_requirements:
-            relation = mapping.get(requirement["relation"], requirement["relation"])
-            if not isinstance(relation, str):
-                return False
+            relation = substitution.predicates.get(requirement["relation"], requirement["relation"])
             declaration = context.declaration(relation)
             if declaration is None:
                 return False
@@ -3249,10 +3272,15 @@ class TheoremRule(AxiomSchemaRule):
             metadata = dict(getattr(declaration, "metadata", ()) or ())
             target_carrier = metadata.get("carrier")
             carrier = requirement["carrier"]
-            if isinstance(mapping.get(carrier), tl.ConstantTerm):
-                carrier = mapping[carrier].name
-            elif isinstance(mapping.get(carrier), str):
-                carrier = mapping[carrier]
+            if carrier in substitution:
+                # The carrier is a name the theorem generalizes and the
+                # citation instantiated. A declaration records its carrier by
+                # name, so only a name can stand for it: a compound term such
+                # as `union(A, B)` is not what any declaration says.
+                replacement = substitution[carrier]
+                if not isinstance(replacement, tl.ConstantTerm):
+                    return False
+                carrier = replacement.name
             if target_carrier != carrier:
                 return False
             properties = set(metadata.get("properties", ()) or ())

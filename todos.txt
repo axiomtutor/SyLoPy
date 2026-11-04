@@ -295,6 +295,18 @@ decided on 2026-10-31 (the owner agreed with both recommendations):
   properties as formulas, as they now state `R ⊆ X × X`, so a promoted theorem
   carries them as premises, and generalize over the relation symbol. The same
   mechanism is what "any group" needs later.
+  The first implementation was unsound and, for another relation's name,
+  unusable: the theorem's premises were left about its own relation symbol (facts
+  about `R` stood in for facts about the `S` of the conclusion, so a plain `S` was
+  proved symmetric), and a carrier instantiated by a compound term (`A union B`)
+  was compared as if it had not been instantiated (a relation reflexive on `X`
+  was accepted as reflexive on `A union B`). Fixed: the premises are instantiated
+  as the conclusion is, and a carrier must be instantiated by a name.
+  `tests/testDiscreteMath/promoted_relation_theorems.txt` (each invalid proof has
+  a valid twin) and `pytest_tests/test_promoted_relation_theorems.py` pin it.
+  Known limit, not a soundness issue: only the conclusion determines the carrier
+  a citation instantiates, so a theorem whose conclusion does not mention its
+  carrier `X` is citable only for a relation on a set named `X`.
 
 ## Remaining work
 
