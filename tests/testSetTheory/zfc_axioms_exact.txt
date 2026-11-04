@@ -1,0 +1,124 @@
+(*
+The axioms of extensionality, foundation (also called regularity) and choice are
+cited by name, and each citation is accepted for one sentence: the axiom, up to
+the names of its bound variables. They used to be accepted for any sentence of
+their rough shape. Each invalid case below was accepted that way, or restates an
+axiom with `(Axiom)`, and set theory takes no formula as an axiom that way.
+
+Foundation also has the form with `not (x = EmptySet)` as its antecedent, the
+same axiom once the empty set has no member and sets with the same members are
+equal. Choice is Zermelo's form: a set of nonempty, pairwise disjoint sets has
+a set that meets each of them in exactly one element.
+*)
+
+# 1: Extensionality
+## Proof that
+### the axiom of extensionality says that sets with the same members are equal,
+### then forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y).
+
+1. forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y). (Axiom of extensionality)
+
+# 2: Extensionality, with other names for its bound variables
+## Proof that
+### the names of bound variables do not matter,
+### then forall P, forall Q, ((forall r, (In(r, P) iff In(r, Q))) -> P = Q).
+
+1. forall P, forall Q, ((forall r, (In(r, P) iff In(r, Q))) -> P = Q). (Axiom of extensionality)
+
+# 3: Extensionality, with the biconditional the other way round
+## Proof that
+### then forall x, forall y, ((forall z, (In(z, y) iff In(z, x))) -> x = y).
+
+1. forall x, forall y, ((forall z, (In(z, y) iff In(z, x))) -> x = y). (Axiom of extensionality)
+
+# 4: Extensionality, with a member variable that shadows the second set
+## Invalid: not the axiom — the inner y is the member variable, so the sentence says that the empty set is every set.
+### then forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y).
+
+1. forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y). (Axiom of extensionality)
+
+# 5: Foundation
+## Proof that
+### the axiom of foundation says that a set with a member has a member that shares none with it,
+### then forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))).
+
+1. forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of foundation)
+
+# 6: Regularity, the same axiom under its other name
+## Proof that
+### then forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))).
+
+1. forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of regularity)
+
+# 7: Foundation, for a set that is not the empty set
+## Proof that
+### then forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))).
+
+1. forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of foundation)
+
+# 8: Choice
+## Proof that
+### the axiom of choice says that a set of nonempty, pairwise disjoint sets has a set that meets each of them in exactly one element,
+### then forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and (forall A, forall B, ((In(A, X) and In(B, X) and not (A = B)) -> not (exists c, (In(c, A) and In(c, B)))))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))).
+
+1. forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and (forall A, forall B, ((In(A, X) and In(B, X) and not (A = B)) -> not (exists c, (In(c, A) and In(c, B)))))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))). (Axiom of choice)
+
+# 9: A false sentence cited as foundation
+## Invalid: not the axiom — the shape of foundation (a universal over an implication that ends in an existential) is not the axiom.
+### then exists y, not (y = y).
+
+1. forall x, (Finite(EmptySet) -> exists y, not (y = y)). (Axiom of foundation)
+2. Finite(EmptySet). (Empty set finite)
+3. Finite(EmptySet) -> exists y, not (y = y). (Universal Instantiation from 1)
+4. exists y, not (y = y). (Modus Ponens from 2, 3)
+
+# 10: Using the axiom of extensionality
+## Proof that
+### sets with the same members are equal,
+### then X = Y.
+
+1. Let X, Y be any sets. (Declaration)
+2. forall z, (In(z, X) iff In(z, Y)). (Premise)
+3. forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y). (Axiom of extensionality)
+4. forall y, ((forall z, (In(z, X) iff In(z, y))) -> X = y). (Universal Instantiation from 3)
+5. (forall z, (In(z, X) iff In(z, Y))) -> X = Y. (Universal Instantiation from 4)
+6. X = Y. (Modus Ponens from 2, 5)
+
+# 11: A false sentence cited as choice
+## Invalid: not the axiom — choice was accepted for any universal implication that contains an existential.
+### then exists y, not (y = y).
+
+1. forall x, (Finite(EmptySet) -> exists y, not (y = y)). (Axiom of choice)
+2. Finite(EmptySet). (Empty set finite)
+3. Finite(EmptySet) -> exists y, not (y = y). (Universal Instantiation from 1)
+4. exists y, not (y = y). (Modus Ponens from 2, 3)
+
+# 12: Choice, with other names for its bound variables
+## Proof that
+### then forall F, (((forall M, (In(M, F) -> exists p, In(p, M))) and (forall M, forall N, ((In(M, F) and In(N, F) and not (M = N)) -> not (exists r, (In(r, M) and In(r, N)))))) -> exists T, forall M, (In(M, F) -> exists p, (In(p, M) and In(p, T) and forall q, ((In(q, M) and In(q, T)) -> q = p)))).
+
+1. forall F, (((forall M, (In(M, F) -> exists p, In(p, M))) and (forall M, forall N, ((In(M, F) and In(N, F) and not (M = N)) -> not (exists r, (In(r, M) and In(r, N)))))) -> exists T, forall M, (In(M, F) -> exists p, (In(p, M) and In(p, T) and forall q, ((In(q, M) and In(q, T)) -> q = p)))). (Axiom of choice)
+
+# 13: Choice without disjointness
+## Invalid: not the axiom — {1,2}, {2,3} and {1,3} have no set that meets each in exactly one element, so without the clause that the sets are disjoint the sentence is false.
+### then forall X, ((forall A, (In(A, X) -> exists a, In(a, A))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))).
+
+1. forall X, ((forall A, (In(A, X) -> exists a, In(a, A))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))). (Axiom of choice)
+
+# 14: The sentence of extensionality, cited as foundation
+## Invalid: each axiom is cited for its own sentence.
+### then forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y).
+
+1. forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y). (Axiom of foundation)
+
+# 15: Choice, restated with (Axiom)
+## Invalid: retired citation — the axiom is cited as (Axiom of choice), not with the generic (Axiom).
+### then forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and (forall A, forall B, ((In(A, X) and In(B, X) and not (A = B)) -> not (exists c, (In(c, A) and In(c, B)))))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))).
+
+1. forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and (forall A, forall B, ((In(A, X) and In(B, X) and not (A = B)) -> not (exists c, (In(c, A) and In(c, B)))))) -> exists C, forall A, (In(A, X) -> exists a, (In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a)))). (Axiom)
+
+# 16: A false sentence, restated with (Axiom)
+## Invalid: not an axiom — set theory takes no formula as an axiom with (Axiom), and no named axiom is this one.
+### then forall x, (Finite(EmptySet) -> exists y, not (y = y)).
+
+1. forall x, (Finite(EmptySet) -> exists y, not (y = y)). (Axiom)
