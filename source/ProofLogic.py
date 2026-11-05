@@ -3473,42 +3473,6 @@ def _promotion_requirements(validator: "ProofValidator") -> Tuple[List[fl.Formul
     return axioms, rules
 
 
-# Metadata keys whose entries a promoted theorem loses nothing by dropping,
-# because a formula on the declaration's own line says the same thing:
-# `Let a be in X` records `("membership", "X")` and states `In(a, X)`. Every
-# other entry -- a relation's carrier and properties, today -- is read by some
-# rule, and the kernel cannot tell which (it does not interpret metadata), so
-# it counts as something the theorem would lose. Adding a key here is a
-# soundness decision, like `DESCRIPTIVE_METADATA_KEYS`: a key belongs only if
-# no rule reads it and the surface language always states the formula.
-FORMULA_BACKED_METADATA_KEYS = frozenset({"membership"})
-
-
-def _structure_no_formula_states(declarations: Iterable[Declaration]) -> List[str]:
-    """One sentence per declaration among `declarations` whose metadata says
-    something that no formula states, so a theorem built from the proof would
-    not carry it. The relation rules read a relation's carrier and properties
-    from its declaration; a proof that used `Relation Symmetry` on `R` relied
-    on `R` having been declared symmetric. A theorem that dropped that could be
-    cited for any relation named `R`, symmetric or not."""
-    sentences: List[str] = []
-    for declaration in declarations:
-        described: List[str] = []
-        for entry in getattr(declaration, 'metadata', None) or ():
-            if isinstance(entry, tuple) and len(entry) == 2:
-                key, value = entry
-                if isinstance(key, str) and key in FORMULA_BACKED_METADATA_KEYS:
-                    continue
-                if isinstance(value, (tuple, list, set, frozenset)):
-                    value = ", ".join(str(item) for item in value)
-                described.append(f"{key} {value}")
-            else:
-                described.append(repr(entry))
-        if described:
-            sentences.append(f"the declaration of {declaration.name!r} records " + " and ".join(described))
-    return sentences
-
-
 def _top_level_promotion_inputs(
     entries: list,
 ) -> Tuple[List[fl.Formula], List[str], List[str]]:
