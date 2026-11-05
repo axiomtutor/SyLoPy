@@ -3361,7 +3361,7 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
     if not ok:
         raise ValueError(f"cannot promote a proof that does not validate: {err}")
 
-    derived = _top_level_derived_formulas(proof.entries)
+    derived, declared_objects, declared_predicates = _top_level_promotion_inputs(proof.entries)
     if conclusion is None:
         if not derived:
             raise ValueError("proof derives nothing at the top level to promote as a conclusion")
@@ -3378,8 +3378,6 @@ def promote_theorem(name: str, proof: "Proof", generalized_names: Optional[List[
         if not any(_ast_eq(given, kept) for kept in premises):
             premises.append(given)
 
-    declared_objects = _top_level_object_declarations(proof.entries)
-    declared_predicates = _top_level_predicate_declarations(proof.entries)
     declared_symbols = declared_objects + declared_predicates
     if generalized_names is None:
         generalized_names = declared_symbols
@@ -3511,74 +3509,62 @@ def _structure_no_formula_states(declarations: Iterable[Declaration]) -> List[st
     return sentences
 
 
-def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
-    """Every formula a top-level (non-subproof) entry actually derived by
-    inference, in order -- the same notion `validate_all_proofs._top_level_formulas`
-    uses, reimplemented here so `ProofLogic` doesn't depend on `validate_all_proofs`
-    (the dependency runs the other way already).
+def _top_level_promotion_inputs(
+    entries: list,
+) -> Tuple[List[fl.Formula], List[str], List[str]]:
+    """Collect a theorem's top-level conclusion candidates and generalizable
+    declarations in one pass over its entries.
+
+    Promotion needs all three views. Keeping their collection together avoids
+    repeatedly classifying the same entries and preserves one shared definition
+    of which entries count as top-level.
     """
-    derived_tags = {'rule', 'rule_below', 'rule_hybrid'}
-    result: List[fl.Formula] = []
-    for e in entries:
-        parsed = _classify_entry(e)
+    derived: List[fl.Formula] = []
+    objects: List[str] = []
+    predicates: List[str] = []
+    derived_tags = {"rule", "rule_below", "rule_hybrid"}
+
+    for raw_entry in entries:
+        parsed = _classify_entry(raw_entry)
         if isinstance(parsed, str) or parsed.is_subproof_block:
             continue
+
         justification = parsed.justification
-        if not isinstance(justification, tuple) or not justification or justification[0] not in derived_tags:
-            continue
-        phi = parsed.phi
-        if isinstance(phi, list):
-            result.extend(f for f in phi if isinstance(f, fl.Formula))
-        elif isinstance(phi, fl.Formula):
-            result.append(phi)
-    return result
+        if isinstance(justification, tuple) and justification:
+            tag = justification[0]
+            if tag in derived_tags:
+                phi = parsed.phi
+                if isinstance(phi, list):
+                    derived.extend(item for item in phi if isinstance(item, fl.Formula))
+                elif isinstance(phi, fl.Formula):
+                    derived.append(phi)
+
+            if len(justification) >= 2 and isinstance(justification[1], list):
+                for declaration in justification[1]:
+                    if (declaration.kind == DeclarationKind.OBJECT
+                            and declaration.type_name not in {"existential witness", "definition"}):
+                        objects.append(declaration.name)
+                    elif (declaration.kind == DeclarationKind.PREDICATE
+                          and "carrier" in dict(getattr(declaration, "metadata", ()) or ())):
+                        predicates.append(declaration.name)
+
+    return derived, objects, predicates
+
+
+def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
+    """Every formula derived by inference at top level, in source order."""
+    return _top_level_promotion_inputs(entries)[0]
 
 
 def _top_level_object_declarations(entries: list) -> List[str]:
-    """Names of every `OBJECT`-kind symbol declared by a top-level entry
-    (an explicit `('declare', [...])` list, or a `Let X be any set.`
-    premise-declaration-prefix) -- the default set of names a promoted
-    theorem generalizes over. Declarations made *inside* a subproof are
-    excluded: those were scoped to an argument within the proof, not
-    stated as "for any X" about the theorem itself.
-    """
-    names: List[str] = []
-    for e in entries:
-        parsed = _classify_entry(e)
-        if isinstance(parsed, str) or parsed.is_subproof_block:
-            continue
-        justification = parsed.justification
-        if isinstance(justification, tuple) and len(justification) >= 2 and isinstance(justification[1], list):
-            names.extend(
-                d.name
-                for d in justification[1]
-                if d.kind == DeclarationKind.OBJECT
-                and d.type_name not in {"existential witness", "definition"}
-            )
-    return names
+    """Names of top-level object declarations eligible for generalization."""
+    return _top_level_promotion_inputs(entries)[1]
+
 
 def _top_level_predicate_declarations(entries: list) -> List[str]:
-    """Names of every top-level declared relation symbol.
+    """Names of top-level relation declarations eligible for generalization."""
+    return _top_level_promotion_inputs(entries)[2]
 
-    Plain predicates are fixed vocabulary: they do not acquire an independent
-    carrier/property claim merely by being declared.  Relation declarations
-    carry carrier metadata and are the predicate-shaped declarations whose
-    symbol may be promoted with matching citation requirements.
-    """
-    names: List[str] = []
-    for e in entries:
-        parsed = _classify_entry(e)
-        if isinstance(parsed, str) or parsed.is_subproof_block:
-            continue
-        justification = parsed.justification
-        if isinstance(justification, tuple) and len(justification) >= 2 and isinstance(justification[1], list):
-            names.extend(
-                d.name
-                for d in justification[1]
-                if d.kind == DeclarationKind.PREDICATE
-                and "carrier" in dict(getattr(d, "metadata", ()) or ())
-            )
-    return names
 
 class DeclarationRecipe:
     """A theory-registered recipe for what a `Let ...` declaration of a
