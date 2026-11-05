@@ -22,6 +22,67 @@ Discrete mathematics exposes its relation declaration interpretation as a
 `RelationDeclarationRecipe`, rather than requiring the generic elaborator to
 construct the relation's semantic representation itself.
 
+
+## Surface representation and elaboration
+
+The front end keeps three representations:
+
+- **Text:** the user's formulas, justifications, labels, and subproof boundaries.
+- **Surface AST:** `SurfaceProof`, `SurfaceLine`, `SurfaceSubproof`, and `SourceSpan`, preserving original text and locations.
+- **Core entries:** `ElaboratedEntries`, the tuple language consumed by `ProofLogic.ProofValidator`.
+
+`ElaboratedEntries` carries `origin_by_label`, the original `surface_proof`, and the required rules, axioms, and declarations (`required_rules`, `required_axioms`, `required_declarations`). `ProofLogic.Proof` merges those resources before validation. Each `CoreOrigin` records the source span, surface construct, and whether the core step is synthetic. A kernel error on a generated step is therefore reported against the surface line that generated it; an error found during elaboration is raised directly at its source span.
+
+For example, `Subset proof below` lowers to universal generalization over an arbitrary element and conditional introduction from the user's subproof. Synthetic labels are internal; they are not inserted into the proof file.
+
+```text
+2. forall x, (In(x, S) -> In(x, T)). (UniversalGeneralization from subproof below)
+begin subproof
+  2.__arbitrary. a. (arbitrary)
+  2.__conditional. In(a, S) -> In(a, T). (ConditionalIntroduction from subproof below)
+  begin subproof
+    2.1. In(a, S). (assume)
+    ...
+    2.n. In(a, T). (...)
+  end subproof
+end subproof
+```
+
+## Theory parser dispatch
+
+The parser extension points have different precedence and scope:
+
+- `formula_parsers` receive a whole ordinary proof-line expression and each whole premise-bundle component before generic connective splitting. They return `SurfaceExpression`, which can retain theory-specific data such as raw subset operands. This dispatch is not recursive.
+- `phrase_parsers` receive a whole recursive formula substring before connective splitting. Use them for phrases containing connective-looking words; they must decline unless the entire substring is their phrase.
+- `phrase_spans` protect recognized theory phrases inside larger formulas before connective splitting.
+- `nested_formula_parsers` and `term_parsers` recognize formulas and terms during recursive parsing. Nested formula parsers run after generic connective splits, preventing them from swallowing a larger expression.
+- `line_elaborators` and `declaration_recipes` handle proof constructs and structured declarations; theory inference rules, axioms, and declarations supply core resources.
+
+Prefer theory-local parsers, recipes, and line elaborators. Lower new proof forms to existing core rules when possible. A genuinely theory-specific inference can be supplied as a registered rule; do not describe it as desugared unless the implementation creates and validates that derivation.
+
+To inspect lowering, call `ProofParser.format_core_proof(entries)` after `parse_proof_text`. The formatter is diagnostic only; validation uses the in-memory entries and does not parse the formatted text again.
+
+### Registered examples and a line-elaborator pattern
+
+Set theory declares `EmptySet` and the binary predicate `In`. It registers whole-line membership/subset syntax and set-operation phrases through `formula_parsers`; recursive set formulas and terms through `nested_formula_parsers`, `phrase_parsers`, `phrase_spans`, and `term_parsers`; and `Subset proof below` through a line elaborator. Enumeration and set-builder forms lower to ordinary membership formulas. `EmptySetPropertyRule` and `SetEqualityRule` remain specialized inference rules, not merely parser sugar.
+
+Number theory extends the natural-number and set-theory environments. It registers quotient notation such as `n/a` as term syntax, divisibility and integerhood through nested formula parsers, and quotient defining-property and uniqueness rules. Its declarations include `Int`, `Plus`, `Times`, `Neg`, and `Quotient` (alongside the natural-number declarations it extends).
+
+A proof-form extension should validate the surface contract, lower to existing core entries where possible, and register source origins for any synthetic labels. For example:
+
+```python
+def elaborate_some_construct(line, context):
+    if not matches(line):
+        return None
+    # Validate the surface contract.
+    # Generate a core entry, possibly with nested core entries.
+    # Register origins for synthetic labels.
+    return core_entry
+```
+
+Register the elaborator in `TheoryEnvironment.line_elaborators`. Use a specialized inference rule only when ordinary core derivation is not the right implementation.
+
+
 ## Current theory boundary
 
 A theory should provide, as appropriate:
