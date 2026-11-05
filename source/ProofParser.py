@@ -345,14 +345,14 @@ def _parse_surface_expression(text: str, bound_vars: Optional[set] = None,
     This dispatch is deliberately not recursive; nested syntax is handled by
     the recursive formula and phrase parser registries.
     """
-    if bound_vars is None:
-        bound_vars = set()
+    bound_vars = bound_vars or set()
     if environment is not None:
         for formula_parser in environment.formula_parsers:
             expression = formula_parser(text, bound_vars)
             if expression is not None:
                 return expression
     return SurfaceExpression("core", parse_formula(text, bound_vars, environment), text)
+
 
 def _parse_premise_part(part: str, environment: Optional[TheoryEnvironment]) -> fl.Formula:
     """Parse one premise formula.

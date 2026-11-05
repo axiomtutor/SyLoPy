@@ -4,7 +4,41 @@ This file is the live queue and concise disposition ledger. Stable collaboration
 
 ## Current queue
 
-No delegated jobs are currently queued. Add a scoped job here only after its entry has been approved and merged; do not restart archived work without the owner's direction.
+Start a job only after the pull request that adds it has merged, so the instructions and implementation can be read together. Do not resume completed or archived tasks unless the owner re-queues them.
+
+### J35 — Basic divisibility identity proofs
+
+**Goal:** Add checked proof examples for four elementary divisibility facts using only the
+integer laws already present in `source/NumberTheory.py`:
+
+1. If `Int(a)`, then `a|a`.
+2. If `Int(a)`, then `One|a`.
+3. If `Int(a)`, then `a|Zero`.
+4. If `Int(a)` and `a|b`, then `a|Neg(b)`.
+
+These correspond to the four candidates in [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98).
+The missing laws listed there are now present in `INT_AXIOMS`: left/right multiplicative
+identity, left/right zero annihilation, and compatibility of multiplication with additive
+inversion. This job is proof coverage only; it does not authorize new axioms.
+
+**Do:** add one enforced fixture, `tests/testNumberTheory/divisibility_basic_properties.txt`,
+with one proof for each result, and a focused runner test
+`pytest_tests/test_divisibility_basic_properties.py` that asserts all four proofs pass.
+Use the existing integer axioms and ordinary inference rules, making the witnesses explicit.
+The final proof should obtain `Neg(b)` with witness `Neg(m)` from a witness `m` for
+`a|b`.
+
+**Allowed scope:** the new fixture, the new focused pytest module, and this tracker.
+Do not edit `source/NumberTheory.py`, alter existing fixtures, add axioms, or change
+the meaning of divisibility. A failure that reveals a checker defect is a finding; do
+not weaken the proof or tests to hide it.
+
+**Done when:** all four proofs pass under the fixture runner; the focused pytest test
+asserts the exact four proof numbers and reports any failure; the default CI suite and
+all proof-fixture suites pass; and the PR confirms no production code or existing
+expectations changed.
+
+Status: Queued. Job-entry PR #158 has merged, so implementation may now begin. The proof work itself has not yet been done.
 
 ## Recent dispositions
 
@@ -12,7 +46,6 @@ No delegated jobs are currently queued. Add a scoped job here only after its ent
 - **J32:** relation-subset examples and their focused runner are implemented.
 - **J33:** arbitrary-property WLOG implementation and focused coverage are complete; optional standalone target/twin fixtures remain.
 - **J34:** closed-axiom implementation and focused coverage are complete; optional standalone red-team fixtures remain.
-- **J35:** four basic divisibility proofs merged in PR #158.
 
 Original specifications and their final dispositions are preserved in the archive.
 
@@ -45,11 +78,7 @@ Original specifications and their final dispositions are preserved in the archiv
 | J28 | Register every elaborated declaration in ProofContext | merged ([PR #142](https://github.com/axiomtutor/SyLoPy/pull/142)) |
 | J29 | Consolidate the legacy natural-number fixture runner | merged ([PR #143](https://github.com/axiomtutor/SyLoPy/pull/143)) |
 | J30 | Declaration lines must not drop or absorb text | merged ([PR #146](https://github.com/axiomtutor/SyLoPy/pull/146)) |
-| J31 | Relation-subset red-team expansion | closed without merge (PR #148); not re-queued |
-| J32 | Relation-subset examples | implemented |
-| J33 | Arbitrary-property WLOG targets | implementation complete; optional standalone fixtures remain |
-| J34 | Closed-axiom red-team | implementation complete; optional standalone fixtures remain |
-| J35 | Basic divisibility identity proofs | merged (PR #158) |
+
 
 ## Rules for new jobs
 

@@ -1,4 +1,4 @@
-> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; J26–J30 were added after their PRs merged. J31–J35 were moved from the live tracker on 2026-11-05 with their final dispositions. Historical specifications are not active authorization. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
+> **Historical archive.** Originally captured on 2026-10-26 for J0–J25; J26–J30 were added after their PRs merged. J31–J34 were moved from the live tracker on 2026-11-05 with their final dispositions. J35 remains active in `JOBS_FOR_CHATGPT.md` now that its job-entry PR #158 has merged. The detailed job definitions, rules, and verified proof patterns are historical context, not authorization to restart work. For authoritative current guidance, use the [master delegated-job tracker](https://github.com/axiomtutor/SyLoPy/blob/master/JOBS_FOR_CHATGPT.md), [master collaboration guide](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md), [master TODO ledger](https://github.com/axiomtutor/SyLoPy/blob/master/todos.txt), and current PRs/issues.
 
 ---
 
@@ -544,37 +544,3 @@ Status: Arbitrary-property WLOG implementation and focused regression coverage a
 **Done when:** every invalid case is refused at its pinned line for its pinned reason, every twin is accepted, each finding has an issue, the PR description says what areas 1 and 5 turned out to accept, and CI passes.
 
 Status: Closed-axiom implementation and focused regression coverage are complete. The standalone red-team fixture expansion remains optional.
-
-### J35 — Basic divisibility identity proofs
-
-**Goal:** Add checked proof examples for four elementary divisibility facts using only the
-integer laws already present in `source/NumberTheory.py`:
-
-1. If `Int(a)`, then `a|a`.
-2. If `Int(a)`, then `One|a`.
-3. If `Int(a)`, then `a|Zero`.
-4. If `Int(a)` and `a|b`, then `a|Neg(b)`.
-
-These correspond to the four candidates in [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98).
-The missing laws listed there are now present in `INT_AXIOMS`: left/right multiplicative
-identity, left/right zero annihilation, and compatibility of multiplication with additive
-inversion. This job is proof coverage only; it does not authorize new axioms.
-
-**Do:** add one enforced fixture, `tests/testNumberTheory/divisibility_basic_properties.txt`,
-with one proof for each result, and a focused runner test
-`pytest_tests/test_divisibility_basic_properties.py` that asserts all four proofs pass.
-Use the existing integer axioms and ordinary inference rules, making the witnesses explicit.
-The final proof should obtain `Neg(b)` with witness `Neg(m)` from a witness `m` for
-`a|b`.
-
-**Allowed scope:** the new fixture, the new focused pytest module, and this tracker.
-Do not edit `source/NumberTheory.py`, alter existing fixtures, add axioms, or change
-the meaning of divisibility. A failure that reveals a checker defect is a finding; do
-not weaken the proof or tests to hide it.
-
-**Done when:** all four proofs pass under the fixture runner; the focused pytest test
-asserts the exact four proof numbers and reports any failure; the default CI suite and
-all proof-fixture suites pass; and the PR confirms no production code or existing
-expectations changed.
-
-Status: Merged in PR #158. The four divisibility proofs and focused runner are present; no production code or existing expectations were changed by the job.

@@ -21,10 +21,10 @@ promotion, and regression corpus are implemented.
 ### Tracked issues
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): the four candidate
-  divisibility facts and their checked proofs are implemented; the proof fixture
-  and focused runner merged in PR #158. The GitHub issue remains open as a
-  tracking record. Further arithmetic expansion is separate work and must not
-  be inferred from this completed job.
+  algebraic laws are now present in `source/NumberTheory.py`'s `INT_AXIOMS`.
+  Checked proof coverage for the four candidate divisibility facts is queued as
+  J35. Job-entry PR #158 has merged; implementation has not yet begun. The job
+  does not authorize any additional axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
   premises are parsed as formulas, not declaration clauses; compound-declaration
   coverage is in `pytest_tests/test_compound_declarations.py`.
@@ -51,10 +51,11 @@ promotion, and regression corpus are implemented.
 - Verification totals change with added tests; report totals from a fresh run
   of the exact commit instead of maintaining a fixed count here.
 - Symbol/function/predicate replay in `Mutatis mutandis` and promotion over
-  declared relation structure are integrated. PR #158 adds the four basic
-  divisibility identity proofs. PR #160 tightens Extensionality, Foundation,
-  and Choice citations to their canonical sentences. Do not copy test totals
-  here; report results from CI for the exact commit.
+  declared relation structure are integrated. PR #158 queues J35, a proof-only
+  task for four basic divisibility identities; it changes no tests or source
+  code. PR #160 tightens Extensionality, Foundation, and Choice citations to
+  their canonical sentences. Do not copy test totals here; report results from
+  CI for the exact commit.
 
 
 ## Architecture and correctness invariants
@@ -331,14 +332,15 @@ These are directions, not an automatically authorized feature queue. Prefer
 small, independently testable increments; check the current issues, PRs, and
 collaboration handoff before starting.
 
-1. **Issue #98 divisibility proofs:** the four candidate identities and checked
-   proofs are implemented; the fixture and focused runner merged in PR #158.
-   The issue remains open on GitHub as a tracking record. This does not authorize
-   additional arithmetic axioms. Broader arithmetic, including any expansion
-   beyond the current integer/divisibility vocabulary, requires a separate
-   scoped decision. Number theory here is distinct from Peano/Robinson
-   arithmetic; no successor-based axiom was added. Prime and congruence
-   vocabulary is implemented; larger arithmetic expansions remain future work.
+1. **Issue #98 divisibility proofs:** the four candidate algebraic laws are now
+   present in `INT_AXIOMS`. The corresponding checked proof examples are queued
+   as J35 after job-entry PR #158 merged; the proofs and tests have not yet been
+   added. J35 is proof coverage only and does not authorize further axioms.
+   Broader arithmetic beyond the current integer/divisibility vocabulary needs
+   a separate scoped decision. Number theory remains distinct from
+   Peano/Robinson arithmetic; no successor-based axiom was added. Prime and
+   congruence vocabulary is implemented; larger arithmetic expansions remain
+   future work.
 2. **Finite/infinite-set semantics:** focused declarations, predicates,
    bijections, exact cardinalities, and transfer/closure rules are implemented.
    Cardinal values are metatheoretic nonnegative integers; they are not object-language
@@ -366,7 +368,7 @@ The owner answered the earlier approval list on 2026-10-30, and the two items
 he asked to have explained (promotion over relation symbols, the witness policy)
 on 2026-10-31.
 
-Approved, in the order Claude will take them (one feature at a time):
+Approved work (original sequence; current implementation status is shown below):
 
 1. Retiring generic `(Axiom)` citations for the four set axioms. Done: see the
    set-theory constraints above.
@@ -374,8 +376,9 @@ Approved, in the order Claude will take them (one feature at a time):
    optional standalone target/twin fixtures are archived as J33.
 3. Declared function symbols in proof text and making set operations into terms.
    Implemented for typed unary declarations and the documented set-operation
-   term forms. The general declared-symbol and API design remains subject to the
-   existing owner guidance; relation-symbol promotion follows this work.
+   term forms. Broader declared-symbol and API design remains subject to the
+   existing owner guidance; relation-symbol promotion is implemented separately
+   (item 6).
 4. A symbolic defining property for sets without an explicit characterization.
    Declaration lowering, metadata, exact WLOG replay, and positive/negative
    Mutatis replay coverage are implemented.

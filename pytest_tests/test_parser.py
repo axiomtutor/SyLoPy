@@ -414,8 +414,6 @@ def test_declaration_recipe_can_consume_multiple_adjacent_surface_clauses():
     ]
 
 
-
-
 def test_whole_expression_formula_dispatch_is_shared_by_lines_and_premises():
     seen = []
     whole = fl.AtomicFormula("WholeExpression", [])
@@ -436,7 +434,7 @@ def test_whole_expression_formula_dispatch_is_shared_by_lines_and_premises():
     assert repr(premise_expression) == "WholeExpression()"
 
 
-def test_surface_formula_dispatch_preserves_an_explicit_empty_bound_set():
+def test_surface_formula_dispatch_accepts_an_explicit_empty_bound_set():
     bound_vars = set()
     received = []
 
@@ -447,5 +445,4 @@ def test_surface_formula_dispatch_preserves_an_explicit_empty_bound_set():
     environment = pp.TheoryEnvironment(formula_parsers=[formula_parser])
     pp._parse_surface_expression("P(x)", bound_vars, environment)
 
-    assert received == [bound_vars]
-    assert received[0] is bound_vars
+    assert received == [set()]

@@ -62,6 +62,27 @@ Prefer theory-local parsers, recipes, and line elaborators. Lower new proof form
 
 To inspect lowering, call `ProofParser.format_core_proof(entries)` after `parse_proof_text`. The formatter is diagnostic only; validation uses the in-memory entries and does not parse the formatted text again.
 
+### Registered examples and a line-elaborator pattern
+
+Set theory registers whole-line membership/subset syntax and set-operation phrases through `formula_parsers`; recursive set formulas and terms through `nested_formula_parsers`, `phrase_parsers`, `phrase_spans`, and `term_parsers`; and `Subset proof below` through a line elaborator. Its enumeration and set-builder forms lower to ordinary membership formulas. The `EmptySetPropertyRule` and `SetEqualityRule` remain specialized inference rules, not merely parser sugar.
+
+Number theory extends the natural-number and set-theory environments. It registers quotient notation such as `n/a` as term syntax, divisibility and integerhood through nested formula parsers, and quotient defining-property and uniqueness rules. Its declarations include `Int`, `Plus`, `Times`, `Neg`, and `Quotient`.
+
+A proof-form extension should validate the surface contract, lower to existing core entries where possible, and register source origins for any synthetic labels. For example:
+
+```python
+def elaborate_some_construct(line, context):
+    if not matches(line):
+        return None
+    # Validate the surface contract.
+    # Generate a core entry, possibly with nested core entries.
+    # Register origins for synthetic labels.
+    return core_entry
+```
+
+Register the elaborator in `TheoryEnvironment.line_elaborators`. Use a specialized inference rule only when ordinary core derivation is not the right implementation.
+
+
 ## Current theory boundary
 
 A theory should provide, as appropriate:
