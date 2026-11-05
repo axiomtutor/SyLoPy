@@ -7,6 +7,7 @@ initializer invokes that entry point after both modules have loaded.
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
 
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
@@ -93,16 +94,21 @@ def _embedded_existential_spans(s: str) -> list:
     symbolic ``exists x, BODY`` keeps the scope the grammar gives it.
     """
     depths = _bracket_depths(s)
+    # Find top-level terminators once. Searching the remaining suffix for
+    # every opener rescans the same text and can become quadratic when a
+    # formula contains several embedded existential phrases.
+    then_positions = [
+        match.start()
+        for match in _THEN_RE.finditer(s)
+        if depths[match.start()] == 0
+    ]
     spans = []
     for opener in _EXISTENTIAL_OPENER_RE.finditer(s):
         start = opener.start()
         if start == 0 or depths[start] != 0:
             continue
-        end = len(s)
-        for then in _THEN_RE.finditer(s, start):
-            if depths[then.start()] == 0:
-                end = then.start()
-                break
+        next_then = bisect_left(then_positions, start)
+        end = then_positions[next_then] if next_then < len(then_positions) else len(s)
         candidate = s[start:end]
         if _EXISTS_SUCH_THAT_RE.match(candidate) or _EXISTS_ARTICLE_RE.match(candidate):
             spans.append((start, end))
