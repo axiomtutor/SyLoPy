@@ -52,9 +52,10 @@ end subproof
 
 The parser extension points have different precedence and scope:
 
-- `formula_parsers` receive a whole ordinary proof-line expression and each whole premise-bundle component before generic connective splitting. They return `SurfaceExpression`, which can retain theory-specific data such as raw subset operands. This dispatch is not recursive.
-- `phrase_parsers` receive a whole recursive formula substring before connective splitting. Use them for phrases containing connective-looking words; they must decline unless the entire substring is their phrase.
-- `phrase_spans` protect recognized theory phrases inside larger formulas before connective splitting.
+- `formula_parsers` receive a whole ordinary proof-line expression and each whole premise-bundle component before generic connective splitting. They are called in registration order; the first parser that returns a `SurfaceExpression` wins. The same `bound_vars` set is passed to each parser and to the fallback parser, so parsers must treat it as read-only. Returned `SurfaceExpression` values can retain theory-specific data such as raw subset operands. This dispatch is not recursive.
+- `phrase_parsers` receive the whole recursive formula substring before connective splitting. Use them for phrases containing connective-looking words; each parser must decline unless the entire substring is its phrase. They are consulted in registration order, and the first non-`None` result wins.
+- Immediately after whole-string phrase parsers, `ProofParserPolicy` handles natural-language existential forms through `_parse_natural_existential`, including forms such as `there exists x such that ...` and `there exists a unique set Y such that ...`. These phrases desugar to ordinary quantifiers.
+- `phrase_spans` finders locate recognized theory phrases embedded inside a larger formula and return their source `(start, end)` spans. Before connective splitting, each reported top-level span is wrapped in parentheses so the phrase reaches its phrase parser intact. A finder must report only spans whose complete text is accepted by its corresponding phrase parser; it must not fence off a partial or merely similar substring.
 - `nested_formula_parsers` and `term_parsers` recognize formulas and terms during recursive parsing. Nested formula parsers run after generic connective splits, preventing them from swallowing a larger expression.
 - `line_elaborators` and `declaration_recipes` handle proof constructs and structured declarations; theory inference rules, axioms, and declarations supply core resources.
 
