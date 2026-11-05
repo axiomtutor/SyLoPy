@@ -18,13 +18,22 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
 promotion, and regression corpus are implemented.
 
+**Current development priority (owner direction, 2026-11-05):** focus development
+primarily on set theory until it is fully functional. Prioritize set-theory
+correctness, missing proof patterns, usability, and regression coverage. Do not
+start new number-theory work during this phase. This priority does not delete or
+roll back existing number-theory work: its implementation, axioms, declarations,
+vocabulary, fixtures, issue history, and owner authorization remain intact.
+
 ### Tracked issues
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): the four candidate
-  algebraic laws are now present in `source/NumberTheory.py`'s `INT_AXIOMS`.
-  Checked proof coverage for the four candidate divisibility facts is queued as
-  J35. Job-entry PR #158 has merged; implementation has not yet begun. The job
-  does not authorize any additional axioms.
+  algebraic laws are present in `source/NumberTheory.py`'s `INT_AXIOMS`.
+  Checked proof coverage for the four candidate divisibility facts remains
+  specified as J35. Job-entry PR #158 has merged, but J35 is deferred by the
+  owner's current set-theory priority; its implementation has not begun. The
+  deferral does not authorize or require any change to existing number-theory
+  code or axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
   premises are parsed as formulas, not declaration clauses; compound-declaration
   coverage is in `pytest_tests/test_compound_declarations.py`.
@@ -84,6 +93,12 @@ promotion, and regression corpus are implemented.
 ## Current feature status
 
 ### Set theory and proof syntax
+
+**Current development focus:** set theory is the active priority until it is
+fully functional. New work should first address set-theory correctness,
+unsupported or awkward proof patterns, clear surface syntax, and adversarial
+regression coverage. Do not advance the deferred number-theory job while this
+priority remains in effect.
 
 Implemented: named Pairing, Union, Power Set, and Infinity axiom-citation rules,
 which are now the only way to cite those axioms (generic `(Axiom)` is retired, see
@@ -237,6 +252,17 @@ these without an owner decision.
 
 ### Number theory and discrete mathematics
 
+The owner previously authorized the number-theory module in these terms:
+
+> Implement this module and create reasonable axioms. For example, axioms about
+> 0, 1, addition, multiplication, division. The number theory module should
+> supply definitions of divisibility, prime, congruence.
+
+That authorization remains part of the project decisions. The existing
+number-theory implementation and its work are retained, but new number-theory
+implementation is deferred while set theory is the active development priority.
+J35 remains specified in the delegated-job tracker and is paused, not cancelled.
+
 - Number theory is about integers, divisibility, primes, and related properties;
   it is separate from arithmetic foundations such as Peano or Robinson
   arithmetic. Number theory deliberately supplies only its documented
@@ -328,19 +354,21 @@ decided on 2026-10-31 (the owner agreed with both recommendations):
 
 ## Remaining work
 
-These are directions, not an automatically authorized feature queue. Prefer
-small, independently testable increments; check the current issues, PRs, and
-collaboration handoff before starting.
+These are directions, not an automatically authorized feature queue. Set
+theory is the current development priority; close set-theory correctness,
+proof-pattern, and coverage gaps before starting new work in another theory.
+Prefer small, independently testable increments; check the current issues, PRs,
+and collaboration handoff before starting.
 
-1. **Issue #98 divisibility proofs:** the four candidate algebraic laws are now
-   present in `INT_AXIOMS`. The corresponding checked proof examples are queued
-   as J35 after job-entry PR #158 merged; the proofs and tests have not yet been
-   added. J35 is proof coverage only and does not authorize further axioms.
-   Broader arithmetic beyond the current integer/divisibility vocabulary needs
-   a separate scoped decision. Number theory remains distinct from
-   Peano/Robinson arithmetic; no successor-based axiom was added. Prime and
-   congruence vocabulary is implemented; larger arithmetic expansions remain
-   future work.
+1. **Deferred — Issue #98 divisibility proofs:** the four candidate algebraic
+   laws are present in `INT_AXIOMS`; J35 preserves the requested checked proof
+   coverage and its existing scope. It is paused until set theory is considered
+   fully functional. The number-theory authorization above is retained, but no
+   new number-theory work is part of the current phase. Broader arithmetic
+   beyond the current integer/divisibility vocabulary remains subject to a
+   separate scoped decision. Number theory remains distinct from Peano/Robinson
+   arithmetic; no successor-based axiom was added. Prime and congruence
+   vocabulary remains implemented.
 2. **Finite/infinite-set semantics:** focused declarations, predicates,
    bijections, exact cardinalities, and transfer/closure rules are implemented.
    Cardinal values are metatheoretic nonnegative integers; they are not object-language
@@ -356,7 +384,7 @@ collaboration handoff before starting.
    tests. Expanding optional standalone J33/J34 target fixtures is still
    available work, not a correctness blocker.
 6. **Example coverage:** continue adding useful informational proof patterns,
-   especially algebraic and order-theoretic examples, without duplicating
+   especially set-theoretic examples, without duplicating
    fixtures or changing expected outcomes to conceal failures.
 7. **Public API and documentation alignment:** keep README and
    `docs/PROOF_FILE_FORMAT.md` synchronized with new syntax, suites, declaration
