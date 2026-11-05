@@ -31,7 +31,7 @@ The front end keeps three representations:
 - **Surface AST:** `SurfaceProof`, `SurfaceLine`, `SurfaceSubproof`, and `SourceSpan`, preserving original text and locations.
 - **Core entries:** `ElaboratedEntries`, the tuple language consumed by `ProofLogic.ProofValidator`.
 
-`ElaboratedEntries` also carries source-origin mappings and the theory resources required by the elaborated proof. `ProofLogic.Proof` merges those resources before validation. Each generated core label maps to a `CoreOrigin`, so a kernel error on a synthetic step is reported against the surface line that generated it.
+`ElaboratedEntries` carries `origin_by_label`, the original `surface_proof`, and the required rules, axioms, and declarations (`required_rules`, `required_axioms`, `required_declarations`). `ProofLogic.Proof` merges those resources before validation. Each `CoreOrigin` records the source span, surface construct, and whether the core step is synthetic. A kernel error on a generated step is therefore reported against the surface line that generated it; an error found during elaboration is raised directly at its source span.
 
 For example, `Subset proof below` lowers to universal generalization over an arbitrary element and conditional introduction from the user's subproof. Synthetic labels are internal; they are not inserted into the proof file.
 
@@ -64,9 +64,9 @@ To inspect lowering, call `ProofParser.format_core_proof(entries)` after `parse_
 
 ### Registered examples and a line-elaborator pattern
 
-Set theory registers whole-line membership/subset syntax and set-operation phrases through `formula_parsers`; recursive set formulas and terms through `nested_formula_parsers`, `phrase_parsers`, `phrase_spans`, and `term_parsers`; and `Subset proof below` through a line elaborator. Its enumeration and set-builder forms lower to ordinary membership formulas. The `EmptySetPropertyRule` and `SetEqualityRule` remain specialized inference rules, not merely parser sugar.
+Set theory declares `EmptySet` and the binary predicate `In`. It registers whole-line membership/subset syntax and set-operation phrases through `formula_parsers`; recursive set formulas and terms through `nested_formula_parsers`, `phrase_parsers`, `phrase_spans`, and `term_parsers`; and `Subset proof below` through a line elaborator. Enumeration and set-builder forms lower to ordinary membership formulas. `EmptySetPropertyRule` and `SetEqualityRule` remain specialized inference rules, not merely parser sugar.
 
-Number theory extends the natural-number and set-theory environments. It registers quotient notation such as `n/a` as term syntax, divisibility and integerhood through nested formula parsers, and quotient defining-property and uniqueness rules. Its declarations include `Int`, `Plus`, `Times`, `Neg`, and `Quotient`.
+Number theory extends the natural-number and set-theory environments. It registers quotient notation such as `n/a` as term syntax, divisibility and integerhood through nested formula parsers, and quotient defining-property and uniqueness rules. Its declarations include `Int`, `Plus`, `Times`, `Neg`, and `Quotient` (alongside the natural-number declarations it extends).
 
 A proof-form extension should validate the surface contract, lower to existing core entries where possible, and register source origins for any synthetic labels. For example:
 
