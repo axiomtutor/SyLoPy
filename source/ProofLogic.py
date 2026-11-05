@@ -3515,19 +3515,9 @@ def _top_level_promotion_inputs(
     return derived, objects, predicates
 
 
-def _top_level_derived_formulas(entries: list) -> List[fl.Formula]:
-    """Every formula derived by inference at top level, in source order."""
-    return _top_level_promotion_inputs(entries)[0]
-
-
 def _top_level_object_declarations(entries: list) -> List[str]:
     """Names of top-level object declarations eligible for generalization."""
     return _top_level_promotion_inputs(entries)[1]
-
-
-def _top_level_predicate_declarations(entries: list) -> List[str]:
-    """Names of top-level relation declarations eligible for generalization."""
-    return _top_level_promotion_inputs(entries)[2]
 
 
 class DeclarationRecipe:
