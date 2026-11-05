@@ -4,9 +4,9 @@
 
 # Jobs for ChatGPT
 
-The owner asked Claude to queue work that ChatGPT can do without Claude, to save Claude's time. Take jobs in order, one PR per job. Stable rules: [`AGENT_COLLABORATION.md` on master](https://github.com/axiomtutor/SyLoPy/blob/master/AGENT_COLLABORATION.md). Live status: `AGENT_COLLABORATION.md` on this branch. If this file conflicts with the owner or with master's guide, they win; say so in the PR.
+The entries below preserve the former long-form queue for provenance. This file is not a live queue or a current workflow specification. For active work, use [`JOBS_FOR_CHATGPT.md`](../../JOBS_FOR_CHATGPT.md); for collaboration rules, use [`AGENT_COLLABORATION.md`](../../AGENT_COLLABORATION.md); for current status and owner decisions, use [`todos.txt`](../../todos.txt). Current guidance takes precedence over archived wording.
 
-Checked against master `3fbaf97`; J16 to J18 against master `fec7051`; J19 and J20 against master `045de51`; J24 and J25 against master `97e71ee`; J27 was completed on 2026-10-30 and merged in PR #139. Edit only the Status table; do not delete jobs.
+Historical status records below are retained as they appeared during the original queue; consult the live tracker for current task status.
 
 ## Status
 
