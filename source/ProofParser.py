@@ -337,6 +337,23 @@ def _lower_surface_expression(expression: SurfaceExpression) -> fl.Formula:
     raise ValueError(f"no core lowering registered for surface expression kind {expression.kind!r}")
 
 
+def _parse_surface_expression(text: str, bound_vars: Optional[set] = None,
+                              environment: Optional[TheoryEnvironment] = None) -> SurfaceExpression:
+    """Offer a whole surface expression to theory parsers before core parsing.
+
+    Shared by ordinary proof lines and each component of a premise bundle.
+    This dispatch is deliberately not recursive; nested syntax is handled by
+    the recursive formula and phrase parser registries.
+    """
+    bound_vars = bound_vars or set()
+    if environment is not None:
+        for formula_parser in environment.formula_parsers:
+            expression = formula_parser(text, bound_vars)
+            if expression is not None:
+                return expression
+    return SurfaceExpression("core", parse_formula(text, bound_vars, environment), text)
+
+
 def _parse_premise_part(part: str, environment: Optional[TheoryEnvironment]) -> fl.Formula:
     """Parse one premise formula.
 
@@ -346,12 +363,8 @@ def _parse_premise_part(part: str, environment: Optional[TheoryEnvironment]) -> 
     sugar whose wording contains a connective -- "x is a or b" -- would be
     split at its "or" by the generic grammar before any theory saw it.
     """
-    if environment is not None:
-        for parser in environment.formula_parsers:
-            expression = parser(part, set())
-            if expression is not None:
-                return _lower_surface_expression(expression)
-    return parse_formula(part, environment=environment)
+    expression = _parse_surface_expression(part, environment=environment)
+    return _lower_surface_expression(expression)
 
 
 def _declaration_kind_from_descriptor(descriptor: str) -> Tuple[str, Optional[str]]:
@@ -1656,12 +1669,7 @@ class _ElaborationContext:
             self.origin_by_label[label] = CoreOrigin(span, construct, synthetic)
 
     def parse_surface_expression(self, text: str, bound_vars: Optional[set] = None) -> SurfaceExpression:
-        bound_vars = bound_vars or set()
-        for parser in self.environment.formula_parsers:
-            expression = parser(text, bound_vars)
-            if expression is not None:
-                return expression
-        return SurfaceExpression("core", parse_formula(text, bound_vars, self.environment), text)
+        return _parse_surface_expression(text, bound_vars, self.environment)
 
     def parse_core_formula(self, text: str, bound_vars: Optional[set] = None) -> fl.Formula:
         return _lower_surface_expression(self.parse_surface_expression(text, bound_vars))

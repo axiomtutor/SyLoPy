@@ -330,11 +330,11 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     positions too -- e.g. the "a|n" inside "if a|n then b" -- not only
     when a formula happens to consist of nothing else. Defaults to the
     core parser's cached `default_theory_environment()` when omitted.
-    (`environment.formula_parsers`, by contrast, is only consulted by
-    `_ElaborationContext.parse_surface_expression` at the top of a single
-    proof line, since some of its results carry extra structure -- like
-    SetTheory's raw subset operands -- that only the elaborator that asked
-    for them knows how to use.)
+    (`environment.formula_parsers`, by contrast, is consulted at the surface
+    boundary for a whole ordinary proof-line expression and for each whole
+    component of a premise bundle, before generic connective splitting. It is
+    not recursive; some results carry extra structure -- like SetTheory's raw
+    subset operands -- that the requesting elaborator must lower or retain.)
 
     Examples::
 

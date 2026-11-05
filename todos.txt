@@ -5,7 +5,7 @@ open design decisions, and invariants belong here. Detailed implementation histo
 is in the linked PRs; behavior is specified by the code, tests, README, and
 `docs/PROOF_FILE_FORMAT.md`.
 
-Document roles are intentionally separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work. `PROJECT_STATE.md` maps the current layout and verification workflow; where it differs from this file, this file wins. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
+Document roles are separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work; `PROJECT_STATE.md` maps the source tree and verification workflow. `ARCHITECTURE_STATUS.md` is the single maintained architecture reference. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
 
 ## Current status
 
@@ -18,14 +18,13 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
 promotion, and regression corpus are implemented.
 
-### Open findings
+### Tracked issues
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): the four candidate
-  algebraic laws listed there are now present in `source/NumberTheory.py`'s
-  `INT_AXIOMS` (multiplicative identities, zero annihilation, and compatibility
-  with additive negation). The remaining work is checked proof coverage for the
-  four candidate divisibility facts, proposed as J35 in the pending job-entry PR.
-  This is not authorization to add any further axioms.
+  algebraic laws are now present in `source/NumberTheory.py`'s `INT_AXIOMS`.
+  Checked proof coverage for the four candidate divisibility facts is queued as
+  J35. Job-entry PR #158 has merged; implementation has not yet begun. The job
+  does not authorize any additional axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
   premises are parsed as formulas, not declaration clauses; compound-declaration
   coverage is in `pytest_tests/test_compound_declarations.py`.
@@ -33,7 +32,7 @@ promotion, and regression corpus are implemented.
   descriptors after commas, including `irreflexive`, `asymmetric`, and `total`,
   compose with the existing descriptor and property parsing paths.
 
-## Project-state update: 2026-11-02
+## Project-state update: 2026-11-05
 
 - Named Python test suites are implemented. `default` is the PR/local project
   suite; `extended` contains red-team, audit, and mutation-tool modules, and
@@ -52,8 +51,11 @@ promotion, and regression corpus are implemented.
 - Verification totals change with added tests; report totals from a fresh run
   of the exact commit instead of maintaining a fixed count here.
 - Symbol/function/predicate replay in `Mutatis mutandis` and promotion over
-  declared relation structure are fully integrated. The complete suite has no
-  xfailed tests and no fixture-expected-failure results.
+  declared relation structure are integrated. PR #158 queues J35, a proof-only
+  task for four basic divisibility identities; it changes no tests or source
+  code. PR #160 tightens Extensionality, Foundation, and Choice citations to
+  their canonical sentences. Do not copy test totals here; report results from
+  CI for the exact commit.
 
 
 ## Architecture and correctness invariants
@@ -110,34 +112,18 @@ Constraints and open decisions:
   none; set theory lists no axiom and closes it. A theory with a non-empty list
   needs no flag. `SET_AXIOMS` stays as the four formulas the named rules accept.
   Regression coverage is `pytest_tests/test_closed_axiom_list.py` and
-  `tests/testSetTheory/axioms_cited_by_name.txt`; J34 (ChatGPT) red-teams it.
-- **Extensionality, Foundation and Choice (one sentence each):** the named rules
-  for these three checked a shape, not the axiom, so a line cited with one of them
-  could state a false sentence. `forall x, (Finite(EmptySet) -> exists y, not (y = y))`
-  was accepted as Foundation or as Choice (Choice took any universal implication
-  that contains an existential) and, with the proved `Finite(EmptySet)`, gave
-  `exists y, not (y = y)`; Extensionality took a member variable that shadows one
-  of the two sets (`forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y)`
-  says that the empty set is every set); and the textbook form of Foundation,
-  with `exists y, In(y, x)` as its antecedent, was refused. Each rule now justifies
-  one sentence, compared up to the names of its bound variables (`pl._alpha_eq`)
-  and with nothing else: Extensionality (the biconditional in either order);
-  Foundation (the textbook sentence); and Choice in Zermelo's form (a set of
-  nonempty, pairwise disjoint sets has a set that meets each of them in exactly
-  one element), which needs only `In` and `=`. The sentences are
-  `EXTENSIONALITY_TEXT`, `FOUNDATION_TEXT` and `CHOICE_TEXT` in
-  `source/SetTheory.py`, listed in `docs/PROOF_FILE_FORMAT.md`. A refused
-  citation is told the sentence to cite, and a restated `(Axiom)` line is no
-  longer pointed at a rule that accepted anything.
-  Pinned by `pytest_tests/test_zfc_axiom_rules.py` (including a check, in every
-  structure with up to three elements, that each formula says what the axiom says)
-  and `tests/testSetTheory/zfc_axioms_exact.txt`. **Owner confirmed (2026-11-04,
-  comment on #160):** Zermelo's form is the Choice to cite (a choice-function form
-  needs function application, which set theory does not have yet), and Foundation's
-  form with `not (x = EmptySet)` as its antecedent, which the first version also
-  accepted, is dropped as unnecessary. It is refused as an axiom, and proof 17 of
-  the fixture derives it from Foundation, Extensionality and `(Set property)`.
-  Other equivalent forms are refused too; a proof derives them from the axiom.
+  `tests/testSetTheory/axioms_cited_by_name.txt`; focused closed-axiom coverage is
+  present. Optional standalone J34 red-team fixtures remain archived, not active.
+- **Extensionality, Foundation and Choice (one sentence each):** PR #160 fixed
+  unsound shape-based acceptance. Each named rule now checks its canonical
+  sentence up to bound-variable renaming, and no other sentence. Extensionality
+  permits the biconditional in either order; Foundation uses the canonical
+  existence-of-a-member antecedent; Choice uses Zermelo's form for a set of
+  nonempty, pairwise disjoint sets and a selector meeting each in exactly one
+  element. The owner approved Zermelo's form and asked to drop the unnecessary
+  alternate Foundation form in the PR discussion. See `source/SetTheory.py`,
+  `docs/PROOF_FILE_FORMAT.md`, `pytest_tests/test_zfc_axiom_rules.py`, and
+  `tests/testSetTheory/zfc_axioms_exact.txt`.
 - **Set property:** the membership characterization and an explicitly matching
   instance determine the inference; the checker must not guess the target term.
   Equality as a direct property disjunct is handled in the supported direction.
@@ -346,22 +332,15 @@ These are directions, not an automatically authorized feature queue. Prefer
 small, independently testable increments; check the current issues, PRs, and
 collaboration handoff before starting.
 
-1. **Issue #98 divisibility laws:** the remaining divisibility-related laws and
-   proof coverage they require are an owner decision, not permission to invent
-   axioms. Number theory here concerns divisibility and integer properties;
-   successor-based Peano/Robinson arithmetic is a separate foundation and not
-   implicit machinery for resolving issue #98. Preserve the owner-list policy.
-
-   Message from owner: Implement this module and create reasonable axioms.  For example, axioms about 0, 1, addition, multiplication, division.  The number theory module should supply definitions of divisibility, prime, congruence.
-
-   Basic integer ring identities are now implemented in `NumberTheory.py`
-   with explicit `Zero` and `One` constants, additive/multiplicative identities,
-   addition associativity/commutativity, zero annihilation, and compatibility
-   of multiplication with additive inverse. No successor-based axiom was added.
-   Prime and congruence vocabulary is now implemented with declared predicates,
-   textual parsing, and defining axioms: `Prime(p)` and `a is congruent to b
-   modulo m`. Larger arithmetic expansions remain future work.
-
+1. **Issue #98 divisibility proofs:** the four candidate algebraic laws are now
+   present in `INT_AXIOMS`. The corresponding checked proof examples are queued
+   as J35 after job-entry PR #158 merged; the proofs and tests have not yet been
+   added. J35 is proof coverage only and does not authorize further axioms.
+   Broader arithmetic beyond the current integer/divisibility vocabulary needs
+   a separate scoped decision. Number theory remains distinct from
+   Peano/Robinson arithmetic; no successor-based axiom was added. Prime and
+   congruence vocabulary is implemented; larger arithmetic expansions remain
+   future work.
 2. **Finite/infinite-set semantics:** focused declarations, predicates,
    bijections, exact cardinalities, and transfer/closure rules are implemented.
    Cardinal values are metatheoretic nonnegative integers; they are not object-language
@@ -389,23 +368,24 @@ The owner answered the earlier approval list on 2026-10-30, and the two items
 he asked to have explained (promotion over relation symbols, the witness policy)
 on 2026-10-31.
 
-Approved, in the order Claude will take them (one feature at a time):
+Approved work (original sequence; current implementation status is shown below):
 
 1. Retiring generic `(Axiom)` citations for the four set axioms. Done: see the
    set-theory constraints above.
-2. Extending WLOG to arbitrary properties. J33 (ChatGPT) writes the target
-   proofs first.
+2. Extending WLOG to arbitrary properties. Implemented with focused coverage;
+   optional standalone target/twin fixtures are archived as J33.
 3. Declared function symbols in proof text and making set operations into terms.
    Implemented for typed unary declarations and the documented set-operation
-   term forms. The general declared-symbol and API design remains subject to the
-   existing owner guidance; relation-symbol promotion follows this work.
+   term forms. Broader declared-symbol and API design remains subject to the
+   existing owner guidance; relation-symbol promotion is implemented separately
+   (item 6).
 4. A symbolic defining property for sets without an explicit characterization.
-   Basic declaration lowering and metadata are implemented; exact replay and
-   expanded fixture coverage remain TODO items.
+   Declaration lowering, metadata, exact WLOG replay, and positive/negative
+   Mutatis replay coverage are implemented.
 5. The broader Infinity/finite-set semantics (after 3, since a bijection is a
-   function).
+   function). Implemented; see the feature-status section above.
 6. Generalizing promoted theorems over relation symbols and their declared
-   structure (after 3; see the policy questions above).
+   structure. Implemented; see the theorem-promotion section above.
 
 Current implementation direction:
 
