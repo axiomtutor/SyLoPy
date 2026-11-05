@@ -2112,96 +2112,142 @@ class PowerSetAxiomRule(pl.InferenceRule):
         return _is_the_axioms_set(parameter, [y_name, u_name, w_name], w_in_set[1])
 
 
-class ExtensionalityAxiomRule(pl.InferenceRule):
+def _axiom_var(name: str) -> tl.VariableTerm:
+    return tl.VariableTerm(name)
+
+
+def _in(element: str, set_name: str) -> fl.Formula:
+    return membership_formula(_axiom_var(element), _axiom_var(set_name))
+
+
+# Extensionality, Foundation and Choice are each one sentence. The text is how a
+# proof writes it (the quantifier of a parenthesized part must be parenthesized,
+# or it reaches over the arrow); the formula is what the rule compares with.
+
+EXTENSIONALITY_TEXT = "forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y)"
+EXTENSIONALITY_AXIOM = fl.ForAll("x", fl.ForAll("y", fl.Implies(
+    fl.ForAll("z", fl.Iff(_in("z", "x"), _in("z", "y"))),
+    fl.Equals(_axiom_var("x"), _axiom_var("y")),
+)))
+"""Sets with the same members are equal (Jech's Axiom 1). The biconditional may
+be written in either order; `_EXTENSIONALITY_AXIOM_SWAPPED` is the other."""
+_EXTENSIONALITY_AXIOM_SWAPPED = fl.ForAll("x", fl.ForAll("y", fl.Implies(
+    fl.ForAll("z", fl.Iff(_in("z", "y"), _in("z", "x"))),
+    fl.Equals(_axiom_var("x"), _axiom_var("y")),
+)))
+
+FOUNDATION_TEXT = (
+    "forall x, ((exists y, In(y, x)) -> "
+    "exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x)))))"
+)
+FOUNDATION_AXIOM = fl.ForAll("x", fl.Implies(
+    fl.Exists("y", _in("y", "x")),
+    fl.Exists("y", fl.And(
+        _in("y", "x"),
+        fl.Not(fl.Exists("z", fl.And(_in("z", "y"), _in("z", "x")))),
+    )),
+))
+"""Every set with a member has a member that shares no member with it (Jech's
+Axiom 8, regularity)."""
+FOUNDATION_TEXT_NONEMPTY = (
+    "forall x, (not (x = EmptySet) -> "
+    "exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x)))))"
+)
+_FOUNDATION_AXIOM_NONEMPTY = fl.ForAll("x", fl.Implies(
+    fl.Not(fl.Equals(_axiom_var("x"), EMPTY_SET)),
+    fl.Exists("y", fl.And(
+        _in("y", "x"),
+        fl.Not(fl.Exists("z", fl.And(_in("z", "y"), _in("z", "x")))),
+    )),
+))
+"""The same axiom with "has a member" written as "is not the empty set", which
+is the same thing once the empty set has no member (`EmptySetPropertyRule`) and
+sets with the same members are equal."""
+
+CHOICE_TEXT = (
+    "forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and "
+    "(forall A, forall B, ((In(A, X) and In(B, X) and not (A = B)) -> "
+    "not (exists c, (In(c, A) and In(c, B)))))) -> "
+    "exists C, forall A, (In(A, X) -> exists a, "
+    "(In(a, A) and In(a, C) and forall b, ((In(b, A) and In(b, C)) -> b = a))))"
+)
+CHOICE_AXIOM = fl.ForAll("X", fl.Implies(
+    fl.And(
+        fl.ForAll("A", fl.Implies(_in("A", "X"), fl.Exists("a", _in("a", "A")))),
+        fl.ForAll("A", fl.ForAll("B", fl.Implies(
+            fl.And(_in("A", "X"), _in("B", "X"),
+                   fl.Not(fl.Equals(_axiom_var("A"), _axiom_var("B")))),
+            fl.Not(fl.Exists("c", fl.And(_in("c", "A"), _in("c", "B")))),
+        ))),
+    ),
+    fl.Exists("C", fl.ForAll("A", fl.Implies(
+        _in("A", "X"),
+        fl.Exists("a", fl.And(
+            _in("a", "A"),
+            _in("a", "C"),
+            fl.ForAll("b", fl.Implies(
+                fl.And(_in("b", "A"), _in("b", "C")),
+                fl.Equals(_axiom_var("b"), _axiom_var("a")),
+            )),
+        )),
+    ))),
+))
+"""Zermelo's form of the axiom of choice: for every set X of nonempty, pairwise
+disjoint sets there is a set C that has exactly one element in common with each
+member of X. In ZF it is equivalent to the existence of a choice function for
+every family of nonempty sets, and it needs nothing but `In` and `=` (no
+function symbol, no ordered pair)."""
+
+
+class _ExactAxiomRule(pl.InferenceRule):
+    """A named axiom that takes no premises and is cited as one sentence.
+
+    The rule compares what is cited with the axiom up to the names of its bound
+    variables (`pl._alpha_eq`), and with nothing else. Looking at the *shape* of
+    the citation instead -- a universal over an implication, say -- accepts every
+    sentence of that shape, and a citation by name is then a way to assume
+    anything of it. Comparing names instead of binders is no better: a variable
+    that another quantifier binds again changes what the sentence says
+    (`forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y)`).
+    """
+    axiom_variants: tuple = ()
+    statement: str = ""
+    premise_arity = 0
+
+    def applies(self, candidates: list, phi: fl.Formula) -> bool:
+        return not candidates and any(pl._alpha_eq(phi, axiom) for axiom in self.axiom_variants)
+
+    def explain_in_context(self, candidates, phi, context):
+        if candidates:
+            return f"{self.citation} takes no cited premises."
+        return (f"{self.citation} is cited for exactly this sentence, up to the names of its "
+                f"bound variables: {self.statement}")
+
+
+class ExtensionalityAxiomRule(_ExactAxiomRule):
     """Axiom of extensionality: sets with the same members are equal."""
     name = "ExtensionalityAxiom"
     citation = "Axiom of extensionality"
-    premise_arity = 0
-
-    def applies(self, candidates: list, phi: fl.Formula) -> bool:
-        if candidates or not isinstance(phi, fl.ForAll):
-            return False
-        outer_name = phi.var
-        if not isinstance(phi.body, fl.ForAll):
-            return False
-        inner_name = phi.body.var
-        if inner_name == outer_name:
-            return False
-        implication = phi.body.body
-        if not isinstance(implication, fl.Implies):
-            return False
-        same_members, equality = implication.antecedent, implication.consequent
-        if not isinstance(same_members, fl.ForAll) or not isinstance(equality, fl.Equals):
-            return False
-        member_name = same_members.var
-        member = tl.VariableTerm(member_name)
-        left = tl.VariableTerm(outer_name)
-        right = tl.VariableTerm(inner_name)
-        iff_formula = same_members.body
-        if not isinstance(iff_formula, fl.Iff):
-            return False
-        left_membership = membership_formula(member, left)
-        right_membership = membership_formula(member, right)
-        if not (
-            (
-                pl._ast_eq(iff_formula.left, left_membership)
-                and pl._ast_eq(iff_formula.right, right_membership)
-            )
-            or
-            (
-                pl._ast_eq(iff_formula.left, right_membership)
-                and pl._ast_eq(iff_formula.right, left_membership)
-            )
-        ):
-            return False
-        return pl._ast_eq(equality.left, left) and pl._ast_eq(equality.right, right)
+    axiom_variants = (EXTENSIONALITY_AXIOM, _EXTENSIONALITY_AXIOM_SWAPPED)
+    statement = EXTENSIONALITY_TEXT
 
 
-class FoundationAxiomRule(pl.InferenceRule):
+class FoundationAxiomRule(_ExactAxiomRule):
     """Axiom of foundation: every nonempty set contains a member disjoint from it."""
     name = "FoundationAxiom"
     citation = "Axiom of foundation"
-    premise_arity = 0
-
-    def applies(self, candidates: list, phi: fl.Formula) -> bool:
-        if candidates or not isinstance(phi, fl.ForAll):
-            return False
-        x_name = phi.var
-        implication = phi.body
-        if not isinstance(implication, fl.Implies):
-            return False
-        antecedent, consequent = implication.antecedent, implication.consequent
-        x = tl.VariableTerm(x_name)
-        if not isinstance(antecedent, (fl.Not, fl.AtomicFormula)):
-            return False
-        return isinstance(consequent, fl.Exists)
+    axiom_variants = (FOUNDATION_AXIOM, _FOUNDATION_AXIOM_NONEMPTY)
+    statement = f"{FOUNDATION_TEXT}, or with `not (x = EmptySet)` as its antecedent: {FOUNDATION_TEXT_NONEMPTY}"
 
 
-class ChoiceAxiomRule(pl.InferenceRule):
-    """Axiom of choice: a choice function exists for every family of nonempty sets."""
+class ChoiceAxiomRule(_ExactAxiomRule):
+    """Axiom of choice, in Zermelo's form: a set of nonempty, pairwise disjoint
+    sets has a selector, a set with exactly one element in common with each of
+    them (`CHOICE_AXIOM`)."""
     name = "ChoiceAxiom"
     citation = "Axiom of choice"
-    premise_arity = 0
-
-    def applies(self, candidates: list, phi: fl.Formula) -> bool:
-        if candidates:
-            return False
-        # Recognize the standard quantifier shape without inventing a weaker
-        # generic existential axiom.  Accept selector-set or choice-function
-        # presentations, both of which must ultimately contain Exists and ForAll.
-        if not isinstance(phi, fl.ForAll):
-            return False
-        if not isinstance(phi.body, fl.Implies):
-            return False
-        def contains_exists(formula):
-            if isinstance(formula, fl.Exists):
-                return True
-            return any(
-                contains_exists(child)
-                for child in getattr(formula, "__dict__", {}).values()
-                if isinstance(child, fl.Formula)
-            )
-        return contains_exists(phi)
+    axiom_variants = (CHOICE_AXIOM,)
+    statement = CHOICE_TEXT
 
 
 class InfinityAxiomRule(pl.InferenceRule):

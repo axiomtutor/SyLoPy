@@ -40,7 +40,8 @@ promotion, and regression corpus are implemented.
 - `./run_tests.sh` runs the `default` suite plus every enforced and informational
   proof fixture suite.
 - Named set-theory axiom citations now include extensionality, foundation/regularity,
-  and choice. Existing equality/subset reasoning remains the implementation of
+  and choice, each accepted for exactly one sentence (see Set theory and proof
+  syntax). Existing equality/subset reasoning remains the implementation of
   the extensionality theorem's mutual-subset direction.
 - Replay counterpart matching treats equality and biconditional sides
   symmetrically, while implication remains directional.
@@ -81,7 +82,8 @@ promotion, and regression corpus are implemented.
 
 Implemented: named Pairing, Union, Power Set, and Infinity axiom-citation rules,
 which are now the only way to cite those axioms (generic `(Axiom)` is retired, see
-below); Union and Power Set instance forms; scoped witness naming with
+below), and named Extensionality, Foundation (Regularity), and Choice rules, each
+accepted for exactly one sentence (below); Union and Power Set instance forms; scoped witness naming with
 `Let Y be such a set. (Existence from L)`; general `Set property`; set equality
 and subset proofs; unique existence; equality-case WLOG replay; set enumeration,
 set-builder notation, bounded quantifiers, and the documented natural-language
@@ -106,6 +108,32 @@ Constraints and open decisions:
   needs no flag. `SET_AXIOMS` stays as the four formulas the named rules accept.
   Regression coverage is `pytest_tests/test_closed_axiom_list.py` and
   `tests/testSetTheory/axioms_cited_by_name.txt`; J34 (ChatGPT) red-teams it.
+- **Extensionality, Foundation and Choice (one sentence each):** the named rules
+  for these three checked a shape, not the axiom, so a line cited with one of them
+  could state a false sentence. `forall x, (Finite(EmptySet) -> exists y, not (y = y))`
+  was accepted as Foundation or as Choice (Choice took any universal implication
+  that contains an existential) and, with the proved `Finite(EmptySet)`, gave
+  `exists y, not (y = y)`; Extensionality took a member variable that shadows one
+  of the two sets (`forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y)`
+  says that the empty set is every set); and the textbook form of Foundation,
+  with `exists y, In(y, x)` as its antecedent, was refused. Each rule now justifies
+  one sentence, compared up to the names of its bound variables (`pl._alpha_eq`)
+  and with nothing else: Extensionality (the biconditional in either order);
+  Foundation, also with `not (x = EmptySet)` as its antecedent (the same axiom once
+  the empty set has no member and sets with the same members are equal); and
+  Choice in Zermelo's form (a set of nonempty, pairwise disjoint sets has a set
+  that meets each of them in exactly one element), which needs only `In` and `=`.
+  The sentences are `EXTENSIONALITY_TEXT`, `FOUNDATION_TEXT`,
+  `FOUNDATION_TEXT_NONEMPTY` and `CHOICE_TEXT` in `source/SetTheory.py`, listed in
+  `docs/PROOF_FILE_FORMAT.md`. A refused citation is told the sentence to cite, and
+  a restated `(Axiom)` line is no longer pointed at a rule that accepted anything.
+  Pinned by `pytest_tests/test_zfc_axiom_rules.py` (including a check, in every
+  structure with up to three elements, that each formula says what the axiom says)
+  and `tests/testSetTheory/zfc_axioms_exact.txt`. **Owner confirmation requested:**
+  whether Zermelo's form is the Choice to cite (a choice-function form needs
+  function application, which set theory does not have yet), and whether
+  Foundation's `not (x = EmptySet)` form stays accepted. Other equivalent
+  forms are refused; a proof derives them from the axiom.
 - **Set property:** the membership characterization and an explicitly matching
   instance determine the inference; the checker must not guess the target term.
   Equality as a direct property disjunct is handled in the supported direction.
