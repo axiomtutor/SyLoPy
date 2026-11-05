@@ -477,7 +477,7 @@ Pitfalls found while verifying them:
 
 ---
 
-# Jobs J31–J35 (archived 2026-11-05)
+# Jobs J31–J34 (archived 2026-11-05)
 
 ### J31 — Red-team "a relation on X is a subset of X × X"
 
