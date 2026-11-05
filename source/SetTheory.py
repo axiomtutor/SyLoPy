@@ -11,8 +11,8 @@ to Universal Generalization plus Conditional Introduction before
 
 from __future__ import annotations
 
-import re
 from bisect import bisect_left
+import re
 from functools import lru_cache
 from typing import List, Optional, Tuple
 
@@ -950,11 +950,11 @@ def _try_parse_set_expression_impl(text: str, bound_vars: set) -> Optional[Surfa
 _BOUNDED_QUANTIFIER_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 
 _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
-    rf"(?<![\\w.])(?:for\\s+all|for\\s+every|forall|there\\s+exists|exists)\\s+"
-    rf"{_BOUNDED_QUANTIFIER_NAME}\\s+in\\s+[^,]+(?:,|\\s+we\\s+have\\s+|\\s+such\\s+that\\s+).*$",
+    rf"(?<![\w.])(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+"
+    rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
     flags=re.I,
 )
-_BOUNDED_QUANTIFIER_THEN_RE = re.compile(r"\\s+then\\s+", flags=re.I)
+_BOUNDED_QUANTIFIER_THEN_RE = re.compile(r"\s+then\s+", flags=re.I)
 
 
 def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
@@ -977,7 +977,7 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
         for match in _BOUNDED_QUANTIFIER_THEN_RE.finditer(text)
         if depths[match.start()] == 0
     ]
-    for match in re.finditer(r"\\b(?:for\\s+all|for\\s+every|forall|there\\s+exists|exists)\\s+", text, flags=re.I):
+    for match in re.finditer(r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+", text, flags=re.I):
         start = match.start()
         if start > 0 and depths[start] != 0:
             continue
