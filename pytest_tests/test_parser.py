@@ -414,24 +414,32 @@ def test_declaration_recipe_can_consume_multiple_adjacent_surface_clauses():
     ]
 
 
-def test_whole_expression_formula_dispatch_is_shared_by_lines_and_premises():
+def test_whole_expression_formula_dispatch_is_shared_by_lines_and_premise_bundles():
     seen = []
     whole = fl.AtomicFormula("WholeExpression", [])
+    second = fl.AtomicFormula("SecondExpression", [])
+    parsed = {
+        "A and B": whole,
+        "C and D": second,
+    }
 
     def formula_parser(text, bound_vars):
         seen.append((text, bound_vars))
-        if text == "A and B":
-            return pp.SurfaceExpression("core", whole, text)
+        if text in parsed:
+            return pp.SurfaceExpression("core", parsed[text], text)
         return None
 
     environment = pp.TheoryEnvironment(formula_parsers=[formula_parser])
     context = pp._ElaborationContext(environment)
     line_expression = context.parse_surface_expression("A and B")
-    premise_expression = pp._parse_formula_or_bundle("A and B", environment)
+    premise_bundle = pp._parse_formula_or_bundle("A and B. C and D.", environment)
 
-    assert [text for text, _ in seen] == ["A and B", "A and B"]
+    assert [text for text, _ in seen] == ["A and B", "A and B", "C and D"]
     assert repr(line_expression.value) == "WholeExpression()"
-    assert repr(premise_expression) == "WholeExpression()"
+    assert [repr(formula) for formula in premise_bundle] == [
+        "WholeExpression()",
+        "SecondExpression()",
+    ]
 
 
 def test_surface_formula_dispatch_accepts_an_explicit_empty_bound_set():
