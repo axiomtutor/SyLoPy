@@ -10,6 +10,34 @@ def test_discrete_math_fixture_corpus_is_enforced():
     assert "tests/testDiscreteMath" in validator.ENFORCED_DIRS
 
 
+@pytest.mark.parametrize(
+    ("contents", "multi_proof"),
+    [
+        ("single proof", False),
+        ("# 1\\n", True),
+    ],
+)
+def test_check_file_reads_fixture_source_once(tmp_path, monkeypatch, contents, multi_proof):
+    path = tmp_path / "fixture.txt"
+    path.write_text(contents)
+    reads = []
+    original_read_text = Path.read_text
+
+    def counted_read_text(self, *args, **kwargs):
+        if self == path:
+            reads.append(self)
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counted_read_text)
+    if multi_proof:
+        monkeypatch.setattr(validator, "run_multi_proof_file", lambda *args, **kwargs: [])
+    else:
+        monkeypatch.setattr(validator.pp, "parse_proof_text", lambda *args, **kwargs: ([], []))
+
+    validator.check_file(path)
+    assert len(reads) == 1
+
+
 def test_malformed_expected_valid_discrete_math_proof_fails_and_later_proofs_run():
     text = """
 Use discrete math.
