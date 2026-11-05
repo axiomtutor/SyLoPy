@@ -12,6 +12,7 @@ to Universal Generalization plus Conditional Introduction before
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
 from functools import lru_cache
 from typing import List, Optional, Tuple
 
@@ -949,10 +950,11 @@ def _try_parse_set_expression_impl(text: str, bound_vars: set) -> Optional[Surfa
 _BOUNDED_QUANTIFIER_NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 
 _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
-    rf"(?<![\w.])(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+"
-    rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
+    rf"(?<![\\w.])(?:for\\s+all|for\\s+every|forall|there\\s+exists|exists)\\s+"
+    rf"{_BOUNDED_QUANTIFIER_NAME}\\s+in\\s+[^,]+(?:,|\\s+we\\s+have\\s+|\\s+such\\s+that\\s+).*$",
     flags=re.I,
 )
+_BOUNDED_QUANTIFIER_THEN_RE = re.compile(r"\\s+then\\s+", flags=re.I)
 
 
 def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
@@ -966,26 +968,32 @@ def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
             depth += 1
         elif ch in ")}":
             depth = max(0, depth - 1)
-    for match in re.finditer(r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+", text, flags=re.I):
+
+    # Scan the source once for top-level conditional terminators. The former
+    # per-opener suffix scan revisited the same tail of the string and was
+    # quadratic for formulas containing many bounded quantifiers.
+    then_positions = [
+        match.start()
+        for match in _BOUNDED_QUANTIFIER_THEN_RE.finditer(text)
+        if depths[match.start()] == 0
+    ]
+    for match in re.finditer(r"\\b(?:for\\s+all|for\\s+every|forall|there\\s+exists|exists)\\s+", text, flags=re.I):
         start = match.start()
         if start > 0 and depths[start] != 0:
             continue
-        end = len(text)
-        for then in re.finditer(r"\s+then\s+", text[match.end():], flags=re.I):
-            absolute = match.end() + then.start()
-            if depths[absolute] == 0:
-                end = absolute
-                # A comma before the enclosing "then" belongs to the
-                # conditional syntax, not to the bounded quantifier's body.
-                boundary = end
+        next_then = bisect_left(then_positions, match.end())
+        end = then_positions[next_then] if next_then < len(then_positions) else len(text)
+        if next_then < len(then_positions):
+            # A comma before the enclosing "then" belongs to the
+            # conditional syntax, not to the bounded quantifier's body.
+            boundary = end
+            while boundary > start and text[boundary - 1].isspace():
+                boundary -= 1
+            if boundary > start and text[boundary - 1] == ",":
+                boundary -= 1
                 while boundary > start and text[boundary - 1].isspace():
                     boundary -= 1
-                if boundary > start and text[boundary - 1] == ",":
-                    boundary -= 1
-                    while boundary > start and text[boundary - 1].isspace():
-                        boundary -= 1
-                end = boundary
-                break
+            end = boundary
         candidate = text[start:end]
         if _BOUNDED_QUANTIFIER_SPAN_RE.fullmatch(candidate.strip()):
             spans.append((start, end))
