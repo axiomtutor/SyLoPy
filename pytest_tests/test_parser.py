@@ -414,3 +414,38 @@ def test_declaration_recipe_can_consume_multiple_adjacent_surface_clauses():
     ]
 
 
+
+
+def test_whole_expression_formula_dispatch_is_shared_by_lines_and_premises():
+    seen = []
+    whole = fl.AtomicFormula("WholeExpression", [])
+
+    def formula_parser(text, bound_vars):
+        seen.append((text, bound_vars))
+        if text == "A and B":
+            return pp.SurfaceExpression("core", whole, text)
+        return None
+
+    environment = pp.TheoryEnvironment(formula_parsers=[formula_parser])
+    context = pp._ElaborationContext(environment)
+    line_expression = context.parse_surface_expression("A and B")
+    premise_expression = pp._parse_formula_or_bundle("A and B", environment)
+
+    assert [text for text, _ in seen] == ["A and B", "A and B"]
+    assert repr(line_expression.value) == "WholeExpression()"
+    assert repr(premise_expression) == "WholeExpression()"
+
+
+def test_surface_formula_dispatch_preserves_an_explicit_empty_bound_set():
+    bound_vars = set()
+    received = []
+
+    def formula_parser(text, variables):
+        received.append(variables)
+        return None
+
+    environment = pp.TheoryEnvironment(formula_parsers=[formula_parser])
+    pp._parse_surface_expression("P(x)", bound_vars, environment)
+
+    assert received == [bound_vars]
+    assert received[0] is bound_vars
