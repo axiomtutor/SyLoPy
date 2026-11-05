@@ -2148,21 +2148,9 @@ FOUNDATION_AXIOM = fl.ForAll("x", fl.Implies(
     )),
 ))
 """Every set with a member has a member that shares no member with it (Jech's
-Axiom 8, regularity)."""
-FOUNDATION_TEXT_NONEMPTY = (
-    "forall x, (not (x = EmptySet) -> "
-    "exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x)))))"
-)
-_FOUNDATION_AXIOM_NONEMPTY = fl.ForAll("x", fl.Implies(
-    fl.Not(fl.Equals(_axiom_var("x"), EMPTY_SET)),
-    fl.Exists("y", fl.And(
-        _in("y", "x"),
-        fl.Not(fl.Exists("z", fl.And(_in("z", "y"), _in("z", "x")))),
-    )),
-))
-"""The same axiom with "has a member" written as "is not the empty set", which
-is the same thing once the empty set has no member (`EmptySetPropertyRule`) and
-sets with the same members are equal."""
+Axiom 8, regularity). The form with `not (x = EmptySet)` for "has a member" is
+not cited by name: a proof derives it from this sentence, extensionality and
+the empty set's property."""
 
 CHOICE_TEXT = (
     "forall X, (((forall A, (In(A, X) -> exists a, In(a, A))) and "
@@ -2236,8 +2224,8 @@ class FoundationAxiomRule(_ExactAxiomRule):
     """Axiom of foundation: every nonempty set contains a member disjoint from it."""
     name = "FoundationAxiom"
     citation = "Axiom of foundation"
-    axiom_variants = (FOUNDATION_AXIOM, _FOUNDATION_AXIOM_NONEMPTY)
-    statement = f"{FOUNDATION_TEXT}, or with `not (x = EmptySet)` as its antecedent: {FOUNDATION_TEXT_NONEMPTY}"
+    axiom_variants = (FOUNDATION_AXIOM,)
+    statement = FOUNDATION_TEXT
 
 
 class ChoiceAxiomRule(_ExactAxiomRule):

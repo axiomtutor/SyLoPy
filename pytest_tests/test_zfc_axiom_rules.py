@@ -22,12 +22,13 @@ Each rule now justifies one sentence, up to the names of its bound variables
   say what the axioms say (checked against independent Python predicates in
   every structure with up to three elements, where `In` is any relation);
 * what the rules accept: the sentences, their renamings, the two orders of
-  extensionality's biconditional, foundation's "not the empty set" form;
+  extensionality's biconditional;
 * what they refuse: the sentences the shapes used to let through, shadowed
-  variables, the other axioms' sentences, a cited premise, one edit of an axiom
-  (every one-edit change of each axiom, and sampled assignments of colliding
-  names to its binders), where any sentence a rule takes must hold in every
-  small structure in which the axiom holds;
+  variables, the other axioms' sentences, foundation with `not (x = EmptySet)`
+  as its antecedent (a theorem that a proof derives, not an axiom to cite), a
+  cited premise, one edit of an axiom (every one-edit change of each axiom, and
+  sampled assignments of colliding names to its binders), where any sentence a
+  rule takes must hold in every small structure in which the axiom holds;
 * the same cases as proofs, in `tests/testSetTheory/zfc_axioms_exact.txt`.
 """
 
@@ -54,7 +55,11 @@ FOUND = (
     "forall x, ((exists y, In(y, x)) -> "
     "exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x)))))"
 )
-FOUND_NONEMPTY = (
+# Foundation with "is not the empty set" for "has a member". It is a theorem (a proof
+# derives it from the axiom, extensionality and the empty set's property: proof 17
+# of the fixture), but it is not the sentence of the axiom, and the owner decided on
+# PR #160 that it is not cited by name.
+FOUND_NOT_THE_EMPTY_SET = (
     "forall x, (not (x = EmptySet) -> "
     "exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x)))))"
 )
@@ -169,15 +174,8 @@ def has_selectors(n, member):
     return all(selector for eligible, selector in choice_instances(n, member) if eligible)
 
 
-def holds(formula, n, member, empty=None, env=None):
-    """Truth of a formula over `In`, `=` and `EmptySet` in the structure."""
-    env = env or {}
-
-    def value(term):
-        if isinstance(term, tl.VariableTerm):
-            return env[term.name]
-        assert isinstance(term, tl.ConstantTerm) and term.name == "EmptySet", term
-        return empty
+def holds(formula, n, member):
+    """Truth of a closed formula over `In` and `=` in the structure."""
 
     def go(f, bound):
         if isinstance(f, fl.AtomicFormula):
@@ -202,11 +200,10 @@ def holds(formula, n, member, empty=None, env=None):
         raise AssertionError(f"unexpected formula {f!r}")
 
     def value_in(term, bound):
-        if isinstance(term, tl.VariableTerm):
-            return bound[term.name]
-        return value(term)
+        assert isinstance(term, tl.VariableTerm), term
+        return bound[term.name]
 
-    return go(formula, dict(env))
+    return go(formula, {})
 
 
 def closed(formula):
@@ -218,34 +215,17 @@ def closed(formula):
 
 @lru_cache(maxsize=None)
 def models(axiom):
-    """The (structure, EmptySet) pairs in which an axiom, and what it needs, holds.
-
-    `extensionality` and `choice` stand alone. `foundation` is read together
-    with extensionality and an `EmptySet` that has no member, which is what
-    `EmptySetPropertyRule` gives it: the `not (x = EmptySet)` form is the same
-    axiom only given those two.
-    """
-    found = []
-    for n, member in structures():
-        if axiom == "extensionality":
-            if extensional(n, member):
-                found.append((n, member, None))
-        elif axiom == "choice":
-            if has_selectors(n, member):
-                found.append((n, member, None))
-        else:
-            assert axiom == "foundation"
-            if regular(n, member) and extensional(n, member):
-                found += [(n, member, e) for e in range(n) if not members_of(n, member, e)]
-    return tuple(found)
+    """The structures in which an axiom holds, by the independent predicates above."""
+    holds_in = {"extensionality": extensional, "foundation": regular, "choice": has_selectors}[axiom]
+    return tuple((n, member) for n, member in structures() if holds_in(n, member))
 
 
 def counterexample(sentence, axiom):
     """A structure in which the axiom holds and the sentence does not, or None."""
     sentence = closed(sentence)
-    for n, member, empty in models(axiom):
-        if not holds(sentence, n, member, empty):
-            return n, member, empty
+    for n, member in models(axiom):
+        if not holds(sentence, n, member):
+            return n, member
     return None
 
 
@@ -257,9 +237,8 @@ def counterexample(sentence, axiom):
     (EXT, st.EXTENSIONALITY_TEXT, st.EXTENSIONALITY_AXIOM),
     (EXT_SWAPPED, None, st._EXTENSIONALITY_AXIOM_SWAPPED),
     (FOUND, st.FOUNDATION_TEXT, st.FOUNDATION_AXIOM),
-    (FOUND_NONEMPTY, st.FOUNDATION_TEXT_NONEMPTY, st._FOUNDATION_AXIOM_NONEMPTY),
     (CHOICE, st.CHOICE_TEXT, st.CHOICE_AXIOM),
-], ids=["extensionality", "extensionality swapped", "foundation", "foundation, not the empty set", "choice"])
+], ids=["extensionality", "extensionality swapped", "foundation", "choice"])
 def test_the_sentence_parses_to_the_formula_the_rule_compares_with(text, constant, formula):
     assert pl._ast_eq(pp.parse_formula(text), formula)
     if constant is not None:
@@ -278,19 +257,6 @@ def test_the_foundation_formula_says_that_a_set_with_a_member_has_a_member_shari
         outcomes.add(regular(n, member))
         assert holds(st.FOUNDATION_AXIOM, n, member) is regular(n, member), (n, sorted(member))
     assert outcomes == {True, False}
-
-
-def test_foundation_in_terms_of_the_empty_set_is_the_same_axiom_given_extensionality():
-    both = set()
-    for n, member in structures():
-        for empty in (e for e in range(n) if not members_of(n, member, e)):
-            nonempty = holds(st._FOUNDATION_AXIOM_NONEMPTY, n, member, empty)
-            # It implies the axiom whatever the structure: a set with a member is not EmptySet.
-            assert not nonempty or regular(n, member), (n, sorted(member), empty)
-            if extensional(n, member):
-                assert nonempty is regular(n, member), (n, sorted(member), empty)
-                both.add(nonempty)
-    assert both == {True, False}
 
 
 def test_the_choice_formula_says_that_a_family_of_nonempty_disjoint_sets_has_a_selector():
@@ -324,11 +290,8 @@ def test_the_disjointness_clause_of_choice_is_needed():
     (EXT_SWAPPED, EXTENSIONALITY_CITATION),
     (FOUND, FOUNDATION_CITATION),
     (FOUND, REGULARITY_CITATION),
-    (FOUND_NONEMPTY, FOUNDATION_CITATION),
-    (FOUND_NONEMPTY, REGULARITY_CITATION),
     (CHOICE, CHOICE_CITATION),
-], ids=["extensionality", "extensionality, biconditional swapped", "foundation", "regularity", "foundation, not the empty set",
-        "regularity, not the empty set", "choice"])
+], ids=["extensionality", "extensionality, biconditional swapped", "foundation", "regularity", "choice"])
 def test_each_axiom_is_accepted_as_written(text, citation):
     ok, err = check_line(text, citation)
     assert ok, err
@@ -339,11 +302,10 @@ def test_each_axiom_is_accepted_as_written(text, citation):
     (EXT, EXTENSIONALITY_CITATION, {"x": "y", "y": "z", "z": "x"}),
     (FOUND, FOUNDATION_CITATION, {"x": "S", "y": "m", "z": "w"}),
     (FOUND, FOUNDATION_CITATION, {"x": "y", "y": "x"}),
-    (FOUND_NONEMPTY, FOUNDATION_CITATION, {"x": "S", "y": "m", "z": "w"}),
     (CHOICE, CHOICE_CITATION, {"X": "F", "A": "M", "B": "N", "a": "p", "b": "q", "c": "r", "C": "T"}),
     (CHOICE, CHOICE_CITATION, {"X": "A", "A": "X", "a": "b", "b": "a"}),
 ], ids=["extensionality, new names", "extensionality, names rotated", "foundation, new names",
-        "foundation, x and y exchanged", "foundation (empty set form), new names", "choice, new names",
+        "foundation, x and y exchanged", "choice, new names",
         "choice, names exchanged"])
 def test_the_names_of_bound_variables_do_not_matter(text, citation, mapping):
     renamed_text = renamed(text, mapping)
@@ -397,10 +359,13 @@ def test_a_proof_can_use_the_axiom_it_cites():
     (EXT_MEMBER_SHADOWS_Y, EXTENSIONALITY_CITATION),
     (EXT_MEMBER_SHADOWS_X, EXTENSIONALITY_CITATION),
     (CHOICE_WITHOUT_DISJOINTNESS, CHOICE_CITATION),
+    (FOUND_NOT_THE_EMPTY_SET, FOUNDATION_CITATION),
+    (FOUND_NOT_THE_EMPTY_SET, REGULARITY_CITATION),
 ], ids=["false sentence as foundation", "false sentence as regularity", "false sentence as choice",
         "nothing has a member, as foundation", "nothing has a member, as choice",
         "extensionality, member variable is y", "extensionality, member variable is x",
-        "choice without disjointness"])
+        "choice without disjointness", "foundation, not the empty set, as foundation",
+        "foundation, not the empty set, as regularity"])
 def test_a_sentence_that_is_no_axiom_is_refused(text, citation):
     ok, err = check_line(text, citation)
     assert not ok
@@ -426,21 +391,19 @@ def test_the_false_sentence_cannot_be_used_to_derive_a_contradiction():
 @pytest.mark.parametrize(("text", "citation"), [
     # a bound variable that another quantifier binds again changes what the sentence says
     (FOUND.replace("exists z, (In(z, y) and In(z, x))", "exists y, (In(y, y) and In(y, x))"), FOUNDATION_CITATION),
-    (FOUND_NONEMPTY.replace("exists z, (In(z, y) and In(z, x))", "exists x, (In(x, y) and In(x, x))"), FOUNDATION_CITATION),
     (CHOICE.replace("exists c, (In(c, A) and In(c, B))", "exists A, (In(A, A) and In(A, B))"), CHOICE_CITATION),
     (CHOICE.replace("forall b, ((In(b, A) and In(b, C)) -> b = a)", "forall a, ((In(a, A) and In(a, C)) -> a = a)"), CHOICE_CITATION),
 ])
 def test_a_bound_variable_that_is_bound_again_is_refused(text, citation):
-    assert text not in {FOUND, FOUND_NONEMPTY, CHOICE}
+    assert text not in {FOUND, CHOICE}
     assert not accepted(text, citation)
 
 
 @pytest.mark.parametrize(("text", "own"), [
     (EXT, EXTENSIONALITY_CITATION),
     (FOUND, FOUNDATION_CITATION),
-    (FOUND_NONEMPTY, FOUNDATION_CITATION),
     (CHOICE, CHOICE_CITATION),
-], ids=["extensionality", "foundation", "foundation, not the empty set", "choice"])
+], ids=["extensionality", "foundation", "choice"])
 def test_an_axiom_is_not_accepted_under_the_name_of_another(text, own):
     others = {EXTENSIONALITY_CITATION, FOUNDATION_CITATION, CHOICE_CITATION} - {own}
     assert accepted(text, own)
@@ -451,13 +414,14 @@ def test_an_axiom_is_not_accepted_under_the_name_of_another(text, own):
 def test_the_generic_axiom_citation_is_refused_for_all_of_them_and_points_to_the_name_only_for_the_axioms():
     pointer = "; cite it by name instead: "
     for text, name in [(EXT, "(Axiom of extensionality)"), (FOUND, "(Axiom of foundation)"),
-                       (FOUND_NONEMPTY, "(Axiom of foundation)"), (CHOICE, "(Axiom of choice)")]:
+                       (CHOICE, "(Axiom of choice)")]:
         ok, err = pp.check_proof_text(f"1. {text}. (Axiom)\n")
         assert not ok
         assert err.category == pl.CATEGORY_UNREGISTERED_FORMULA, err
         assert str(err).endswith(pointer + name), err
-    # The shape checks pointed a person who restated a false sentence at them.
-    for text in (FALSE_SENTENCE, NOTHING_HAS_A_MEMBER, EXT_MEMBER_SHADOWS_Y):
+    # The shape checks pointed a person who restated a false sentence at them. No rule
+    # justifies a theorem such as the not-the-empty-set form outright, so it gets no pointer.
+    for text in (FALSE_SENTENCE, NOTHING_HAS_A_MEMBER, EXT_MEMBER_SHADOWS_Y, FOUND_NOT_THE_EMPTY_SET):
         ok, err = pp.check_proof_text(f"1. {text}. (Axiom)\n")
         assert not ok
         assert err.category == pl.CATEGORY_UNREGISTERED_FORMULA, err
@@ -480,19 +444,20 @@ def test_a_cited_line_is_refused_before_and_inside_the_rule():
 
 
 def test_the_explanation_gives_the_sentence_to_cite():
-    for rule, texts in [(st.ExtensionalityAxiomRule(), [EXT]), (st.FoundationAxiomRule(), [FOUND, FOUND_NONEMPTY]),
-                        (st.ChoiceAxiomRule(), [CHOICE])]:
+    for rule, text in [(st.ExtensionalityAxiomRule(), EXT), (st.FoundationAxiomRule(), FOUND),
+                       (st.ChoiceAxiomRule(), CHOICE)]:
         explanation = rule.explain_in_context([], pp.parse_formula(FALSE_SENTENCE), None)
         assert explanation.startswith(f"{rule.citation} is cited for exactly this sentence")
-        for text in texts:
-            assert text in explanation
+        assert text in explanation
+    # Foundation's other form is not offered: a proof derives it.
+    assert "EmptySet" not in st.FoundationAxiomRule().explain_in_context([], pp.parse_formula(FALSE_SENTENCE), None)
 
 
 def test_the_format_reference_lists_the_sentences_the_rules_accept():
     reference = (Path(__file__).resolve().parents[1] / "docs" / "PROOF_FILE_FORMAT.md").read_text(encoding="utf-8")
     for text in (EXT, FOUND, CHOICE):
         assert f"`{text}`" in reference, text
-    assert "not (x = EmptySet)" in reference
+    assert "not (x = EmptySet)" in reference and "is not cited by name" in reference
     for citation in (EXTENSIONALITY_CITATION, FOUNDATION_CITATION, REGULARITY_CITATION, CHOICE_CITATION):
         assert f"({citation})" in reference, citation
 
@@ -501,9 +466,9 @@ def test_the_format_reference_lists_the_sentences_the_rules_accept():
 # One edit of an axiom is never taken for it
 # --------------------------------------------------------------------
 
-def one_edit(node, names, with_empty_set):
+def one_edit(node, names):
     """The formulas that differ from `node` by one change at `node` itself."""
-    terms = [V(name) for name in names] + ([st.EMPTY_SET] if with_empty_set else [])
+    terms = [V(name) for name in names]
     out = [fl.Not(node)]
     if isinstance(node, fl.AtomicFormula):
         first, second = node.args
@@ -540,36 +505,36 @@ def one_edit(node, names, with_empty_set):
     return out
 
 
-def edits(node, names, with_empty_set):
-    yield from one_edit(node, names, with_empty_set)
+def edits(node, names):
+    yield from one_edit(node, names)
     if isinstance(node, fl.Not):
-        for e in edits(node.sub, names, with_empty_set):
+        for e in edits(node.sub, names):
             yield fl.Not(e)
     elif isinstance(node, (fl.And, fl.Or)):
         parts = node.conjuncts if isinstance(node, fl.And) else node.disjuncts
         for i, part in enumerate(parts):
-            for e in edits(part, names, with_empty_set):
+            for e in edits(part, names):
                 yield type(node)(*parts[:i], e, *parts[i + 1:])
     elif isinstance(node, fl.Implies):
-        for e in edits(node.antecedent, names, with_empty_set):
+        for e in edits(node.antecedent, names):
             yield fl.Implies(e, node.consequent)
-        for e in edits(node.consequent, names, with_empty_set):
+        for e in edits(node.consequent, names):
             yield fl.Implies(node.antecedent, e)
     elif isinstance(node, fl.Iff):
-        for e in edits(node.left, names, with_empty_set):
+        for e in edits(node.left, names):
             yield fl.Iff(e, node.right)
-        for e in edits(node.right, names, with_empty_set):
+        for e in edits(node.right, names):
             yield fl.Iff(node.left, e)
     elif isinstance(node, (fl.ForAll, fl.Exists)):
-        for e in edits(node.body, names, with_empty_set):
+        for e in edits(node.body, names):
             yield type(node)(node.var, e)
 
 
-def one_edit_mutants(axiom, with_empty_set):
+def one_edit_mutants(axiom):
     names = sorted(fl.bound_variable_names(axiom))
     seen = {repr(axiom)}
     mutants = []
-    for mutant in edits(axiom, names, with_empty_set):
+    for mutant in edits(axiom, names):
         key = repr(mutant)
         if key not in seen:
             seen.add(key)
@@ -580,20 +545,16 @@ def one_edit_mutants(axiom, with_empty_set):
 RULES = {
     "extensionality": (st.ExtensionalityAxiomRule, st.EXTENSIONALITY_AXIOM),
     "foundation": (st.FoundationAxiomRule, st.FOUNDATION_AXIOM),
-    "foundation, empty set form": (st.FoundationAxiomRule, st._FOUNDATION_AXIOM_NONEMPTY),
     "choice": (st.ChoiceAxiomRule, st.CHOICE_AXIOM),
 }
-# The model of each rule's axiom: what must hold for a sentence to follow from it.
-MODEL = {"extensionality": "extensionality", "foundation": "foundation",
-         "foundation, empty set form": "foundation", "choice": "choice"}
 
 
 @pytest.mark.parametrize("label", RULES)
 def test_no_one_edit_change_of_an_axiom_is_taken_for_it_unless_it_still_follows_from_it(label):
     rule_class, axiom = RULES[label]
     rule = rule_class()
-    mutants = one_edit_mutants(axiom, with_empty_set=MODEL[label] == "foundation")
-    wrong = {repr(m) for m in mutants if counterexample(m, MODEL[label]) is not None}
+    mutants = one_edit_mutants(axiom)
+    wrong = {repr(m) for m in mutants if counterexample(m, label) is not None}
     # The check must be able to see: most edits change what the sentence says.
     assert len(mutants) >= 40, len(mutants)
     assert len(wrong) >= len(mutants) // 2, (len(wrong), len(mutants))
@@ -720,13 +681,13 @@ def test_names_given_to_the_binders_that_collide_do_not_make_the_axiom_out_of_so
         sentence = build(*names)
         if rule.applies([], sentence):
             taken += 1
-            assert counterexample(sentence, MODEL[label]) is None, \
+            assert counterexample(sentence, label) is None, \
                 f"taken for the axiom, but false where it holds: {sentence}"
         else:
             refused += 1
             # Look at the first few hundred refusals: most of them say something else.
             if refused <= 300:
-                refused_and_wrong += counterexample(sentence, MODEL[label]) is not None
+                refused_and_wrong += counterexample(sentence, label) is not None
     assert taken >= 1
     assert refused_and_wrong >= min(refused, 300) // 4, (refused_and_wrong, min(refused, 300))
 
@@ -741,16 +702,19 @@ FIXTURE = Path(__file__).resolve().parents[1] / "tests" / "testSetTheory" / "zfc
 def test_the_fixture_proves_with_each_axiom_and_refuses_what_only_looked_like_it():
     results = mp.run_multi_proof_file(FIXTURE.read_text())
     behaved = {number: (expected, ok, crashed) for number, expected, ok, _message, crashed in results}
-    valid = {"1", "2", "3", "5", "6", "7", "8", "10", "12"}
-    invalid = {"4", "9", "11", "13", "14", "15", "16"}
+    valid = {"1", "2", "3", "5", "6", "8", "10", "12", "17"}
+    invalid = {"4", "7", "9", "11", "13", "14", "15", "16"}
     assert set(behaved) == valid | invalid
     for number in valid:
         assert behaved[number] == (True, True, False), number
     for number in invalid:
         assert behaved[number] == (False, False, False), number
     messages = {number: message for number, _expected, _ok, message, _crashed in results}
-    for number in ("4", "9", "11", "13", "14"):
+    for number in ("4", "7", "9", "11", "13", "14"):
         assert "is cited for exactly this sentence, up to the names of its bound variables" in messages[number], number
+    # Foundation's other form is refused as an axiom and the message gives the one sentence to cite;
+    # proof 17 derives it.
+    assert st.FOUNDATION_TEXT in messages["7"] and "not (x = EmptySet)" not in messages["7"], messages["7"]
     # Restating an axiom with `(Axiom)` is refused and pointed at the name (and at the
     # theorem that case 8 proved and named `Choice`); a false sentence is not pointed anywhere.
     assert messages["15"].startswith("Line 1: asserted as an axiom, but does not match any declared axioms")

@@ -5,10 +5,12 @@ the names of its bound variables. They used to be accepted for any sentence of
 their rough shape. Each invalid case below was accepted that way, or restates an
 axiom with `(Axiom)`, and set theory takes no formula as an axiom that way.
 
-Foundation also has the form with `not (x = EmptySet)` as its antecedent, the
-same axiom once the empty set has no member and sets with the same members are
-equal. Choice is Zermelo's form: a set of nonempty, pairwise disjoint sets has
-a set that meets each of them in exactly one element.
+Foundation's form with `not (x = EmptySet)` as its antecedent is not cited by
+name (the owner's decision on PR #160): it is a theorem, and proof 7 refuses it
+as an axiom while proof 17 derives it from the axiom of foundation, the axiom of
+extensionality and the property of the empty set. Choice is Zermelo's form: a
+set of nonempty, pairwise disjoint sets has a set that meets each of them in
+exactly one element.
 *)
 
 # 1: Extensionality
@@ -50,8 +52,8 @@ a set that meets each of them in exactly one element.
 
 1. forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of regularity)
 
-# 7: Foundation, for a set that is not the empty set
-## Proof that
+# 7: Foundation for a set that is not the empty set, cited as the axiom
+## Invalid: not the sentence of the axiom — this form is a theorem that proof 17 derives, and is not cited by name.
 ### then forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))).
 
 1. forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of foundation)
@@ -122,3 +124,46 @@ a set that meets each of them in exactly one element.
 ### then forall x, (Finite(EmptySet) -> exists y, not (y = y)).
 
 1. forall x, (Finite(EmptySet) -> exists y, not (y = y)). (Axiom)
+
+# 17: Foundation for a set that is not the empty set, derived from the axiom
+## Proof that
+### a set that is not the empty set has a member that shares none with it,
+### then forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))).
+
+1. forall x, ((exists y, In(y, x)) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Axiom of foundation)
+2. forall x, forall y, ((forall z, (In(z, x) iff In(z, y))) -> x = y). (Axiom of extensionality)
+3. forall x, (not (x = EmptySet) -> exists y, (In(y, x) and not (exists z, (In(z, y) and In(z, x))))). (Universal Generalization from subproof below)
+begin subproof
+ 3.0. let s be arbitrary. (Arbitrary)
+ 3.1. not (s = EmptySet) -> exists y, (In(y, s) and not (exists z, (In(z, y) and In(z, s)))). (Conditional Introduction from subproof below)
+ begin subproof
+  3.1.1. not (s = EmptySet). (Assumption for Conditional Introduction)
+  3.1.2. exists y, In(y, s). (Proof by Contradiction from subproof below)
+  begin subproof
+   3.1.2.1. not (exists y, In(y, s)). (Assumption for Contradiction)
+   3.1.2.2. forall z, (In(z, s) iff In(z, EmptySet)). (Universal Generalization from subproof below)
+   begin subproof
+    3.1.2.2.0. let w be arbitrary. (Arbitrary)
+    3.1.2.2.1. In(w, s) -> In(w, EmptySet). (Conditional Introduction from subproof below)
+    begin subproof
+     3.1.2.2.1.1. In(w, s). (Assumption for Conditional Introduction)
+     3.1.2.2.1.2. exists y, In(y, s). (Existential Introduction from 3.1.2.2.1.1)
+     3.1.2.2.1.3. In(w, EmptySet). (Explosion from 3.1.2.2.1.2, 3.1.2.1)
+    end subproof
+    3.1.2.2.2. In(w, EmptySet) -> In(w, s). (Conditional Introduction from subproof below)
+    begin subproof
+     3.1.2.2.2.1. In(w, EmptySet). (Assumption for Conditional Introduction)
+     3.1.2.2.2.2. not In(w, EmptySet). (Set property)
+     3.1.2.2.2.3. In(w, s). (Explosion from 3.1.2.2.2.1, 3.1.2.2.2.2)
+    end subproof
+    3.1.2.2.3. In(w, s) iff In(w, EmptySet). (Biconditional Introduction from 3.1.2.2.1, 3.1.2.2.2)
+   end subproof
+   3.1.2.3. forall y, ((forall z, (In(z, s) iff In(z, y))) -> s = y). (Universal Instantiation from 2)
+   3.1.2.4. (forall z, (In(z, s) iff In(z, EmptySet))) -> s = EmptySet. (Universal Instantiation from 3.1.2.3)
+   3.1.2.5. s = EmptySet. (Modus Ponens from 3.1.2.2, 3.1.2.4)
+   3.1.2.6. (s = EmptySet) and not (s = EmptySet). (Conjunction Introduction from 3.1.2.5, 3.1.1)
+  end subproof
+  3.1.3. (exists y, In(y, s)) -> exists y, (In(y, s) and not (exists z, (In(z, y) and In(z, s)))). (Universal Instantiation from 1)
+  3.1.4. exists y, (In(y, s) and not (exists z, (In(z, y) and In(z, s)))). (Modus Ponens from 3.1.2, 3.1.3)
+ end subproof
+end subproof
