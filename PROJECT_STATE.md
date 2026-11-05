@@ -1,130 +1,45 @@
-# SyLoPy project state
+# SyLoPy project map
 
-## Purpose
-
-SyLoPy is a proof-language checker for Fitch-style natural deduction. It
-accepts natural-language proof syntax, elaborates it into strict core entries,
-and validates those entries with a separate proof kernel.
+SyLoPy checks Fitch-style natural-deduction proofs. Its pipeline is:
 
 ```text
-surface proof text
-    -> parser / surface AST
-    -> theory elaboration
-    -> core proof entries
-    -> ProofLogic validation
+proof text -> surface AST -> theory elaboration -> core entries -> ProofLogic validation
 ```
 
-## Current document roles
+## Document roles
 
-| Need | Document |
+| Need | Source of truth |
 | --- | --- |
-| User-facing behavior and test commands | `README.md` |
-| Proof syntax and semantics | `docs/PROOF_FILE_FORMAT.md` |
-| Current feature status and decisions | `todos.txt` |
-| Stable collaboration rules | `AGENT_COLLABORATION.md` |
-| Delegated work that is not yet complete | `JOBS_FOR_CHATGPT.md` |
-| Architecture and trust boundaries | `ARCHITECTURE_STATUS.md` |
-| Elaboration design | `ELABORATION_ARCHITECTURE.md` |
-| Proposed type system | `TYPE_SYSTEM_DESIGN.md` |
+| User-facing behavior, Python API, and test commands | [README.md](README.md) |
+| Proof syntax, rule citations, and worked examples | [docs/PROOF_FILE_FORMAT.md](docs/PROOF_FILE_FORMAT.md) |
+| Current status, invariants, and owner decisions | [todos.txt](todos.txt) |
+| Stable collaboration rules | [AGENT_COLLABORATION.md](AGENT_COLLABORATION.md) |
+| Active delegated jobs and concise dispositions | [JOBS_FOR_CHATGPT.md](JOBS_FOR_CHATGPT.md) |
+| Parser, elaboration, kernel boundaries, and lowering contract | [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) |
+| Historical task specifications | [docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md](docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md) |
+| Unimplemented refinement-type proposal | [TYPE_SYSTEM_DESIGN.md](TYPE_SYSTEM_DESIGN.md) |
 
-`todos.txt` is authoritative when another document disagrees. Detailed
-historical specifications are preserved under `docs/archive/`; they are not
-authorization to implement old work.
+`ELABORATION_ARCHITECTURE.md` remains as a compatibility pointer to `ARCHITECTURE_STATUS.md`. `todos.txt` is authoritative when status documents disagree. Archived specifications are not implementation authorization.
 
 ## Source map
 
-- `source/FormulaLogic.py` - formula and term AST types
-- `source/ProofParser.py` - public parser facade and top-level dispatch
-- `source/ProofElaboration.py` - elaboration passes and proof context
-- `source/ProofJustification.py` - source justification and rule metadata
-- `source/ProofLogic.py` - kernel validation, declarations, scopes, and promotion
-- `source/SetTheory.py` - set-theory environment and set declarations
-- `source/NatThry.py` - natural-number environment
-- `source/NumberTheory.py` - integer and divisibility environment
-- `source/DiscreteMath.py` - relation and discrete-mathematics environment
-- `source/validate_all_proofs.py` - fixture suite discovery and validation
-- `pytest_tests/` - Python unit and integration tests
-- `tests/` - enforced proof fixtures
-- `source/testProofs/`, `tests/setTheoryProofs/` - informational fixtures
-- `parse_oracle/` - independent parser cases
-
-## Set-theory cardinality status
-
-Set theory supports exact finite cardinalities through `Cardinality(A, n)`.
-Cardinal values are nonnegative metatheoretic integers, not object-language
-terms. The implementation provides finite-set closure and cardinal arithmetic
-for subsets, unions, Cartesian products, power sets, disjoint unions, and
-bijection transfer.
-
-## Architecture invariants
-
-- Surface elaboration may change syntax into core formulas and entries, but it
-  does not replace kernel soundness checks.
-- `ProofContext` owns elaboration scope. `LabelScope` and `DeclarationScope`
-  remain validation-time kernel authorities.
-- Theory-specific syntax belongs in theory environments, declaration recipes,
-  phrase parsers, or rule implementations rather than generic parser branches.
-- Every fact used for a proof step must be visible as a premise, hypothesis,
-  declaration metadata, or ordinary formula.
-- The substitution, capture, scope, theorem-promotion, and replay paths must
-  share the same freshness and rule-configuration rules.
-- A theorem's required axioms and parameterized rules travel with the promoted
-  theorem and are checked again at each citation.
+- `source/FormulaLogic.py` — formula and term ASTs.
+- `source/ProofParser.py` — public parser facade, surface parsing, and elaboration dispatch.
+- `source/ProofParserPolicy.py`, `source/LineBreakSyntax.py` — installed parser-policy extensions.
+- `source/ProofElaboration.py`, `source/ProofContext.py` — surface AST, source spans, elaborated entries, and lexical context.
+- `source/ProofLogic.py` — independent kernel validation, scopes, inference rules, and theorem promotion.
+- `source/ProofJustification.py` — justification and rule-alias parsing.
+- `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`, `source/OrderTheory.py`, `source/DiscreteMath.py`, and `source/DiscreteMathCore.py` — theory extensions.
+- `source/validate_all_proofs.py` — proof-fixture runner and theorem promotion.
+- `pytest_tests/` — Python unit and integration tests; `tests/` — proof fixtures; `parse_oracle/` — independent parser expectations.
 
 ## Verification
 
-Run the default batch:
-
 ```bash
-./run_tests.sh
-# equivalent named suite
-./run_tests.sh --suite default
-```
-
-Run only the standard Python tests:
-
-```bash
-python3 -m pytest -q -m default pytest_tests
-./run_tests.sh --suite default
-```
-
-Run only extended adversarial tests or the complete suite:
-
-```bash
-python3 -m pytest -q -m extended pytest_tests
-./run_tests.sh --suite extended
-
-Run every Python suite:
-
-```bash
-python3 -m pytest -q --suite all pytest_tests
-./run_tests.sh --suite all
-./run_tests.sh --extended  # compatibility alias for --suite all
-```
-
-List suites with:
-
-```bash
-./run_tests.sh --list-batches
-```
-```
-
-List and run fixture suites:
-
-```bash
+./run_tests.sh                  # default Python suite + all proof fixtures
+./run_tests.sh --suite extended # adversarial and audit tests
+./run_tests.sh --suite all      # every Python suite + proof fixtures
 ./run_tests.sh --list-suites
-./run_tests.sh --suite testProofsDeclared --verbose
 ```
 
-Do not report coverage or pass counts without a fresh run on the exact commit.
-Verification details belong in the PR, CI result, or terminal output that
-measured them, not in permanent architecture documents.
-
-## Resume checklist
-
-1. Read `AGENT_COLLABORATION.md`.
-2. Read the relevant subsection of `todos.txt`.
-3. Check the current branch, working tree, open issues, and open pull requests.
-4. Read only the reference documents needed for the subsystem.
-5. Make a small testable change and run the smallest relevant suite.
-6. Run `./run_tests.sh`, or state why the full run could not be completed.
+Do not maintain test totals or coverage here; report them from CI or a fresh run for the exact commit.

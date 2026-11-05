@@ -22,6 +22,46 @@ Discrete mathematics exposes its relation declaration interpretation as a
 `RelationDeclarationRecipe`, rather than requiring the generic elaborator to
 construct the relation's semantic representation itself.
 
+
+## Surface representation and elaboration
+
+The front end keeps three representations:
+
+- **Text:** the user's formulas, justifications, labels, and subproof boundaries.
+- **Surface AST:** `SurfaceProof`, `SurfaceLine`, `SurfaceSubproof`, and `SourceSpan`, preserving original text and locations.
+- **Core entries:** `ElaboratedEntries`, the tuple language consumed by `ProofLogic.ProofValidator`.
+
+`ElaboratedEntries` also carries source-origin mappings and the theory resources required by the elaborated proof. `ProofLogic.Proof` merges those resources before validation. Each generated core label maps to a `CoreOrigin`, so a kernel error on a synthetic step is reported against the surface line that generated it.
+
+For example, `Subset proof below` lowers to universal generalization over an arbitrary element and conditional introduction from the user's subproof. Synthetic labels are internal; they are not inserted into the proof file.
+
+```text
+2. forall x, (In(x, S) -> In(x, T)). (UniversalGeneralization from subproof below)
+begin subproof
+  2.__arbitrary. a. (arbitrary)
+  2.__conditional. In(a, S) -> In(a, T). (ConditionalIntroduction from subproof below)
+  begin subproof
+    2.1. In(a, S). (assume)
+    ...
+    2.n. In(a, T). (...)
+  end subproof
+end subproof
+```
+
+## Theory parser dispatch
+
+The parser extension points have different precedence and scope:
+
+- `formula_parsers` receive a whole ordinary proof-line expression and each whole premise-bundle component before generic connective splitting. They return `SurfaceExpression`, which can retain theory-specific data such as raw subset operands. This dispatch is not recursive.
+- `phrase_parsers` receive a whole recursive formula substring before connective splitting. Use them for phrases containing connective-looking words; they must decline unless the entire substring is their phrase.
+- `phrase_spans` protect recognized theory phrases inside larger formulas before connective splitting.
+- `nested_formula_parsers` and `term_parsers` recognize formulas and terms during recursive parsing. Nested formula parsers run after generic connective splits, preventing them from swallowing a larger expression.
+- `line_elaborators` and `declaration_recipes` handle proof constructs and structured declarations; theory inference rules, axioms, and declarations supply core resources.
+
+Prefer theory-local parsers, recipes, and line elaborators. Lower new proof forms to existing core rules when possible. A genuinely theory-specific inference can be supplied as a registered rule; do not describe it as desugared unless the implementation creates and validates that derivation.
+
+To inspect lowering, call `ProofParser.format_core_proof(entries)` after `parse_proof_text`. The formatter is diagnostic only; validation uses the in-memory entries and does not parse the formatted text again.
+
 ## Current theory boundary
 
 A theory should provide, as appropriate:

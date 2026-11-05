@@ -6,7 +6,7 @@ The owner has final authority over priorities and mathematical semantics. This f
 
 - Inspect current `master` and relevant open PRs, branches, and issues. Treat old handoffs and status summaries as potentially stale.
 - Read the status/known-issues section of `todos.txt`, then only the relevant subsection and reference documents. Use `PROJECT_STATE.md` for the project map.
-- Consult the appropriate source of detail: `README.md` for public behavior and API, `docs/PROOF_FILE_FORMAT.md` for proof syntax, and the architecture documents for parser, elaboration, or validation design.
+- Consult `README.md` for public behavior and API, `docs/PROOF_FILE_FORMAT.md` for proof syntax, and `ARCHITECTURE_STATUS.md` for parser, elaboration, and validation design. `ELABORATION_ARCHITECTURE.md` is a compatibility pointer.
 - Follow `JOBS_FOR_CHATGPT.md` for delegated work. Do not resume completed or archived jobs unless the owner re-queues them.
 
 ## Design and correctness
