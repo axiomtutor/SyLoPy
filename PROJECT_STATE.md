@@ -32,6 +32,7 @@ proof text -> surface AST -> theory elaboration -> core entries -> ProofLogic va
 - `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`, `source/OrderTheory.py`, `source/DiscreteMath.py`, and `source/DiscreteMathCore.py` — theory extensions.
 - `source/validate_all_proofs.py` — proof-fixture runner and theorem promotion.
 - `pytest_tests/` — Python unit and integration tests; `tests/` — proof fixtures; `parse_oracle/` — independent parser expectations.
+- Informational proof examples: `source/testProofs/` and `tests/setTheoryProofs/`.
 
 ## Verification
 
