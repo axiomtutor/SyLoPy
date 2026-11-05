@@ -2,9 +2,16 @@
 
 This file is the live queue and concise disposition ledger. Stable collaboration rules are in [`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md); current status and owner decisions are in [`todos.txt`](todos.txt). Full historical task specifications are preserved in [`docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`](docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md).
 
-## Current queue
+## Deferred queue
 
-Start a job only after the pull request that adds it has merged, so the instructions and implementation can be read together. Do not resume completed or archived tasks unless the owner re-queues them.
+Set theory is the current development priority until it is fully functional.
+J35 remains in this file with its full specification, but is paused during that
+work. Do not begin it unless the owner changes the priority or explicitly
+re-queues it.
+
+Start a job only after the pull request that adds it has merged, so the
+instructions and implementation can be read together. Do not resume completed
+or archived tasks unless the owner re-queues them.
 
 ### J35 — Basic divisibility identity proofs
 
@@ -38,7 +45,10 @@ asserts the exact four proof numbers and reports any failure; the default CI sui
 all proof-fixture suites pass; and the PR confirms no production code or existing
 expectations changed.
 
-Status: Queued. Job-entry PR #158 has merged, so implementation may now begin. The proof work itself has not yet been done.
+Status: Deferred by owner direction of 2026-11-05 while set theory is the
+current development priority. The full job specification and proof-only scope
+are retained unchanged. The proof work has not begun; resume only when the
+owner changes the priority or explicitly re-queues J35.
 
 ## Recent dispositions
 
