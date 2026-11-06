@@ -333,10 +333,12 @@ def _validate_entries(entries):
     return ok, (str(err) if err is not None else None), _is_rule_crash(err)
 
 
-def _check_bare_proof_file(path: Path) -> List[ProofResult]:
+def _check_bare_proof_file(path: Path, text: Optional[str] = None) -> List[ProofResult]:
     expected_valid = "invalid" not in path.stem.lower()
     try:
-        entries, _ = pp.parse_proof_text(path.read_text())
+        if text is None:
+            text = path.read_text()
+        entries, _ = pp.parse_proof_text(text)
         if not entries:
             return [ProofResult(path.name, "1", expected_valid, False, "file has no proof lines", True)]
         ok, message, rule_crashed = _validate_entries(entries)
@@ -365,10 +367,12 @@ def _check_bare_proof_file(path: Path) -> List[ProofResult]:
         ]
 
 
-def _check_multi_proof_file(path: Path) -> List[ProofResult]:
+def _check_multi_proof_file(path: Path, text: Optional[str] = None) -> List[ProofResult]:
     try:
+        if text is None:
+            text = path.read_text()
         results = run_multi_proof_file(
-            path.read_text(),
+            text,
             axioms=BARE_PROOF_AXIOMS,
             rules=BARE_PROOF_RULES,
             declarations=BARE_PROOF_DECLARATIONS,
@@ -392,7 +396,11 @@ def _check_multi_proof_file(path: Path) -> List[ProofResult]:
 
 def check_file(path: Path) -> List[ProofResult]:
     text = path.read_text()
-    return _check_multi_proof_file(path) if _looks_like_multi_proof(text) else _check_bare_proof_file(path)
+    # The same source text is used to distinguish the container format and
+    # then parse it. Pass it through rather than reopening every fixture file.
+    if _looks_like_multi_proof(text):
+        return _check_multi_proof_file(path, text)
+    return _check_bare_proof_file(path, text)
 
 
 def run(directories: Sequence[str]) -> List[ProofResult]:

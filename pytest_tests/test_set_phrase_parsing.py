@@ -19,6 +19,7 @@ import pytest
 from .support import pl, fl, tl, pp, mp, st, c, v, atom
 
 pj = importlib.import_module("SyLoPy.source.ProofJustification")
+parser_policy = importlib.import_module("SyLoPy.source.ProofParserPolicy")
 
 
 def core(text, bound=()):
@@ -435,6 +436,30 @@ def test_an_existential_before_then_stops_at_then():
         "(exists V, ((forall u, (In(u, V) iff (u = c or u = d))) and "
         "forall W, ((forall u, (In(u, W) iff (u = c or u = d))) -> W = V))) -> P(c, d)",
     )
+
+
+def test_embedded_existential_spans_use_each_following_top_level_then():
+    text = (
+        "P and there exists x such that P(x) then "
+        "Q and there exists y such that Q(y) then R"
+    )
+    spans = parser_policy._embedded_existential_spans(text)
+    assert [text[start:end].strip() for start, end in spans] == [
+        "there exists x such that P(x)",
+        "there exists y such that Q(y)",
+    ]
+
+
+def test_bounded_quantifier_spans_use_each_following_top_level_then():
+    text = (
+        "P and forall x in X, P(x) then "
+        "Q and forall y in Y, Q(y) then R"
+    )
+    spans = st.find_bounded_quantifier_spans(text)
+    assert [text[start:end].strip() for start, end in spans] == [
+        "forall x in X, P(x)",
+        "forall y in Y, Q(y)",
+    ]
 
 
 def test_symbolic_quantifiers_keep_their_old_scope():
