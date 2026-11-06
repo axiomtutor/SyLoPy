@@ -11,13 +11,19 @@ def test_discrete_math_fixture_corpus_is_enforced():
 
 
 @pytest.mark.parametrize(
-    ("contents", "multi_proof"),
+    ("contents", "reader"),
     [
-        ("single proof", False),
-        ("# 1\\n", True),
+        ("single proof", "bare"),
+        ("# 1\n", "multi"),
     ],
 )
-def test_check_file_reads_fixture_source_once(tmp_path, monkeypatch, contents, multi_proof):
+def test_check_file_reads_fixture_source_once(tmp_path, monkeypatch, contents, reader):
+    """A fixture is read once, and the text read is what the matching reader parses.
+
+    Both readers are replaced by recorders, so the test also shows which one the
+    file went to: a bare proof goes to `parse_proof_text`, a file with a `# N`
+    header to `run_multi_proof_file`.
+    """
     path = tmp_path / "fixture.txt"
     path.write_text(contents)
     reads = []
@@ -28,14 +34,23 @@ def test_check_file_reads_fixture_source_once(tmp_path, monkeypatch, contents, m
             reads.append(self)
         return original_read_text(self, *args, **kwargs)
 
+    parsed = []  # (reader, the text it was handed)
+
+    def multi_proof_reader(text, *args, **kwargs):
+        parsed.append(("multi", text))
+        return []
+
+    def bare_proof_reader(text, *args, **kwargs):
+        parsed.append(("bare", text))
+        return [], []
+
     monkeypatch.setattr(Path, "read_text", counted_read_text)
-    if multi_proof:
-        monkeypatch.setattr(validator, "run_multi_proof_file", lambda *args, **kwargs: [])
-    else:
-        monkeypatch.setattr(validator.pp, "parse_proof_text", lambda *args, **kwargs: ([], []))
+    monkeypatch.setattr(validator, "run_multi_proof_file", multi_proof_reader)
+    monkeypatch.setattr(validator.pp, "parse_proof_text", bare_proof_reader)
 
     validator.check_file(path)
     assert len(reads) == 1
+    assert parsed == [(reader, contents)]
 
 
 def test_malformed_expected_valid_discrete_math_proof_fails_and_later_proofs_run():

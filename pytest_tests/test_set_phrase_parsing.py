@@ -462,6 +462,30 @@ def test_bounded_quantifier_spans_use_each_following_top_level_then():
     ]
 
 
+@pytest.mark.parametrize(("opening", "closing"), [("(", ")"), ("{", "}")])
+def test_a_then_inside_brackets_does_not_end_an_embedded_existential_span(opening, closing):
+    text = f"P and there exists x such that {opening}P(x) then Q(x){closing} then R"
+    spans = parser_policy._embedded_existential_spans(text)
+    assert [text[start:end].strip() for start, end in spans] == [
+        f"there exists x such that {opening}P(x) then Q(x){closing}",
+    ]
+
+
+@pytest.mark.parametrize(("opening", "closing"), [("(", ")"), ("{", "}")])
+def test_a_then_inside_brackets_does_not_end_a_bounded_quantifier_span(opening, closing):
+    text = f"P and forall x in X, {opening}P(x) then Q(x){closing} then R"
+    spans = st.find_bounded_quantifier_spans(text)
+    assert [text[start:end].strip() for start, end in spans] == [
+        f"forall x in X, {opening}P(x) then Q(x){closing}",
+    ]
+
+
+def test_a_comma_before_the_enclosing_then_is_not_part_of_a_bounded_quantifier_span():
+    text = "if forall x in X, P(x), then Q"
+    spans = st.find_bounded_quantifier_spans(text)
+    assert [text[start:end] for start, end in spans] == ["forall x in X, P(x)"]
+
+
 def test_symbolic_quantifiers_keep_their_old_scope():
     # Unchanged: after "and", a symbolic `exists x, BODY` ends at the next connective.
     reads_as("P(a) and exists x, Q(x) and R(x)", "P(a) and (exists x, Q(x)) and R(x)")
