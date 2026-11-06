@@ -3515,11 +3515,6 @@ def _top_level_promotion_inputs(
     return derived, objects, predicates
 
 
-def _top_level_object_declarations(entries: list) -> List[str]:
-    """Names of top-level object declarations eligible for generalization."""
-    return _top_level_promotion_inputs(entries)[1]
-
-
 class DeclarationRecipe:
     """A theory-registered recipe for what a `Let ...` declaration of a
     given structure type should *also* produce, beyond the bare symbol
