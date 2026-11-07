@@ -642,6 +642,82 @@ def test_the_definitions_are_available_where_set_theory_is_extended():
 
 
 # --------------------------------------------------------------------
+# The symbols of the definitions cannot be declared again
+# --------------------------------------------------------------------
+#
+# A definition rule is cited for a sentence about the symbol `Union` (or
+# `Intersection`, ...) that the set theory declares. A proof that could declare a
+# function of its own under that name and cite the definition for it would be
+# asserting the definition of the union of an arbitrary function. So a
+# declaration under the name of one of the five symbols, or of `In`, is refused,
+# in every form a declaration takes and wherever it is written.
+
+def _refusal(body):
+    """The message a one-proof file made of `body` is refused with, or None if it
+    is accepted."""
+    [(_number, _expected, ok, message, crashed)] = mp.run_multi_proof_file(
+        "# 1\n## Proof that\n" + body)
+    assert not crashed
+    return None if ok else str(message)
+
+
+SYMBOLS_OF_THE_DEFINITIONS = [
+    ("Union", "function"),
+    ("Intersection", "function"),
+    ("PowerSet", "function"),
+    ("CartesianProduct", "function"),
+    ("Pair", "function"),
+    ("In", "predicate"),
+]
+
+DECLARATION_FORMS = {
+    "a function": "1. Let A be any set, and {symbol} be a function. (Declaration)\n",
+    "a typed function": (
+        "1. Let A, P be any set. (Declaration)\n"
+        "2. Let {symbol}: A -> P be a unary function. (Declaration)\n"
+    ),
+    "an object": "1. Let A be any set, and {symbol} be any object. (Declaration)\n",
+    "a set": "1. Let A be any set, and {symbol} be any set. (Declaration)\n",
+    "a predicate": "1. Let A be any set, and {symbol} be a predicate. (Declaration)\n",
+    "a relation": "1. Let A be any set, and {symbol} be a relation on A. (Declaration)\n",
+    "an arbitrary object": (
+        "1. Let A be any set. (Declaration)\n"
+        "2. forall {symbol}, {symbol} = {symbol}. (Universal Generalization from subproof below)\n"
+        "begin subproof\n"
+        " 2.0. let {symbol} be arbitrary. (Arbitrary)\n"
+        " 2.1. {symbol} = {symbol}. (Reflexivity)\n"
+        "end subproof\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("form", list(DECLARATION_FORMS))
+@pytest.mark.parametrize("symbol,kind", SYMBOLS_OF_THE_DEFINITIONS)
+def test_a_proof_cannot_declare_a_symbol_the_definitions_are_about(symbol, kind, form):
+    message = _refusal(DECLARATION_FORMS[form].format(symbol=symbol))
+    assert message is not None, f"a proof declared {symbol} as {form}"
+    assert f"symbol '{symbol}' is already declared as {kind}" in message
+
+
+@pytest.mark.parametrize("symbol,citation,rule_name,line", [
+    ("union", "Definition of union", "UnionDefinition",
+     "In(x, union(A, B)) iff (In(x, A) or In(x, B))"),
+    ("intersection", "Definition of intersection", "IntersectionDefinition",
+     "In(x, intersection(A, B)) iff (In(x, A) and In(x, B))"),
+])
+def test_a_function_declared_in_lower_case_is_another_symbol_and_gets_no_definition(
+        symbol, citation, rule_name, line):
+    """`union` is not `Union`: it is the proof's own function, of which nothing is
+    said, and the definition of the union is not about it."""
+    message = _refusal(
+        f"1. Let {symbol} be a function, and A, B be any set, and x be any object. (Declaration)\n"
+        f"2. {line}. ({citation})\n"
+    )
+    assert message is not None
+    assert f"'{rule_name}' does not justify" in message
+
+
+# --------------------------------------------------------------------
 # The proof fixture
 # --------------------------------------------------------------------
 

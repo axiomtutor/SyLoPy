@@ -181,6 +181,14 @@ Constraints and open decisions:
   not constructed, since there is no singleton or pair-set term to build
   `{{a}, {a, b}}` from. Coverage: `pytest_tests/test_set_operation_definitions.py`
   and `tests/testSetTheory/set_operation_definitions.txt`.
+  A proof cannot declare `Union`, `Intersection`, `PowerSet`, `CartesianProduct`,
+  `Pair` or `In` again, in any form (pinned in the same test file), so a
+  definition is always about the symbol the set theory declares. Lower case is
+  not settled: a proof may declare `pair`, `cross` or `union` as a function of its
+  own, and then `pair(a, b)` and `A cross B` still read as the built-in `Pair` and
+  `CartesianProduct`, while `union(A, B)` is the proof's own function, which gets
+  no definition. Decide whether a spelling the parser maps to an operation should
+  be refused as a declared name.
 - **Infinity and finite semantics:** focused support is implemented for
   `A is finite`, `A is infinite`, `Finite(A)`, `Infinite(A)`, typed finite/infinite
   and bijection declarations, `Bijection(f, A, B)` claims, and finite/infinite
