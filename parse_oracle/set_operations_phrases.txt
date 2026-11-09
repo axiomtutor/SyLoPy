@@ -71,3 +71,39 @@ context: nested
 surface: the intersection of A and B is nonempty
 expect: exists u, (In(u, A) and In(u, B))
 why: A common element witnesses a nonempty intersection.
+
+id: definition-term-union-membership
+context: nested
+surface: P(x) and x is in A union B
+expect: P(x) and In(x, Union(A, B))
+why: "A union B" is a term, and "is in" asks whether x is a member of it. This differs from "x belongs to A union B" (j4-union-membership-nested), which is already spelled out as a disjunction. The sentence (Definition of union) cites relates the two.
+
+id: definition-term-intersection-membership
+context: nested
+surface: P(x) and x is in A intersection B
+expect: P(x) and In(x, Intersection(A, B))
+why: Like the union: the term "A intersection B" is a member-of target, not spelled out as a conjunction. (Definition of intersection) relates the two.
+
+id: definition-term-power-set-membership
+context: nested
+surface: P(x) and x is in the power set of A
+expect: P(x) and In(x, PowerSet(A))
+why: "the power set of A" is a term. (Definition of power set) says that its members are the subsets of A.
+
+id: definition-term-product-membership
+context: nested
+surface: P(p) and p is in A cross B
+expect: P(p) and In(p, CartesianProduct(A, B))
+why: "A cross B" is the Cartesian product term. (Definition of Cartesian product) says that its members are the pairs of a member of A and a member of B.
+
+id: definition-term-ordered-pair-equality
+context: nested
+surface: P(a) and pair(a, b) = pair(c, d)
+expect: P(a) and Pair(a, b) = Pair(c, d)
+why: "pair(a, b)" is the ordered pair term, so the sentence is an equation of two terms. (Definition of ordered pair) says when such an equation holds.
+
+id: definition-bounded-product-clause
+context: nested
+surface: P(p) and exists a in A, exists b in B, p = pair(a, b)
+expect: P(p) and exists a, (In(a, A) and exists b, (In(b, B) and p = Pair(a, b)))
+why: The two bounded quantifiers are the clause of the definition of the Cartesian product, with each restriction as the first conjunct of its quantifier.
