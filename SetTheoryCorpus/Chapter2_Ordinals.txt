@@ -1,0 +1,56 @@
+Use set theory.
+Use Chapter1_Axioms.
+Use order theory.
+
+(* Note that definitions may define words or symbols. *)
+
+(* 
+Note that I think the module contents need to be rearranged.  This is within the set theory module, but it references order theory, and order theory references set theory. How do we organize this?  
+
+It's also important to try to get clear: which parts of this are in the metatheory and which parts are in the object theory?  I think there needs to be both: There needs to be a metatheory notion of function, and an object theory notion of function.  
+
+How do we represent metatheory functions? I think these should be either concepts described in the text of a proof somehow.  For example, we should be able to assert in the metatheory that for any set there is a function from itself to itself, given by f(x) = x.  Since this is holds regardless of the set X then the function cannot be specified in Python--so I think it needs to exist as metatheory.
+
+But we should discuss this question and talk about the consequences for various implementations.  The discussion should be guided by correct proofs in this corpus.
+*)
+
+(* 
+Note that these proofs are intended as a guide and demonstration of correct proofs, which the proof checker should regard as valid.  
+
+However, it is possible for the proofs, definitions, or other content to have errors.  So please check the proofs and confirm their correctness, ask questions, and be sure that the content does not need editing before we base the checker design on this corpus.  
+*)
+
+# Definition 1. Partial ordering.
+## Let P be a set, < a relation on P.
+### The relation < is a **partial ordering on P** if 
+### the relation < is anti-reflexive and transitive.
+### The pair (P, <) is called a **partially ordered set** or **poset** if 
+### the relation < is a partial ordering on P.
+
+# Definition 2. Linear ordering.
+## Let (P, <) be a poset.
+### The relation < is a **linear ordering on P** if 
+### the relation < is connected.
+
+# Definition 3. Less-than-or-equal-to.
+## Let (P, <) be a poset.  
+### The symbol <= denotes the relation defined by
+### for all x, y in P, x <= y if and only if (x < y or x = y)
+
+# Definition 4. Bound, extrema, sup, inf.
+## Let (P, <) be a poset, X is a nonempty subset of P, and (a in P).
+### If (a in X) and (for all x in X, a (not <) x) then a is a **maximal element of X**.  This is denoted **max(X)**.
+### If (a in X) and (for all x in X, x (not <) a) then a is a **minimal element of X**.  This is denoted **min(X)**.
+### If (a in X) and (for all x in X, x <= a) then a is the **greatest element of X**.  
+### If (a in X) and (for all x in X, a <= x) then a is the **least element of X**.
+### If (for all x in X, x <= a) then a is an **upper bound of X**.
+### If (for all x in X, a <= x) then a is a **lower bound of X**.  
+### If U is the set of upper bounds of X, and a is the least element of U, then a is the **supremum of X**.  This is denoted **sup(X)**.
+### If L is the set of lower bounds of X, and a is the greatest element of L, then a is the **infimum of X**.  This is denoteed **inf(X)**.
+
+# Definition 5. Order preserving, increasing.
+## Let (P, <) and (Q, <_2) be posets, and f: P -> Q.  
+### If (for all x, y in P, x < y implies f(x) < f(y)) then f is **order preserving**.  
+### If ((P, <) and (Q, <) are linearly ordered sets and (for all x,y in P, x<y implies f(x)<f(y))) then f is **increasing**.
+
+# Theorem 1.
