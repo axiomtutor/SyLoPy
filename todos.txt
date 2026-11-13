@@ -107,14 +107,12 @@ accepted for exactly one sentence (below); Union and Power Set instance forms; s
 `Let Y be such a set. (Existence from L)`; general `Set property`; set equality
 and subset proofs; unique existence; equality-case WLOG replay; set enumeration,
 set-builder notation, bounded quantifiers, and the documented natural-language
-set phrases; definition rules that give the declared set operations their meaning
-(below).
+set phrases.
 
 Useful regression references: `pytest_tests/test_axiom_citation_rules.py`,
 `pytest_tests/test_set_property.py`, `pytest_tests/test_wlog_symmetric_citations.py`,
 `pytest_tests/test_wlog_case_blocks.py`, `pytest_tests/test_set_phrase_parsing.py`,
-`pytest_tests/test_set_enumeration_syntax.py`, and
-`pytest_tests/test_set_operation_definitions.py`.
+and `pytest_tests/test_set_enumeration_syntax.py`.
 
 Constraints and open decisions:
 
@@ -161,34 +159,7 @@ Constraints and open decisions:
 - **Set-operation terms:** parser support now includes names such as
   `A union B`, `A intersection B`, `A cross B`, `pair(a, b)`, and
   `the power set of A`; these lower to declared function symbols and ordinary
-  function terms rather than hidden kernel operations. A declared symbol means
-  nothing by itself, so five definition rules give these their meaning (next
-  item). Only the operations listed there have one; set difference and complement
-  are not yet declared, and a term in the surface syntax cannot yet be nested
-  (`A union B union C` and `(A union B) intersection C` are not terms).
-- **Set-operation definitions:** `(Definition of union)`, `(Definition of
-  intersection)`, `(Definition of power set)`, `(Definition of Cartesian product)`
-  and `(Definition of ordered pair)` are zero-premise rules, each cited for the one
-  sentence that defines the symbol (`u in Union(S, T) iff u in S or u in T`, and so
-  on) for any terms, with or without leading `forall`s and with the biconditional
-  either way round, and for nothing else. The power set and product sentences have
-  quantifiers of their own, so a term naming a variable they bind is refused (and
-  the product's two variables must differ). The product's sentence is the one the
-  bounded quantifiers `exists a in S, exists b in T, p = Pair(a, b)` give, because
-  the kernel introduces a conjunction of exactly two lines (see Remaining work). Each
-  is a definition in the usual sense, conservative over ZF; the ordered pair is
-  characterized by its one property, `Pair(a, b) = Pair(c, d) iff a = c and b = d`,
-  not constructed, since there is no singleton or pair-set term to build
-  `{{a}, {a, b}}` from. Coverage: `pytest_tests/test_set_operation_definitions.py`
-  and `tests/testSetTheory/set_operation_definitions.txt`.
-  A proof cannot declare `Union`, `Intersection`, `PowerSet`, `CartesianProduct`,
-  `Pair` or `In` again, in any form (pinned in the same test file), so a
-  definition is always about the symbol the set theory declares. Lower case is
-  not settled: a proof may declare `pair`, `cross` or `union` as a function of its
-  own, and then `pair(a, b)` and `A cross B` still read as the built-in `Pair` and
-  `CartesianProduct`, while `union(A, B)` is the proof's own function, which gets
-  no definition. Decide whether a spelling the parser maps to an operation should
-  be refused as a declared name.
+  function terms rather than hidden kernel operations.
 - **Infinity and finite semantics:** focused support is implemented for
   `A is finite`, `A is infinite`, `Finite(A)`, `Infinite(A)`, typed finite/infinite
   and bijection declarations, `Bijection(f, A, B)` claims, and finite/infinite
@@ -418,16 +389,6 @@ and collaboration handoff before starting.
 7. **Public API and documentation alignment:** keep README and
    `docs/PROOF_FILE_FORMAT.md` synchronized with new syntax, suites, declaration
    behavior, and verification commands.
-8. **Kernel: introducing a conjunction of three or more lines.**
-   `ConjunctionIntroduction` has `premise_arity = 2`, so through the validator it
-   combines exactly two lines, and `A and B and C` (which the parser reads as one
-   conjunction of three, not `(A and B) and C`) cannot be derived from `A`, `B` and
-   `C`: there is no rule that regroups it either. A proof can use such a conjunction
-   (`Conjunction Elimination` works) but only state it as a premise or assumption.
-   This affects any sentence with a three-way `and`, for example the form of the
-   Axiom of choice. Candidate fix: let a rule's arity depend on the formula it
-   justifies (a conjunction of n introduces from n lines); the rule's `applies`
-   already checks any number of lines. Not started.
 
 ## Owner decisions
 

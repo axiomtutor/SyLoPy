@@ -248,6 +248,12 @@ class TheoryEnvironment:
     # (a proof given axioms is checked against them); the flag is for the empty
     # one. It is last so that no positional construction changes.
     axioms_closed: bool = False
+    # Titles a proof may cite as a rule's name although no alias table lists them:
+    # the titles of the definitions a theory registers (`Definitions.py`). A citation
+    # whose name is one of these is resolved to the rule of that title, the way the
+    # title of a proved theorem is (`ProofJustification.theorem_titles`), so a theory
+    # adds citable rules without the justification parser knowing its names.
+    citable_titles: List[str] = field(default_factory=list)
 
     def extended(self, *others: "TheoryEnvironment") -> "TheoryEnvironment":
         result = TheoryEnvironment(name=" + ".join([self.name, *[o.name for o in others]]))
@@ -265,6 +271,7 @@ class TheoryEnvironment:
             result.phrase_parsers.extend(environment.phrase_parsers)
             result.phrase_spans.extend(environment.phrase_spans)
             result.declaration_recipes.extend(environment.declaration_recipes)
+            result.citable_titles.extend(environment.citable_titles)
         return result
 
 

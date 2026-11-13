@@ -19,6 +19,16 @@ from typing import List, Optional, Tuple
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.TermLogic as tl
+from SyLoPy.source.Definitions import (
+    ByProof,
+    ByRule,
+    Definition,
+    Evidence,
+    Existence,
+    definition_declarations,
+    definition_rules,
+    definition_titles,
+)
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaborationError,
@@ -2363,255 +2373,156 @@ class InfinityAxiomRule(pl.InferenceRule):
 
 # --- Definitions of the declared set operations ------------------------------
 #
-# `Union`, `Intersection`, `PowerSet`, `CartesianProduct` and `Pair` are declared
-# function symbols (`SET_DECLARATIONS`), and a declaration says nothing about what
-# a symbol means: `Union(A, B)` is, to the kernel, some object. These five rules
-# give the symbols their meaning, one defining sentence each:
+# `Union`, `Intersection` and `PowerSet` are declared function symbols
+# (`SET_DECLARATIONS`), and a declaration says nothing about what a symbol means:
+# `Union(A, B)` is, to the kernel, some object. A definition gives it its meaning,
+# and what it does is what a definition does in mathematics: it checks that the
+# thing exists, names it, and adds no axiom.
 #
-#     Definition of union               u in A union B  iff  u in A or u in B
-#     Definition of intersection        u in A inter B  iff  u in A and u in B
-#     Definition of power set           u in P(A)       iff  u is a subset of A
-#     Definition of Cartesian product   p in A x B      iff  exists a in A, exists b in B, p = Pair(a, b)
-#     Definition of ordered pair        Pair(a, b) = Pair(c, d)  iff  a = c and b = d
+# A set has a defining property, and its members are the objects that satisfy it.
+# So `Union(A, B)` is the set whose property is "is in A or is in B", and the
+# definition is the sentence that says so:
 #
-# Why a definition is sound. Each sentence defines a function symbol by what its
-# value contains, and ZF proves that for any arguments exactly one set has that
-# content (Pairing and Union for the union, Separation for the intersection,
-# Power Set for the power set, Kuratowski's pair {{a}, {a, b}} for the ordered
-# pair, and Separation over the power set of a union for the product; Extensionality
-# gives the uniqueness each time). So taking the sentence as the symbol's meaning
-# adds nothing that does not already follow: every sentence that does not mention
-# the symbol and is provable with the definitions is provable without them.
-# The ordered pair is characterized by the one property every use needs, rather
-# than by a construction, because there is no singleton or pair-set term to build
-# the construction from.
+#     Definition of union          u in A union B  iff  u in A or u in B
+#     Definition of intersection   u in A inter B  iff  u in A and u in B
+#     Definition of power set      u in P(A)       iff  u is a subset of A
 #
-# Each rule takes no cited lines and accepts the defining sentence for any terms,
-# written with or without leading `forall`s: `forall u, (In(u, Union(A, B)) iff
-# ...)` (the form `Set property` reads), the single instance `In(x, Union(A, B))
-# iff ...`, or the sentence closed over its own variables. What makes that sound
-# is that the sentence holds for every value of its variables, so it holds for
-# every term in their place and any `forall` may be put in front of it. Where the
-# sentence has quantifiers of its own (the power set and the product) a term
-# written for a variable must not be captured by them, which the rules check.
-# The biconditional may be written either way round, as Extensionality's is.
+# So `x is in A union B` is a statement of its own, the atom `In(x, Union(A, B))`:
+# that x has the property that defines the set, which is the statement that it is
+# a member of the set. That it is the disjunction `x is in A or x is in B` is what
+# the definition says, and a proof cites it (`Definition of union`) to get from the
+# one to the other.
+#
+# A definition adds no axiom. It names a set whose existence is already settled and
+# says so, and the facility checks that it is: the evidence for each definition is
+# either an axiom of this theory that asserts the existence (Separation gives the
+# intersection of two sets, Power Set the power set: `ByRule`) or a proof from the
+# axioms (the union of two sets needs Pairing and Union: `ByProof`). Extensionality
+# gives that exactly one set has the members, so the name is for one set. A property
+# that no set bounds -- "the objects that are not members of A" -- names no set,
+# because nothing says there is one, and so it can be defined as a property
+# (a predicate) but not as a set.
+#
+# This is a set theory case of a general facility, not a mechanism of its own
+# (`Definitions.py`): `set_definition` only says what is particular to a set, that
+# the sentence is about membership and that existence is the claim that a set has
+# exactly those members.
 
-def _strip_universals(phi: fl.Formula) -> fl.Formula:
-    """`phi` without its leading ``forall``s (and so with their variables free)."""
-    while isinstance(phi, fl.ForAll):
-        phi = phi.body
-    return phi
+def set_definition(title: str, symbol: str, parameters: Tuple[str, ...], defining_property: fl.Formula,
+                   evidence: Evidence, element: str = "u") -> Definition:
+    """The definition of the set `symbol(parameters)` by the property of its members.
 
-
-def _biconditional_sides(phi: fl.Formula):
-    """The two sides of the biconditional `phi`, in each order. Nothing for any
-    other formula."""
-    if isinstance(phi, fl.Iff):
-        yield phi.left, phi.right
-        yield phi.right, phi.left
-
-
-def _function_arguments(term: tl.Term, symbol: str, arity: int) -> Optional[List[tl.Term]]:
-    """The arguments of `term` if it is `symbol(...)` with `arity` of them."""
-    if isinstance(term, tl.FunctionTerm) and term.symbol == symbol and len(term.args) == arity:
-        return term.args
-    return None
-
-
-def _membership_in_operation(matrix: fl.Formula, symbol: str, arity: int):
-    """For each way `matrix` can be read as ``In(e, symbol(args)) iff R``, the
-    triple ``(e, args, R)``."""
-    for left, right in _biconditional_sides(matrix):
-        parts = _membership_parts(left)
-        if parts is None:
-            continue
-        arguments = _function_arguments(parts[1], symbol, arity)
-        if arguments is not None:
-            yield parts[0], arguments, right
-
-
-def _occurs_free(name: str, *terms: tl.Term) -> bool:
-    """Does the variable `name` occur free in any of `terms`?"""
-    return any(name in fl.term_free_variables(term) for term in terms)
-
-
-class _OperationDefinitionRule(pl.InferenceRule):
-    """A zero-premise rule that cites the defining sentence of a declared set
-    operation (see the section comment above for why that is sound).
-
-    A subclass sets `name`, `citation`, `statement` (the sentence, as a proof
-    writes it) and implements `_defines`, which is given the line with its
-    leading ``forall``s removed. It accepts exactly the sentences the
-    definition gives for some terms, and nothing else: another true sentence
-    about the operation (`In(x, Union(A, B)) iff In(x, Union(B, A))`) is derived
-    from the definition, not cited as it.
+    `defining_property` is the property an object `element` has to be a member,
+    in terms of `element` and `parameters` (variables). The definition is the
+    sentence ``In(element, symbol(parameters)) iff defining_property``, and what it
+    must show is that some set has exactly the objects with the property as its
+    members: ``exists Y, forall element, (In(element, Y) iff defining_property)``.
+    `evidence` shows it.
     """
-    premise_arity = 0
-    statement: str = ""
-    reason: str = ""
-
-    def applies(self, candidates: list, phi: fl.Formula) -> bool:
-        return not candidates and self._defines(_strip_universals(phi))
-
-    def _defines(self, matrix: fl.Formula) -> bool:
-        raise NotImplementedError
-
-    def explain_in_context(self, candidates, phi, context):
-        if candidates:
-            return f"{self.citation} takes no cited premises."
-        return (f"{self.citation} is cited for the sentence {self.statement}, for any terms in place of "
-                f"its variables, with or without leading `forall`s and with the biconditional in either "
-                f"order. {self.reason}")
-
-
-class UnionDefinitionRule(_OperationDefinitionRule):
-    """Definition of union: ``u in Union(S, T)`` iff ``u in S or u in T``.
-
-    Cited as "(Definition of union)". The line is the sentence for some terms
-    u, S, T::
-
-        1. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
-        2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
-
-    The first is the form `Set property` reads, the second the instance a proof
-    uses directly. `x is in A union B` reads as `In(x, Union(A, B))`; the
-    phrase `x belongs to A union B` already reads as `In(x, A) or In(x, B)`.
-    """
-    name = "UnionDefinition"
-    citation = "Definition of union"
-    statement = "`forall u, (In(u, Union(S, T)) iff (In(u, S) or In(u, T)))`"
-    reason = "The membership atom and the disjunction must be about the same u, S and T."
-
-    def _defines(self, matrix: fl.Formula) -> bool:
-        for element, (left, right), members in _membership_in_operation(matrix, "Union", 2):
-            if pl._ast_eq(members, fl.Or(membership_formula(element, left), membership_formula(element, right))):
-                return True
-        return False
+    set_name = _fresh_generated_variable_name(
+        fl.formula_names(defining_property) | set(parameters) | {element}, "Y")
+    member = tl.VariableTerm(element)
+    named_set = tl.FunctionTerm(symbol, [tl.VariableTerm(name) for name in parameters])
+    claim = fl.Exists(set_name, fl.ForAll(element, fl.Iff(
+        membership_formula(member, tl.VariableTerm(set_name)), defining_property)))
+    return Definition(
+        title=title,
+        symbol=symbol,
+        variables=(element, *parameters),
+        definiendum=membership_formula(member, named_set),
+        definiens=defining_property,
+        existence=Existence(claim, evidence),
+        type_name="set operation",
+    )
 
 
-class IntersectionDefinitionRule(_OperationDefinitionRule):
-    """Definition of intersection: ``u in Intersection(S, T)`` iff ``u in S and u in T``.
+# The proof that two sets have a union, from Pairing and Union: the evidence for
+# the definition of union. It is also proof 2 of tests/setTheoryProofs/
+# set_operation_foundations.txt (a test pins that the two are the same proof).
+UNION_EXISTENCE_PROOF = """\
+1. A and B are sets. (Declaration)
+2. Exists P, forall u, (In(u, P) iff (u = A or u = B)). (Axiom of pairing)
+3. Let P be such a set. (Existence from 2)
+4. Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, P) and In(u, v)))). (Axiom of union)
+5. Let Y be such a set. (Existence from 4)
+6. A = A. (Reflexivity)
+7. A = A or A = B. (Disjunction Introduction from 6)
+8. In(A, P). (Set property from 3, 7)
+9. B = B. (Reflexivity)
+10. B = A or B = B. (Disjunction Introduction from 9)
+11. In(B, P). (Set property from 3, 10)
+12. forall x, (In(x, Y) iff (In(x, A) or In(x, B))). (Universal Generalization from subproof below)
+begin subproof
+ 12.0. let c be arbitrary. (Arbitrary)
+ 12.1. In(c, Y) -> (In(c, A) or In(c, B)). (Conditional Introduction from subproof below)
+  12.1.1. In(c, Y). (Assumption for Conditional Introduction)
+  12.1.2. Exists v, (In(v, P) and In(c, v)). (Set property, 5, 12.1.1)
+  12.1.3. Let v be an object. (Declare)
+  12.1.4. In(c, A) or In(c, B). (Existential Elimination from 12.1.2, subproof below)
+  begin subproof
+   12.1.4.1. In(v, P) and In(c, v). (Assumption for Existential Elimination)
+   12.1.4.2. In(v, P). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.3. In(c, v). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.4. v = A or v = B. (Set property, 3, 12.1.4.2)
+   12.1.4.5. In(c, A) or In(c, B). (Proof by Cases from 12.1.4.4, subproofs below)
+   begin subproof
+    12.1.4.5.1. v = A. (Case)
+    12.1.4.5.2. In(c, A). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+   begin subproof
+    12.1.4.5.1. v = B. (Case)
+    12.1.4.5.2. In(c, B). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+  end subproof
+ 12.2. (In(c, A) or In(c, B)) -> In(c, Y). (Conditional Introduction from subproof below)
+  12.2.1. In(c, A) or In(c, B). (Assumption for Conditional Introduction)
+  12.2.2. In(c, Y). (Proof by Cases from 12.2.1, subproofs below)
+  begin subproof
+   12.2.2.1. In(c, A). (Case)
+   12.2.2.2. In(A, P) and In(c, A). (Conjunction Introduction from 8, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+  begin subproof
+   12.2.2.1. In(c, B). (Case)
+   12.2.2.2. In(B, P) and In(c, B). (Conjunction Introduction from 11, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+ 12.3. In(c, Y) iff (In(c, A) or In(c, B)). (Biconditional Introduction from 12.1, 12.2)
+end subproof
+13. Exists U, forall x, (In(x, U) iff (In(x, A) or In(x, B))). (Existential Introduction from 12)
+"""
 
-    Cited as "(Definition of intersection)"; the line is the sentence for some
-    terms u, S, T, in the forms `UnionDefinitionRule` shows.
-    """
-    name = "IntersectionDefinition"
-    citation = "Definition of intersection"
-    statement = "`forall u, (In(u, Intersection(S, T)) iff (In(u, S) and In(u, T)))`"
-    reason = "The membership atom and the conjunction must be about the same u, S and T."
+_MEMBER = tl.VariableTerm("u")
+_A = tl.VariableTerm("A")
+_B = tl.VariableTerm("B")
 
-    def _defines(self, matrix: fl.Formula) -> bool:
-        for element, (left, right), members in _membership_in_operation(matrix, "Intersection", 2):
-            if pl._ast_eq(members, fl.And(membership_formula(element, left), membership_formula(element, right))):
-                return True
-        return False
+UNION_DEFINITION = set_definition(
+    "Definition of union", "Union", ("A", "B"),
+    fl.Or(membership_formula(_MEMBER, _A), membership_formula(_MEMBER, _B)),
+    ByProof(UNION_EXISTENCE_PROOF),
+)
+INTERSECTION_DEFINITION = set_definition(
+    "Definition of intersection", "Intersection", ("A", "B"),
+    fl.And(membership_formula(_MEMBER, _A), membership_formula(_MEMBER, _B)),
+    ByRule(SeparationSchemaRule()),
+)
+POWER_SET_DEFINITION = set_definition(
+    "Definition of power set", "PowerSet", ("A",),
+    subset_formula(_MEMBER, _A, "w"),
+    ByRule(PowerSetAxiomRule()),
+)
 
+SET_DEFINITIONS = [UNION_DEFINITION, INTERSECTION_DEFINITION, POWER_SET_DEFINITION]
 
-class PowerSetDefinitionRule(_OperationDefinitionRule):
-    """Definition of power set: ``u in PowerSet(S)`` iff ``u`` is a subset of ``S``.
+# `CartesianProduct` and `Pair` are declared and not defined: the ordered pair is
+# `{{a}, {a, b}}` and the product is a set of them, and neither can be defined
+# until a singleton and a pair set are terms (see todos.txt).
 
-    Cited as "(Definition of power set)". "u is a subset of S" is the standard
-    subset formula, `forall w, (In(w, u) -> In(w, S))`, whether it comes from
-    the `subset` syntax or is written out; `w` may have any name that does not
-    occur free in u or S. If it did, the quantifier would capture it and the
-    line would say something else: with u := w the line `In(w, PowerSet(S))
-    iff forall w, (In(w, w) -> In(w, S))` would hold for every set that is
-    not a member of itself, which is not what the definition says.
-
-        1. forall u, (In(u, PowerSet(A)) iff u subseteq A). (Definition of power set)
-    """
-    name = "PowerSetDefinition"
-    citation = "Definition of power set"
-    statement = "`forall u, (In(u, PowerSet(S)) iff forall w, (In(w, u) -> In(w, S)))`"
-    reason = ("The bound variable w must not occur free in u or S, or the quantifier would capture it.")
-
-    def _defines(self, matrix: fl.Formula) -> bool:
-        for element, (set_term,), subset in _membership_in_operation(matrix, "PowerSet", 1):
-            if not isinstance(subset, fl.ForAll) or _occurs_free(subset.var, element, set_term):
-                continue
-            member = tl.VariableTerm(subset.var)
-            expected = fl.ForAll(subset.var, fl.Implies(
-                membership_formula(member, element), membership_formula(member, set_term)))
-            if pl._ast_eq(subset, expected):
-                return True
-        return False
-
-
-class CartesianProductDefinitionRule(_OperationDefinitionRule):
-    """Definition of Cartesian product: ``p in CartesianProduct(S, T)`` iff
-    ``p = Pair(a, b)`` for some a in S and b in T.
-
-    Cited as "(Definition of Cartesian product)". The right-hand side is the
-    sentence with its quantifiers bounded, the way `exists a in S, ...` is
-    written and read (`exists a, (In(a, S) and ...)`), so a proof states it
-    and derives it with the binary `and` the kernel introduces::
-
-        forall p, (In(p, CartesianProduct(A, B)) iff
-                   exists a in A, exists b in B, p = Pair(a, b))
-
-    The bound variables a and b may have any names, but they must differ and
-    must not occur free in p, S or T. A name that does would be captured by the
-    quantifiers, and the line would say something else; with p := a it would
-    read `In(a, CartesianProduct(S, T)) iff exists a in S, exists b in T, a =
-    Pair(a, b)`, which says that a is a pair (a, b) -- no set is.
-    """
-    name = "CartesianProductDefinition"
-    citation = "Definition of Cartesian product"
-    statement = ("`forall p, (In(p, CartesianProduct(S, T)) iff "
-                 "exists a in S, exists b in T, p = Pair(a, b))`, in which `exists a in S, P(a)` "
-                 "means `exists a, (In(a, S) and P(a))`")
-    reason = ("The bound variables a and b must differ and must not occur free in p, S or T, or the "
-              "quantifiers would capture them.")
-
-    def _defines(self, matrix: fl.Formula) -> bool:
-        for element, (left, right), pairs in _membership_in_operation(matrix, "CartesianProduct", 2):
-            if not (isinstance(pairs, fl.Exists) and isinstance(pairs.body, fl.And)
-                    and len(pairs.body.conjuncts) == 2 and isinstance(pairs.body.conjuncts[1], fl.Exists)):
-                continue
-            first, second = pairs.var, pairs.body.conjuncts[1].var
-            if first == second or any(_occurs_free(name, element, left, right) for name in (first, second)):
-                continue
-            a, b = tl.VariableTerm(first), tl.VariableTerm(second)
-            expected = fl.Exists(first, fl.And(
-                membership_formula(a, left),
-                fl.Exists(second, fl.And(
-                    membership_formula(b, right),
-                    fl.Equals(element, tl.FunctionTerm("Pair", [a, b])),
-                )),
-            ))
-            if pl._ast_eq(pairs, expected):
-                return True
-        return False
-
-
-class OrderedPairDefinitionRule(_OperationDefinitionRule):
-    """Definition of ordered pair: ``Pair(a, b) = Pair(c, d)`` iff ``a = c`` and ``b = d``.
-
-    Cited as "(Definition of ordered pair)" or "(Ordered pair equality)". This
-    is the one property of ordered pairs every use needs; the construction
-    `{{a}, {a, b}}` has it, but there is no term for a singleton or a pair set
-    to build the construction from here, so the property is what defines `Pair`.
-    The two components are compared in the order they are written::
-
-        1. Pair(a, b) = Pair(c, d) iff (a = c and b = d). (Definition of ordered pair)
-    """
-    name = "OrderedPairDefinition"
-    citation = "Definition of ordered pair"
-    statement = "`Pair(a, b) = Pair(c, d) iff (a = c and b = d)`"
-    reason = "The first components are compared with each other and the second with each other."
-
-    def _defines(self, matrix: fl.Formula) -> bool:
-        for left, right in _biconditional_sides(matrix):
-            if not isinstance(left, fl.Equals):
-                continue
-            first = _function_arguments(left.left, "Pair", 2)
-            second = _function_arguments(left.right, "Pair", 2)
-            if first is None or second is None:
-                continue
-            expected = fl.And(fl.Equals(first[0], second[0]), fl.Equals(first[1], second[1]))
-            if pl._ast_eq(right, expected):
-                return True
-        return False
+SET_DEFINITION_RULES = definition_rules(SET_DEFINITIONS, lambda: SET_THEORY_ENVIRONMENT)
 
 
 class ReplacementSchemaRule(pl.InferenceRule):
@@ -3484,9 +3395,7 @@ class InfiniteUnderBijectionRule(pl.InferenceRule):
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
-    pl.Declaration("Union", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
-    pl.Declaration("Intersection", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
-    pl.Declaration("PowerSet", pl.DeclarationKind.FUNCTION, arity=1, type_name="set operation"),
+    *definition_declarations(SET_DEFINITIONS),
     pl.Declaration("CartesianProduct", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
     pl.Declaration("Pair", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
     pl.Declaration("Finite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
@@ -3507,8 +3416,7 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule(),
            ExtensionalityAxiomRule(), FoundationAxiomRule(), ChoiceAxiomRule(),
-           UnionDefinitionRule(), IntersectionDefinitionRule(), PowerSetDefinitionRule(),
-           CartesianProductDefinitionRule(), OrderedPairDefinitionRule(),
+           *SET_DEFINITION_RULES,
            EmptySetFiniteRule(), EmptySetCardinalityRule(), CardinalityImpliesFiniteRule(),
            FiniteSubsetRule(), FiniteUnionRule(), FinitePowerSetRule(),
            FiniteCartesianProductRule(), FiniteUnderBijectionRule(), InfiniteUnderBijectionRule(),
@@ -3522,4 +3430,5 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     nested_formula_parsers=[parse_set_formula],
     phrase_parsers=[parse_set_formula],
     phrase_spans=[find_phrase_spans, find_bounded_quantifier_spans],
+    citable_titles=definition_titles(SET_DEFINITIONS),
 )

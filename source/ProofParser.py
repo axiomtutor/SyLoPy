@@ -1603,7 +1603,7 @@ class _ElaborationContext:
         # from a misspelled rule name, so whoever promotes the theorems says
         # which exist. Citing one is only parsed here; that the proof has it
         # is decided by the validator.
-        self.theorem_names = theorem_titles(theorem_names)
+        self.theorem_names = theorem_titles(theorem_names) + tuple(environment.citable_titles)
         self.origin_by_label: Dict[str, CoreOrigin] = {}
         # Rules a `line_elaborator` constructs *while elaborating a specific
         # line* -- as opposed to `environment.rules`, which is fixed before
