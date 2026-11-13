@@ -583,6 +583,26 @@ Features explicitly deferred:
 
 - `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->` (not planned for now: owner decision of 2026-10-30).
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
+- Definitions of `CartesianProduct` and `Pair`, which are declared and not yet defined (see Definitions below).
+
+### Definitions
+
+A definition names something and says what it is. It checks that the thing exists, then names it, and adds no axiom: a sentence that does not mention the new symbol is provable with the definition only if it was provable without it. In set theory a set is named by a property: its members are the objects that have the property, and the definition is the sentence that says so. The mechanism is one facility for every theory (`source/Definitions.py`), so that a module for algebra can define a cyclic group, and one for number theory a divisibility relation, the way set theory defines the union. A theory registers its definitions, and a proof cites one by its title, as it cites a theorem (matched like a rule name: case-insensitively, hyphens as spaces).
+
+Set theory registers three, each cited for one sentence:
+
+| Cited | For the sentence |
+| --- | --- |
+| `(Definition of union)` | `forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B)))` |
+| `(Definition of intersection)` | `forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B)))` |
+| `(Definition of power set)` | `forall u, (In(u, PowerSet(A)) iff u subseteq A)`, that is, `forall u, (In(u, PowerSet(A)) iff forall w, (In(w, u) -> In(w, A)))` |
+
+- `u`, `A` and `B` stand for any terms. The line may be the sentence with its `forall` as above (the form `Set property` reads), the instance for particular terms (`x is in A union B iff (x is in A or x is in B)`), or the sentence closed over all its variables (`forall S, forall T, forall u, ...`); the biconditional may be written either way round. A definition takes no cited lines.
+- Nothing else is accepted. A true sentence about an operation, such as `x is in A union B iff x is in B union A`, is derived from the definition (proof 4 of `tests/testSetTheory/set_operation_definitions.txt` derives that union commutes) and is not cited as it. The terms must agree on the two sides, and so must the order of the sets in the disjunction or the conjunction. A refused line is told the sentence to cite.
+- The quantifier of the power set's subset clause must not capture a variable of a term. With `w` as the element or as the set, the clause would say something else (that every set that is not a member of itself is in the power set), so the line is refused. Renaming the bound variable gives the sentence for the same terms, and a constant spelled like a bound variable is another term and is not captured.
+- `x is in A union B` is a statement of its own, the membership `In(x, Union(A, B))`: that `x` has the property that defines the set. That it is the disjunction `x is in A or x is in B` is what the definition says, and a proof cites it to get from the one to the other (proof 9 of the same file). The phrases `x belongs to A union B` and `x is in the union of A and B` are still read as the disjunction itself; making them memberships like the others is planned (`todos.txt`).
+- A definition adds no axiom, and the facility checks that it does not. Before a set is named, the definition shows that some set has exactly the members the sentence gives it: by an axiom that says so (Separation for the intersection, Power Set for the power set) or by a proof from the axioms (Pairing and Union for the union: the proof that the union of two sets exists, proof 2 of `tests/setTheoryProofs/set_operation_foundations.txt`). Extensionality gives that there is only one such set. A definition whose evidence fails is refused, and so is every line that cites it. A property that no set bounds, such as "the objects that are not members of `A`", names no set, since nothing says that there is one; it can be defined as a property, and not as a set.
+- `CartesianProduct` and `Pair` are declared but not defined, so no proof can cite a definition of them. The ordered pair will be `{{a}, {a, b}}` with readable syntax for it, and the product a set of such pairs; both wait for the singleton and the unordered pair to be terms (`todos.txt`).
 
 ## 12. Worked set-theory proofs
 
@@ -750,4 +770,33 @@ end subproof
   5.3.3. In(y, X). (Set property, 5.1, 5.3.2)
  5.4. X = Y. (Set equality, 5.2, 5.3)
 6. Exists Y, ((forall u, (In(u, Y) iff u subset A)) and (forall X, ((forall z, (In(z, X) iff z subset A)) -> X = Y))). (Uniqueness, 2, 5)
+```
+
+### Definitions of the set operations
+
+<!-- proof-format-test: valid-proof -->
+```text
+# 7: A union contains its first set
+## Proof that
+### If A and B are sets
+### then A is a subset of A union B.
+
+1. Let A, B be any set. (Declaration)
+2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+3. A is a subset of A union B. (Subset proof below)
+ 3.1. Let x in A. (Assumption for subset proof)
+ 3.2. In(x, A) or In(x, B). (Disjunction Introduction from 3.1)
+ 3.3. In(x, A union B). (Set property from 2, 3.2)
+```
+
+<!-- proof-format-test: valid-proof -->
+```text
+# 8: A member of a union is a member of one of its sets
+## Proof that
+### If x is in A union B then x is in A or x is in B.
+
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+4. x is in A or x is in B. (Set property from 3, 2)
 ```

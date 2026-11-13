@@ -107,12 +107,14 @@ accepted for exactly one sentence (below); Union and Power Set instance forms; s
 `Let Y be such a set. (Existence from L)`; general `Set property`; set equality
 and subset proofs; unique existence; equality-case WLOG replay; set enumeration,
 set-builder notation, bounded quantifiers, and the documented natural-language
-set phrases.
+set phrases; definitions that name the union, the intersection and the power set
+of sets (below).
 
 Useful regression references: `pytest_tests/test_axiom_citation_rules.py`,
 `pytest_tests/test_set_property.py`, `pytest_tests/test_wlog_symmetric_citations.py`,
 `pytest_tests/test_wlog_case_blocks.py`, `pytest_tests/test_set_phrase_parsing.py`,
-and `pytest_tests/test_set_enumeration_syntax.py`.
+`pytest_tests/test_set_enumeration_syntax.py`, `pytest_tests/test_definitions.py`,
+and `pytest_tests/test_set_operation_definitions.py`.
 
 Constraints and open decisions:
 
@@ -159,7 +161,42 @@ Constraints and open decisions:
 - **Set-operation terms:** parser support now includes names such as
   `A union B`, `A intersection B`, `A cross B`, `pair(a, b)`, and
   `the power set of A`; these lower to declared function symbols and ordinary
-  function terms rather than hidden kernel operations.
+  function terms rather than hidden kernel operations. A declared symbol means
+  nothing by itself: the definitions below give `Union`, `Intersection` and
+  `PowerSet` their meaning, and `CartesianProduct` and `Pair` have none yet. Set
+  difference and complement are not yet declared, and a term in the surface syntax
+  cannot yet be nested (`A union B union C` and `(A union B) intersection C` are
+  not terms).
+- **Definitions:** a definition checks that the thing it names exists, names it,
+  and adds no axiom (owner, 2026-11-09). One facility, `source/Definitions.py`,
+  serves every theory. A `Definition` is the new symbol, the sentence that says
+  what it means (`In(u, Union(A, B)) iff (In(u, A) or In(u, B))`, or
+  `Cyclic(G) iff ...` in an algebra module) and, for a symbol that names a thing,
+  the claim that there is one, with the evidence for it: an axiom (`ByRule`) or a
+  proof from the axioms (`ByProof`, checked as a theorem about arbitrary objects
+  and without any definition). A theory registers its definitions
+  (`definition_rules`, `definition_declarations` and `definition_titles` in its
+  `TheoryEnvironment`), and a proof cites one by its title, for its sentence with
+  any terms, with or without leading `forall`s and the biconditional either way
+  round, and for nothing else; the kernel sees an ordinary zero-premise rule. Set
+  theory registers `Definition of union` (evidence: a proof from Pairing and
+  Union), `Definition of intersection` (Separation) and `Definition of power set`
+  (Power Set). A set is defined by a property only if a set bounds the property or
+  an axiom or a proof says there is such a set; "the objects that are not members
+  of A" can be defined as a property (a predicate) and not as a set.
+  `x is in A union B` is the membership atom `In(x, Union(A, B))`, that `x` has the
+  property that defines the set, and the definition is the step to the
+  disjunction. Coverage: `pytest_tests/test_definitions.py` (the facility, on a
+  toy algebra theory), `pytest_tests/test_set_operation_definitions.py` and
+  `tests/testSetTheory/set_operation_definitions.txt`. A proof cannot declare
+  `Union`, `Intersection`, `PowerSet`, `CartesianProduct`, `Pair` or `In` again,
+  in any form (pinned in the second test file), so a definition is always about
+  the symbol the set theory declares. Lower case is not settled: a proof may
+  declare `pair`, `cross` or `union` as a function of its own, and then `pair(a, b)`
+  and `A cross B` still read as the built-in `Pair` and `CartesianProduct`, while
+  `union(A, B)` is the proof's own function, which gets no definition. Decide
+  whether a spelling the parser maps to an operation should be refused as a
+  declared name.
 - **Infinity and finite semantics:** focused support is implemented for
   `A is finite`, `A is infinite`, `Finite(A)`, `Infinite(A)`, typed finite/infinite
   and bijection declarations, `Bijection(f, A, B)` claims, and finite/infinite
@@ -389,6 +426,36 @@ and collaboration handoff before starting.
 7. **Public API and documentation alignment:** keep README and
    `docs/PROOF_FILE_FORMAT.md` synchronized with new syntax, suites, declaration
    behavior, and verification commands.
+8. **Set-operation definitions: what is left.**
+   (a) Membership phrases: `x belongs to A union B` and `x is in the union of A and
+   B` (and the intersection's) are still read as the disjunction or conjunction
+   itself. The owner wants every membership phrase, set displays included, to be a
+   membership atom, with the definitions as the step to the disjunction.
+   (b) The ordered pair and the Cartesian product: the ordered pair is
+   `{{a}, {a, b}}` in the backend with readable syntax for it, its property
+   `(a, b) = (c, d) iff a = c and b = d` is a theorem, and the abstract `Pair` goes
+   away (owner, 2026-11-09). That needs the singleton and the unordered pair as
+   terms (each a definition, with the Axiom of pairing as its evidence), and then
+   the product, a set of pairs bounded by Separation over a power set.
+   (c) A function symbol defined by a description needs unique existence
+   (`exists!`) as its existence claim; `Existence` is shaped for it, and no
+   definition uses it yet.
+   (d) A definition whose evidence uses an earlier definition: the evidence is
+   checked in the theory without any definition today.
+   (e) A proof file cannot define a symbol of its own; a theory registers its
+   definitions in Python.
+   (f) Unicode symbols (`∈`, `⊆`, `∪`, `∩`, `∀`, `∃`, `→`, `↔`, `¬`) as input,
+   which the owner accepted on 2026-11-09. Not started.
+9. **Kernel: introducing a conjunction of three or more lines.**
+   `ConjunctionIntroduction` has `premise_arity = 2`, so through the validator it
+   combines exactly two lines, and `A and B and C` (which the parser reads as one
+   conjunction of three, not `(A and B) and C`) cannot be derived from `A`, `B` and
+   `C`: there is no rule that regroups it either. A proof can use such a conjunction
+   (`Conjunction Elimination` works) but only state it as a premise or assumption.
+   This affects any sentence with a three-way `and`, for example the form of the
+   Axiom of choice. Candidate fix: let a rule's arity depend on the formula it
+   justifies (a conjunction of n introduces from n lines); the rule's `applies`
+   already checks any number of lines. Not started.
 
 ## Owner decisions
 
@@ -425,6 +492,16 @@ Current implementation direction:
   subproof blocks remain excluded rather than being replayed as new inference.
 - Major theory modules such as abstract algebra or topology: later, not now.
 - Changing the witness-generalization policy: no change (decided 2026-10-31).
+- Definitions (owner, 2026-11-09): a definition checks that the thing exists,
+  names it, and adds no axiom; a set has a defining property and its elements are
+  the objects that satisfy it, so `x is in A union B` is a membership of its own
+  and not the disjunction; a set may be defined by a property only if a set bounds
+  it or an axiom or a proof says there is one, and any other property is defined
+  as a property; the mechanism works in every theory module (algebra's cyclic
+  group, say), and implementing it as rules is fine; the ordered pair is
+  `{{a}, {a, b}}` with readable syntax; Unicode symbols are accepted as input.
+  Open: whether the set operations are eventually defined in the corpus
+  (`SetTheoryCorpus/`) from the axioms, rather than as entries of the module.
 
 ## Owner approval required — do not start without approval
 

@@ -1601,8 +1601,9 @@ class _ElaborationContext:
         # Titles of the theorems this proof may cite (see
         # `ProofJustification`): the justification parser cannot tell a title
         # from a misspelled rule name, so whoever promotes the theorems says
-        # which exist. Citing one is only parsed here; that the proof has it
-        # is decided by the validator.
+        # which exist. The theory adds the titles it makes citable itself
+        # (`TheoryEnvironment.citable_titles`: its definitions). Citing one is
+        # only parsed here; that the proof has it is decided by the validator.
         self.theorem_names = theorem_titles(theorem_names) + tuple(environment.citable_titles)
         self.origin_by_label: Dict[str, CoreOrigin] = {}
         # Rules a `line_elaborator` constructs *while elaborating a specific
