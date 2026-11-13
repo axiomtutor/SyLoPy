@@ -71,3 +71,21 @@ context: nested
 surface: the intersection of A and B is nonempty
 expect: exists u, (In(u, A) and In(u, B))
 why: A common element witnesses a nonempty intersection.
+
+id: definition-term-union-membership
+context: nested
+surface: P(x) and x is in A union B
+expect: P(x) and In(x, Union(A, B))
+why: "A union B" is a term, and "is in" asks whether x is a member of it. This differs from "x belongs to A union B" (j4-union-membership-nested), which is spelled out as a disjunction. (Definition of union) is what relates the two: it says which objects are members of the union, and a member of the union is a member of one of its sets is derived from it, not read into the phrase. A planned change reads "belongs to" as a membership too.
+
+id: definition-term-intersection-membership
+context: nested
+surface: P(x) and x is in A intersection B
+expect: P(x) and In(x, Intersection(A, B))
+why: Like the union: the term "A intersection B" is what x is asked to be a member of, and it is not spelled out as a conjunction. (Definition of intersection) says which objects are its members.
+
+id: definition-term-power-set-membership
+context: nested
+surface: P(x) and x is in the power set of A
+expect: P(x) and In(x, PowerSet(A))
+why: "the power set of A" is a term. (Definition of power set) says that its members are the subsets of A.
