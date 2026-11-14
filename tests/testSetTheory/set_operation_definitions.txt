@@ -1,20 +1,25 @@
 (*
-The declared set operations -- Union, Intersection, PowerSet, CartesianProduct
-and Pair -- mean nothing by themselves; five rules give them their meaning, each
-by citing one defining sentence: (Definition of union), (Definition of
-intersection), (Definition of power set), (Definition of Cartesian product) and
-(Definition of ordered pair). Each rule takes the sentence for any terms, with or
-without leading foralls (the form `Set property` reads, the instance for one
-element, or the sentence closed over its variables), and takes nothing else: a
-true sentence about the operation is derived from the definition, not cited as it.
+The declared set operations -- Union, Intersection and PowerSet -- mean nothing
+by themselves; three definitions give them their meaning. A definition names a
+set by the property its members have: it first shows that there is such a set,
+by an axiom or by a proof, and then adds the sentence that says which objects are
+members, with no new axiom. The sentence is cited by the title of the definition:
+(Definition of union), (Definition of intersection), (Definition of power set).
+Each takes its sentence for any terms, with or without leading foralls (the form
+`Set property` reads, the instance for one element, or the sentence closed over its
+variables), and takes nothing else: a true sentence about the operation is derived
+from the definition, not cited as it. CartesianProduct and Pair are declared as
+well, but have no definition yet, so no proof can cite one.
 
-Proofs 1-5 show the forms each rule accepts. Proofs 6-13 prove facts about the
-operations with them: union commutes, a union contains each of its sets, an
-intersection is inside each of its sets, the empty set belongs to every power set,
-equal ordered pairs have equal components, and the Cartesian product has exactly
-the pairs of members. Proof 8 cites proof 7 by its title, as any theorem is. The
-invalid proofs are sentences close to a definition that are not it, among them the
-two in which a quantifier of the sentence would capture a variable of a term.
+Proofs 1-3 show the forms each definition accepts. Proofs 4-9 prove facts about
+the operations with them: union commutes, a union contains each of its sets, an
+intersection is inside each of its sets, the empty set belongs to every power
+set, and a member of a union is a member of one of its sets (proof 9, from the
+definition: `x is in A union B` is a membership, not yet a disjunction). Proof 6
+cites proof 5 by its title, as any theorem is. The invalid proofs are sentences
+close to a definition that are not it, among them the two in which a quantifier of
+the sentence would capture a variable of a term, and the same step as proof 9
+without the definition (proof 22).
 *)
 
 # 1: Union, in the forms the rule accepts
@@ -49,27 +54,7 @@ two in which a quantifier of the sentence would capture a variable of a term.
 6. (forall z, (In(z, x) -> In(z, A))) iff In(x, PowerSet(A)). (Definition of power set)
 7. x is in the power set of A iff x is a subset of A. (Definition of power set)
 
-# 4: The Cartesian product, in the forms the rule accepts
-## Proof that
-### the Cartesian product of A and B has the pairs of a member of A and a member of B, however the definition is written
-1. Let A, B be any set, and p be any object. (Declaration)
-2. forall q, (In(q, CartesianProduct(A, B)) iff exists a in A, exists b in B, q = Pair(a, b)). (Definition of Cartesian product)
-3. In(p, CartesianProduct(A, B)) iff (exists a in A, exists b in B, p = Pair(a, b)). (Definition of Cartesian product)
-4. In(p, CartesianProduct(A, B)) iff (exists s, (In(s, A) and exists t, (In(t, B) and p = Pair(s, t)))). (Definition of Cartesian product)
-5. forall S, forall T, forall q, (In(q, CartesianProduct(S, T)) iff exists a in S, exists b in T, q = Pair(a, b)). (Definition of Cartesian product)
-6. (exists a in A, exists b in B, p = Pair(a, b)) iff In(p, CartesianProduct(A, B)). (Definition of Cartesian product)
-
-# 5: Ordered pairs, in the forms the rule accepts
-## Proof that
-### ordered pairs are equal exactly when their components are, however the definition is written
-1. Let a, b, c, d be any object. (Declaration)
-2. Pair(a, b) = Pair(c, d) iff (a = c and b = d). (Definition of ordered pair)
-3. forall x, forall y, (Pair(a, b) = Pair(x, y) iff (a = x and b = y)). (Definition of ordered pair)
-4. forall w, forall x, forall y, forall z, (Pair(w, x) = Pair(y, z) iff (w = y and x = z)). (Definition of ordered pair)
-5. (a = c and b = d) iff Pair(a, b) = Pair(c, d). (Definition of ordered pair)
-6. Pair(a, Pair(b, c)) = Pair(d, Pair(a, b)) iff (a = d and Pair(b, c) = Pair(a, b)). (Ordered pair equality)
-
-# 6: Union is commutative
+# 4: Union is commutative
 ## Proof that
 ### then A union B = B union A.
 1. Let A, B be any set. (Declaration)
@@ -103,7 +88,7 @@ two in which a quantifier of the sentence would capture a variable of a term.
  5.4. In(x, A union B). (Set property from 2, 5.3)
 6. A union B = B union A. (Set Equality from 4, 5)
 
-# 7: A union contains its first set
+# 5: A union contains its first set
 ## Proof that
 ### If A and B are sets then A is a subset of A union B.
 1. Let A, B be any set. (Declaration)
@@ -113,13 +98,13 @@ two in which a quantifier of the sentence would capture a variable of a term.
  3.2. In(x, A) or In(x, B). (Disjunction Introduction from 3.1)
  3.3. In(x, A union B). (Set property from 2, 3.2)
 
-# 8: A union contains its first set, for other sets
+# 6: A union contains its first set, for other sets
 ## Proof that
 ### If C and D are sets then C is a subset of C union D.
 1. Let C, D be any set. (Declaration)
 2. C is a subset of C union D. (A union contains its first set)
 
-# 9: An intersection is inside its first set
+# 7: An intersection is inside its first set
 ## Proof that
 ### If A and B are sets then A intersection B is a subset of A.
 1. Let A, B be any set. (Declaration)
@@ -129,7 +114,7 @@ two in which a quantifier of the sentence would capture a variable of a term.
  3.2. In(x, A) and In(x, B). (Set property from 2, 3.1)
  3.3. In(x, A). (Conjunction Elimination from 3.2)
 
-# 10: The empty set belongs to every power set
+# 8: The empty set belongs to every power set
 ## Proof that
 ### If A is a set then the empty set is a member of the power set of A.
 1. Let A be any set. (Declaration)
@@ -140,162 +125,77 @@ two in which a quantifier of the sentence would capture a variable of a term.
  3.3. x is in A. (Explosion from 3.1, 3.2)
 4. In(EmptySet, PowerSet(A)). (Set property from 2, 3)
 
-# 11: Ordered pairs with equal pairs have equal first components
+# 9: A member of a union is a member of one of its sets
 ## Proof that
-### If Pair(a, b) = Pair(c, d) then a = c.
-1. Let a, b, c, d be any object. (Declaration)
-2. Pair(a, b) = Pair(c, d). (Premise)
-3. Pair(a, b) = Pair(c, d) iff (a = c and b = d). (Definition of ordered pair)
-4. Pair(a, b) = Pair(c, d) -> (a = c and b = d). (Biconditional Elimination from 3)
-5. a = c and b = d. (Modus Ponens from 4, 2)
-6. a = c. (Conjunction Elimination from 5)
+### If x is in A union B then x is in A or x is in B.
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+4. x is in A or x is in B. (Set property from 3, 2)
 
-# 12: A pair of members belongs to the Cartesian product
-## Proof that
-### If a is in A and b is in B then Pair(a, b) is in the Cartesian product of A and B.
-1. Let A, B be any set, and a, b be any object. (Declaration)
-2. In(a, A). (Premise)
-3. In(b, B). (Premise)
-4. forall p, (In(p, CartesianProduct(A, B)) iff exists x in A, exists y in B, p = Pair(x, y)). (Definition of Cartesian product)
-5. Pair(a, b) = Pair(a, b). (Reflexivity)
-6. In(b, B) and Pair(a, b) = Pair(a, b). (Conjunction Introduction from 3, 5)
-7. exists y, (In(y, B) and Pair(a, b) = Pair(a, y)). (Existential Introduction from 6)
-8. In(a, A) and exists y, (In(y, B) and Pair(a, b) = Pair(a, y)). (Conjunction Introduction from 2, 7)
-9. exists x, (In(x, A) and exists y, (In(y, B) and Pair(a, b) = Pair(x, y))). (Existential Introduction from 8)
-10. In(Pair(a, b), CartesianProduct(A, B)). (Set property from 4, 9)
-
-# 13: The components of a pair in the Cartesian product are members
-## Proof that
-### If Pair(a, b) is in the Cartesian product of A and B then a is in A and b is in B.
-1. Let A, B be any set, and a, b be any object. (Declaration)
-2. In(Pair(a, b), CartesianProduct(A, B)). (Premise)
-3. forall p, (In(p, CartesianProduct(A, B)) iff exists x in A, exists y in B, p = Pair(x, y)). (Definition of Cartesian product)
-4. exists x, (In(x, A) and exists y, (In(y, B) and Pair(a, b) = Pair(x, y))). (Set property from 3, 2)
-5. Let x be an object. (Declare)
-6. In(a, A) and In(b, B). (Existential Elimination from 4, subproof below)
-begin subproof
- 6.1. In(x, A) and exists y, (In(y, B) and Pair(a, b) = Pair(x, y)). (Assumption for Existential Elimination)
- 6.2. In(x, A). (Conjunction Elimination from 6.1)
- 6.3. exists y, (In(y, B) and Pair(a, b) = Pair(x, y)). (Conjunction Elimination from 6.1)
- 6.4. Let y be an object. (Declare)
- 6.5. In(a, A) and In(b, B). (Existential Elimination from 6.3, subproof below)
- begin subproof
-  6.5.1. In(y, B) and Pair(a, b) = Pair(x, y). (Assumption for Existential Elimination)
-  6.5.2. In(y, B). (Conjunction Elimination from 6.5.1)
-  6.5.3. Pair(a, b) = Pair(x, y). (Conjunction Elimination from 6.5.1)
-  6.5.4. Pair(a, b) = Pair(x, y) iff (a = x and b = y). (Definition of ordered pair)
-  6.5.5. Pair(a, b) = Pair(x, y) -> (a = x and b = y). (Biconditional Elimination from 6.5.4)
-  6.5.6. a = x and b = y. (Modus Ponens from 6.5.5, 6.5.3)
-  6.5.7. a = x. (Conjunction Elimination from 6.5.6)
-  6.5.8. b = y. (Conjunction Elimination from 6.5.6)
-  6.5.9. In(a, A). (Substitution from 6.5.7, 6.2)
-  6.5.10. In(b, B). (Substitution from 6.5.8, 6.5.2)
-  6.5.11. In(a, A) and In(b, B). (Conjunction Introduction from 6.5.9, 6.5.10)
- end subproof
-end subproof
-
-# 14: Invalid: a definition cited for the sentence of another operation
+# 10: Invalid: a definition cited for the sentence of another operation
 ## Invalid: the intersection's sentence is not the union's.
 1. Let A, B be any set. (Declaration)
-2. forall u, (In(u, Union(A, B)) iff (In(u, A) and In(u, B))). (Definition of union)
+2. forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B))). (Definition of union)
 
-# 15: Invalid: the members of the union are those of the first set, twice
+# 11: Invalid: the members of the union are those of the first set, twice
 ## Invalid: the disjunction must be about both sets.
 1. Let A, B be any set. (Declaration)
 2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, A))). (Definition of union)
 
-# 16: Invalid: the union's definition about a different element on each side
+# 12: Invalid: the union's definition about a different element on each side
 ## Invalid: the membership atom and the disjunction must be about the same element.
 1. Let A, B be any set, and x, y be any object. (Declaration)
 2. In(x, Union(A, B)) iff (In(y, A) or In(y, B)). (Definition of union)
 
-# 17: Invalid: only one direction of the union's definition
+# 13: Invalid: only one direction of the union's definition
 ## Invalid: a conditional is not the definition, which is a biconditional.
 1. Let A, B be any set. (Declaration)
-2. forall u, (In(u, A) or In(u, B)) -> In(u, Union(A, B)). (Definition of union)
+2. forall u, (In(u, Union(A, B)) -> (In(u, A) or In(u, B))). (Definition of union)
 
-# 18: Invalid: some element, not every element, has the union's property
+# 14: Invalid: some element, not every element, has the union's property
 ## Invalid: an existential statement is not the definition.
 1. Let A, B be any set. (Declaration)
 2. exists u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
 
-# 19: Invalid: the definition of union cited with a line
+# 15: Invalid: the definition of union cited with a line
 ## Invalid: a definition takes no cited lines.
 1. Let A, B be any set. (Declaration)
 2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
 3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union from 2)
 
-# 20: Invalid: a true sentence about union that is not the definition
-## Invalid: that A union B has the members of B union A is a theorem (proof 6), not the definition.
-1. Let A, B be any set, and x be any object. (Declaration)
-2. In(x, Union(A, B)) iff In(x, Union(B, A)). (Definition of union)
+# 16: Invalid: a true sentence about union that is not the definition
+## Invalid: that A union B has the members of B union A is a theorem (proof 4), not the definition.
+1. Let A, B be any set. (Declaration)
+2. forall u, (In(u, Union(A, B)) iff In(u, Union(B, A))). (Definition of union)
 
-# 21: Invalid: the union of three sets read as the union of two
+# 17: Invalid: the union of three sets read as the union of two
 ## Invalid: Union takes two sets.
-1. Let A, B, C be any set, and x be any object. (Declaration)
-2. In(x, Union(A, B)) iff (In(x, A) or In(x, B) or In(x, C)). (Definition of union)
+1. Let A, B, C be any set. (Declaration)
+2. forall u, (In(u, Union(A, B, C)) iff (In(u, A) or In(u, B) or In(u, C))). (Definition of union)
 
-# 22: Invalid: the power set of A is the set of the members of A
+# 18: Invalid: the power set of A is the set of the members of A
 ## Invalid: the members of the power set are the subsets of A, not the elements of A.
 1. Let A be any set. (Declaration)
 2. forall u, (In(u, PowerSet(A)) iff In(u, A)). (Definition of power set)
 
-# 23: Invalid: the subset clause the wrong way round
+# 19: Invalid: the subset clause the wrong way round
 ## Invalid: u is in the power set of A when u is a subset of A, not when A is a subset of u.
 1. Let A be any set. (Declaration)
-2. forall u, (In(u, PowerSet(A)) iff (forall z, (In(z, A) -> In(z, u)))). (Definition of power set)
+2. forall u, (In(u, PowerSet(A)) iff A subseteq u). (Definition of power set)
 
-# 24: Invalid: the quantifier of the subset clause captures the element
+# 20: Invalid: the quantifier of the subset clause captures the element
 ## Invalid: with w as the element, the clause says that w is a subset of itself, which every set that is not a member of itself satisfies.
 1. Let A be any set. (Declaration)
 2. forall w, (In(w, PowerSet(A)) iff (forall w, (In(w, w) -> In(w, A)))). (Definition of power set)
 
-# 25: Invalid: the quantifier of the subset clause captures the set
+# 21: Invalid: the quantifier of the subset clause captures the set
 ## Invalid: with w as the set, the clause says that every member of u is a member of itself.
-1. Let u be any object. (Declaration)
-2. forall w, (In(u, PowerSet(w)) iff (forall w, (In(w, u) -> In(w, w)))). (Definition of power set)
+1. Let A be any set. (Declaration)
+2. forall u, forall w, (In(u, PowerSet(w)) iff (forall w, (In(w, u) -> In(w, w)))). (Definition of power set)
 
-# 26: Invalid: the pairs of members, with the pair not tied to the product's element
-## Invalid: the pair must be the element p, not a pair of other elements.
-1. Let A, B be any set, and p be any object. (Declaration)
-2. In(p, CartesianProduct(A, B)) iff (exists a in A, exists b in B, Pair(a, b) = Pair(b, a)). (Definition of Cartesian product)
-
-# 27: Invalid: the first component in the second set
-## Invalid: the first component belongs to the first set and the second component to the second.
-1. Let A, B be any set, and p be any object. (Declaration)
-2. In(p, CartesianProduct(A, B)) iff (exists a in B, exists b in A, p = Pair(a, b)). (Definition of Cartesian product)
-
-# 28: Invalid: one quantifier for both components
-## Invalid: the two components are bound separately, so a pair (a, a) is not all the product has.
-1. Let A, B be any set, and p be any object. (Declaration)
-2. In(p, CartesianProduct(A, B)) iff (exists a, (In(a, A) and In(a, B) and p = Pair(a, a))). (Definition of Cartesian product)
-
-# 29: Invalid: the inner quantifier of the product has the name of the outer one
-## Invalid: the second a shadows the first, so the sentence says that p is a pair (a, a) with a in B.
-1. Let A, B be any set, and p be any object. (Declaration)
-2. In(p, CartesianProduct(A, B)) iff (exists a, (In(a, A) and exists a, (In(a, B) and p = Pair(a, a)))). (Definition of Cartesian product)
-
-# 30: Invalid: the quantifiers of the product capture the element
-## Invalid: with a as the element, the sentence says that a is a pair (a, b), which no set is.
-1. Let A, B be any set. (Declaration)
-2. forall a, (In(a, CartesianProduct(A, B)) iff (exists a, (In(a, A) and exists b, (In(b, B) and a = Pair(a, b))))). (Definition of Cartesian product)
-
-# 31: Invalid: the quantifiers of the product capture the second set
-## Invalid: with b as the second set, the sentence says that the second component is a member of itself.
-1. Let A be any set, and p be any object. (Declaration)
-2. forall b, (In(p, CartesianProduct(A, b)) iff (exists a, (In(a, A) and exists b, (In(b, b) and p = Pair(a, b))))). (Definition of Cartesian product)
-
-# 32: Invalid: ordered pairs equal when their components are crossed
-## Invalid: Pair(a, b) = Pair(c, d) when a = c and b = d, not when a = d and b = c.
-1. Let a, b, c, d be any object. (Declaration)
-2. Pair(a, b) = Pair(c, d) iff (a = d and b = c). (Definition of ordered pair)
-
-# 33: Invalid: ordered pairs equal when their first components are
-## Invalid: the second components must be equal as well.
-1. Let a, b, c, d be any object. (Declaration)
-2. Pair(a, b) = Pair(c, d) iff a = c. (Definition of ordered pair)
-
-# 34: Invalid: the ordered pair of the same components, cited as a definition of union
-## Invalid: each definition is cited for its own operation.
-1. Let a, b, c, d be any object. (Declaration)
-2. Pair(a, b) = Pair(c, d) iff (a = c and b = d). (Definition of union)
+# 22: Invalid: a member of a union is a member of one of its sets, without the definition
+## Invalid: the union is a symbol until a definition names it; nothing in the proof says what its members are.
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. x is in A or x is in B. (Set property from 2)

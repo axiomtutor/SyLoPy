@@ -339,17 +339,6 @@ Set theory, number theory, natural-number reasoning, and discrete mathematics ad
 | Axiom of foundation | FoundationAxiom |
 | Axiom of regularity | FoundationAxiom |
 | Axiom of choice | ChoiceAxiom |
-| Definition of union | UnionDefinition |
-| Union definition | UnionDefinition |
-| Definition of intersection | IntersectionDefinition |
-| Intersection definition | IntersectionDefinition |
-| Definition of power set | PowerSetDefinition |
-| Power set definition | PowerSetDefinition |
-| Definition of Cartesian product | CartesianProductDefinition |
-| Cartesian product definition | CartesianProductDefinition |
-| Definition of ordered pair | OrderedPairDefinition |
-| Ordered pair definition | OrderedPairDefinition |
-| Ordered pair equality | OrderedPairDefinition |
 | WLOG | WLOG |
 | Without loss of generality | WLOG |
 | Mutatis mutandis | MutatisMutandis |
@@ -576,25 +565,6 @@ Extensionality, Foundation/Regularity, and Choice are different: each is cited f
 - Renaming a bound variable throughout is the same sentence. A bound variable that another quantifier binds again is not: `forall x, forall y, ((forall y, (In(y, x) iff In(y, y))) -> x = y)` says that the empty set is every set, and is refused.
 - Equivalent sentences are refused too; a proof derives them from the axiom. A refused line is told the sentence to cite.
 
-The declared set operations `Union`, `Intersection`, `PowerSet`, `CartesianProduct` and `Pair` mean nothing by themselves, since a declaration gives a symbol no meaning. Five definition rules give them theirs. Each takes no cited lines and is cited for one defining sentence:
-
-| Cited | For the sentence |
-| --- | --- |
-| `(Definition of union)` | `forall u, (In(u, Union(S, T)) iff (In(u, S) or In(u, T)))` |
-| `(Definition of intersection)` | `forall u, (In(u, Intersection(S, T)) iff (In(u, S) and In(u, T)))` |
-| `(Definition of power set)` | `forall u, (In(u, PowerSet(S)) iff u subseteq S)`, that is, `forall u, (In(u, PowerSet(S)) iff forall w, (In(w, u) -> In(w, S)))` |
-| `(Definition of Cartesian product)` | `forall p, (In(p, CartesianProduct(S, T)) iff exists a in S, exists b in T, p = Pair(a, b))`, that is, `exists a, (In(a, S) and exists b, (In(b, T) and p = Pair(a, b)))` |
-| `(Definition of ordered pair)`, or `(Ordered pair equality)` | `Pair(a, b) = Pair(c, d) iff (a = c and b = d)` |
-
-- `S`, `T`, `u`, `p`, `a`, `b`, `c` and `d` stand for any terms. The line may be the sentence with its `forall` as above (the form `Set property` reads), the instance for particular terms (`x is in A union B iff (x is in A or x is in B)`), or the sentence closed over all its variables (`forall S, forall T, forall u, ...`); the biconditional may be written either way round.
-- Nothing else is accepted: a true sentence about an operation, such as `x is in A union B iff x is in B union A`, is derived from the definition and is not cited as it. The terms in the two sides must agree, and so must the order of the sets in the disjunction, the conjunction, and the pair.
-- The quantifiers in the sentences for the power set and the Cartesian product must not capture a variable of a term: the variable of the subset clause (`w`) is refused in `u` and `S`, and `a` and `b` are refused, and must differ, in `p`, `S` and `T`. Renaming the bound variable gives the sentence for the same terms. A constant spelled like a bound variable is another term and is not captured.
-- `x is in A union B` reads as `In(x, Union(A, B))`, and `p is in A cross B` as `In(p, CartesianProduct(A, B))`, so these sentences are the bridge between those readings and the membership facts about `A` and `B`. The phrases `x belongs to A union B` and `x is in the union of A and B` are already read as `In(x, A) or In(x, B)` and need no definition.
-- These are definitions, and each is sound in the usual way: ZF proves that for any arguments exactly one set has the stated members (Pairing and Union for the union, Separation for the intersection, Power Set, and Separation over a power set for the product), so nothing that does not mention the symbol becomes provable. The ordered pair is characterized by the one property every use of it needs, since there is no term for a singleton or an unordered pair to build `{{a}, {a, b}}` from; that construction has the property.
-- The sentence is checked as the line is written. A line that is another sentence, however true, is refused, told the sentence to cite, and (for the power set and the product) reminded of the capture condition.
-
-Proofs that use them are in `tests/testSetTheory/set_operation_definitions.txt`: union commutes, a union contains each of its sets, an intersection is inside each of its sets, the empty set is a member of every power set, equal ordered pairs have equal components, and a pair belongs to a Cartesian product exactly when its components belong to the factors.
-
 After an axiom citation states an existential, name its witness with `Let Y be such a set. (Existence from L)`. The older direct Pairing-witness surface form—`There is a set Y = {a, b}. (Axiom of pairing)`—remains accepted for compatibility, but it is legacy rather than the design to extend. Do not use it as the template for Union, Power Set, or Infinity.
 
 Separation and Replacement are schema citations. For axiom-instance and `Set property` examples that are more representative of set-theory work, see the complete proofs below and the fixtures in `tests/setTheoryProofs/`.
@@ -613,6 +583,26 @@ Features explicitly deferred:
 
 - `Mutatis mutandis` beyond names, terms and symbols: repeating a closed block of several lines (the first case of a proof by cases, say), and counterpart lines that differ by the symmetry of `=` or `<->` (not planned for now: owner decision of 2026-10-30).
 - Extending the older direct Pairing-witness form to other axiom rules. The form remains for compatibility, but is not the supported design.
+- Definitions of `CartesianProduct` and `Pair`, which are declared and not yet defined (see Definitions below).
+
+### Definitions
+
+A definition names something and says what it is. It checks that the thing exists, then names it, and adds no axiom: a sentence that does not mention the new symbol is provable with the definition only if it was provable without it. In set theory a set is named by a property: its members are the objects that have the property, and the definition is the sentence that says so. The mechanism is one facility for every theory (`source/Definitions.py`), so that a module for algebra can define a cyclic group, and one for number theory a divisibility relation, the way set theory defines the union. A theory registers its definitions, and a proof cites one by its title, as it cites a theorem (matched like a rule name: case-insensitively, hyphens as spaces).
+
+Set theory registers three, each cited for one sentence:
+
+| Cited | For the sentence |
+| --- | --- |
+| `(Definition of union)` | `forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B)))` |
+| `(Definition of intersection)` | `forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B)))` |
+| `(Definition of power set)` | `forall u, (In(u, PowerSet(A)) iff u subseteq A)`, that is, `forall u, (In(u, PowerSet(A)) iff forall w, (In(w, u) -> In(w, A)))` |
+
+- `u`, `A` and `B` stand for any terms. The line may be the sentence with its `forall` as above (the form `Set property` reads), the instance for particular terms (`x is in A union B iff (x is in A or x is in B)`), or the sentence closed over all its variables (`forall S, forall T, forall u, ...`); the biconditional may be written either way round. A definition takes no cited lines.
+- Nothing else is accepted. A true sentence about an operation, such as `x is in A union B iff x is in B union A`, is derived from the definition (proof 4 of `tests/testSetTheory/set_operation_definitions.txt` derives that union commutes) and is not cited as it. The terms must agree on the two sides, and so must the order of the sets in the disjunction or the conjunction. A refused line is told the sentence to cite.
+- The quantifier of the power set's subset clause must not capture a variable of a term. With `w` as the element or as the set, the clause would say something else (that every set that is not a member of itself is in the power set), so the line is refused. Renaming the bound variable gives the sentence for the same terms, and a constant spelled like a bound variable is another term and is not captured.
+- `x is in A union B` is a statement of its own, the membership `In(x, Union(A, B))`: that `x` has the property that defines the set. That it is the disjunction `x is in A or x is in B` is what the definition says, and a proof cites it to get from the one to the other (proof 9 of the same file). The phrases `x belongs to A union B` and `x is in the union of A and B` are still read as the disjunction itself; making them memberships like the others is planned (`todos.txt`).
+- A definition adds no axiom, and the facility checks that it does not. What has to be shown is read off the sentence, not written by the theory: before a set is named, the definition shows that some set has exactly the members the sentence gives it, by an axiom that says so (Separation for the intersection, Power Set for the power set) or by a proof from the axioms (Pairing and Union for the union: the proof that the union of two sets exists, proof 2 of `tests/setTheoryProofs/set_operation_foundations.txt`). Extensionality gives that there is only one such set. A definition whose evidence fails is refused, and so is every line that cites it. A property that no set bounds, such as "the objects that are not members of `A`", names no set, since nothing says that there is one; it can be defined as a property, and not as a set.
+- `CartesianProduct` and `Pair` are declared but not defined, so no proof can cite a definition of them. The ordered pair will be `{{a}, {a, b}}` with readable syntax for it, and the product a set of such pairs; both wait for the singleton and the unordered pair to be terms (`todos.txt`).
 
 ## 12. Worked set-theory proofs
 
@@ -801,19 +791,12 @@ end subproof
 
 <!-- proof-format-test: valid-proof -->
 ```text
-# 8: A pair of members belongs to the Cartesian product
+# 8: A member of a union is a member of one of its sets
 ## Proof that
-### If a is in A and b is in B
-### then Pair(a, b) is in the Cartesian product of A and B.
+### If x is in A union B then x is in A or x is in B.
 
-1. Let A, B be any set, and a, b be any object. (Declaration)
-2. In(a, A). (Premise)
-3. In(b, B). (Premise)
-4. forall p, (In(p, CartesianProduct(A, B)) iff exists x in A, exists y in B, p = Pair(x, y)). (Definition of Cartesian product)
-5. Pair(a, b) = Pair(a, b). (Reflexivity)
-6. In(b, B) and Pair(a, b) = Pair(a, b). (Conjunction Introduction from 3, 5)
-7. exists y, (In(y, B) and Pair(a, b) = Pair(a, y)). (Existential Introduction from 6)
-8. In(a, A) and exists y, (In(y, B) and Pair(a, b) = Pair(a, y)). (Conjunction Introduction from 2, 7)
-9. exists x, (In(x, A) and exists y, (In(y, B) and Pair(a, b) = Pair(x, y))). (Existential Introduction from 8)
-10. In(Pair(a, b), CartesianProduct(A, B)). (Set property from 4, 9)
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+4. x is in A or x is in B. (Set property from 3, 2)
 ```
