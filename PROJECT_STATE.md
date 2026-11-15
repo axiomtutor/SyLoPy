@@ -29,6 +29,7 @@ proof text -> surface AST -> theory elaboration -> core entries -> ProofLogic va
 - `source/ProofElaboration.py`, `source/ProofContext.py` — surface AST, source spans, elaborated entries, and lexical context.
 - `source/ProofLogic.py` — independent kernel validation, scopes, inference rules, and theorem promotion.
 - `source/ProofJustification.py` — justification and rule-alias parsing.
+- `source/Definitions.py` — the definition facility: a `Definition` names a symbol by a sentence and carries the evidence that the thing exists; a theory registers its definitions and a proof cites one by its title (set theory's are `SET_DEFINITIONS` in `source/SetTheory.py`).
 - `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`, `source/OrderTheory.py`, `source/DiscreteMath.py`, and `source/DiscreteMathCore.py` — theory extensions.
 - `source/validate_all_proofs.py` — proof-fixture runner and theorem promotion.
 - `pytest_tests/` — Python unit and integration tests; `tests/` — proof fixtures; `parse_oracle/` — independent parser expectations.
