@@ -19,6 +19,15 @@ from typing import List, Optional, Tuple
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.TermLogic as tl
+from SyLoPy.source.Definitions import (
+    ByProof,
+    ByRule,
+    Definition,
+    Evidence,
+    definition_declarations,
+    definition_rules,
+    definition_titles,
+)
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaborationError,
@@ -2361,6 +2370,157 @@ class InfinityAxiomRule(pl.InferenceRule):
                  pl._ast_eq(membership_u_y.right, y_term)))
 
 
+# --- Definitions of the declared set operations ------------------------------
+#
+# `Union`, `Intersection` and `PowerSet` are declared function symbols
+# (`SET_DECLARATIONS`), and a declaration says nothing about what a symbol means:
+# `Union(A, B)` is, to the kernel, some object. A definition gives it its meaning,
+# and what it does is what a definition does in mathematics: it checks that the
+# thing exists, names it, and adds no axiom.
+#
+# A set has a defining property, and its members are the objects that satisfy it.
+# So `Union(A, B)` is the set whose property is "is in A or is in B", and the
+# definition is the sentence that says so:
+#
+#     Definition of union          u in A union B  iff  u in A or u in B
+#     Definition of intersection   u in A inter B  iff  u in A and u in B
+#     Definition of power set      u in P(A)       iff  u is a subset of A
+#
+# So `x is in A union B` is a statement of its own, the atom `In(x, Union(A, B))`:
+# that x has the property that defines the set, which is the statement that it is
+# a member of the set. That it is the disjunction `x is in A or x is in B` is what
+# the definition says, and a proof cites it (`Definition of union`) to get from the
+# one to the other.
+#
+# A definition adds no axiom. It names a set whose existence is already settled and
+# says so, and the facility checks that it is: the evidence for each definition is
+# either an axiom of this theory that asserts the existence (Separation gives the
+# intersection of two sets, Power Set the power set: `ByRule`) or a proof from the
+# axioms (the union of two sets needs Pairing and Union: `ByProof`). Extensionality
+# gives that exactly one set has the members, so the name is for one set. A property
+# that no set bounds -- "the objects that are not members of A" -- names no set,
+# because nothing says there is one, and so it can be defined as a property
+# (a predicate) but not as a set.
+#
+# This is a set theory case of a general facility, not a mechanism of its own
+# (`Definitions.py`): `set_definition` only says what is particular to a set, that
+# the sentence is about membership. What has to be shown -- that a set has exactly
+# those members -- the facility reads off the sentence.
+
+def set_definition(title: str, symbol: str, parameters: Tuple[str, ...], defining_property: fl.Formula,
+                   evidence: Evidence, element: str = "u") -> Definition:
+    """The definition of the set `symbol(parameters)` by the property of its members.
+
+    `defining_property` is the property an object `element` has to be a member,
+    in terms of `element` and `parameters` (variables). The definition is the
+    sentence ``In(element, symbol(parameters)) iff defining_property``, and what it
+    must show -- the facility reads it off the sentence -- is that some set has
+    exactly the objects with the property as its members:
+    ``exists Y, forall element, (In(element, Y) iff defining_property)``.
+    `evidence` shows it.
+    """
+    member = tl.VariableTerm(element)
+    named_set = tl.FunctionTerm(symbol, [tl.VariableTerm(name) for name in parameters])
+    return Definition(
+        title=title,
+        symbol=symbol,
+        variables=(element, *parameters),
+        definiendum=membership_formula(member, named_set),
+        definiens=defining_property,
+        evidence=evidence,
+        type_name="set operation",
+    )
+
+
+# The proof that two sets have a union, from Pairing and Union: the evidence for
+# the definition of union. It is also proof 2 of tests/setTheoryProofs/
+# set_operation_foundations.txt (a test pins that the two are the same proof).
+UNION_EXISTENCE_PROOF = """\
+1. A and B are sets. (Declaration)
+2. Exists P, forall u, (In(u, P) iff (u = A or u = B)). (Axiom of pairing)
+3. Let P be such a set. (Existence from 2)
+4. Exists Y, forall u, (In(u, Y) iff (exists v, (In(v, P) and In(u, v)))). (Axiom of union)
+5. Let Y be such a set. (Existence from 4)
+6. A = A. (Reflexivity)
+7. A = A or A = B. (Disjunction Introduction from 6)
+8. In(A, P). (Set property from 3, 7)
+9. B = B. (Reflexivity)
+10. B = A or B = B. (Disjunction Introduction from 9)
+11. In(B, P). (Set property from 3, 10)
+12. forall x, (In(x, Y) iff (In(x, A) or In(x, B))). (Universal Generalization from subproof below)
+begin subproof
+ 12.0. let c be arbitrary. (Arbitrary)
+ 12.1. In(c, Y) -> (In(c, A) or In(c, B)). (Conditional Introduction from subproof below)
+  12.1.1. In(c, Y). (Assumption for Conditional Introduction)
+  12.1.2. Exists v, (In(v, P) and In(c, v)). (Set property, 5, 12.1.1)
+  12.1.3. Let v be an object. (Declare)
+  12.1.4. In(c, A) or In(c, B). (Existential Elimination from 12.1.2, subproof below)
+  begin subproof
+   12.1.4.1. In(v, P) and In(c, v). (Assumption for Existential Elimination)
+   12.1.4.2. In(v, P). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.3. In(c, v). (Conjunction Elimination from 12.1.4.1)
+   12.1.4.4. v = A or v = B. (Set property, 3, 12.1.4.2)
+   12.1.4.5. In(c, A) or In(c, B). (Proof by Cases from 12.1.4.4, subproofs below)
+   begin subproof
+    12.1.4.5.1. v = A. (Case)
+    12.1.4.5.2. In(c, A). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+   begin subproof
+    12.1.4.5.1. v = B. (Case)
+    12.1.4.5.2. In(c, B). (Substitution from 12.1.4.5.1, 12.1.4.3)
+    12.1.4.5.3. In(c, A) or In(c, B). (Disjunction Introduction from 12.1.4.5.2)
+   end subproof
+  end subproof
+ 12.2. (In(c, A) or In(c, B)) -> In(c, Y). (Conditional Introduction from subproof below)
+  12.2.1. In(c, A) or In(c, B). (Assumption for Conditional Introduction)
+  12.2.2. In(c, Y). (Proof by Cases from 12.2.1, subproofs below)
+  begin subproof
+   12.2.2.1. In(c, A). (Case)
+   12.2.2.2. In(A, P) and In(c, A). (Conjunction Introduction from 8, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+  begin subproof
+   12.2.2.1. In(c, B). (Case)
+   12.2.2.2. In(B, P) and In(c, B). (Conjunction Introduction from 11, 12.2.2.1)
+   12.2.2.3. Exists v, (In(v, P) and In(c, v)). (Existential Introduction from 12.2.2.2)
+   12.2.2.4. In(c, Y). (Set property, 5, 12.2.2.3)
+  end subproof
+ 12.3. In(c, Y) iff (In(c, A) or In(c, B)). (Biconditional Introduction from 12.1, 12.2)
+end subproof
+13. Exists U, forall x, (In(x, U) iff (In(x, A) or In(x, B))). (Existential Introduction from 12)
+"""
+
+_MEMBER = tl.VariableTerm("u")
+_A = tl.VariableTerm("A")
+_B = tl.VariableTerm("B")
+
+UNION_DEFINITION = set_definition(
+    "Definition of union", "Union", ("A", "B"),
+    fl.Or(membership_formula(_MEMBER, _A), membership_formula(_MEMBER, _B)),
+    ByProof(UNION_EXISTENCE_PROOF),
+)
+INTERSECTION_DEFINITION = set_definition(
+    "Definition of intersection", "Intersection", ("A", "B"),
+    fl.And(membership_formula(_MEMBER, _A), membership_formula(_MEMBER, _B)),
+    ByRule(SeparationSchemaRule()),
+)
+POWER_SET_DEFINITION = set_definition(
+    "Definition of power set", "PowerSet", ("A",),
+    subset_formula(_MEMBER, _A, "w"),
+    ByRule(PowerSetAxiomRule()),
+)
+
+SET_DEFINITIONS = [UNION_DEFINITION, INTERSECTION_DEFINITION, POWER_SET_DEFINITION]
+
+# `CartesianProduct` and `Pair` are declared and not defined: the ordered pair is
+# `{{a}, {a, b}}` and the product is a set of them, and neither can be defined
+# until a singleton and a pair set are terms (see todos.txt).
+
+SET_DEFINITION_RULES = definition_rules(SET_DEFINITIONS, lambda: SET_THEORY_ENVIRONMENT)
+
+
 class ReplacementSchemaRule(pl.InferenceRule):
     """Jech's Axiom schema of replacement: if a formula B(x,y) -- free
     variables x, y, plus whatever parameters are already in scope -- is
@@ -3231,9 +3391,7 @@ class InfiniteUnderBijectionRule(pl.InferenceRule):
 SET_DECLARATIONS = [
     pl.Declaration(EMPTY_SET_SYMBOL, pl.DeclarationKind.OBJECT, type_name="set"),
     pl.Declaration(MEMBERSHIP_SYMBOL, pl.DeclarationKind.PREDICATE, arity=2),
-    pl.Declaration("Union", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
-    pl.Declaration("Intersection", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
-    pl.Declaration("PowerSet", pl.DeclarationKind.FUNCTION, arity=1, type_name="set operation"),
+    *definition_declarations(SET_DEFINITIONS),
     pl.Declaration("CartesianProduct", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
     pl.Declaration("Pair", pl.DeclarationKind.FUNCTION, arity=2, type_name="set operation"),
     pl.Declaration("Finite", pl.DeclarationKind.PREDICATE, arity=1, type_name="set property"),
@@ -3254,6 +3412,7 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     rules=[EmptySetPropertyRule(), SetPropertyRule(), SetEqualityRule(), SeparationSchemaRule(), ReplacementSchemaRule(),
            PairingAxiomRule(), UnionAxiomRule(), PowerSetAxiomRule(), InfinityAxiomRule(),
            ExtensionalityAxiomRule(), FoundationAxiomRule(), ChoiceAxiomRule(),
+           *SET_DEFINITION_RULES,
            EmptySetFiniteRule(), EmptySetCardinalityRule(), CardinalityImpliesFiniteRule(),
            FiniteSubsetRule(), FiniteUnionRule(), FinitePowerSetRule(),
            FiniteCartesianProductRule(), FiniteUnderBijectionRule(), InfiniteUnderBijectionRule(),
@@ -3267,4 +3426,5 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     nested_formula_parsers=[parse_set_formula],
     phrase_parsers=[parse_set_formula],
     phrase_spans=[find_phrase_spans, find_bounded_quantifier_spans],
+    citable_titles=definition_titles(SET_DEFINITIONS),
 )
