@@ -37,6 +37,8 @@ from SyLoPy.source.ProofElaboration import (
     TheoryEnvironment,
 )
 
+from SyLoPy.source.FormulaTextScan import formula_text_scan
+
 
 EMPTY_SET_SYMBOL = "EmptySet"
 MEMBERSHIP_SYMBOL = "In"
@@ -963,30 +965,23 @@ _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
     rf"{_BOUNDED_QUANTIFIER_NAME}\s+in\s+[^,]+(?:,|\s+we\s+have\s+|\s+such\s+that\s+).*$",
     flags=re.I,
 )
-_BOUNDED_QUANTIFIER_THEN_RE = re.compile(r"\s+then\s+", flags=re.I)
 
 
 def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
     """Protect bounded quantifiers embedded in larger formulas."""
-    spans = []
-    depths = []
-    depth = 0
-    for ch in text:
-        depths.append(depth)
-        if ch in "({":
-            depth += 1
-        elif ch in ")}":
-            depth = max(0, depth - 1)
+    opener_re = re.compile(
+        r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+",
+        flags=re.I,
+    )
+    openers = list(opener_re.finditer(text))
+    if not openers:
+        return []
 
-    # Scan the source once for top-level conditional terminators. The former
-    # per-opener suffix scan revisited the same tail of the string and was
-    # quadratic for formulas containing many bounded quantifiers.
-    then_positions = [
-        match.start()
-        for match in _BOUNDED_QUANTIFIER_THEN_RE.finditer(text)
-        if depths[match.start()] == 0
-    ]
-    for match in re.finditer(r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+", text, flags=re.I):
+    scan = formula_text_scan(text)
+    depths = scan.bracket_depths
+    then_positions = scan.top_level_then_positions
+    spans = []
+    for match in openers:
         start = match.start()
         if start > 0 and depths[start] != 0:
             continue
