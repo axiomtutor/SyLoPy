@@ -382,26 +382,17 @@ def _declaration_kind_from_descriptor(descriptor: str) -> Tuple[str, Optional[st
 
 
 def _fallback_declarations_for_clause(dc: 'DeclarationClause') -> List[pl.Declaration]:
-    """Turn one plain (non-typed-function, no-recipe-applicable)
-    `DeclarationClause` into the `Declaration`(s) it names.
+    """Turn one declaration clause into the declarations it names.
 
-    This is the shared "the descriptor text alone decides the kind"
-    logic used both by `parse_declaration_prefix` (the "such that:"
-    premise path, which never attempts recipe dispatch at all) and by
-    `elaborate_typed_declaration`'s own per-clause fallback (reached only
-    once every registered `DeclarationRecipe` has already declined the
-    clause). It used to be written out, nearly identically, in both
-    places. Callers differ in what they do with the *result* -- collect a
-    batch to return only once every clause has been parsed, or register
-    each one immediately so a later clause in the same statement can see
-    it (needed for something like "Let X be any set, R be a relation on
-    X", where `R`'s clause is recipe-matched and needs `X` already
-    visible) -- and that orchestration difference is exactly why it stays
-    with each caller rather than moving in here too.
+    This is the descriptor-only fallback shared by parse_declaration_prefix
+    and the compound-declaration path when no registered recipe handles a
+    clause. The prefix path collects declarations for a such-that premise;
+    the compound path registers unmatched clauses as it processes them so
+    later clauses can refer to earlier declarations. That caller-specific
+    orchestration is why it remains outside this helper.
 
-    Raises `ValueError` (not `ElaborationError`) on an invalid symbol
-    name; each caller wraps that in whatever error type fits its own
-    context.
+    Raises ValueError (not ElaborationError) on an invalid symbol name; each
+    caller wraps that in the error type appropriate to its context.
     """
     for name in dc.names:
         if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
