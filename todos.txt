@@ -503,6 +503,19 @@ Current implementation direction:
   `{{a}, {a, b}}` with readable syntax; Unicode symbols are accepted as input.
   Open: whether the set operations are eventually defined in the corpus
   (`SetTheoryCorpus/`) from the axioms, rather than as entries of the module.
+- Corpus organization and functions (owner, 2026-11-15): the files of
+  `SetTheoryCorpus/` are organized by dependency, so that a file `Use`s only
+  earlier files (the axioms, then order theory, then the ordinals), and the
+  owner allowed the files to be reordered and organized freely. There is no
+  separate metatheory notion of function: a function is a set of ordered pairs,
+  a relation on P is a subset of the Cartesian product of P with itself with
+  `x < y` as notation for membership of the pair, and an operation such as the
+  identity function on a set X is a definition with an existence proof written
+  in the corpus, not in Python. The corpus README and files follow this. Open:
+  the Python theory registered as `order theory` (the integer order,
+  `source/OrderTheory.py`) has the same words as the corpus file
+  `OrderTheory.txt` (partial orders in general); renaming the Python theory, for
+  example to `integer order`, is proposed and not decided.
 
 ## Owner approval required — do not start without approval
 
