@@ -78,8 +78,7 @@ Union, Power Set, and Infinity are implemented, including the Union and Power
 Set instance forms, and they are how those axioms are cited: set theory lists no
 formula for `(Axiom)` and closes its axiom list, so restating one with `(Axiom)`
 is refused, with the name to cite instead. The informational ZFC fixture, whose second inclusion repeats
-the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is approved
-and is the next feature.
+the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is implemented and has focused regression coverage.
 
 Finite/infinite set claims use the focused forms `A is finite`, `A is infinite`,
 and `Finite(A)`/`Infinite(A)`. Typed declarations such as
