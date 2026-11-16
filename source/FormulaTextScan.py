@@ -13,7 +13,7 @@ import re
 from typing import Iterator, Tuple
 
 
-_TOP_LEVEL_THEN_RE = re.compile(r"\\s+then\\s+", re.I)
+_TOP_LEVEL_THEN_RE = re.compile(r"\s+then\s+", re.I)
 
 
 @dataclass(frozen=True)
