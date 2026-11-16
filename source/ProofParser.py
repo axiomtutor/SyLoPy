@@ -1247,33 +1247,12 @@ def _is_descendant_label(label: Optional[str], parent: str) -> bool:
     return bool(label and label.startswith(parent + '.'))
 
 
-def _implicit_block_end(lines: List[_LogicalSourceLine], start: int, parent_label: str) -> int:
-    """End index of a descendant-label block, respecting explicit nesting."""
-    index = start
-    explicit_depth = 0
-    while index < len(lines):
-        stripped = lines[index].text.strip()
-        if _BEGIN_SUBPROOF_RE.match(stripped):
-            explicit_depth += 1
-            index += 1
-            continue
-        if _END_SUBPROOF_RE.match(stripped):
-            if explicit_depth > 0:
-                explicit_depth -= 1
-                index += 1
-                continue
-            break
-        if explicit_depth == 0 and not _is_descendant_label(_line_label(lines[index]), parent_label):
-            break
-        index += 1
-    return index
-
-
 def _parse_surface_sequence(
     lines: List[_LogicalSourceLine],
     start: int = 0,
     *,
     stop_at_end: bool = False,
+    implicit_parent_label: Optional[str] = None,
 ) -> Tuple[List[Any], int]:
     entries: List[Any] = []
     index = start
@@ -1281,6 +1260,17 @@ def _parse_surface_sequence(
     while index < len(lines):
         item = lines[index]
         stripped = item.text.strip()
+
+        # An implicit block stops at the first line outside its dotted-label
+        # subtree. Explicit blocks are parsed recursively and consumed whole.
+        if implicit_parent_label is not None:
+            if _END_SUBPROOF_RE.match(stripped):
+                return entries, index
+            if (
+                not _BEGIN_SUBPROOF_RE.match(stripped)
+                and not _is_descendant_label(_line_label(item), implicit_parent_label)
+            ):
+                return entries, index
 
         if _END_SUBPROOF_RE.match(stripped):
             if not stop_at_end:
@@ -1348,18 +1338,22 @@ def _parse_surface_sequence(
                 index = next_index
 
             # Natural proof files may omit begin/end and use dotted descendant
-            # labels as the subproof boundary.
+            # labels as the subproof boundary. Let the recursive parser stop at
+            # the first non-descendant instead of pre-scanning and slicing the
+            # same nested blocks repeatedly.
             if not line.subproofs and label and index < len(lines):
                 next_label = _line_label(lines[index])
                 if _is_descendant_label(next_label, label):
-                    end = _implicit_block_end(lines, index, label)
-                    body, consumed = _parse_surface_sequence(lines[index:end], 0)
-                    if consumed != end - index:
+                    body_start = index
+                    body, end = _parse_surface_sequence(
+                        lines, body_start, implicit_parent_label=label
+                    )
+                    if end <= body_start:
                         raise ElaborationError("could not determine implicit subproof boundary", line.span)
                     span = SourceSpan(
-                        lines[index].start_line,
+                        lines[body_start].start_line,
                         lines[end - 1].end_line,
-                        '\n'.join(x.original_text for x in lines[index:end]),
+                        '\n'.join(x.original_text for x in lines[body_start:end]),
                         label,
                     )
                     line.subproofs.append(SurfaceSubproof(body, span, label=label, implicit=True))
