@@ -382,17 +382,15 @@ def _declaration_kind_from_descriptor(descriptor: str) -> Tuple[str, Optional[st
 
 
 def _fallback_declarations_for_clause(dc: 'DeclarationClause') -> List[pl.Declaration]:
-    """Turn one declaration clause into the declarations it names.
+    """Build plain declarations from descriptor text alone.
 
-    This is the descriptor-only fallback shared by parse_declaration_prefix
-    and the compound-declaration path when no registered recipe handles a
-    clause. The prefix path collects declarations for a such-that premise;
-    the compound path registers unmatched clauses as it processes them so
-    later clauses can refer to earlier declarations. That caller-specific
-    orchestration is why it remains outside this helper.
+    Used only by parse_declaration_prefix, in both its Let-clause branch
+    and its plain-declaration branch (for example, "X and Y are sets").
+    This fallback does not dispatch structure recipes. The recipe-aware
+    path is elaborate_compound_declaration, which does not call this helper.
 
-    Raises ValueError (not ElaborationError) on an invalid symbol name; each
-    caller wraps that in the error type appropriate to its context.
+    Raises ValueError (not ElaborationError) for an invalid symbol name;
+    parse_declaration_prefix handles that error according to its branch.
     """
     for name in dc.names:
         if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
