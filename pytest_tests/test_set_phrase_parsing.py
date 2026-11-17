@@ -639,3 +639,9 @@ def test_embedded_phrase_finders_share_one_lazy_text_scan(monkeypatch):
 def test_shared_formula_scan_preserves_clamped_unmatched_closers():
     scan = formula_text_scan._build_formula_text_scan(")({}(")
     assert scan.bracket_depths == (0, 0, 1, 2, 1)
+
+
+def test_embedded_existential_before_uppercase_then_stops_at_conditional():
+    text = "if there exists a set Y such that P(Y) THEN Q"
+    protected = parser_policy._protect_phrases(text, pp.default_theory_environment())
+    assert protected == "if (there exists a set Y such that P(Y)) THEN Q"
