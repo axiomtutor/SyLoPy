@@ -76,7 +76,17 @@ _EXISTENTIAL_OPENER_RE = re.compile(r"\b(?:there\s+(?:exists|is)|exists)\s", re.
 
 
 def _embedded_existential_spans(s: str) -> list:
-    """Spans of natural-language existentials embedded in a larger formula."""
+    """Spans of natural-language existentials embedded in a larger formula.
+
+    For example, in "P and there exists a unique set {c, d} that contains
+    exactly c and d", the existential begins after the conjunction and takes
+    everything to its right. Its span therefore runs to the end of the string,
+    except that it stops at a top-level "then", which belongs to an enclosing
+    "if ... then".
+
+    Only the natural forms handled by _parse_natural_existential count here.
+    Symbolic ``exists x, BODY`` keeps the scope assigned by the formula grammar.
+    """
     openers = list(_EXISTENTIAL_OPENER_RE.finditer(s))
     if not openers:
         return []
@@ -99,9 +109,18 @@ def _embedded_existential_spans(s: str) -> list:
 def _protect_phrases(s: str, environment) -> str:
     """Wrap top-level theory phrase spans in parentheses before connective splitting.
 
-    Natural-language existentials and theory phrase finders contribute spans.
-    Third-party phrase finders retain the one-argument phrase_spans(text)
-    contract; built-in finders share a context-local scan for this exact text.
+    The connective grammar cuts at top-level "or", "and", and similar
+    operators. A phrase such as "w is h, i, j, or k" would otherwise be cut
+    apart before its phrase parser sees it. Parentheses fence off the complete
+    phrase so it reaches that parser intact.
+
+    A span already inside brackets needs no protection; wrapping the remaining
+    top-level spans therefore makes progress toward termination on recursive
+    parses. Return the input unchanged when there is nothing to protect or
+    when the only span is the entire string.
+
+    The active scan is lazy and shared with built-in finders. Third-party
+    finders retain the one-argument phrase_spans(text) contract.
     """
     with share_formula_text_scan(s):
         spans = _embedded_existential_spans(s)
