@@ -1,8 +1,13 @@
 """Shared lexical scans for embedded formula phrases.
 
-The one-argument phrase_spans(text) extension API is intentionally kept
-unchanged. Built-in finders reuse this context-local scan without requiring
-third-party finders to accept additional parameters.
+A single scan supplies bracket depths and top-level conditional terminators to
+all built-in phrase finders. Without sharing, separate finders would each
+rescan the same text; suffix scans repeated once per opener can become
+quadratic when a formula contains many embedded quantifier phrases.
+
+The one-argument phrase_spans(text) extension API remains unchanged. Built-in
+finders reuse this context-local scan without requiring third-party finders
+to accept additional parameters.
 """
 from __future__ import annotations
 
@@ -25,7 +30,7 @@ class FormulaTextScan:
 
 
 def _build_formula_text_scan(text: str) -> FormulaTextScan:
-    """Build both shared indexes in one pass over the formula text."""
+    """Build bracket depths and top-level then positions in one source pass."""
     depths = []
     depth = 0
     for character in text:
