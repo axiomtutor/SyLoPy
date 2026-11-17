@@ -967,13 +967,15 @@ _BOUNDED_QUANTIFIER_SPAN_RE = re.compile(
 )
 
 
+_BOUNDED_QUANTIFIER_OPENER_RE = re.compile(
+    r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+",
+    flags=re.I,
+)
+
+
 def find_bounded_quantifier_spans(text: str) -> List[Tuple[int, int]]:
     """Protect bounded quantifiers embedded in larger formulas."""
-    opener_re = re.compile(
-        r"\b(?:for\s+all|for\s+every|forall|there\s+exists|exists)\s+",
-        flags=re.I,
-    )
-    openers = list(opener_re.finditer(text))
+    openers = list(_BOUNDED_QUANTIFIER_OPENER_RE.finditer(text))
     if not openers:
         return []
 
