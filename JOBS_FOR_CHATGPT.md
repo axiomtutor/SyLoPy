@@ -142,22 +142,29 @@ conjunction (for `I`), negated for a "not" phrase; "add" is refused today.
    they are recognised wherever a set term is. A phrase that contains one is still
    protected from the connective grammar as `find_set_operation_spans` does today:
    `x is in the union of A and B and y is in C` is a conjunction of two memberships.
-3. Not changed: `A is the union of B and C`, `A is the intersection of B and C`,
-   `the union of A and B is empty`, `the intersection of A and B is nonempty` and the
-   disjointness phrases keep their readings (they are not membership phrases; whether
-   `A is the union of B and C` should read `A = Union(B, C)` is an owner question),
-   and `A contains exactly a and b` stays the display sugar.
+3. The identity phrases read as equations (the owner, on #168): `A is the union of
+   B and C` is `A = Union(B, C)`, and `A is the intersection of B and C` is
+   `A = Intersection(B, C)` (the owner gave the union; the intersection has the same
+   shape, so it follows the same rule). They no longer read as the characterization
+   `forall u, (In(u, A) iff (In(u, B) or In(u, C)))`; a proof gets that from
+   `Definition of union` and the equation. Not changed: `the union of A and B is
+   empty`, `the intersection of A and B is nonempty` and the disjointness phrases keep
+   their readings (they are not identity phrases), and `A contains exactly a and b`
+   stays the display sugar.
 4. `A set-in B` reads as `A subseteq B`, `A set-contains B` as `B subseteq A`, and
    `A not set-in B`, `A not set-contains B` negate them, wherever `subseteq` is
    accepted today (the owner's corpus spelling). A bare `A in B` is not a subset.
 5. Still refused: `x lies in A`, `A has x as an element`. Symbols (`∈`) are J41.
 
-**Allowed scope:** `source/SetTheory.py` (the membership phrase parsers and span
-protection); `parse_oracle/set_operations_phrases.txt`, only the five cases
+**Allowed scope:** `source/SetTheory.py` (the membership phrase parsers, the
+identity-phrase branch that reads `X is the union of Y and Z`, and span protection);
+`parse_oracle/set_operations_phrases.txt`, only the seven cases
 `j4-union-membership`, `j4-union-membership-nested`, `j4-intersection-membership`,
-`j4-intersection-membership-negated`, `j4-union-nested-consequence`, whose expected
-readings change as decided (the owner's decision is the authority for this exception
-to rule 4), and the last sentence of the `why` of
+`j4-intersection-membership-negated`, `j4-union-nested-consequence`,
+`j4-union-defines-set` and `j4-intersection-defines-set`, whose expected readings
+change as decided (the owner's decision is the authority for this exception to
+rule 4; the `why` of the last two says "contains exactly the elements", which stops
+being the reading, so rewrite it), and the last sentence of the `why` of
 `definition-term-union-membership`, which says the change is planned; new
 `parse_oracle/set_membership_wordings.txt`, `pytest_tests/test_membership_wordings.py`
 and enforced fixture `tests/testSetTheory/membership_wordings.txt`;
@@ -168,12 +175,15 @@ module uses the old readings (checked at 742d2d3); if one turns out to, report i
 `set-in` and `set-contains`. The pytest module enumerates the whole grid (every
 phrase, both orders, every operand kind including nested terms and function
 applications) against formulas built from `fl` and `st` independently of the parser,
-and checks that decision 3 and the refusals of decision 5 are unchanged. The fixture
+and checks that the two identity phrases of decision 3 read as the equations (with
+nested operands too), that the other phrases it lists keep their readings, and that
+the refusals of decision 5 are unchanged. The fixture
 has one subset proof, one proof by cases that cites `Definition of union` to get from
 `x is in the union of A and B` to the disjunction, and two invalid proofs, one of
 which takes the disjunction without the definition (refused at that line).
 
-**Done when:** all cells behave as decided; the five oracle expectations are the only
+**Done when:** all cells behave as decided, and the two identity phrases read as
+equations; the seven oracle expectations (five membership, two identity) are the only
 ones changed; both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
 
 Status: queued; needs #167 and J36.
@@ -523,8 +533,7 @@ Each waits for the jobs named, and is specified when they have merged:
   exist. Then `A cross B` is defined by Separation over a power set, and its laws are
   added to the library of J39 and J40.
 - **Owner questions, not jobs:** definitions written in proof files, functions as sets
-  of pairs or as symbols, declaration facts such as `nonempty`, and whether the
-  English identity phrases (`A is the union of B and C`) should read `A = Union(B, C)`.
+  of pairs or as symbols, and declaration facts such as `nonempty`.
 
 ## Deferred queue
 
