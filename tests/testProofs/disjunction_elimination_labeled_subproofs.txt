@@ -1,0 +1,16 @@
+# 1: Disjunction elimination with labeled explicit case blocks in an implicit subproof
+## Proof that
+### then S -> R
+
+1. Let P, Q, R, S be closed formulas such that: P or Q. P -> R. Q -> R. (Premise)
+2. S -> R. (Conditional Introduction from subproof below)
+ 2.1. S. (Assumption for Conditional Introduction)
+ 2.2. begin subproof
+  2.2.1. P. (Assumption)
+  2.2.2. R. (Modus Ponens from 1, 2.2.1)
+ end subproof
+ 2.3. begin subproof
+  2.3.1. Q. (Assumption)
+  2.3.2. R. (Modus Ponens from 1, 2.3.1)
+ end subproof
+ 2.4. R. (Disjunction Elimination from 1, 2.2, 2.3)
