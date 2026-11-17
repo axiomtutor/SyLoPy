@@ -1255,8 +1255,8 @@ def _parse_surface_sequence(
         # An implicit block stops at the first line outside its dotted-label
         # subtree. Explicit blocks are parsed recursively and consumed whole.
         if implicit_parent_label is not None:
-            if _END_SUBPROOF_RE.match(stripped):
-                return entries, index
+            # An unlabeled explicit opener belongs to the current implicit
+            # block; parse its matching end marker recursively below.
             if (
                 not _BEGIN_SUBPROOF_RE.match(stripped)
                 and not _is_descendant_label(_line_label(item), implicit_parent_label)
