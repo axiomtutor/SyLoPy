@@ -459,3 +459,138 @@ def test_compound_relation_descriptor_keeps_its_properties_before_membership_pre
     assert metadata["carrier"] == "X"
     assert set(metadata["properties"]) == {"reflexive", "symmetric"}
 
+
+
+def test_deeply_nested_implicit_subproofs_do_not_rescan_descendant_blocks(monkeypatch):
+    levels = 28
+    lines = []
+    label = "1"
+    for depth in range(levels):
+        lines.append(f"{' ' * depth}{label}. P. (Subproof below)")
+        label = f"{label}.1"
+    lines.append(f"{' ' * levels}{label}. P. (Premise)")
+    lines.append("2. Q. (Premise)")
+    source = "\n".join(lines)
+
+    label_calls = 0
+    original_line_label = pp._line_label
+
+    def counted_line_label(item):
+        nonlocal label_calls
+        label_calls += 1
+        return original_line_label(item)
+
+    monkeypatch.setattr(pp, "_line_label", counted_line_label)
+    proof = pp.parse_surface_proof(source)
+
+    assert [entry.label for entry in proof.entries] == ["1", "2"]
+    entry = proof.entries[0]
+    for _ in range(levels):
+        assert isinstance(entry, pe.SurfaceLine)
+        assert len(entry.subproofs) == 1
+        subproof = entry.subproofs[0]
+        assert subproof.implicit is True
+        assert len(subproof.entries) == 1
+        entry = subproof.entries[0]
+    assert isinstance(entry, pe.SurfaceLine)
+    assert entry.label == label
+    assert label_calls <= 3 * len(lines)
+
+
+def test_explicit_subproof_inside_implicit_block_preserves_the_outer_boundary():
+    text = (
+        "1. P. (Rule below)\n"
+        " 1.1. Q. (Rule below)\n"
+        " begin subproof\n"
+        "  1.1.1. R. (Assumption)\n"
+        " end subproof\n"
+        " 1.2. S. (Premise)\n"
+        "2. T. (Premise)\n"
+    )
+    proof = pp.parse_surface_proof(text)
+
+    outer = proof.entries[0]
+    assert len(outer.subproofs) == 1
+    assert outer.subproofs[0].implicit is True
+    entries = outer.subproofs[0].entries
+    assert [entry.label for entry in entries] == ["1.1", "1.2"]
+    assert len(entries[0].subproofs) == 1
+    assert entries[0].subproofs[0].implicit is False
+
+
+def test_labelled_explicit_case_blocks_inside_implicit_subproof_are_preserved():
+    text = (
+        "1. Let P, Q, R, S be closed formulas such that: P or Q. P -> R. Q -> R. (Premise)\n"
+        "2. S -> R. (Conditional Introduction from subproof below)\n"
+        " 2.1. S. (Assumption for Conditional Introduction)\n"
+        " 2.2. begin subproof\n"
+        "  2.2.1. P. (Assumption)\n"
+        "  2.2.2. R. (Modus Ponens from 1, 2.2.1)\n"
+        " end subproof\n"
+        " 2.3. begin subproof\n"
+        "  2.3.1. Q. (Assumption)\n"
+        "  2.3.2. R. (Modus Ponens from 1, 2.3.1)\n"
+        " end subproof\n"
+        " 2.4. R. (Disjunction Elimination from 1, 2.2, 2.3)\n"
+    )
+    proof = pp.parse_surface_proof(text)
+
+    conditional = proof.entries[1]
+    assert isinstance(conditional, pe.SurfaceLine)
+    assert conditional.label == "2"
+    assert len(conditional.subproofs) == 1
+    implicit = conditional.subproofs[0]
+    assert implicit.implicit is True
+    assert [entry.label for entry in implicit.entries] == ["2.1", "2.2", "2.3", "2.4"]
+
+    first_case, second_case = implicit.entries[1:3]
+    assert isinstance(first_case, pe.SurfaceSubproof)
+    assert isinstance(second_case, pe.SurfaceSubproof)
+    assert first_case.implicit is False
+    assert second_case.implicit is False
+    assert first_case.label == "2.2"
+    assert second_case.label == "2.3"
+    assert [entry.label for entry in first_case.entries] == ["2.2.1", "2.2.2"]
+    assert [entry.label for entry in second_case.entries] == ["2.3.1", "2.3.2"]
+
+
+def test_unlabelled_explicit_block_after_a_premise_stays_inside_implicit_block():
+    text = (
+        "1. P. (Rule below)\n"
+        " 1.1. Q. (Premise)\n"
+        " begin subproof\n"
+        "  1.2.1. R. (Assumption)\n"
+        " end subproof\n"
+        " 1.3. S. (Premise)\n"
+        "2. T. (Premise)\n"
+    )
+    proof = pp.parse_surface_proof(text)
+
+    implicit = proof.entries[0].subproofs[0]
+    assert implicit.implicit is True
+    assert len(implicit.entries) == 3
+    assert implicit.entries[0].label == "1.1"
+    explicit = implicit.entries[1]
+    assert isinstance(explicit, pe.SurfaceSubproof)
+    assert explicit.label is None
+    assert explicit.implicit is False
+    assert [entry.label for entry in explicit.entries] == ["1.2.1"]
+    assert implicit.entries[2].label == "1.3"
+    assert [entry.label for entry in proof.entries] == ["1", "2"]
+
+
+def test_implicit_subproof_span_includes_all_lines_of_multiline_final_entry():
+    text = (
+        "1. P. (Rule below)\n"
+        " 1.1. Q and\n"
+        "   R. (Premise)\n"
+        "2. T. (Premise)\n"
+    )
+    proof = pp.parse_surface_proof(text)
+
+    implicit = proof.entries[0].subproofs[0]
+    assert implicit.implicit is True
+    assert implicit.span.start_line == 2
+    assert implicit.span.end_line == 3
+    assert implicit.entries[-1].span.start_line == 2
+    assert implicit.entries[-1].span.end_line == 3

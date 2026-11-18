@@ -20,6 +20,7 @@ from .support import pl, fl, tl, pp, mp, st, c, v, atom
 
 pj = importlib.import_module("SyLoPy.source.ProofJustification")
 parser_policy = importlib.import_module("SyLoPy.source.ProofParserPolicy")
+formula_text_scan = importlib.import_module("SyLoPy.source.FormulaTextScan")
 
 
 def core(text, bound=()):
@@ -613,3 +614,34 @@ def test_unique_pairing_fixture_states_what_its_last_line_derives():
     (case,) = cases
     assert case.stated_conclusion is not None
     assert mp.conclusion_is_derived(case.entries, case.stated_conclusion)
+
+
+def test_embedded_phrase_finders_share_one_lazy_text_scan(monkeypatch):
+    text = (
+        "P and there exists x such that P(x) then "
+        "Q and forall y in Y, Q(y) then R"
+    )
+    calls = 0
+    original = formula_text_scan._build_formula_text_scan
+
+    def counted_scan(source):
+        nonlocal calls
+        calls += 1
+        return original(source)
+
+    monkeypatch.setattr(formula_text_scan, "_build_formula_text_scan", counted_scan)
+    protected = parser_policy._protect_phrases(text, pp.default_theory_environment())
+
+    assert protected != text
+    assert calls == 1
+
+
+def test_shared_formula_scan_preserves_clamped_unmatched_closers():
+    scan = formula_text_scan._build_formula_text_scan(")({}(")
+    assert scan.bracket_depths == (0, 0, 1, 2, 1)
+
+
+def test_embedded_existential_before_uppercase_then_stops_at_conditional():
+    text = "if there exists a set Y such that P(Y) THEN Q"
+    protected = parser_policy._protect_phrases(text, pp.default_theory_environment())
+    assert protected == "if (there exists a set Y such that P(Y)) THEN Q"

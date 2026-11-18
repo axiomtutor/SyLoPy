@@ -9,6 +9,11 @@ from __future__ import annotations
 import re
 from bisect import bisect_left
 
+from SyLoPy.source.FormulaTextScan import (
+    formula_text_scan,
+    share_formula_text_scan,
+)
+
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
 
 
@@ -67,43 +72,29 @@ _EXISTENTIAL_FORMS_HELP = (
 )
 
 
-def _bracket_depths(s: str) -> list:
-    """For each index of `s`, how many ( or { are open just before it."""
-    depths, depth = [], 0
-    for ch in s:
-        depths.append(depth)
-        if ch in "({":
-            depth += 1
-        elif ch in ")}":
-            depth = max(0, depth - 1)
-    return depths
-
-
 _EXISTENTIAL_OPENER_RE = re.compile(r"\b(?:there\s+(?:exists|is)|exists)\s", re.I)
-_THEN_RE = re.compile(r"\s+then\s+", re.I)
 
 
 def _embedded_existential_spans(s: str) -> list:
-    """Spans of natural-language existentials that follow something else in `s`.
+    """Spans of natural-language existentials embedded in a larger formula.
 
-    "P and there exists a unique set {c, d} that contains exactly c and d": like
-    an existential at the start of a string, the quantifier takes everything to
-    its right, so the span runs to the end of `s` -- except that it stops at a
-    top-level "then", which can only belong to an enclosing "if ... then".
-    Only the natural forms count (see `_parse_natural_existential`); the
-    symbolic ``exists x, BODY`` keeps the scope the grammar gives it.
+    For example, in "P and there exists a unique set {c, d} that contains
+    exactly c and d", the existential begins after the conjunction and takes
+    everything to its right. Its span therefore runs to the end of the string,
+    except that it stops at a top-level "then", which belongs to an enclosing
+    "if ... then".
+
+    Only the natural forms handled by _parse_natural_existential count here.
+    Symbolic ``exists x, BODY`` keeps the scope assigned by the formula grammar.
     """
-    depths = _bracket_depths(s)
-    # Find top-level terminators once. Searching the remaining suffix for
-    # every opener rescans the same text and can become quadratic when a
-    # formula contains several embedded existential phrases.
-    then_positions = [
-        match.start()
-        for match in _THEN_RE.finditer(s)
-        if depths[match.start()] == 0
-    ]
+    openers = list(_EXISTENTIAL_OPENER_RE.finditer(s))
+    if not openers:
+        return []
+    scan = formula_text_scan(s)
+    depths = scan.bracket_depths
+    then_positions = scan.top_level_then_positions
     spans = []
-    for opener in _EXISTENTIAL_OPENER_RE.finditer(s):
+    for opener in openers:
         start = opener.start()
         if start == 0 or depths[start] != 0:
             continue
@@ -116,39 +107,43 @@ def _embedded_existential_spans(s: str) -> list:
 
 
 def _protect_phrases(s: str, environment) -> str:
-    """Wrap each top-level theory phrase inside `s` in parentheses.
+    """Wrap top-level theory phrase spans in parentheses before connective splitting.
 
-    The phrases are those the environment's `phrase_spans` finders report (see
-    `TheoryEnvironment.phrase_spans`), plus natural-language existentials that
-    follow something else in the string. The grammar below cuts a string at its
-    top-level "or"/"and"/..., and a phrase such as "w is h, i, j, or k" would
-    be cut apart with it; inside parentheses it is out of the grammar's reach
-    and arrives whole at the phrase parsers. A span that is already inside
-    brackets needs nothing, which is also what ends the recursion: the wrapped
-    string has no top-level spans left. `s` is returned unchanged when there is
-    nothing to protect, or when one span is the whole string.
+    The connective grammar cuts at top-level "or", "and", and similar
+    operators. A phrase such as "w is h, i, j, or k" would otherwise be cut
+    apart before its phrase parser sees it. Parentheses fence off the complete
+    phrase so it reaches that parser intact.
+
+    A span already inside brackets needs no protection; wrapping the remaining
+    top-level spans therefore makes progress toward termination on recursive
+    parses. Return the input unchanged when there is nothing to protect or
+    when the only span is the entire string.
+
+    The active scan is lazy and shared with built-in finders. Third-party
+    finders retain the one-argument phrase_spans(text) contract.
     """
-    spans = _embedded_existential_spans(s)
-    for find in environment.phrase_spans:
-        spans.extend(find(s))
-    if not spans:
-        return s
-    depths = _bracket_depths(s)
-    spans = sorted({span for span in spans if span[0] < span[1] and depths[span[0]] == 0})
-    merged = []
-    for start, end in spans:
-        if merged and start < merged[-1][1]:
-            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
-        else:
-            merged.append((start, end))
-    if not merged or merged == [(0, len(s))]:
-        return s
-    pieces, position = [], 0
-    for start, end in merged:
-        pieces.extend((s[position:start], "(", s[start:end], ")"))
-        position = end
-    pieces.append(s[position:])
-    return "".join(pieces)
+    with share_formula_text_scan(s):
+        spans = _embedded_existential_spans(s)
+        for find in environment.phrase_spans:
+            spans.extend(find(s))
+        if not spans:
+            return s
+        depths = formula_text_scan(s).bracket_depths
+        spans = sorted({span for span in spans if span[0] < span[1] and depths[span[0]] == 0})
+        merged = []
+        for start, end in spans:
+            if merged and start < merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+            else:
+                merged.append((start, end))
+        if not merged or merged == [(0, len(s))]:
+            return s
+        pieces, position = [], 0
+        for start, end in merged:
+            pieces.extend((s[position:start], "(", s[start:end], ")"))
+            position = end
+        pieces.append(s[position:])
+        return "".join(pieces)
 
 
 def _fresh_name(used, candidates) -> str:

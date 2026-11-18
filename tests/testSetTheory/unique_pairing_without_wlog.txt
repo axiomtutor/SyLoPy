@@ -1,11 +1,11 @@
 # Unique pairing, proved with Uniqueness and without WLOG.
 #
 # tests/setTheoryProofs/zfc_remaining_axioms.txt proves the same statement
-# with WLOG, which does not exist yet. Here each "x is a or b" case is written
-# out by hand with Proof by Cases, so this proof runs today. Uniqueness is the
-# last step: line 5 says "any X with the pairing property equals Y", X is
-# introduced by a plain declaration (so it is arbitrary), and Y is the witness
-# named on line 3.
+# with WLOG. Here each "x is a or b" case is written out by hand with Proof
+# by Cases, so this proof also covers the uniqueness argument without WLOG.
+# Uniqueness is the last step: line 5 says that any X with the pairing
+# property equals Y. X is introduced by a plain declaration, so it is
+# arbitrary; Y is the witness named on line 3.
 
 
 # 1
