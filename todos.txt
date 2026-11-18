@@ -516,6 +516,11 @@ Current implementation direction:
   `source/OrderTheory.py`) has the same words as the corpus file
   `OrderTheory.txt` (partial orders in general); renaming the Python theory, for
   example to `integer order`, is proposed and not decided.
+- Kernel override (owner, 2026-11-18): the override recorded on 2026-11-01
+  (the agent then called "Copilot/this agent" may implement or fix Claude-owned
+  kernel code in the current workstream) does not include ChatGPT. ChatGPT does
+  not edit `source/ProofLogic.py` or `source/ProofJustification.py`; a kernel
+  defect is a finding with `Owner: Claude` (`AGENT_COLLABORATION.md`).
 
 ## Owner approval required — do not start without approval
 
