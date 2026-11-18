@@ -2,6 +2,539 @@
 
 This file is the live queue and concise disposition ledger. Stable collaboration rules are in [`AGENT_COLLABORATION.md`](AGENT_COLLABORATION.md); current status and owner decisions are in [`todos.txt`](todos.txt). Full historical task specifications are preserved in [`docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`](docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md).
 
+## Active queue: set theory
+
+Owner direction of 2026-11-05: set theory is the priority until it is fully
+functional. J36–J43 follow the owner's decisions of 2026-11-09 about definitions,
+which [PR #167](https://github.com/axiomtutor/SyLoPy/pull/167) implements:
+
+- A set has a defining property, and its elements are the objects that satisfy it.
+  `x is in A union B` is a statement of its own, the atom `In(x, Union(A, B))`;
+  that it is `x is in A or x is in B` is what `Definition of union` says, and a proof
+  cites that to get there. Every membership phrase, set displays included, is to be
+  such an atom (J37 now, displays later).
+- A definition checks that the thing exists, names it, and adds no axiom. #167 adds
+  `source/Definitions.py`, the facility, and three set definitions: `Definition of
+  union`, `Definition of intersection`, `Definition of power set`. Each is an entry of
+  `SET_DEFINITIONS` in `source/SetTheory.py`, made by `set_definition(title, symbol,
+  parameters, defining_property, evidence)`. The evidence is an axiom rule (`ByRule`)
+  or a proof from the axioms (`ByProof`); the facility reads off what it has to show,
+  that some set has exactly those members, and checks it. Adding an entry declares its
+  symbol, makes `(Definition of …)` citable and gives the proof its sentence; no other
+  file has to change. Read the docstring of `source/Definitions.py`, the section
+  "Definitions of the declared set operations" of `source/SetTheory.py` and
+  `pytest_tests/test_set_operation_definitions.py` first.
+- The ordered pair will be `{{a}, {a, b}}` with readable syntax. The abstract `Pair`
+  and `CartesianProduct` are declared and have no meaning until then.
+- Symbols (`∈`, `∪`, `∀`, …) are accepted as input by the owner (J41).
+
+The "Today" entries were produced by running `pp.parse_formula` and the checker at
+commit 742d2d3 of #167; re-run a row before relying on it and report any that no
+longer holds.
+
+Dependencies: every job needs #167 merged, because its fixtures cite the definitions.
+J36, J41 and J43 need nothing else. J37, J38 and J39 need J36. J42 needs J38, and J40
+needs J38 and J39 (J38 and J42 both change the tests that pin the list of
+definitions, so they must not run together). Start the jobs that are unblocked in
+this order, within the limit of three open PRs: J36, J41, J43, J38, J37, J39, J42,
+J40. A job starts only after the PR that adds it has merged, as below.
+
+### J36 — Nested set-operation terms
+
+**Goal:** A set-operation term may contain other terms, so that the laws of set
+algebra can be written in proof text. `try_parse_set_term` (`source/SetTheory.py`;
+the set theory's `term_parsers` entry, also called by every set phrase) reads only a
+bare name, `∅` or `the empty set`, `X union Y`, `X intersection Y`, `X cross Y`,
+`the power set of X` and `pair(x, y)`, all with bare names as operands.
+
+| Surface text | Today | Reads |
+| --- | --- | --- |
+| `x is in A union B union C` | refused: "Unrecognized formula syntax" | `In(x, Union(Union(A, B), C))` |
+| `x is in (A union B) intersection C` | refused | `In(x, Intersection(Union(A, B), C))` |
+| `A union (B union C) = (A union B) union C` | refused: "Unrecognized term syntax" | `Union(A, Union(B, C)) = Union(Union(A, B), C)` |
+| `x is in the power set of (A union B)` | refused | `In(x, PowerSet(Union(A, B)))` |
+| `x is in Union(A, B)` | refused, although `In(x, Union(A, B))` is accepted | `In(x, Union(A, B))` |
+| `x is in f(A union B)` | refused | `In(x, f(Union(A, B)))` |
+| `x is in A union B intersection C` | refused, as above | refused, with "parenthes" in the message |
+| `x is in A cross B cross C` | refused, as above | refused, with "parenthes" in the message |
+
+**Decisions already made** (do not reopen; if one cannot work, report it as a
+finding):
+
+1. An operand is a name, `∅` or `the empty set`, a parenthesised set term,
+   `the power set of <operand>`, or a function application `f(t1, ..., tn)` whose
+   arguments the ordinary term parser reads (so `Union(A, B)` and `f(A)` are set terms
+   in phrases too). The existing `pair(x, y)` reading, for bare names only, stays
+   exactly as it is: the abstract `Pair` is going away, so nothing is added for it.
+2. A chain of one operation, `A union B union C` or `A intersection B intersection C`,
+   reads left-nested: `Union(Union(A, B), C)`.
+3. A chain that mixes operations (`A union B intersection C`), and a chain of `cross`
+   with more than two operands, are refused with a message containing "parenthes".
+   There is no precedence between operations. Raise `ValueError` from the term
+   parser for this: a prototype showed that the message reaches the user unchanged.
+4. The operators are one table, word to symbol (`union`, `intersection`, `cross`), so
+   that J38 adds `setminus` with one entry. Matching stays case-insensitive. An
+   operator word is not a name (`x is in union B` stays refused).
+5. A name bound by an enclosing quantifier is a variable and any other name a
+   constant, as `_name_term` does today. No existing reading, oracle expectation or
+   fixture changes.
+
+**Allowed scope:** `source/SetTheory.py` (the term parser, not the rules); new
+`parse_oracle/set_operations_nested.txt`, `pytest_tests/test_set_operation_nesting.py`
+and enforced fixture `tests/testSetTheory/set_operation_terms_nested.txt`; the
+set-operation paragraph of `docs/PROOF_FILE_FORMAT.md`; the nesting caveat in
+`todos.txt`. Not `source/ProofLogic.py` or `source/ProofJustification.py`.
+
+**Tests:** an oracle case for every row above (the reading written first, in plain
+logic); one each for a chain of `intersection`, a nested term under a bound variable
+(`forall x, x is in (A union B) intersection C`) and a nested term inside a larger
+formula (`P(x) and x is in A union (B intersection C)`); `expect: REJECT` for a mixed
+chain, a `cross` chain, an unbalanced parenthesis, `()` and `x is in A union`. The
+pytest module also checks that both refusal messages contain "parenthes". The fixture
+has at least four valid proofs that apply the definitions of #167 to nested terms
+(union is associative, as two subset proofs; a three-fold union unfolded; a member of
+the power set of a union; an intersection of a union) and four invalid ones, each
+refused by a definition rule and not by a parse error. Run `tools/mutation_check.py`
+over the new parser code and report mutants made and survivors.
+
+**Done when:** every row reads as stated; the refusals carry the stated message; the
+tests above pass; `./run_tests.sh` and `./run_tests.sh --suite extended` pass on
+Python 3.12 and 3.13; the PR report is as rule 3 below requires (the tested commit,
+the CI run, the totals); the later jobs say "the PR report is as for J36" for this. If
+this one passes about 400 changed lines, send the fixture as a second PR.
+
+Status: queued; needs #167.
+
+### J37 — Every membership phrase is a membership
+
+**Goal:** Today the membership phrases are a ragged grid, and a few of them read as a
+disjunction or a conjunction. The owner has decided that every membership phrase is
+the atom `In(x, T)` (or its negation), and the corpus note in
+`SetTheoryCorpus/Chapter1_Axioms.txt` says that "in" and "contains" mean member, not
+subset. Below, `S` is a set term of J36 other than the two English forms, `U` is
+`the union of A and B` and `I` is `the intersection of A and B`. "ok" is accepted
+today and reads `In(x, T)` (negated for the "not" phrases); "ok*" is accepted today
+but reads as the disjunction (for `U` and for `belongs to A union B`) or as the
+conjunction (for `I`), negated for a "not" phrase; "add" is refused today.
+
+| Phrase (`x …`) | `S` | `A union B` | `A intersection B` | `U` | `I` |
+| --- | --- | --- | --- | --- | --- |
+| `is in` | ok | ok | ok | ok* | add |
+| `is not in` | ok | ok | ok | add | ok* |
+| `belongs to` | add | ok* | add | add | ok* |
+| `does not belong to` | ok | ok | ok | add | add |
+| `is an element of` | ok | ok | ok | add | add |
+| `is not an element of`, `is a member of`, `is not a member of` | add | add | add | add | add |
+| `T contains x` | add | add | add | add | add |
+| `T does not contain x` | ok | ok | ok | add | add |
+
+**Decisions already made:**
+
+1. After this job every cell is accepted and reads `In(x, T)` or `not In(x, T)`, with
+   `U` as the term `Union(A, B)` and `I` as `Intersection(A, B)`. The phrases never
+   read as a disjunction or a conjunction; that is what `Definition of union` and
+   `Definition of intersection` are for. `T contains x` is the membership `In(x, T)`
+   (set first, as "contains" is), so `A contains B` reads `In(B, A)`.
+2. The phrases are one table of (phrase, polarity, order) applied to any set term of
+   J36, not one regular expression per cell, so that the grid cannot become ragged
+   again. `the union of X and Y` and `the intersection of X and Y` become terms
+   (`Union(X, Y)`, `Intersection(X, Y)`, operands names or parenthesised terms), so
+   they are recognised wherever a set term is. A phrase that contains one is still
+   protected from the connective grammar as `find_set_operation_spans` does today:
+   `x is in the union of A and B and y is in C` is a conjunction of two memberships.
+3. The identity phrases read as equations (the owner, on #168): `A is the union of
+   B and C` is `A = Union(B, C)`, and `A is the intersection of B and C` is
+   `A = Intersection(B, C)` (the owner gave the union; the intersection has the same
+   shape, so it follows the same rule). They no longer read as the characterization
+   `forall u, (In(u, A) iff (In(u, B) or In(u, C)))`; a proof gets that from
+   `Definition of union` and the equation. Not changed: `the union of A and B is
+   empty`, `the intersection of A and B is nonempty` and the disjointness phrases keep
+   their readings (they are not identity phrases), and `A contains exactly a and b`
+   stays the display sugar.
+4. `A set-in B` reads as `A subseteq B`, `A set-contains B` as `B subseteq A`, and
+   `A not set-in B`, `A not set-contains B` negate them, wherever `subseteq` is
+   accepted today (the owner's corpus spelling). A bare `A in B` is not a subset.
+5. Still refused: `x lies in A`, `A has x as an element`. Symbols (`∈`) are J41.
+
+**Allowed scope:** `source/SetTheory.py` (the membership phrase parsers, the
+identity-phrase branch that reads `X is the union of Y and Z`, and span protection);
+`parse_oracle/set_operations_phrases.txt`, only the seven cases
+`j4-union-membership`, `j4-union-membership-nested`, `j4-intersection-membership`,
+`j4-intersection-membership-negated`, `j4-union-nested-consequence`,
+`j4-union-defines-set` and `j4-intersection-defines-set`, whose expected readings
+change as decided (the owner's decision is the authority for this exception to
+rule 4; the `why` of the last two says "contains exactly the elements", which stops
+being the reading, so rewrite it), and the last sentence of the `why` of
+`definition-term-union-membership`, which says the change is planned; new
+`parse_oracle/set_membership_wordings.txt`, `pytest_tests/test_membership_wordings.py`
+and enforced fixture `tests/testSetTheory/membership_wordings.txt`;
+`docs/PROOF_FILE_FORMAT.md`; `todos.txt` (item 8a). No enforced fixture or pytest
+module uses the old readings (checked at 742d2d3); if one turns out to, report it.
+
+**Tests:** an oracle case for every "add" and "ok*" cell and for `contains`,
+`set-in` and `set-contains`. The pytest module enumerates the whole grid (every
+phrase, both orders, every operand kind including nested terms and function
+applications) against formulas built from `fl` and `st` independently of the parser,
+and checks that the two identity phrases of decision 3 read as the equations (with
+nested operands too), that the other phrases it lists keep their readings, and that
+the refusals of decision 5 are unchanged. The fixture
+has one subset proof, one proof by cases that cites `Definition of union` to get from
+`x is in the union of A and B` to the disjunction, and two invalid proofs, one of
+which takes the disjunction without the definition (refused at that line).
+
+**Done when:** all cells behave as decided, and the two identity phrases read as
+equations; the seven oracle expectations (five membership, two identity) are the only
+ones changed; both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
+
+Status: queued; needs #167 and J36.
+
+### J38 — Set difference
+
+**Goal:** Define the relative difference `Difference(A, B)` with the definition
+facility. Today `x is in A setminus B` and `x is in Difference(A, B)` are refused
+(there is no such symbol), and a difference exists only as the theorem "The difference
+of two sets exists" (proof 4 of the informational
+`tests/setTheoryProofs/set_operation_foundations.txt`), so `A setminus B subseteq A`
+or De Morgan's laws cannot be stated in a proof.
+
+**Decisions already made:**
+
+1. One new entry in `SET_DEFINITIONS`: `set_definition("Definition of difference",
+   "Difference", ("A", "B"), <In(u, A) and not In(u, B)>, ByRule(SeparationSchemaRule()))`.
+   Checked in a scratch copy at 742d2d3: the facility accepts this evidence, and the
+   claim it derives is `exists Y, forall u, (In(u, Y) iff (In(u, A) and not In(u, B)))`.
+   The entry declares `Difference`, registers the rule and makes
+   `(Definition of difference)` citable; this job adds no rule class and does not touch
+   `source/ProofJustification.py`.
+2. Surface: `A setminus B` (one entry in the operator table of J36, so it nests) and
+   `Difference(A, B)`. Not `minus` (integer subtraction will want it, as `cross` is not
+   `times`), not `\`, and no complement: an absolute complement needs a universe and ZF
+   has none. The complement of B in A is `A setminus B`.
+
+**Allowed scope:** `source/SetTheory.py` (the entry and the operator-table entry);
+`pytest_tests/test_set_operation_definitions.py`: add an `Operation` for the difference
+(and its entry in `NEAR_MISSES` and `SYMBOLS_OF_THE_DEFINITIONS`), so that its generic
+parametrised tests cover the new definition, and update the tests that pin the exact
+list of definitions on purpose, so that adding one is a decision:
+`test_set_theory_defines_the_union_the_intersection_and_the_power_set`,
+`test_each_definition_is_the_sentence_that_says_which_objects_are_members`,
+`test_each_definition_shows_that_there_is_a_set_with_exactly_those_members`,
+`test_the_evidence_for_each_definition_is_an_axiom_or_a_proof_from_the_axioms` (it
+unpacks exactly three) and
+`test_the_product_and_the_ordered_pair_are_declared_and_have_no_definition_yet`; new
+`parse_oracle/set_difference.txt`, `pytest_tests/test_set_difference.py`, enforced
+fixture `tests/testSetTheory/set_difference_definition.txt`; the definitions table in
+`docs/PROOF_FILE_FORMAT.md`; `todos.txt`.
+
+**Tests:** the generic tests accept the sentence with and without `forall`, in both
+biconditional orders, for any terms, and refuse a cited line. Add near misses for the
+difference (each its own test): `or` for `and`, `not` on the first operand, the
+operands swapped, one direction only, and a true sentence that is not the definition
+(`In(x, Difference(A, B)) iff (not In(x, B) and In(x, A))`). Also the oracle cases for
+`A setminus B` and `Difference(A, B)` in phrases, and a test that a proof cannot
+declare `Difference` again. The fixture has at least five valid proofs (the
+definition in each accepted form, `A setminus B subseteq A`, `A setminus A = EmptySet`,
+a promoted theorem reused by title) and ten invalid ones, each refused by the
+definition rule. Run `tools/mutation_check.py` over the new code.
+
+**Done when:** `x is in A setminus B` reads `In(x, Difference(A, B))`; the rule accepts
+and refuses as listed; every invalid fixture proof is refused by the definition rule;
+both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
+
+Status: queued; needs #167 and J36.
+
+### J39 — Laws of set algebra, batch 1: union and intersection
+
+**Goal:** The standard laws as proofs, each a promoted theorem that later proofs in
+the same file cite by its title. One enforced multi-proof file,
+`tests/testSetTheory/set_algebra_laws.txt`, using only the definitions of #167,
+`Set property`, `Set equality`, subset proofs and the ordinary rules, with each law
+stated in the surface syntax (nested terms from J36) and memberships written with
+`is in` and `is not in`:
+
+- `A intersection B = B intersection A`;
+- `A union (B union C) = (A union B) union C` and the same for intersection;
+- `A union A = A` and `A intersection A = A`;
+- `A union EmptySet = A` and `A intersection EmptySet = EmptySet`;
+- both distributive laws;
+- both absorption laws, `A union (A intersection B) = A` and
+  `A intersection (A union B) = A`;
+- `A subseteq B` iff `A union B = B`, and `A subseteq B` iff
+  `A intersection B = A`.
+
+A law whose proof needs another cites it by title (distributivity needs
+commutativity, for example) rather than repeating the argument.
+
+**Findings:** if a law cannot be proved because of a checker limitation, do not weaken
+it and do not leave a failing proof: file the focused issue that rule 5 asks for
+(smallest proof, exact message), leave that law out and list it in the PR. One
+limitation is known: Conjunction Introduction takes exactly two lines, so a flat
+`P and Q and R` cannot be derived (item 9 of Remaining work in `todos.txt`); nest the
+conjunction, `(P and Q) and R`, in the proof of a law.
+
+**Allowed scope:** the new fixture, a new `pytest_tests/test_set_algebra_laws.py` that
+asserts the exact list of titles and that every proof passes, and a short list of the
+laws in `docs/PROOF_FILE_FORMAT.md`. No edits to `source/`.
+
+**Tests:** besides the valid proofs, one invalid proof for each of these false laws,
+refused at the step that would need the false fact and not for a parse, declaration or
+scope reason: `A union (B intersection C) = (A union B) intersection C`,
+`A intersection (B union C) = (A intersection B) union C`,
+`A union B = A intersection B`, and `A subseteq B` iff `A union B = A`.
+
+**Done when:** every listed law is a passing enforced proof under its own title, or a
+finding with its issue; the pytest module asserts the titles; the invalid proofs are
+refused as described; both suites pass on Python 3.12 and 3.13; the PR report is as
+for J36.
+
+Status: queued; needs #167 and J36 (J37 is not needed: the laws use only `is in` and
+`is not in`).
+
+### J40 — Laws of set algebra, batch 2: difference and power set
+
+**Goal:** The same, appended to `tests/testSetTheory/set_algebra_laws.txt` (the
+numbering continues, so that these proofs can cite the laws of J39 by title) and to the
+title list of `pytest_tests/test_set_algebra_laws.py`, for:
+
+- `A setminus B subseteq A`; `A setminus A = EmptySet`; `A setminus EmptySet = A`;
+- De Morgan's laws: `A setminus (B union C) = (A setminus B) intersection
+  (A setminus C)` and `A setminus (B intersection C) = (A setminus B) union
+  (A setminus C)`;
+- `A setminus (A setminus B) = A intersection B`;
+- `A subseteq B` implies `PowerSet(A) subseteq PowerSet(B)`, and
+  `PowerSet(A intersection B) = PowerSet(A) intersection PowerSet(B)`.
+
+Laws of the product wait until `CartesianProduct` has a definition (see Planned).
+
+**Allowed scope, tests, findings and done when:** as for J39, with the false laws
+`A setminus (B setminus C) = (A setminus B) setminus C`,
+`PowerSet(A union B) = PowerSet(A) union PowerSet(B)`, and `A subseteq B` implies
+`PowerSet(B) subseteq PowerSet(A)` as the invalid proofs.
+
+Status: queued; needs #167, J38 and J39.
+
+### J41 — Symbols as input
+
+**Goal:** A proof may be written with the usual symbols, each read as the word form it
+stands for, so that every reading, rule and message that exists for the words applies
+unchanged. The owner accepted this on 2026-11-09. Measured at 742d2d3, every symbol
+below is refused today ("Unrecognized formula syntax") except `↔`, which is already
+read (as is `∅`, which stays as it is); `a != b` and `a ≠ b` are refused and have no
+ASCII equivalent yet.
+
+| Written | Read as | From |
+| --- | --- | --- |
+| `P ∧ Q`, `P ∨ Q`, `¬P` | `P and Q`, `P or Q`, `not P` | base logic |
+| `P → Q`, `P ↔ Q` | `P -> Q`, `P <-> Q` | base logic |
+| `∀x, P(x)` and `∀x P(x)`; `∃x, P(x)` | `forall x, P(x)`; `exists x, P(x)` | base logic |
+| `∀x ∈ A, P(x)`; `∃x ∈ A, P(x)` | `forall x in A, P(x)`; `exists x in A, P(x)` | set theory |
+| `a ≠ b` and `a != b` | `not (a = b)` | base logic |
+| `x ∈ A`, `x ∉ A` | `x is in A`, `x is not in A` | set theory |
+| `A ⊆ B` | `A subseteq B` | set theory |
+| `A ∪ B`, `A ∩ B`, `A × B` | `A union B`, `A intersection B`, `A cross B` | set theory |
+| `A ∖ B` (U+2216) | `A setminus B` | set theory, when J38 has merged |
+
+**Decisions already made:**
+
+1. The symbols are a notation table that belongs to the theory environment (a new
+   field of `TheoryEnvironment`, merged like `term_parsers`): the base logic holds the
+   logical symbols, set theory the set symbols, and a later module adds its own. If two
+   theories in one environment give one symbol different readings, assembling the
+   environment is an error that names both (`×` will want to mean something else in
+   number theory).
+2. The rewriting is textual, once, on the text of a formula before any other parsing,
+   at the entry that proof lines and `parse_formula` share. Each replacement is padded
+   with spaces, so `x∈A` and `¬P(x)∧Q(x)` work. The bounded forms are written out first
+   (`∈` directly after a quantified variable becomes `in`: `forall x is in A, P(x)` is
+   refused today). The connectives keep the precedence the words have, which is the
+   standard one (checked: `not P and Q` reads `(not P) and Q`).
+3. `a ≠ b` and `a != b` are new syntax in the formula grammar next to `=`: they read
+   `not (a = b)`. This is the only grammar change in the job.
+4. Left refused, because they are ambiguous or not wanted yet: `⊂`, `⊊`, `⊃`, `⊇`, and
+   every symbol not in the table (such as `⊕`, `≤`, `∣`, `ℕ`), with today's refusal.
+   Number theory stays paused, so it gets no table now.
+5. Error messages may quote the text after rewriting.
+
+**Allowed scope:** `source/ProofElaboration.py` (the field and its merge),
+`source/ProofParser.py` and `source/ProofParserPolicy.py` (the call of the rewrite and
+the `≠` grammar), `source/SetTheory.py` and the base environment (the tables), a new
+`source/Notation.py` if it helps; new `parse_oracle/unicode_symbols.txt`,
+`pytest_tests/test_unicode_symbols.py` and enforced fixture
+`tests/testSetTheory/unicode_symbols.txt`; the section on symbols in
+`docs/PROOF_FILE_FORMAT.md`; item 8(f) of `todos.txt`. Not kernel files.
+
+**Tests:** one oracle case per row (line and nested context; `expect` written in the
+word form); the pytest module parses every row and its word form and compares them
+with `pl._alpha_eq`, also with no spaces, with a symbol next to a word (`x ∈ A and
+P(x)`), inside a quantifier body and in a nested formula; a test that two theories with
+different readings of one symbol fail to merge and that the same reading twice does
+not; refusal tests for `⊂`, `⊕` and an unterminated `∀`. The fixture has three valid
+proofs written only with symbols (a bounded-quantifier proof, `A ⊆ A ∪ B`, a De Morgan
+step) and two invalid ones; a test checks that each fixture proof, rewritten back to
+words, parses to the same entries. Run `tools/mutation_check.py` over the rewriting.
+
+**Done when:** every row reads as its word form in line and nested context and in a
+fixture proof; the merge conflict is an error; no existing reading changes; both suites
+pass on Python 3.12 and 3.13; the PR report is as for J36. If J38 has not merged, leave
+`∖` out and add it with J38 (whichever merges second adds the entry).
+
+Status: queued; needs #167.
+
+### J42 — The singleton and the unordered pair
+
+**Goal:** Define the singleton `{a}` and the unordered pair `{a, b}` as sets, with the
+Axiom of pairing behind them: `Singleton(a)` and `UnorderedPair(a, b)`. They are the
+first two steps to the ordered pair `{{a}, {a, b}}`, which is the owner's decision for
+`(a, b)`. This job gives them meaning and nothing more; `{a}` and `{a, b}` as terms
+come later (see Planned).
+
+**Decisions already made:**
+
+1. `set_definition("Definition of unordered pair", "UnorderedPair", ("a", "b"),
+   <u = a or u = b>, ByRule(PairingAxiomRule()))`. Checked in a scratch copy at
+   742d2d3: the facility accepts this evidence.
+2. `set_definition("Definition of singleton", "Singleton", ("a",), <u = a>,
+   ByProof(SINGLETON_EXISTENCE_PROOF))`. `PairingAxiomRule` refuses the claim
+   `exists Y, forall u, (In(u, Y) iff u = a)` (checked), so the evidence is a proof
+   from Pairing with `b := a`. The facility accepted this proof (checked); use it as it
+   is. It is also the first proof of the new fixture (the theorem is its last line,
+   `exists Y, forall x, (In(x, Y) iff x = a)`), and a test pins that the evidence is that
+   proof, as `test_the_evidence_for_the_union_is_the_proof_that_the_union_of_two_sets_exists`
+   does for the union:
+
+```text
+1. Let a be any set. (Declaration)
+2. Exists P, forall u, (In(u, P) iff (u = a or u = a)). (Axiom of pairing)
+3. Let P be such a set. (Existence from 2)
+4. forall x, (In(x, P) iff x = a). (Universal Generalization from subproof below)
+begin subproof
+ 4.0. let c be arbitrary. (Arbitrary)
+ 4.1. In(c, P) -> c = a. (Conditional Introduction from subproof below)
+  4.1.1. In(c, P). (Assumption for Conditional Introduction)
+  4.1.2. c = a or c = a. (Set property, 3, 4.1.1)
+  4.1.3. c = a. (Proof by Cases from 4.1.2, subproofs below)
+  begin subproof
+   4.1.3.1. c = a. (Case)
+  end subproof
+  begin subproof
+   4.1.3.1. c = a. (Case)
+  end subproof
+ 4.2. c = a -> In(c, P). (Conditional Introduction from subproof below)
+  4.2.1. c = a. (Assumption for Conditional Introduction)
+  4.2.2. c = a or c = a. (Disjunction Introduction from 4.2.1)
+  4.2.3. In(c, P). (Set property, 3, 4.2.2)
+ 4.3. In(c, P) iff c = a. (Biconditional Introduction from 4.1, 4.2)
+end subproof
+5. Exists Y, forall x, (In(x, Y) iff x = a). (Existential Introduction from 4)
+```
+
+3. Both go in `SET_DEFINITIONS`. There is no new surface syntax: `Singleton(a)` and
+   `UnorderedPair(a, b)` are ordinary function terms. `Pair` and `pair(...)` are not
+   touched. The names are the owner's to change in review.
+
+**Allowed scope:** `source/SetTheory.py` (the two entries and the proof text);
+`pytest_tests/test_set_operation_definitions.py`: `Operation` entries for both (with
+`NEAR_MISSES` and `SYMBOLS_OF_THE_DEFINITIONS`) and the tests that pin the list of
+definitions, which J38 names (by now they list four definitions); new
+`pytest_tests/test_singleton_and_pair.py`, enforced fixture
+`tests/testSetTheory/singleton_and_pair_definitions.txt`; the definitions table in
+`docs/PROOF_FILE_FORMAT.md`; `todos.txt` (item 8b).
+
+**Tests:** as for J38: the generic tests cover the sentences, and near misses are added
+(the pair's sentence with `and`; the singleton's with `or`; the second element dropped;
+operands swapped for the pair). The fixture has at least six valid proofs
+(`a is in Singleton(a)`; `x is in UnorderedPair(a, b)` implies `x = a or x = b`;
+`Singleton(a) = UnorderedPair(a, a)`; `UnorderedPair(a, b) = UnorderedPair(b, a)`;
+`Singleton(a) subseteq UnorderedPair(a, b)`; `Union(Singleton(a), Singleton(b)) =
+UnorderedPair(a, b)`) and six invalid ones, among them `Singleton(a) = Singleton(b)`
+for constants with no premise, `a is in Singleton(b)` and
+`UnorderedPair(a, b) = Singleton(a)`. Mutation-check the new code.
+
+**Done when:** both definitions are citable by title and refuse what the tests list; the
+fixture proofs pass and fail as stated; both suites pass on Python 3.12 and 3.13; the PR
+report is as for J36.
+
+Status: queued; needs #167 and J38 (both change the tests that pin the list of
+definitions).
+
+### J43 — Red-team the definition facility
+
+**Goal:** Try to break `source/Definitions.py` and the three set definitions the way J3,
+J17, J24 and J26 broke other rules: adversarial proofs and unit probes aimed at (i) a
+citation accepted that should be refused, (ii) a sentence accepted as a definition that
+is not one, (iii) a definition that adds an axiom (a sentence about old symbols that is
+provable only with the definition), and (iv) a refusal with a wrong or missing reason.
+
+Cover each class with at least one probe, and report the classes in which nothing was
+found:
+
+1. Citation forms: sentences near a definition (operands swapped, an extra conjunct,
+   another quantifier order, vacuous `forall`s), bound-variable clashes (names `Y`,
+   `Y_1`, `u`, `w` as constants, variables and function arguments), a cited line, a
+   citation for something that is not a sentence.
+2. Capture: terms that contain the bound variable of the power set's subset clause.
+3. Promotion and titles: a theorem that cites a definition, promoted and cited later; a
+   theorem titled like a definition. Known: the rule wins and the theorem cannot be
+   cited under that title (`# 1: Definition of union` with a trivial proof, then
+   `(Definition of union)` cited for the theorem's statement is refused), which is
+   safe but a trap; pin the behaviour and recommend, do not fix.
+4. `Mutatis mutandis`: repeating a line that cites a definition, with symbols or names
+   replaced. Known: `Intersection` to `Union`, `In` to a predicate `R` and `Union` to a
+   declared `f` are refused by the rule, and other terms in place of the names are
+   accepted; cover the rest (a name replaced by a term that contains a bound name, two
+   names exchanged, a range of lines).
+5. `WLOG` replay and proofs by cases over a line that cites a definition.
+6. Evidence: a theory without the axiom the evidence needs, a `ByProof` that cites the
+   definition it is evidence for, a proof with a premise, a declaration that adds a
+   fact or a witness line that is a hypothesis, a claim derived below the top level.
+7. Declarations: declaring a defined symbol again as a function, relation, constant or
+   object, at the top level and inside a subproof, and under another spelling of the
+   name.
+8. The derived existence claim (`Definition.existence_claim()`): toy definitions built
+   as in `pytest_tests/test_definitions.py` whose sentence would be an axiom in
+   disguise (a symbol defined by a property no set bounds, a function defined by an
+   equation that has no unique solution, a sentence in which the defined symbol also
+   appears in the definiens).
+
+Known limitations, do not report: a definition whose evidence or sentence uses another
+defined symbol is not supported yet, and a proof file cannot define a symbol (item 8 of
+`todos.txt`).
+
+**Allowed scope:** new `pytest_tests/test_definition_red_team.py` and enforced fixture
+`tests/testSetTheory/definition_red_team.txt` (each invalid proof says its reason in
+its `## Invalid:` line). No edits to `source/`.
+
+**Findings:** a defect is a finding, not a reason to weaken a probe: file the issue
+rule 5 asks for with `Owner: Claude` (it is mine), and add a strict expected-failure
+test for an invalid proof that is accepted.
+
+**Done when:** every class has probes in the fixture or the pytest module; every
+refusal asserts its reason, not only the refusal; the PR lists the classes with their
+numbers of probes and what each found; both suites pass on Python 3.12 and 3.13; the
+PR report is as for J36.
+
+Status: queued; needs #167.
+
+### Planned, not yet specified
+
+Each waits for the jobs named, and is specified when they have merged:
+
+- **Set displays as terms** (after J37 and J42): `{a}` and `{a, b}` read
+  `Singleton(a)` and `UnorderedPair(a, b)`, so that `x is in {a, b}` is the atom
+  `In(x, UnorderedPair(a, b))` and no longer `x = a or x = b`, and `Y = {a, b}` reads
+  `Y = UnorderedPair(a, b)`. Three or more elements and the builders
+  `{u in X: P(u)}` need a decision first (nested unions of singletons; a binder term,
+  which is a kernel change).
+- **The ordered pair** (after J42): `(a, b)` reads `{{a}, {a, b}}`, the theorem
+  `(a, b) = (c, d) iff a = c and b = d` is proved, and the abstract `Pair` and
+  `pair(...)` go away.
+- **The Cartesian product**: the facility must first allow evidence and sentences that
+  use earlier definitions (item 8(d) of `todos.txt`; mine), and the ordered pair must
+  exist. Then `A cross B` is defined by Separation over a power set, and its laws are
+  added to the library of J39 and J40.
+- **Owner questions, not jobs:** definitions written in proof files, functions as sets
+  of pairs or as symbols, and declaration facts such as `nonempty`.
+
 ## Deferred queue
 
 Set theory is the current development priority until it is fully functional.
