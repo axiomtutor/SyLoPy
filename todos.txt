@@ -447,6 +447,13 @@ and collaboration handoff before starting.
    definitions in Python.
    (f) Unicode symbols (`∈`, `⊆`, `∪`, `∩`, `∀`, `∃`, `→`, `↔`, `¬`) as input,
    which the owner accepted on 2026-11-09. Not started.
+   (g) Terms that exist only under a condition (owner, 2026-11-18, under Owner
+   decisions below): a definition form for "the unique thing with this property,
+   and the empty set otherwise". Its existence claim holds by cases for any values
+   of the parameters, so it is a definition in the facility's sense, and the
+   argument is planned to be generated rather than written for each use. After
+   it, and after (b) and (d): `f(x)` for a set of ordered pairs `f`, and `sup`,
+   `inf`, `max` and `min` of the corpus's order theory. Not started.
 9. **Kernel: introducing a conjunction of three or more lines.**
    `ConjunctionIntroduction` has `premise_arity = 2`, so through the validator it
    combines exactly two lines, and `A and B and C` (which the parser reads as one
@@ -521,6 +528,19 @@ Current implementation direction:
   kernel code in the current workstream) does not include ChatGPT. ChatGPT does
   not edit `source/ProofLogic.py` or `source/ProofJustification.py`; a kernel
   defect is a finding with `Owner: Claude` (`AGENT_COLLABORATION.md`).
+- Terms that exist only under a condition (owner, 2026-11-18, "Let's use option
+  1"): a term such as `f(x)`, `sup(X)` or `max(X)` always names something. It is
+  the unique thing with the stated property when there is exactly one such thing,
+  and the empty set otherwise. As on paper, a proof uses a property of the term
+  only after it has shown that the condition holds; the corpus proves once, for
+  each such term, the fact that gets used (if a is a supremum of X, then `sup(X)`
+  is a). The alternative, accepting a term only on a line that has established
+  its condition, was not chosen. Not built yet (Remaining work, item 8(g)).
+- Corpus Definition 4 (owner, 2026-11-18): `max(X)` and `min(X)` denote the
+  greatest and the least element of X, not a maximal or a minimal element, which
+  need not be unique; the earlier text was a mistake in the owner's definitions.
+  Fixed in `SetTheoryCorpus/OrderTheory.txt`, together with the typo "denoteed"
+  on the infimum line.
 
 ## Owner approval required — do not start without approval
 
