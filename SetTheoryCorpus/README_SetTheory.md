@@ -28,8 +28,9 @@ A new file goes where its dependencies put it, and the list above is kept in tha
 
 - A function is a set of ordered pairs, and a relation on a set P is a subset of the Cartesian product of P with itself, with `x < y` as the notation for "the pair (x, y) is in <".  There is no separate notion of function outside the theory.
 - An operation such as the identity function on a set X is a definition, which shows that the thing exists, names it, and adds no axiom.  The existence proof is written in the corpus, not in Python code.
+- A term that makes sense only under a condition, such as `f(x)` for an `x` in the domain of `f`, `sup(X)` for a set that has a supremum, or `max(X)` for a set that has a greatest element, always names something: the unique thing with the stated property when there is exactly one such thing, and the empty set otherwise.  A theorem about such a term states the condition, as on paper.  The "This is denoted" lines of `OrderTheory.txt` are read this way.
 
-Both are decisions recorded in `todos.txt` under "Owner decisions".
+These are decisions recorded in `todos.txt` under "Owner decisions".
 
 # Proved Theorems
 
