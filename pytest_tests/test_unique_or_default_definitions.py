@@ -610,10 +610,13 @@ def test_the_definition_is_cited_by_its_title():
     assert ok, error
 
 
-def test_a_citation_of_the_definition_for_another_sentence_is_refused_and_says_why():
+def test_a_citation_of_the_definition_for_another_sentence_is_refused_and_told_the_sentence_to_cite():
     reason = refusal("1. Let G, h be any object. (Declaration)\n"
                      f"2. Gen(G) = h iff {only_line('h')}. (Definition of generator)\n")
-    assert reason.endswith("is not an instance of the sentence the definition cites") or "Definition of generator" in reason, reason
+    assert reason.startswith("'Definition of generator' does not justify")
+    assert ("here for Gen(G) = h the other side must be ((Generates(h, G) and forall z, "
+            "(Generates(z, G) -> z = h)) or (not exists y, (Generates(y, G) and forall z, "
+            "(Generates(z, G) -> z = y)) and h = Zero))") in reason
 
 
 # ---------------------------------------------------------------------------
@@ -699,10 +702,6 @@ def test_set_theory_names_the_only_member_of_a_set_and_the_empty_set_otherwise()
 
 def test_the_evidence_is_accepted_in_set_theory():
     assert evidence_problem(ONLY_MEMBER, SETS) is None
-
-
-def in_(element, a_set):
-    return f"In({element}, {a_set})"
 
 
 def only_member_line(term, a_set):
