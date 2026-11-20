@@ -62,16 +62,42 @@ not code. That is the difference between a definition and an axiom schema: an
 axiom schema is a recognizer written by hand for each axiom, and a definition
 is data that one rule checks.
 
-What is not built yet, and where it would go. A definition whose evidence (or
-whose sentence) uses an earlier definition needs the evidence checked in a
-theory that has that definition; today the evidence is checked without any
-definition (see `DefinitionRule`), so a proof of existence can only use the
-theory's axioms, and a sentence that uses another defined symbol cannot have
-its claim shown.
+A thing that exists only under a condition. `f(x)` makes sense only for an x in
+the domain of f, and `sup(X)` only for a set that has a supremum; for other
+values of the parameters nothing is "the thing with this property", so a
+definition by that phrase cannot show that the thing exists for every p, and its
+evidence is refused. The owner chose (2026-11-18) that such a term always names
+something: the only thing with the property when exactly one thing has it, and a
+fixed default otherwise (the empty set, in set theory).
+`unique_or_default_definition` builds that definition. Its sentence is::
+
+    F(p) = m  iff  (m has the property and nothing else does)
+                   or (no thing is the only one that has it, and m is the default)
+
+The claim above holds for every p by cases: if some thing is the only one that
+has the property, it is the Y; if none is, the default is. The argument is the
+same for every property, so the builder writes it as the definition's `ByProof`
+and the kernel checks it like any other evidence: nothing in the kernel or in
+this module changes, and the definition adds no axiom. As on paper, a proof uses
+a property of F(p) only after it has shown that exactly one thing has the
+property; the sentence says nothing more about F(p). The argument never looks at
+what the property says, so the property may use symbols that earlier definitions
+introduced (the property of `sup` is that something is a least upper bound, which
+the order theory defines first): the theory declares them, and the evidence is
+checked with every declaration and without any definition's rule.
+
+What is not built yet, and where it would go. A definition whose evidence cites
+an earlier definition, or needs what an earlier definition says, needs the
+evidence checked in a theory that has that definition; today the evidence is
+checked without any definition's rule (see `DefinitionRule`), so a proof of
+existence can use the theory's axioms and the symbols that earlier definitions
+declared, but not what those definitions say. The form above needs nothing of
+the kind.
 """
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
@@ -822,3 +848,297 @@ def definition_titles(definitions: Iterable[Definition]) -> List[str]:
     """The titles a proof may cite the definitions by
     (`TheoryEnvironment.citable_titles`)."""
     return [definition.title for definition in definitions]
+
+
+# ---------------------------------------------------------------------------
+# A thing that exists only under a condition
+# ---------------------------------------------------------------------------
+
+def _proof_text(node: fl.Formula) -> str:
+    """`node` as a proof line says it, with every part that is not an atom in
+    parentheses, so that no reading depends on how tightly a connective or a
+    quantifier binds. `show` writes for a person who reads a refusal; this
+    writes for the parser, and the proof that `unique_or_default_definition`
+    builds for its evidence is made of it."""
+
+    def operand(part: fl.Formula) -> str:
+        text = _proof_text(part)
+        return text if isinstance(part, fl.AtomicFormula) else f"({text})"
+
+    if isinstance(node, fl.AtomicFormula):
+        return repr(node)
+    if isinstance(node, fl.Equals):
+        return f"{node.left!r} = {node.right!r}"
+    if isinstance(node, fl.Not):
+        return f"not {operand(node.sub)}"
+    if isinstance(node, fl.And):
+        return " and ".join(operand(part) for part in node.conjuncts)
+    if isinstance(node, fl.Or):
+        return " or ".join(operand(part) for part in node.disjuncts)
+    if isinstance(node, fl.Implies):
+        return f"{operand(node.antecedent)} -> {operand(node.consequent)}"
+    if isinstance(node, fl.Iff):
+        return f"{operand(node.left)} iff {operand(node.right)}"
+    if isinstance(node, (fl.ForAll, fl.Exists)):
+        word = "forall" if isinstance(node, fl.ForAll) else "exists"
+        return f"{word} {node.var}, {operand(node.body)}"
+    raise TypeError(f"cannot write {node!r} as a proof line")
+
+
+class _ProofWriter:
+    """The lines of a proof, numbered as a proof numbers them: a line inside the
+    subproof of line 4 is 4.1, 4.2, ... (and a subproof that opens with an
+    arbitrary object starts at 4.0). `line` returns the label it gave, for the
+    justification of a later line to cite."""
+
+    def __init__(self) -> None:
+        self.lines: List[str] = []
+        self._blocks: List[List] = [["", 0]]  # [prefix, number of the last line] of each open block
+
+    def line(self, statement: Union[str, fl.Formula], justification: str) -> str:
+        block = self._blocks[-1]
+        block[1] += 1
+        label = f"{block[0]}{block[1]}"
+        text = statement if isinstance(statement, str) else _proof_text(statement)
+        self.lines.append(f"{' ' * (len(self._blocks) - 1)}{label}. {text}. ({justification})")
+        return label
+
+    @contextlib.contextmanager
+    def subproof(self, owner: str, first: int = 1):
+        """The lines written inside the `with` are the subproof of line `owner`."""
+        indent = " " * (len(self._blocks) - 1)
+        self.lines.append(f"{indent}begin subproof")
+        self._blocks.append([f"{owner}.", first - 1])
+        try:
+            yield
+        finally:
+            self._blocks.pop()
+            self.lines.append(f"{indent}end subproof")
+
+    def text(self) -> str:
+        return "\n".join(self.lines) + "\n"
+
+
+def unique_or_default_definition(title: str, symbol: str, parameters: Sequence[str],
+                                 defining_property: fl.Formula, default: tl.Term,
+                                 thing: str = "y", type_name: Optional[str] = None) -> Definition:
+    """The definition of the thing `symbol(parameters)` that exists only under a
+    condition: the only thing that has `defining_property`, if exactly one thing
+    has it, and `default` otherwise.
+
+    `defining_property` says what it is for an object called `thing` to have the
+    property, in terms of `thing` and the `parameters` (variables), as the
+    property of `set_definition` does for an element. `default` is one fixed term
+    -- the empty set, in set theory -- that the theory declares. With ``m`` for the
+    value, the sentence is::
+
+        symbol(parameters) = m  iff
+            (m has the property and nothing else does)
+            or (no thing is the only one that has it, and m = default)
+
+    The evidence is the proof, written here, that for every value of the
+    parameters some thing satisfies the sentence (`existence_claim`): by cases on
+    whether some thing is the only one with the property. If one is, it is the
+    thing; if none is, the default is. Nothing is assumed about the parameters,
+    so the facility accepts it like any other evidence, and the definition adds
+    no axiom. It is checked, as always, when a proof first cites the definition,
+    in the theory that registers it, so that theory must declare every symbol
+    the property and the default use: the default itself, and the symbols that
+    earlier definitions introduced as well (a theory declares those). The
+    argument never looks at what the property says, so any of them may appear
+    in it.
+    """
+
+    def refuse(reason: str):
+        raise DefinitionError(f"{title or '(untitled definition)'}: {reason}")
+
+    parameters = tuple(parameters)
+    if not symbol:
+        refuse("it needs a symbol to name")
+    if not parameters:
+        refuse("it needs a parameter: a thing that depends on nothing is a constant, which this form "
+               "does not define")
+    if not all(parameters) or len(set(parameters)) != len(parameters):
+        refuse("its parameters must be distinct names")
+    if not thing:
+        refuse("the thing needs a name")
+    if thing in parameters:
+        refuse(f"the thing is called {thing}, which is also a parameter")
+    strays = fl.free_variables(defining_property) - {thing, *parameters}
+    if strays:
+        refuse(f"the property has {', '.join(sorted(strays))} free, which is neither the thing nor a parameter")
+    if thing in fl.bound_variable_names(defining_property):
+        # The sentence says the property of the thing and of other objects. Where the thing is
+        # put in, a quantifier of the property with the same name is renamed to avoid capture,
+        # and the lines of the proof, which a rule compares as written, would no longer match.
+        refuse(f"the property binds {thing}, which is also the name of the thing; rename the bound variable")
+    if not isinstance(default, tl.Term):
+        refuse("the default must be a term")
+    open_variables = fl.term_free_variables(default)
+    if open_variables:
+        refuse(f"the default must be one fixed term, but it has {', '.join(sorted(open_variables))} in it")
+
+    # Every name the definition uses, so that a name made up here clashes with none.
+    taken = set(parameters) | {thing, symbol} | fl.formula_names(defining_property) | fl.term_names(default)
+    taken |= {name for name, _arity in _heads(defining_property)} | {name for name, _arity in _heads(default)}
+
+    def new(base: str) -> str:
+        """`base`, or `base1`, `base2`, ... if that is taken."""
+        name, number = base, 0
+        while name in taken:
+            number += 1
+            name = f"{base}{number}"
+        taken.add(name)
+        return name
+
+    value, other = new("m"), new("z")
+    m, y, z = tl.VariableTerm(value), tl.VariableTerm(thing), tl.VariableTerm(other)
+
+    def at(term: tl.Term) -> fl.Formula:
+        """The property, of `term`."""
+        return _instantiate(defining_property, {thing: term}, set(taken))
+
+    def only(term: tl.Term) -> fl.Formula:
+        """`term` has the property, and so does nothing else."""
+        return fl.And(at(term), fl.ForAll(other, fl.Implies(at(z), fl.Equals(z, term))))
+
+    some_only = fl.Exists(thing, only(y))
+
+    def sentence_of(term: tl.Term) -> fl.Formula:
+        """What it takes for the value to be `term`."""
+        return fl.Or(only(term), fl.And(fl.Not(some_only), fl.Equals(term, default)))
+
+    draft = Definition(
+        title=title,
+        symbol=symbol,
+        variables=(*parameters, value),
+        definiendum=fl.Equals(tl.FunctionTerm(symbol, [tl.VariableTerm(name) for name in parameters]), m),
+        definiens=sentence_of(m),
+        evidence=ByProof(""),
+        type_name=type_name,
+    )
+    proof = _unique_or_default_proof(parameters, draft.existence_statement(), default, value, other,
+                                     at, only, some_only, sentence_of, new)
+    return dataclasses.replace(draft, evidence=ByProof(proof))
+
+
+def _unique_or_default_proof(parameters: Tuple[str, ...], claim: fl.Formula, default: tl.Term,
+                             value: str, other: str,
+                             at: Callable[[tl.Term], fl.Formula], only: Callable[[tl.Term], fl.Formula],
+                             some_only: fl.Formula, sentence_of: Callable[[tl.Term], fl.Formula],
+                             new: Callable[[str], str]) -> str:
+    """The proof, for `unique_or_default_definition`, that some thing satisfies the
+    sentence for any values of the parameters: `claim`, by cases on `some_only`
+    (some thing has the property and nothing else does).
+
+    With ``E`` for `some_only` and ``S(t)`` for `sentence_of(t)`: from ``E -> E``
+    comes ``not E or E``. If ``not E``, the default is the thing: it is
+    ``S(t)`` that makes ``t`` equal to it, since ``S(t)`` cannot hold by its
+    first part (that gives ``E``). If ``E``, take such a thing ``v``: it is the
+    thing, since ``S(t)`` holds for ``t`` exactly when ``t = v``, by the
+    uniqueness of ``v`` in one direction and the impossibility of ``not E`` in
+    the other."""
+    equal = fl.Equals
+    not_some = fl.Not(some_only)
+    a_name, b_name, w_name, v_name = new("a"), new("b"), new("w"), new("v")
+    a, b, w, v = (tl.ConstantTerm(name, name) for name in (a_name, b_name, w_name, v_name))
+    every, z = tl.VariableTerm(value), tl.VariableTerm(other)
+    # A property that does not mention the thing is the same formula of every term.
+    mentions_thing = not pl._ast_eq(at(a), at(b))
+
+    proof = _ProofWriter()
+    proof.line(f"Let {', '.join(parameters)} be any object", "Declaration")
+    trivial = proof.line(fl.Implies(some_only, some_only), "Conditional Introduction from subproof below")
+    with proof.subproof(trivial):
+        proof.line(some_only, "Assumption for Conditional Introduction")
+    excluded = proof.line(fl.Or(not_some, some_only), f"Propositional Equivalence from {trivial}")
+    cases = proof.line(claim, f"Proof by Cases from {excluded}, subproofs below")
+
+    # No thing is the only one with the property: the default is the thing.
+    with proof.subproof(cases):
+        none = proof.line(not_some, "Case")
+        everything = proof.line(fl.ForAll(value, fl.Iff(equal(default, every), sentence_of(every))),
+                                "Universal Generalization from subproof below")
+        with proof.subproof(everything, first=0):
+            proof.line(f"let {a_name} be arbitrary", "Arbitrary")
+            forth = proof.line(fl.Implies(equal(default, a), sentence_of(a)),
+                               "Conditional Introduction from subproof below")
+            with proof.subproof(forth):
+                is_default = proof.line(equal(default, a), "Assumption for Conditional Introduction")
+                swapped = proof.line(equal(a, default), f"Symmetry from {is_default}")
+                second = proof.line(fl.And(not_some, equal(a, default)),
+                                    f"Conjunction Introduction from {none}, {swapped}")
+                proof.line(sentence_of(a), f"Disjunction Introduction from {second}")
+            back = proof.line(fl.Implies(sentence_of(a), equal(default, a)),
+                              "Conditional Introduction from subproof below")
+            with proof.subproof(back):
+                satisfied = proof.line(sentence_of(a), "Assumption for Conditional Introduction")
+                is_it = proof.line(equal(default, a), f"Proof by Cases from {satisfied}, subproofs below")
+                with proof.subproof(is_it):
+                    first_part = proof.line(only(a), "Case")
+                    introduced = proof.line(some_only, f"Existential Introduction from {first_part}")
+                    proof.line(equal(default, a), f"Explosion from {none}, {introduced}")
+                with proof.subproof(is_it):
+                    second_part = proof.line(fl.And(not_some, equal(a, default)), "Case")
+                    flipped = proof.line(equal(a, default), f"Conjunction Elimination from {second_part}")
+                    proof.line(equal(default, a), f"Symmetry from {flipped}")
+            proof.line(fl.Iff(equal(default, a), sentence_of(a)),
+                       f"Biconditional Introduction from {forth}, {back}")
+        proof.line(claim, f"Existential Introduction from {everything}")
+
+    # Some thing is the only one with the property: that thing is the thing.
+    with proof.subproof(cases):
+        some = proof.line(some_only, "Case")
+        proof.line(f"Let {v_name} be an object", "Declare")
+        shown = proof.line(claim, f"Existential Elimination from {some}, subproof below")
+        with proof.subproof(shown):
+            only_v = proof.line(only(v), "Assumption for Existential Elimination")
+            has = proof.line(at(v), f"Conjunction Elimination from {only_v}")
+            nothing_else_v = proof.line(fl.ForAll(other, fl.Implies(at(z), equal(z, v))),
+                                        f"Conjunction Elimination from {only_v}")
+            everything = proof.line(fl.ForAll(value, fl.Iff(equal(v, every), sentence_of(every))),
+                                    "Universal Generalization from subproof below")
+            with proof.subproof(everything, first=0):
+                proof.line(f"let {b_name} be arbitrary", "Arbitrary")
+                forth = proof.line(fl.Implies(equal(v, b), sentence_of(b)),
+                                   "Conditional Introduction from subproof below")
+                with proof.subproof(forth):
+                    is_v = proof.line(equal(v, b), "Assumption for Conditional Introduction")
+                    if mentions_thing:
+                        has_b = proof.line(at(b), f"Substitution from {is_v}, {has}")
+                    else:  # nothing to substitute in: `at(b)` is `at(v)`, and Substitution needs a replacement
+                        has_b = proof.line(at(b), f"Reiteration from {has}")
+                    nothing_else_b = proof.line(fl.ForAll(other, fl.Implies(at(z), equal(z, b))),
+                                                "Universal Generalization from subproof below")
+                    with proof.subproof(nothing_else_b, first=0):
+                        proof.line(f"let {w_name} be arbitrary", "Arbitrary")
+                        step = proof.line(fl.Implies(at(w), equal(w, b)),
+                                          "Conditional Introduction from subproof below")
+                        with proof.subproof(step):
+                            has_w = proof.line(at(w), "Assumption for Conditional Introduction")
+                            instance = proof.line(fl.Implies(at(w), equal(w, v)),
+                                                  f"Universal Instantiation from {nothing_else_v}")
+                            w_is_v = proof.line(equal(w, v), f"Modus Ponens from {has_w}, {instance}")
+                            proof.line(equal(w, b), f"Substitution from {is_v}, {w_is_v}")
+                    only_b = proof.line(only(b), f"Conjunction Introduction from {has_b}, {nothing_else_b}")
+                    proof.line(sentence_of(b), f"Disjunction Introduction from {only_b}")
+                back = proof.line(fl.Implies(sentence_of(b), equal(v, b)),
+                                  "Conditional Introduction from subproof below")
+                with proof.subproof(back):
+                    satisfied = proof.line(sentence_of(b), "Assumption for Conditional Introduction")
+                    is_it = proof.line(equal(v, b), f"Proof by Cases from {satisfied}, subproofs below")
+                    with proof.subproof(is_it):
+                        first_part = proof.line(only(b), "Case")
+                        nothing_else_b2 = proof.line(fl.ForAll(other, fl.Implies(at(z), equal(z, b))),
+                                                     f"Conjunction Elimination from {first_part}")
+                        instance = proof.line(fl.Implies(at(v), equal(v, b)),
+                                              f"Universal Instantiation from {nothing_else_b2}")
+                        proof.line(equal(v, b), f"Modus Ponens from {has}, {instance}")
+                    with proof.subproof(is_it):
+                        second_part = proof.line(fl.And(not_some, equal(b, default)), "Case")
+                        impossible = proof.line(not_some, f"Conjunction Elimination from {second_part}")
+                        proof.line(equal(v, b), f"Explosion from {some}, {impossible}")
+                proof.line(fl.Iff(equal(v, b), sentence_of(b)),
+                           f"Biconditional Introduction from {forth}, {back}")
+            proof.line(claim, f"Existential Introduction from {everything}")
+    return proof.text()

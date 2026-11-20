@@ -441,8 +441,10 @@ and collaboration handoff before starting.
    is supported: the facility reads off what must be shown, that exactly one thing
    is the value, so "the identity of G" needs no special form. No set-theory
    definition has that shape yet.
-   (d) A definition whose evidence uses an earlier definition: the evidence is
-   checked in the theory without any definition today.
+   (d) A definition whose evidence cites an earlier definition, or needs what it
+   says: the evidence is checked in the theory without any definition's rule
+   today. It may mention the symbols that earlier definitions declared. The form
+   in (g) needs nothing of this kind: its argument never looks at the property.
    (e) A proof file cannot define a symbol of its own; a theory registers its
    definitions in Python.
    (f) Unicode symbols (`∈`, `⊆`, `∪`, `∩`, `∀`, `∃`, `→`, `↔`, `¬`) as input,
@@ -450,10 +452,16 @@ and collaboration handoff before starting.
    (g) Terms that exist only under a condition (owner, 2026-11-18, under Owner
    decisions below): a definition form for "the unique thing with this property,
    and the empty set otherwise". Its existence claim holds by cases for any values
-   of the parameters, so it is a definition in the facility's sense, and the
-   argument is planned to be generated rather than written for each use. After
-   it, and after (b) and (d): `f(x)` for a set of ordered pairs `f`, and `sup`,
-   `inf`, `max` and `min` of the corpus's order theory. Not started.
+   of the parameters, so it is a definition in the facility's sense. Built:
+   `unique_or_default_definition` in `source/Definitions.py` writes the sentence
+   and generates the evidence, which the facility checks like any other (no
+   kernel change), and `pytest_tests/test_unique_or_default_definitions.py` tests
+   it against every small finite model and through the whole pipeline, on a toy
+   theory and on set theory. Not built: its uses. `f(x)` for a set of ordered
+   pairs `f` (after (b)), and `sup`, `inf`, `max` and `min` of the corpus's order
+   theory (after that theory's predicates are registered as definitions). The
+   facts a proof uses of each term, such as that `sup(X)` is `a` when `a` is a
+   supremum of `X`, are proved once per term in the corpus.
 9. **Kernel: introducing a conjunction of three or more lines.**
    `ConjunctionIntroduction` has `premise_arity = 2`, so through the validator it
    combines exactly two lines, and `A and B and C` (which the parser reads as one
