@@ -14,7 +14,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Sequence
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 # The code imports itself as ``SyLoPy.source...``. If the checkout directory
@@ -28,6 +28,7 @@ else:
 sys.path.insert(0, str(_IMPORT_PARENT))
 
 import SyLoPy.source.ProofParser as pp
+import SyLoPy.source.ProofJustification as pj
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.NatThry as nt
@@ -70,6 +71,18 @@ _VALIDITY_LINE_RE = re.compile(r"^##(?!#)\s*(.+?)\s*$")
 _DESCRIPTION_LINE_RE = re.compile(r"^###\s*(.+?)\s*$")
 _THEN_LINE_RE = re.compile(r"^then\b\s*(.*)$", re.I)
 _DERIVED_TAGS = {"rule", "rule_below", "rule_hybrid"}
+_USE_LINE_RE = re.compile(r"^use\s+(.+?)\.?$", re.I)
+
+# What a `Use` line may name besides a file. Every file is checked in one
+# environment that loads all of these, so naming one changes nothing (see
+# docs/PROOF_FILE_FORMAT.md, "Theory directives").
+THEORY_NAMES = frozenset({
+    "discrete math",
+    "discrete mathematics",
+    "set theory",
+    "number theory",
+    "order theory",
+})
 
 
 class ProofCase(NamedTuple):
@@ -171,8 +184,21 @@ def _stated_conclusion_from(description, proof_number=None, warn_unparseable=Tru
     return None
 
 
-def parse_multi_proof_file(text, *, warn_unparseable_description=True):
-    """Parse a fixture file containing ``# N`` proof blocks."""
+def proof_titles(text):
+    """The titles on the proof headers of a multi-proof file, in order."""
+    titles = []
+    for line in _COMMENT_RE.sub(" ", text).splitlines():
+        match = _PROOF_HEADER_RE.match(line.strip())
+        if match and match.group(2) and match.group(2).strip():
+            titles.append(match.group(2).strip())
+    return titles
+
+
+def parse_multi_proof_file(text, *, warn_unparseable_description=True, imported_titles=()):
+    """Parse a fixture file containing ``# N`` proof blocks.
+
+    `imported_titles` are the titles of the theorems of other files that the
+    file may cite (see `check_file`)."""
     text = _COMMENT_RE.sub(" ", text)
     lines = text.splitlines()
     positions = [index for index, line in enumerate(lines) if _PROOF_HEADER_RE.match(line.strip())]
@@ -181,12 +207,9 @@ def parse_multi_proof_file(text, *, warn_unparseable_description=True):
     # cannot tell a title from a misspelled rule name. Parsing a citation does
     # not give the proof the theorem; `run_multi_proof_file` does, once the
     # earlier proof has been promoted, so citing a later or an unpromoted
-    # proof fails when it is checked.
-    titles = []
-    for start in positions:
-        title = _PROOF_HEADER_RE.match(lines[start].strip()).group(2)
-        if title and title.strip():
-            titles.append(title.strip())
+    # proof fails when it is checked. The theorems of other files are cited the
+    # same way.
+    titles = proof_titles(text) + list(imported_titles)
     cases = []
     for position, start in enumerate(positions):
         end = positions[position + 1] if position + 1 < len(positions) else len(lines)
@@ -228,6 +251,8 @@ def run_multi_proof_file(
     rules=None,
     declarations=None,
     *,
+    imported=(),
+    exported=None,
     warn_on_unpromoted=True,
     warn_unparseable_description=True,
     warn_duplicate_number=True,
@@ -241,10 +266,17 @@ def run_multi_proof_file(
     proof really is invalid" apart from "something in this checker
     crashed while looking at it" even on the cases where both happen to
     produce the same `ok` value.
+
+    `imported` are theorems that other files proved: every proof here may
+    cite them by title, from its first line on. `exported`, if given, is a
+    list that receives the theorems this file promotes, for the files that
+    cite it. Neither is checked here: see `check_file`.
     """
+    imported = list(imported)
     cases = parse_multi_proof_file(
         text,
         warn_unparseable_description=warn_unparseable_description,
+        imported_titles=[theorem.name for theorem in imported],
     )
     results = []
     promoted = []
@@ -261,7 +293,7 @@ def run_multi_proof_file(
             proof = pl.Proof(
                 case.entries,
                 axioms=axioms or [],
-                rules=(rules or pl.default_rules()) + promoted,
+                rules=(rules or pl.default_rules()) + imported + promoted,
                 declarations=declarations or [],
             )
             ok, err = proof.check_detailed()
@@ -282,6 +314,8 @@ def run_multi_proof_file(
         except Exception as exc:
             ok, message, rule_crashed = False, f"parse/check error: {exc}", False
         results.append((case.number, case.expected_valid, ok, message, rule_crashed))
+    if exported is not None:
+        exported.extend(promoted)
     return results
 
 
@@ -367,15 +401,25 @@ def _check_bare_proof_file(path: Path, text: Optional[str] = None) -> List[Proof
         ]
 
 
-def _check_multi_proof_file(path: Path, text: Optional[str] = None) -> List[ProofResult]:
+def _check_multi_proof_file(
+    path: Path,
+    text: Optional[str] = None,
+    checked: Optional["CheckedFiles"] = None,
+    exported: Optional[list] = None,
+) -> List[ProofResult]:
     try:
         if text is None:
             text = path.read_text()
+        imported, problem = imported_theorems(path, text, {} if checked is None else checked)
+        if problem is not None:
+            return [ProofResult(path.name, "?", True, False, problem, True)]
         results = run_multi_proof_file(
             text,
             axioms=BARE_PROOF_AXIOMS,
             rules=BARE_PROOF_RULES,
             declarations=BARE_PROOF_DECLARATIONS,
+            imported=imported,
+            exported=exported,
             warn_on_unpromoted=False,
             warn_unparseable_description=False,
             warn_duplicate_number=False,
@@ -394,22 +438,193 @@ def _check_multi_proof_file(path: Path, text: Optional[str] = None) -> List[Proo
     return converted
 
 
-def check_file(path: Path) -> List[ProofResult]:
-    text = path.read_text()
+# ---------------------------------------------------------------------------
+# Using other files
+# ---------------------------------------------------------------------------
+#
+# A multi-proof file may begin with `Use NAME.` lines, before its first `# N`
+# header. NAME is a theory of the checker, which changes nothing (see
+# THEORY_NAMES), or the name of a file next to this one without `.txt`. A
+# proof of the file may then cite the theorems of that file by title, as it
+# cites the ones its own earlier proofs promoted.
+#
+# The checker never checks a file because another file cites it: checking each
+# file a file cites is the user's job. A run keeps what it has checked
+# (`CheckedFile`), and a file may cite only files the run checked before it
+# that passed, so a cited theorem always has a checked proof behind it, in the
+# same environment. `Use` is not transitive: a file sees the theorems of the
+# files it names and not of the files those use.
+
+
+class CheckedFile(NamedTuple):
+    """What a run keeps of a file it has checked: whether every proof in it
+    behaved as expected, and the theorems it promoted."""
+    passed: bool
+    theorems: Tuple[pl.TheoremRule, ...] = ()
+
+
+CheckedFiles = Dict[Path, CheckedFile]
+
+
+def parse_uses(text: str) -> List[str]:
+    """The names on the `Use ...` lines before the first proof header of a
+    multi-proof file, in order, as written."""
+    names = []
+    for line in _COMMENT_RE.sub(" ", text).splitlines():
+        stripped = line.strip()
+        if _PROOF_HEADER_RE.match(stripped):
+            break
+        match = _USE_LINE_RE.match(stripped)
+        if match:
+            names.append(match.group(1).strip())
+    return names
+
+
+def _is_theory_name(name: str) -> bool:
+    return re.sub(r"\s+", " ", name.strip().lower()) in THEORY_NAMES
+
+
+def imported_theorems(
+    path: Path, text: str, checked: CheckedFiles,
+) -> Tuple[Optional[List[pl.TheoremRule]], Optional[str]]:
+    """The theorems that the `Use` lines of the file `path` (whose text is
+    `text`) bring in, as `(theorems, None)`, or `(None, reason)` if it cannot
+    have them.
+
+    A file may cite the theorems of a file that `checked` has and that passed,
+    and of no other: a file that was not checked, or did not pass, is refused,
+    and nothing here ever checks it. Two theorems whose titles are the same
+    title, or the title of a proof of this file, would make a citation
+    ambiguous, so that is refused as well (titles are the same up to case,
+    hyphens and spacing, as in a citation)."""
+    own = {pj._normalize(title) for title in proof_titles(text)}
+    holders: Dict[str, str] = {}
+    cited: set = set()
+    theorems: List[pl.TheoremRule] = []
+    for name in parse_uses(text):
+        file_name = f"{name}.txt"
+        candidate = path.parent / file_name
+        is_file = Path(name).name == name and candidate.is_file()
+        if _is_theory_name(name):
+            if is_file:
+                return None, (f"Use {name}.: {name} is the name of a theory of the checker and of the file "
+                              f"{file_name}; rename the file")
+            continue
+        if not is_file:
+            return None, f"Use {name}.: there is no theory of that name and no file {file_name} next to this one"
+        key = candidate.resolve()
+        if key == path.resolve():
+            return None, f"Use {name}.: a file cannot use itself"
+        if key in cited:
+            continue
+        cited.add(key)
+        record = checked.get(key)
+        if record is None:
+            return None, (f"Use {name}.: {file_name} has not been checked in this run. A file is never checked "
+                          f"because another cites it, so check {file_name} first")
+        if not record.passed:
+            return None, (f"Use {name}.: {file_name} did not pass, so its theorems cannot be cited; "
+                          f"fix {file_name} first")
+        for theorem in record.theorems:
+            title = pj._normalize(theorem.name)
+            if title in holders:
+                return None, (f"Use {name}.: the title {theorem.name!r} is also the title of a theorem of "
+                              f"{holders[title]}, so citing it would be ambiguous")
+            if title in own:
+                return None, (f"Use {name}.: this file has a proof titled like the theorem {theorem.name!r} "
+                              f"of {file_name}, so citing it would be ambiguous")
+            holders[title] = file_name
+            theorems.append(theorem)
+    return theorems, None
+
+
+def _dependency_order(paths: Sequence[Path], texts: Dict[Path, str]) -> Tuple[List[Path], Dict[Path, str]]:
+    """`paths` with each file after the files of the list that it names on its
+    `Use` lines (otherwise in the order given), and the files that take part in
+    a cycle of `Use` lines, each with a description of the cycle, left out.
+
+    This only puts the files a run was asked to check in an order in which a
+    file can cite the ones before it. It never adds a file."""
+    stems = {path.stem: path for path in paths}
+    uses: Dict[Path, List[Path]] = {}
+    for path in paths:
+        names = parse_uses(texts[path]) if _looks_like_multi_proof(texts[path]) else []
+        uses[path] = [stems[name] for name in names if name in stems and stems[name] != path]
+    order: List[Path] = []
+    cycles: Dict[Path, str] = {}
+    done: set = set()
+
+    def visit(path: Path, stack: List[Path]) -> None:
+        if path in done:
+            return
+        if path in stack:
+            loop = stack[stack.index(path):] + [path]
+            description = " -> ".join(member.name for member in loop)
+            for member in loop:
+                cycles.setdefault(member, description)
+            return
+        stack.append(path)
+        for used in uses[path]:
+            visit(used, stack)
+        stack.pop()
+        done.add(path)
+        if path not in cycles:
+            order.append(path)
+
+    for path in paths:
+        visit(path, [])
+    return order, cycles
+
+
+def check_file(path: Path, checked: Optional[CheckedFiles] = None, text: Optional[str] = None) -> List[ProofResult]:
+    """Check one fixture file.
+
+    `checked` is what the run has checked so far, keyed by resolved path: the
+    file may cite the theorems of the files in it that its `Use` lines name
+    (see `imported_theorems`), and what this check finds is added to it for
+    the files after this one. Without it the file stands alone, and a `Use`
+    line that names a file is refused. `text` is the file's source if the
+    caller has read it already."""
+    if text is None:
+        text = path.read_text()
+    if checked is None:
+        checked = {}
     # The same source text is used to distinguish the container format and
     # then parse it. Pass it through rather than reopening every fixture file.
+    exported: list = []
     if _looks_like_multi_proof(text):
-        return _check_multi_proof_file(path, text)
-    return _check_bare_proof_file(path, text)
+        results = _check_multi_proof_file(path, text, checked, exported)
+    else:
+        results = _check_bare_proof_file(path, text)
+    checked[path.resolve()] = CheckedFile(all(result.passed for result in results), tuple(exported))
+    return results
+
+
+def check_files(paths: Iterable[Path]) -> List[ProofResult]:
+    """Check the files in the order given, each able to cite the theorems of
+    the files before it that it names. A file that cites one the list does not
+    have before it is refused: the user checks each file that is cited."""
+    checked: CheckedFiles = {}
+    results: List[ProofResult] = []
+    for path in paths:
+        results.extend(check_file(Path(path), checked))
+    return results
 
 
 def run(directories: Sequence[str]) -> List[ProofResult]:
     results: List[ProofResult] = []
+    checked: CheckedFiles = {}
     for rel_dir in directories:
         directory = ROOT / rel_dir
         if directory.is_dir():
-            for path in sorted(directory.glob("*.txt")):
-                results.extend(check_file(path))
+            paths = sorted(directory.glob("*.txt"))
+            texts = {path: path.read_text() for path in paths}
+            order, cycles = _dependency_order(paths, texts)
+            for path in sorted(cycles):
+                checked[path.resolve()] = CheckedFile(False)
+                results.append(ProofResult(path.name, "?", True, False, f"Use cycle: {cycles[path]}", True))
+            for path in order:
+                results.extend(check_file(path, checked, texts[path]))
     return results
 
 
