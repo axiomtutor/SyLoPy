@@ -223,6 +223,14 @@ theory modules. A future language-version change can make directives select
 theory environments strictly after the existing proof corpus has been
 updated.
 
+A file of several proofs may also `Use` another file, and its proofs then cite
+that file's theorems by title. The runner never checks a file because another
+file cites it: a run keeps what it has checked, and a file may cite only files
+the same run checked before it that passed, so every cited theorem has a checked
+proof behind it, in the same environment, and the kernel is unchanged
+(`docs/PROOF_FILE_FORMAT.md`, "Using another file"). Not built: saving what a run
+has checked so that a later run can use it, and `Use` selecting an environment.
+
 The repository has `.gitignore` hygiene and GitHub Actions that run the same
 complete test command used locally. Test counts are intentionally not
 hard-coded into architecture documentation.

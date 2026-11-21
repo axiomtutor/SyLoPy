@@ -349,6 +349,12 @@ lines. See `pytest_tests/test_hypotheses_and_promotion.py`,
 `pytest_tests/test_rule_configuration_identity.py`, and
 `pytest_tests/test_theorem_surface_citations.py`.
 
+A theorem is local to the file that proved it, except that a file may `Use`
+another file and cite that file's theorems by title (owner, 2026-11-20; see
+Owner decisions). The checker never checks a file because another cites it.
+`pytest_tests/test_use_file.py` tests it, and `tests/testSetTheory/use_file_base.txt`
+and `use_file_cites.txt` are the enforced example.
+
 Passing adversarial audits are marked `extended` and excluded from the default
 pytest and fixture runner. Run them explicitly with `pytest --extended`,
 `pytest -m extended`, or `./run_tests.sh --extended`.
@@ -472,6 +478,16 @@ and collaboration handoff before starting.
    Axiom of choice. Candidate fix: let a rule's arity depend on the formula it
    justifies (a conjunction of n introduces from n lines); the rule's `applies`
    already checks any number of lines. Not started.
+10. **Files that use files: what is left.** Built (owner, 2026-11-20): `Use NAME.`
+    in a file of several proofs lets its proofs cite the theorems of the file NAME
+    next to it, when the same run has checked that file earlier and it passed.
+    Not built, each its own decision: (a) saving what a run has checked, so that a
+    later run can use a file without checking it again (a saved record has to be
+    something the checker trusts, which a file of statements is not); (b) reading
+    the corpus's own entries (`# Axiom N:`, `# Definition N.`, `# Theorem N.`), so
+    that the files of `SetTheoryCorpus/` are checked and their theorems cited;
+    (c) `Use` choosing the theory environment, which the default environment
+    still loads whole.
 
 ## Owner decisions
 
@@ -549,6 +565,16 @@ Current implementation direction:
   need not be unique; the earlier text was a mistake in the owner's definitions.
   Fixed in `SetTheoryCorpus/OrderTheory.txt`, together with the typo "denoteed"
   on the infimum line.
+- Using another file (owner, 2026-11-20): "Yes one file should be able to use
+  another file. However, don't check files just because they're cited. It's the
+  user's obligation to check each file cited." Built: a file of several proofs
+  begins with `Use NAME.` lines, and its proofs cite the theorems of the file next
+  to it that NAME names, by title, when the same run has checked that file earlier
+  and it passed (`check_files` and `run` in `source/validate_all_proofs.py`).
+  Nothing is checked because it is cited, `Use` is not transitive, and a title
+  that would make a citation ambiguous is refused. A `Use` line that names neither
+  a theory nor a file is now refused; multi-proof files ignored such lines before.
+  Not built: Remaining work, item 10.
 
 ## Owner approval required — do not start without approval
 

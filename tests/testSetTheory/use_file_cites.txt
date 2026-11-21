@@ -1,0 +1,28 @@
+Use use_file_base.
+
+(*
+Cites a theorem of use_file_base.txt, which the line above names. Proof 1 is
+proof 2 of empty_set_subset_and_uniqueness.txt, with the theorem it cites now
+proved in the other file. Proof 2 cites the same theorem for a sentence it
+does not state, and is refused.
+*)
+# 1: The empty set is unique
+## Proof that
+### the empty set is unique
+1. Let X be any set. (Declaration)
+2. If (X has no elements) then (X = the empty set). (Conditional Introduction from subproof below)
+begin subproof
+ 2.1. X has no elements. (Assumption for Conditional Introduction)
+ 2.2. X is a subset of the empty set. (Subset proof below)
+  2.2.1. Let a in X. (Assumption for subset proof)
+  2.2.2. a is not in X. (Universal Instantiation from 2.1)
+  2.2.3. a is in the empty set. (Explosion from 2.2.1, 2.2.2)
+ 2.3. The empty set is a subset of X. (The empty set is a subset of any set)
+ 2.4. X = the empty set. (Set Equality from 2.2, 2.3)
+end subproof
+
+# 2: A cited theorem does not state the sentence it is cited for
+## Invalid proof.
+### then X is a subset of the empty set
+1. Let X be any set. (Declaration)
+2. X is a subset of the empty set. (The empty set is a subset of any set)

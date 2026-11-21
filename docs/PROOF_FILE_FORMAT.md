@@ -40,7 +40,8 @@ fixture syntax, not proof lines.
 
 A valid titled proof is promoted by
 `validate_all_proofs.run_multi_proof_file()` before later cases are checked.
-The theorem rule is named by the title and promotion is local to that file.
+The theorem rule is named by the title. Later proofs of that file may cite it, and
+so may the files that use this one (see "Using another file" below).
 
 For example, `tests/setTheoryProofs/basic_theorems.txt` contains:
 
@@ -109,6 +110,43 @@ A name that is neither a rule nor a title in the file, followed by line numbers,
 is a parse error, so a misspelled rule name is still reported as one. Through the
 Python API, `check_proof_text` recognizes the theorems among its `rules`, and
 `parse_proof_text` takes the titles as `theorem_names`.
+
+### Using another file
+
+A file of several proofs may begin, before its first `# N` header, with lines
+`Use NAME.` (the final period is optional and case does not matter). When NAME
+is the name of a file next to this one, without `.txt`, every proof of this file
+may cite that file's theorems by title, with the premise lines they take, as it
+cites the theorems of its own earlier proofs. For example,
+`tests/testSetTheory/use_file_base.txt` proves `The empty set is a subset of any
+set`, and `tests/testSetTheory/use_file_cites.txt`, which begins
+`Use use_file_base.`, cites it.
+
+The checker never checks a file because another file cites it. Checking each
+file that is cited is the user's job. A run (one directory of the command-line
+runner, or one call of `validate_all_proofs.check_files()`) keeps the files it
+has checked, and a file may cite only a file that was checked earlier in that run
+and passed, which means that every proof in it behaved as expected. A cited
+theorem therefore always has a checked proof behind it. A file that cites one
+that was not checked, or did not pass, is refused, and the message names the
+file to check first. When the runner checks a directory it puts each file after
+the files it names; the other files stay in alphabetical order, and files that
+form a cycle of `Use` lines are reported and not checked.
+
+- A proof marked invalid is not a theorem, so it cannot be cited.
+- `Use` is not transitive: a file cites the theorems of the files it names, not
+  of the files they name. It names each file it needs.
+- A title that two of the files it names share, or that a cited theorem shares
+  with a proof of the file itself, would make a citation ambiguous, so the file
+  is refused. Titles are compared as in a citation, ignoring case, hyphens and
+  spacing.
+- NAME may also be a theory: `discrete math`, `discrete mathematics`,
+  `set theory`, `number theory` or `order theory`. That changes nothing, because
+  every theory is loaded (section 11). A file that is named like a theory is
+  refused, so that a name means one thing, and so is any other name that is
+  neither a theory nor a file next to this one.
+- Only a file of several proofs can use another file.
+- What a run has checked is not saved. A later run starts from nothing.
 
 ## 2. Proof lines and labels
 
@@ -539,13 +577,15 @@ Concrete examples are in:
 - `tests/testProofs/multiProof.txt`;
 - `tests/setTheoryProofs/basic_theorems.txt`;
 - `tests/setTheoryProofs/pairing_theorems.txt`;
-- `tests/testDiscreteMath/invalid_relation_properties.txt`.
+- `tests/testDiscreteMath/invalid_relation_properties.txt`;
+- `tests/testSetTheory/use_file_base.txt` and `tests/testSetTheory/use_file_cites.txt`
+  (a file that uses another file).
 
 Runnable proof examples above are checked by `pytest_tests/test_proof_format_doc.py`; current implementation details are linked to their source files and fixture examples.
 
 ## 11. Theory directives and set-theory syntax
 
-The currently accepted theory directives are `Use discrete math.` and `Use discrete mathematics.` They are validated at the start of a proof file. Today the default theory environment remains backward-compatible and includes the available theory modules, so the directive is not a strict environment selector.
+The theory directives accepted at the start of a file of a single proof are `Use discrete math.` and `Use discrete mathematics.` A file of several proofs may also name `set theory`, `number theory` or `order theory`, or another file ("Using another file" in section 1). They are validated at the start of the file. Today the default theory environment remains backward-compatible and includes the available theory modules, so naming a theory is not a strict environment selector.
 
 Set-theory surface forms elaborate into ordinary first-order formulas. In particular:
 
