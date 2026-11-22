@@ -24,10 +24,10 @@ _sylo_run_tests_completion() {
 
     case "$cur" in
         --*)
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --saved-results --help" -- "$cur") )
             ;;
         *)
-            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --help" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--suite --verbose --list-suites --list-batches --extended --saved-results --help" -- "$cur") )
             ;;
     esac
 }

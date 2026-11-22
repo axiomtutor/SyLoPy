@@ -480,14 +480,14 @@ and collaboration handoff before starting.
    already checks any number of lines. Not started.
 10. **Files that use files: what is left.** Built (owner, 2026-11-20): `Use NAME.`
     in a file of several proofs lets its proofs cite the theorems of the file NAME
-    next to it, when the same run has checked that file earlier and it passed.
-    Not built, each its own decision: (a) saving what a run has checked, so that a
-    later run can use a file without checking it again (a saved record has to be
-    something the checker trusts, which a file of statements is not); (b) reading
-    the corpus's own entries (`# Axiom N:`, `# Definition N.`, `# Theorem N.`), so
-    that the files of `SetTheoryCorpus/` are checked and their theorems cited;
-    (c) `Use` choosing the theory environment, which the default environment
-    still loads whole.
+    next to it, when the same run has checked that file earlier and it passed; and
+    saved results (`--saved-results`, `source/SavedChecks.py`): a file that passed
+    is saved under a key made of its text, the keys of the files it uses and the
+    checker, so a later run does not check it again while none of those changed.
+    Not built, each its own decision: (a) reading the corpus's own entries
+    (`# Axiom N:`, `# Definition N.`, `# Theorem N.`), so that the files of
+    `SetTheoryCorpus/` are checked and their theorems cited; (b) `Use` choosing the
+    theory environment, which the default environment still loads whole.
 
 ## Owner decisions
 
@@ -574,7 +574,17 @@ Current implementation direction:
   Nothing is checked because it is cited, `Use` is not transitive, and a title
   that would make a citation ambiguous is refused. A `Use` line that names neither
   a theory nor a file is now refused; multi-proof files ignored such lines before.
-  Not built: Remaining work, item 10.
+- Saved results (owner, 2026-11-20, on the idea that a file checked once need not be
+  checked again: "I'm not sure how you'd do it, but I like the idea that once
+  something is checked it doesn't need to be checked again."): built, with the
+  mechanics left to the agent. A file that passed is saved under a key made of its
+  text, the keys of the files it uses and a digest of the checker, so a change to a
+  file, to a file below it or to the checker means it is checked again. It is off
+  unless asked for (`--saved-results`), so the test suite and CI check everything,
+  and a saved result is trusted as far as the checker's own files are
+  (`docs/PROOF_FILE_FORMAT.md`, "Saved results"). A cited file counts as checked
+  when a saved result is for its present text; a file is still never checked
+  because it is cited. Not built: Remaining work, item 10.
 
 ## Owner approval required — do not start without approval
 

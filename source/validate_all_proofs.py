@@ -31,11 +31,13 @@ import SyLoPy.source.ProofParser as pp
 import SyLoPy.source.ProofJustification as pj
 import SyLoPy.source.ProofLogic as pl
 import SyLoPy.source.FormulaLogic as fl
+import SyLoPy.source.SavedChecks as sc
 import SyLoPy.source.NatThry as nt
 import SyLoPy.source.NumberTheory as num_theory
 import SyLoPy.source.SetTheory as set_theory
 
 ROOT = _REPOSITORY_ROOT
+DEFAULT_SAVED_RESULTS = ROOT / ".saved_results"
 
 ENFORCED_DIRS = [
     "tests/testSetTheory",
@@ -406,11 +408,12 @@ def _check_multi_proof_file(
     text: Optional[str] = None,
     checked: Optional["CheckedFiles"] = None,
     exported: Optional[list] = None,
+    saved: Optional[sc.SavedChecks] = None,
 ) -> List[ProofResult]:
     try:
         if text is None:
             text = path.read_text()
-        imported, problem = imported_theorems(path, text, {} if checked is None else checked)
+        imported, problem = imported_theorems(path, text, {} if checked is None else checked, saved)
         if problem is not None:
             return [ProofResult(path.name, "?", True, False, problem, True)]
         results = run_multi_proof_file(
@@ -484,8 +487,28 @@ def _is_theory_name(name: str) -> bool:
     return re.sub(r"\s+", " ", name.strip().lower()) in THEORY_NAMES
 
 
+def _resolve_use(path: Path, name: str) -> Tuple[Optional[Path], Optional[str]]:
+    """What the `Use` line `name` of the file `path` stands for: `(None, None)`
+    for a theory, `(file, None)` for a file next to `path`, or `(None, reason)`
+    if the line is refused. The one place that decides it, for the theorems a
+    file gets and for the key of its saved result."""
+    file_name = f"{name}.txt"
+    candidate = path.parent / file_name
+    is_file = Path(name).name == name and candidate.is_file()
+    if _is_theory_name(name):
+        if is_file:
+            return None, (f"Use {name}.: {name} is the name of a theory of the checker and of the file "
+                          f"{file_name}; rename the file")
+        return None, None
+    if not is_file:
+        return None, f"Use {name}.: there is no theory of that name and no file {file_name} next to this one"
+    if candidate.resolve() == path.resolve():
+        return None, f"Use {name}.: a file cannot use itself"
+    return candidate, None
+
+
 def imported_theorems(
-    path: Path, text: str, checked: CheckedFiles,
+    path: Path, text: str, checked: CheckedFiles, saved: Optional[sc.SavedChecks] = None,
 ) -> Tuple[Optional[List[pl.TheoremRule]], Optional[str]]:
     """The theorems that the `Use` lines of the file `path` (whose text is
     `text`) bring in, as `(theorems, None)`, or `(None, reason)` if it cannot
@@ -493,35 +516,39 @@ def imported_theorems(
 
     A file may cite the theorems of a file that `checked` has and that passed,
     and of no other: a file that was not checked, or did not pass, is refused,
-    and nothing here ever checks it. Two theorems whose titles are the same
-    title, or the title of a proof of this file, would make a citation
-    ambiguous, so that is refused as well (titles are the same up to case,
-    hyphens and spacing, as in a citation)."""
+    and nothing here ever checks it. With `saved`, a file that an earlier run
+    checked, and that has not changed since (nor anything it uses), counts as
+    checked. Two theorems whose titles are the same title, or the title of a
+    proof of this file, would make a citation ambiguous, so that is refused as
+    well (titles are the same up to case, hyphens and spacing, as in a
+    citation)."""
     own = {pj._normalize(title) for title in proof_titles(text)}
     holders: Dict[str, str] = {}
     cited: set = set()
     theorems: List[pl.TheoremRule] = []
     for name in parse_uses(text):
         file_name = f"{name}.txt"
-        candidate = path.parent / file_name
-        is_file = Path(name).name == name and candidate.is_file()
-        if _is_theory_name(name):
-            if is_file:
-                return None, (f"Use {name}.: {name} is the name of a theory of the checker and of the file "
-                              f"{file_name}; rename the file")
+        candidate, problem = _resolve_use(path, name)
+        if problem is not None:
+            return None, problem
+        if candidate is None:
             continue
-        if not is_file:
-            return None, f"Use {name}.: there is no theory of that name and no file {file_name} next to this one"
         key = candidate.resolve()
-        if key == path.resolve():
-            return None, f"Use {name}.: a file cannot use itself"
         if key in cited:
             continue
         cited.add(key)
         record = checked.get(key)
+        if record is None and saved is not None:
+            record = _saved_record(candidate, saved)
+            if record is not None:
+                checked[key] = record
         if record is None:
-            return None, (f"Use {name}.: {file_name} has not been checked in this run. A file is never checked "
-                          f"because another cites it, so check {file_name} first")
+            if saved is None:
+                return None, (f"Use {name}.: {file_name} has not been checked in this run. A file is never "
+                              f"checked because another cites it, so check {file_name} first")
+            return None, (f"Use {name}.: {file_name} has not been checked in this run, and no saved result "
+                          f"is for its present text. A file is never checked because another cites it, "
+                          f"so check {file_name} first")
         if not record.passed:
             return None, (f"Use {name}.: {file_name} did not pass, so its theorems cannot be cited; "
                           f"fix {file_name} first")
@@ -576,7 +603,80 @@ def _dependency_order(paths: Sequence[Path], texts: Dict[Path, str]) -> Tuple[Li
     return order, cycles
 
 
-def check_file(path: Path, checked: Optional[CheckedFiles] = None, text: Optional[str] = None) -> List[ProofResult]:
+# ---------------------------------------------------------------------------
+# Saved results
+# ---------------------------------------------------------------------------
+#
+# With a `SavedChecks` (source/SavedChecks.py) a file that passed is not
+# checked again while nothing it depends on has changed. The key of a file is
+# made of everything its check depends on: its text, the keys of the files its
+# `Use` lines name (so a change below it changes its key), and, for a file of
+# one proof, whether its name says the proof is invalid. A file whose `Use`
+# lines are refused, or that is part of a cycle of them, has no key and is
+# always checked. Finding a key only reads files: it never checks one.
+
+
+def open_saved_results(directory=DEFAULT_SAVED_RESULTS) -> sc.SavedChecks:
+    """Saved results in `directory`, for the rules this runner checks with."""
+    return sc.SavedChecks(directory, BARE_PROOF_RULES)
+
+
+def saved_key(
+    path: Path, text: str, saved: sc.SavedChecks, memo: Optional[Dict[Path, Optional[str]]] = None,
+) -> Optional[str]:
+    """The key under which the result of checking the file `path` (whose text
+    is `text`) is saved, or None if the file has none."""
+    if memo is None:
+        memo = {}
+    where = path.resolve()
+    if where in memo:
+        return memo[where]
+    memo[where] = None  # reached again while its own key is made: a cycle
+    description: Dict[str, object] = {"text": sc.text_digest(text)}
+    if _looks_like_multi_proof(text):
+        description["kind"] = "proofs"
+        uses = []
+        for name in parse_uses(text):
+            candidate, problem = _resolve_use(path, name)
+            if problem is not None:
+                return None
+            if candidate is None:
+                continue
+            try:
+                used_text = candidate.read_text()
+            except (OSError, ValueError):
+                return None
+            used_key = saved_key(candidate, used_text, saved, memo)
+            if used_key is None:
+                return None
+            uses.append([name, used_key])
+        description["uses"] = uses
+    else:
+        description["kind"] = "bare"
+        description["expected_valid"] = "invalid" not in path.stem.lower()
+    key = saved.key(description)
+    memo[where] = key
+    return key
+
+
+def _saved_record(path: Path, saved: sc.SavedChecks) -> Optional[CheckedFile]:
+    """What an earlier run saved of the file `path`, if there is a saved result
+    for its present text and for what it uses."""
+    try:
+        text = path.read_text()
+    except (OSError, ValueError):
+        return None
+    key = saved_key(path, text, saved)
+    found = saved.load(key) if key is not None else None
+    return None if found is None else CheckedFile(True, found.theorems)
+
+
+def check_file(
+    path: Path,
+    checked: Optional[CheckedFiles] = None,
+    text: Optional[str] = None,
+    saved: Optional[sc.SavedChecks] = None,
+) -> List[ProofResult]:
     """Check one fixture file.
 
     `checked` is what the run has checked so far, keyed by resolved path: the
@@ -584,34 +684,51 @@ def check_file(path: Path, checked: Optional[CheckedFiles] = None, text: Optiona
     (see `imported_theorems`), and what this check finds is added to it for
     the files after this one. Without it the file stands alone, and a `Use`
     line that names a file is refused. `text` is the file's source if the
-    caller has read it already."""
+    caller has read it already.
+
+    With `saved`, a file that an earlier run checked and that passed, and that
+    has not changed since (nor anything it uses, nor the checker), is not
+    checked again: the results of that check are returned and its theorems
+    kept for the files that cite it. A file that passes here is saved."""
     if text is None:
         text = path.read_text()
     if checked is None:
         checked = {}
+    key = saved_key(path, text, saved) if saved is not None else None
+    if key is not None:
+        found = saved.load(key)
+        if found is not None:
+            checked[path.resolve()] = CheckedFile(True, found.theorems)
+            saved.replayed.append(path.name)
+            return [ProofResult(path.name, *entry) for entry in found.results]
     # The same source text is used to distinguish the container format and
     # then parse it. Pass it through rather than reopening every fixture file.
     exported: list = []
     if _looks_like_multi_proof(text):
-        results = _check_multi_proof_file(path, text, checked, exported)
+        results = _check_multi_proof_file(path, text, checked, exported, saved)
     else:
         results = _check_bare_proof_file(path, text)
-    checked[path.resolve()] = CheckedFile(all(result.passed for result in results), tuple(exported))
+    passed = all(result.passed for result in results)
+    checked[path.resolve()] = CheckedFile(passed, tuple(exported))
+    if key is not None and passed:
+        stored = saved.save(key, [tuple(result)[1:] for result in results], exported)
+        (saved.stored if stored else saved.not_stored).append(path.name)
     return results
 
 
-def check_files(paths: Iterable[Path]) -> List[ProofResult]:
+def check_files(paths: Iterable[Path], saved: Optional[sc.SavedChecks] = None) -> List[ProofResult]:
     """Check the files in the order given, each able to cite the theorems of
     the files before it that it names. A file that cites one the list does not
-    have before it is refused: the user checks each file that is cited."""
+    have before it is refused: the user checks each file that is cited, unless
+    an earlier run did, and `saved` has its results."""
     checked: CheckedFiles = {}
     results: List[ProofResult] = []
     for path in paths:
-        results.extend(check_file(Path(path), checked))
+        results.extend(check_file(Path(path), checked, None, saved))
     return results
 
 
-def run(directories: Sequence[str]) -> List[ProofResult]:
+def run(directories: Sequence[str], saved: Optional[sc.SavedChecks] = None) -> List[ProofResult]:
     results: List[ProofResult] = []
     checked: CheckedFiles = {}
     for rel_dir in directories:
@@ -624,7 +741,7 @@ def run(directories: Sequence[str]) -> List[ProofResult]:
                 checked[path.resolve()] = CheckedFile(False)
                 results.append(ProofResult(path.name, "?", True, False, f"Use cycle: {cycles[path]}", True))
             for path in order:
-                results.extend(check_file(path, checked, texts[path]))
+                results.extend(check_file(path, checked, texts[path], saved))
     return results
 
 
@@ -693,11 +810,30 @@ def _parse_args(argv=None):
     p.add_argument("--suite", metavar="NAME")
     p.add_argument("--list-suites", action="store_true")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument(
+        "--saved-results",
+        nargs="?",
+        const=str(DEFAULT_SAVED_RESULTS),
+        metavar="DIR",
+        help="do not check a file again that an earlier run checked, if nothing it depends on has changed; "
+             "results are saved in DIR (default: .saved_results)",
+    )
     return p.parse_args(argv)
+
+
+def _print_saved_summary(saved: Optional[sc.SavedChecks]) -> None:
+    if saved is None:
+        return
+    line = (f"saved results in {saved.directory}: {len(saved.replayed)} files not checked again, "
+            f"{len(saved.stored)} checked and saved")
+    if saved.not_stored:
+        line += f", {len(saved.not_stored)} passed but could not be saved"
+    print(line)
 
 
 def main(argv=None):
     args = _parse_args(argv)
+    saved = open_saved_results(args.saved_results) if args.saved_results else None
     if args.list_suites:
         _list_suites()
         return 0
@@ -707,7 +843,9 @@ def main(argv=None):
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        return _print_selected_suite(rel_dir, run([rel_dir]), category == "enforced", args.verbose)
+        failures = _print_selected_suite(rel_dir, run([rel_dir], saved), category == "enforced", args.verbose)
+        _print_saved_summary(saved)
+        return failures
 
     enforced_fails = 0
     enforced_results = []
@@ -716,7 +854,7 @@ def main(argv=None):
 
     print("=== Enforced fixture corpus ===")
     for directory in ENFORCED_DIRS:
-        suite_results = run([directory])
+        suite_results = run([directory], saved)
         enforced_results.extend(suite_results)
         fixture_failures.extend(
             (directory, "enforced", result)
@@ -727,7 +865,7 @@ def main(argv=None):
 
     print("\n=== Informational fixture corpus ===")
     for directory in INFORMATIONAL_DIRS:
-        suite_results = run([directory])
+        suite_results = run([directory], saved)
         informational_results.extend(suite_results)
         fixture_failures.extend(
             (directory, "informational", result)
@@ -741,6 +879,7 @@ def main(argv=None):
         f"(enforced: {sum(r.passed for r in enforced_results)}/{len(enforced_results)}, "
         f"informational: {sum(r.passed for r in informational_results)}/{len(informational_results)})"
     )
+    _print_saved_summary(saved)
     print("\n=== Fixtures that did not behave as expected ===")
     if not fixture_failures:
         print("none")

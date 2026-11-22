@@ -27,9 +27,11 @@ def test_default_main_checks_each_suite_once_and_aggregates_results(monkeypatch)
         ],
     }
     calls = []
+    saved_seen = []
 
-    def fake_run(directories):
+    def fake_run(directories, saved=None):
         calls.append(tuple(directories))
+        saved_seen.append(saved)
         assert len(directories) == 1, "each suite should be evaluated only once"
         return results_by_suite[directories[0]]
 
@@ -40,6 +42,7 @@ def test_default_main_checks_each_suite_once_and_aggregates_results(monkeypatch)
 
     assert status == 0
     assert calls == [(enforced_a,), (enforced_b,), (informational,)]
+    assert saved_seen == [None, None, None], "nothing is saved or read unless asked"
     assert (
         "Total proofs checked: 4 (enforced: 3/3, informational: 0/1)"
         in output.getvalue()
@@ -79,7 +82,7 @@ def test_default_main_reports_enforced_and_informational_failures(monkeypatch):
         ],
     }
 
-    monkeypatch.setattr(runner, "run", lambda directories: results_by_suite[directories[0]])
+    monkeypatch.setattr(runner, "run", lambda directories, saved=None: results_by_suite[directories[0]])
     output = StringIO()
     with redirect_stdout(output):
         status = runner.main([])
@@ -110,7 +113,7 @@ def test_default_main_reports_none_when_all_fixtures_pass(monkeypatch):
         enforced: [passed("enforced.txt")],
         informational: [passed("informational.txt")],
     }
-    monkeypatch.setattr(runner, "run", lambda directories: results_by_suite[directories[0]])
+    monkeypatch.setattr(runner, "run", lambda directories, saved=None: results_by_suite[directories[0]])
 
     output = StringIO()
     with redirect_stdout(output):

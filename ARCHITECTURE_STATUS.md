@@ -228,8 +228,17 @@ that file's theorems by title. The runner never checks a file because another
 file cites it: a run keeps what it has checked, and a file may cite only files
 the same run checked before it that passed, so every cited theorem has a checked
 proof behind it, in the same environment, and the kernel is unchanged
-(`docs/PROOF_FILE_FORMAT.md`, "Using another file"). Not built: saving what a run
-has checked so that a later run can use it, and `Use` selecting an environment.
+(`docs/PROOF_FILE_FORMAT.md`, "Using another file").
+
+A run can also save what it has checked (`--saved-results`, off by default), so
+that a later run does not check that file again. A file that passed is saved under
+a key made of its text, the keys of the files it uses and a digest of the checker
+(its code, the version of Python and the rules it starts from); a later run that
+finds the key reports the saved results and takes the saved theorems, and any
+change to the file, to a file below it or to the checker means another key. The
+kernel is unchanged, and a saved result is trusted as far as the checker's own
+files are (`docs/PROOF_FILE_FORMAT.md`, "Saved results";
+`source/SavedChecks.py`). Not built: `Use` selecting an environment.
 
 The repository has `.gitignore` hygiene and GitHub Actions that run the same
 complete test command used locally. Test counts are intentionally not

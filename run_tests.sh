@@ -28,6 +28,10 @@ Proof fixture options:
   --suite NAME        Run one proof fixture suite
   --list-suites       List proof fixture suite names
   --verbose           Show proof-level fixture output
+  --saved-results [DIR]
+                      Do not check a file again that an earlier run checked,
+                      if nothing it depends on has changed (default DIR:
+                      .saved_results)
 EOF
     exit 0
 fi
