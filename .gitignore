@@ -11,3 +11,6 @@ build/
 .venv/
 venv/
 .env
+
+# Results saved by --saved-results
+.saved_results/

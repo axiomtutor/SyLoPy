@@ -146,7 +146,53 @@ form a cycle of `Use` lines are reported and not checked.
   refused, so that a name means one thing, and so is any other name that is
   neither a theory nor a file next to this one.
 - Only a file of several proofs can use another file.
-- What a run has checked is not saved. A later run starts from nothing.
+- What a run has checked is saved only when the run is asked to (see "Saved
+  results" below). Otherwise a later run starts from nothing.
+
+#### Saved results
+
+With `--saved-results`, a run does not check a file again that an earlier run
+checked, when nothing that decides the result has changed. Without the flag
+nothing is saved or read, so the test suite and CI check every file from
+scratch.
+
+```sh
+./run_tests.sh --saved-results                  # the proof fixtures; saved in .saved_results/
+./run_tests.sh --suite testSetTheory --saved-results DIR
+```
+
+Through the Python API, `validate_all_proofs.open_saved_results(DIR)` returns the
+object to pass as the `saved` argument of `check_files()` and `run()`. Its lists
+`replayed`, `stored` and `not_stored` name the files that were not checked again,
+that were checked and saved, and that passed but could not be saved.
+
+The result of checking a file is decided by the text of the file, the theorems
+of the files it uses, and the checker: its code, the version of Python, and the
+rules it starts from. A saved result is kept under a key made of exactly those:
+a digest of the file's text, the keys of the files its `Use` lines name, and a
+digest of the checker. A file's key holds the keys of the files it uses, so a
+change to a file changes the key of every file that uses it, however far up. Those
+files are checked again and the others are not. Any change to a source file of the
+checker, or to the Python (major and minor version), changes every key. A change
+to the text of a file counts however small, whitespace included. The name of a
+file of one proof is part of its key, because the name decides whether the proof
+is expected to be valid.
+
+A file that passes is saved with the results of its proofs and the theorems it
+promoted. A file that did not pass is never saved. When a later run finds a saved
+result under a file's key, it reports those results without checking the file, and
+the files that use it cite the theorems that were saved. As before, a file is
+never checked because it is cited: a cited file counts as checked when the run
+checked it, or when a saved result is for its present text and for the files it
+uses. Otherwise the file that cites it is refused, and the message says so.
+Finding a key only reads files.
+
+A saved result is trusted as far as the checker's own files are: whoever can
+write the directory can make a file look checked, as whoever can edit the checker
+can. So the directory is ignored by git; a saved result that cannot be read in
+full (cut short, altered, made for another key) is no result, and the file is
+checked; a saved result may name only classes of this package; and a file that
+must be certain is checked without saved results.
 
 ## 2. Proof lines and labels
 

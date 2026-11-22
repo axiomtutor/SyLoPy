@@ -186,6 +186,8 @@ Current maintenance priorities:
   per-subject theory modules and logic building blocks that extend the base logic (see "What the
   project already supports").
 - `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
+- `source/SavedChecks.py` — saved results: what a run checked, kept so that a later
+  run need not check it again.
 - `tests/` — enforced proof fixtures (plus `tests/setTheoryProofs`, which is
   informational); `source/testProofs/` — informational fixtures.
 - `parse_oracle/` — independent surface-to-formula cases for the parser,
@@ -367,6 +369,14 @@ Run one suite, optionally with verbose proof-level output:
 ./run_tests.sh --suite testProofsDeclared
 ./run_tests.sh --suite testProofsDeclared --verbose
 ```
+
+A fixture run can skip the files that an earlier run checked and that nothing has
+changed since: with `--saved-results` (`./run_tests.sh --saved-results`, or
+`./run_tests.sh --suite NAME --saved-results`) each file that passes is saved in
+`.saved_results/`, and a later run does not check it again while neither the file,
+nor a file it uses, nor the checker has changed. It is off unless asked for, so
+the normal test run checks every file; see "Saved results" in
+`docs/PROOF_FILE_FORMAT.md`.
 
 For Bash completion:
 
