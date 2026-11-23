@@ -5,7 +5,7 @@ open design decisions, and invariants belong here. Detailed implementation histo
 is in the linked PRs; behavior is specified by the code, tests, README, and
 `docs/PROOF_FILE_FORMAT.md`.
 
-Document roles are separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work; `PROJECT_STATE.md` maps the source tree and verification workflow. `ARCHITECTURE_STATUS.md` is the single maintained architecture reference. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`.
+Document roles are separated: this file is the current-state/design ledger; `AGENT_COLLABORATION.md` contains stable collaboration rules; `JOBS_FOR_CHATGPT.md` tracks delegated work; `PROJECT_STATE.md` maps the source tree and verification workflow. `ARCHITECTURE_STATUS.md` is the single maintained architecture reference. Completed task specifications are archived in `docs/archive/JOBS_FOR_CHATGPT_ARCHIVE.md`. `SetTheoryCorpus/` is the owner's mathematical content, the set theory corpus; its `README_SetTheory.md` says how it is laid out and what has been checked.
 
 ## Current status
 
@@ -16,7 +16,8 @@ proof text -> surface parser/AST -> elaboration -> core proof entries -> ProofLo
 ```
 
 The main parser, set theory, number theory, discrete-mathematics rules, theorem
-promotion, and regression corpus are implemented.
+promotion, and the regression fixtures are implemented. ("The corpus" below means
+`SetTheoryCorpus/`, the owner's mathematical content, which is not the test fixtures.)
 
 **Current development priority (owner direction, 2026-11-05):** focus development
 primarily on set theory until it is fully functional. Prioritize set-theory
@@ -25,13 +26,81 @@ start new number-theory work during this phase. This priority does not delete or
 roll back existing number-theory work: its implementation, axioms, declarations,
 vocabulary, fixtures, issue history, and owner authorization remain intact.
 
+**Corpus first (owner direction, 2026-11-21):** Claude proposed building next the
+reading of the corpus's own entries (Remaining work, item 10(a)). The owner answered:
+"I'm not sure that's the right next move. Seems like we should develop the corpus
+more first, no?" Claude agreed. The next work is therefore the mathematical content
+of `SetTheoryCorpus/`, and the checker work it will need (The plan, below) follows
+the entries that show what the checker has to read. Who writes the entries is open
+(question 1 of The plan).
+
+### Where things stand
+
+Written on 2026-11-22 against master `6d91cef`. After that date `git log`, the open
+pull requests and the issues are the authority. Totals are not kept here (see
+Contributor workflow): `./run_tests.sh` prints them and CI reports them for each
+commit.
+
+- **The checker.** Proof text is parsed, elaborated and checked by the kernel
+  (`source/ProofLogic.py`, `source/ProofJustification.py`; the pipeline above). The
+  base logic is propositional and first-order logic with equality. The theory
+  modules, all loaded by default: set theory, natural numbers and integers with
+  divisibility (number theory, paused), discrete mathematics (relations and their
+  properties), and the order on the integers (`source/OrderTheory.py`).
+- **Set theory.** Named citations for Pairing, Union, Power Set, Infinity,
+  Extensionality, Foundation (Regularity) and Choice, and schema citations for
+  Separation and Replacement; generic `(Axiom)` is closed for set theory. Subset,
+  equality and unique-existence proofs; set enumeration and set-builder notation;
+  bounded quantifiers; finite and infinite sets with exact cardinalities; `WLOG` and
+  `Mutatis mutandis`. Three definitions through the definition facility
+  (`Definition of union`, `Definition of intersection`, `Definition of power set`).
+  Not there yet: `CartesianProduct` and `Pair` are declared but not defined (no
+  definition says what is in a product or what a pair is, though two rules state that a
+  product of finite sets is finite and has the product of their cardinalities); there is
+  no set difference, no singleton and no unordered pair as terms; membership phrases
+  such as `x belongs to A union B` still read as the disjunction (item 8).
+- **Theorems and files.** A titled proof is promoted to a theorem that later proofs
+  cite. A file of several proofs may `Use` another file and cite its theorems, but
+  only when that file was checked; it is never checked because it is cited. Saved
+  results (`--saved-results`, off by default) keep what a run checked, so that a
+  later run does not check it again while nothing it depends on has changed. A
+  proof file cannot define a symbol of its own: definitions are registered in Python.
+- **The corpus.** `SetTheoryCorpus/` holds a README, the nine axioms as statements
+  (`Chapter1_Axioms.txt`), five definitions of order theory (`OrderTheory.txt`) and a
+  stub for the ordinals (`Chapter2_Ordinals.txt`). It has no proof in it yet, and
+  the checker reads none of it: run on these files it stops at the first line,
+  because they are not numbered proofs (`# 1: Title`) and a file of one proof
+  accepts only `Use discrete math.` (Remaining work, item 10(a)).
+- **Tests and tools.** `./run_tests.sh` runs the `default` Python suite and every
+  proof fixture suite: six enforced (the correctness floor) and two informational.
+  `--suite extended` adds the red-team and audit tests, which CI does not run.
+  `tools/mutation_check.py` changes the code one line at a time and runs given tests,
+  to show whether they notice; every new test set is checked with it. `parse_oracle/`
+  holds the parser's expected readings, written independently of the parser. CI
+  (`.github/workflows/test.yml`) runs `./run_tests.sh` on every pull request to master
+  and on every push to a branch whose name has no `/` (master is one), except pushes
+  that change only Markdown files or this file; a branch named `claude/...` or
+  `chatgpt/...` is tested through its pull request alone. Master has been green on
+  every run since #121 merged (2026-10-23).
+- **Who does what** (`AGENT_COLLABORATION.md`). The owner sets priorities, decides
+  what statements and definitions mean, and merges. Claude owns the kernel and the
+  soundness argument, designs, writes the jobs, reviews and re-checks by running code.
+  ChatGPT implements the jobs and red-teams, through CI only, because it cannot run
+  code. No pull request is open. ChatGPT's queue, J36–J43 (`JOBS_FOR_CHATGPT.md`), is
+  unblocked and none of it has started; it moves when the owner starts a ChatGPT
+  session on a job. One ChatGPT branch holds work that never became a pull request:
+  `chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-02, 89 commits
+  behind master) has the two files J35 names, a fixture and a test, not reviewed and
+  not run by Claude. J35 is deferred and the branch is left alone.
+
 ### Tracked issues
 
 - [Issue #98](https://github.com/axiomtutor/SyLoPy/issues/98): the four candidate
   algebraic laws are present in `source/NumberTheory.py`'s `INT_AXIOMS`.
   Checked proof coverage for the four candidate divisibility facts remains
   specified as J35. Job-entry PR #158 has merged, but J35 is deferred by the
-  owner's current set-theory priority; its implementation has not begun. The
+  owner's current set-theory priority; no pull request for it has been opened (a
+  ChatGPT branch holds an unreviewed draft, see Where things stand). The
   deferral does not authorize or require any change to existing number-theory
   code or axioms.
 - [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
@@ -40,8 +109,173 @@ vocabulary, fixtures, issue history, and owner authorization remain intact.
 - [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): resolved. Relation
   descriptors after commas, including `irreflexive`, `asymmetric`, and `total`,
   compose with the existing descriptor and property parsing paths.
+- [Issue #144](https://github.com/axiomtutor/SyLoPy/issues/144): proposal to put the
+  top-level formula-parser dispatch of `source/ProofParser.py` in one helper. It says
+  that no implementation is authorized. Claude reviewed it on 2026-11-05 and agreed,
+  with precisions (behavior identical on the premise and line paths; tests that state
+  behavior, not internals; the contract documented in three places). Nothing has been
+  implemented. It waits for the owner.
+- [Issue #169](https://github.com/axiomtutor/SyLoPy/issues/169): open finding. The
+  premise line `A and B are equal.` (also `are not equal`, `different`, `distinct`)
+  is read as the start of a declaration, not as `A = B`, as `A and B are disjoint.`
+  was before #151. A parser fix; the finding asks that the rule decide it (what
+  follows `are`), not one more word in a list. No owner decision needed.
+- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding.
+  `Let P be a proposition.`, `a strict order on X` and `a bijection from A to B`
+  declare the name as a plain object, so the first line that uses it as a statement,
+  a relation or a function is refused at the use. Recipes are the fix. No owner
+  decision needed.
+- [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): open finding.
+  Declarations that say something but state nothing: `a nonempty set`, `a family of
+  subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain`
+  no rule reads). The first two are a recipe each, and the issue asks first for a
+  confirmation that they should state their facts, as J30 made membership declarations
+  do (question 7(a) of The plan). The third depends on how functions are represented,
+  which the corpus's convention changes (question 7(b)). #169 to #171 were filed on
+  2026-11-08 for the parser and recipes, which is ChatGPT's maintenance area; the three
+  reproductions were run again on 2026-11-22 against master `6d91cef` and each still
+  gives the result its issue describes. No job has been written for them yet.
 
-## Project-state update: 2026-11-05
+## The plan (2026-11-22)
+
+The order follows the owner's directions: set theory until it is fully functional
+(2026-11-05), and within it the corpus first (2026-11-21). Nothing below has started
+unless it says so. "Needs" names what must happen first; "item N" is an item of
+Remaining work, and "question N" one of the Open owner questions at the end of this
+section.
+
+### 1. The corpus
+
+Who: the owner decides (question 1). Needs: nothing else. The three files have no
+proof yet (Where things stand). Entries Claude proposes next, in the order their
+dependencies give; none is decided:
+
+1. The ordered pair `(a, b)` as `{{a}, {a, b}}`, the theorem `(a, b) = (c, d) iff
+   a = c and b = d`, and the Cartesian product (a set of pairs, bounded by
+   Separation over a power set).
+2. Relations (a relation on P is a subset of P × P, with `x < y` as notation for
+   membership of the pair), functions (a set of ordered pairs; domain and range; `f(x)`
+   as a term that exists under a condition, item 8(g)), and the identity function on a
+   set, the owner's example of a definition whose existence proof is written in the
+   corpus.
+3. A file for 1 and 2 placed before `OrderTheory.txt`: its first definition begins "Let P
+   be a set, < a relation on P.", which presupposes them, and the corpus keeps its files in
+   dependency order.
+4. After those, the order theory gets its proofs, then Chapter 2's ordinals.
+
+### 2. What the checker needs in order to read the corpus
+
+Who: Claude (kernel and design), and each item is its own owner decision. None has
+started. The entries of part 1 come first, so that the design is made against real
+text.
+
+- Item 10(a), reading the corpus's own entries (`# Axiom N:`, `# Definition N.`,
+  `# Theorem N.`): the files are checked, their theorems cited, and the README's
+  "Proved Theorems" headings can be filled. Needs part 1 and question 3.
+- Item 8(e), a proof file that defines a symbol of its own. The corpus convention is
+  that a definition and its existence proof are written in the corpus, not in Python.
+  Needs question 2 and item 8(d).
+- Item 8(d), a definition whose evidence cites an earlier definition or needs what it
+  says (the product needs the ordered pair; each later operation needs the earlier ones).
+- Item 8(g), the uses of the term form built on 2026-11-20: `f(x)`, `sup`, `inf`, `max`,
+  `min`. Needs functions as pairs (part 1) and the order theory's words registered as
+  definitions.
+- Item 10(b), `Use` choosing the theory environment, so that a file sees only what it
+  names. Needs the corpus files checked.
+- Item 9, a kernel change so that a conjunction of three or more lines can be
+  introduced. No entry needs it yet, since none has a proof, and J39 nests the
+  conjunction instead. Do it when one needs it.
+- Surface syntax the entries will want, which are ChatGPT jobs (part 3): `(a, b)` for
+  the ordered pair (after J42, "Planned" in `JOBS_FOR_CHATGPT.md`), the membership
+  phrases (J37, item 8(a)) and Unicode symbols (J41, item 8(f)).
+
+### 3. Delegated work (ChatGPT; `JOBS_FOR_CHATGPT.md`)
+
+Who: ChatGPT, when the owner starts it on a job. All of J36–J43 are unblocked (#167
+merged on 2026-11-15 and the jobs on 2026-11-18) and none has started. The file's order,
+within three open pull requests, is J36, J41, J43, J38, J37, J39, J42, J40. Claude's
+recommendation: begin with J36 (nested set terms), J41 (symbols as input, accepted by the
+owner on 2026-11-09) and J43 (red-team the definition facility), then J37 and J39. Hold J38,
+J42 and J40 until question 4 is answered, because they register more definitions in
+Python that the corpus may define instead.
+
+Findings #169 and #170 are parser and recipe fixes, and their issues say that no owner
+decision is needed. The first two items of #171 are the same kind of fix, but wait for
+the owner's confirmation (question 7(a)); its third item waits for a decision (question
+7(b)). Claude writes each as a job (scope, tests, Done when) when the owner wants ChatGPT
+started on them; no job has been written. The optional standalone fixtures of J33 and J34
+stay optional, and J35 is deferred (item 1).
+
+### 4. Claude's maintenance
+
+No owner decision is needed for these, and none has started except this documentation.
+
+- Shrink the six "Rules for new jobs" in `JOBS_FOR_CHATGPT.md` to a pointer to
+  `AGENT_COLLABORATION.md`, so that the two cannot drift. (Rule 4 had fallen behind the
+  owner's decision of 2026-11-18 and is corrected together with this update.)
+- #144, once the owner authorizes it.
+- Branch hygiene: the eight merged `claude/*` branches and the backup
+  `claude/set-operation-definitions-wip` (superseded by #167) can be deleted. Claude
+  deletes only its own, and has not yet.
+
+### 5. Not now
+
+Number theory (J35, issue #98; item 1) and the other theory modules (abstract algebra,
+topology, ...; Owner approval required); refinement types (`TYPE_SYSTEM_DESIGN.md`); and
+extending `Mutatis mutandis` to blocks of lines (owner, 2026-10-30).
+
+### Open owner questions
+
+Put to the owner one at a time, as the work reaches each. Claude's recommendation follows
+each question.
+
+1. **Who writes the next corpus entries?** (Asked 2026-11-22, not answered.) The owner,
+   with Claude formalizing each entry in the checker's syntax; or Claude drafting both from
+   Jech's text, for the owner's review. Recommendation: the second, to save the owner's
+   time. The owner's text stays authoritative, and a question about what something means
+   goes to the owner.
+2. **Where does a definition's existence proof go in a corpus file?** Either as a block
+   under the definition's own header, or as a `# Theorem N.` before it that the definition
+   cites, as on paper. Recommendation: the theorem first, then the definition citing it.
+3. **Do the corpus's axiom entries define the axioms, or document them?** The base today is
+   the named rules of `source/SetTheory.py`; the entries of `Chapter1_Axioms.txt` are in the
+   owner's notation and nothing reads them. Recommendation: keep the rules as the base, and
+   have a test compare each corpus axiom, once the checker can read it, with the sentence
+   its rule accepts, so that the two cannot drift.
+4. **Are the set operations defined in the corpus or in Python?** Open since 2026-11-09
+   (Owner decisions); three are defined in Python. Recommendation: in the corpus from here
+   on (difference, singleton, unordered pair, ordered pair, product), which needs items 8(d)
+   and 8(e) and agrees with the decision of 2026-11-15 that an operation is a definition with
+   its existence proof in the corpus.
+5. **Order theory: names and meaning.** (a) The Python theory registered as `order theory`
+   (the integer order) shares its words with the corpus file `OrderTheory.txt` (partial
+   orders in general); renaming the Python theory, for example to `integer order`, is
+   proposed. Recommendation: rename. (b) The corpus's Definition 1 makes a partial ordering
+   strict (anti-reflexive and transitive); the Python `partial order` is reflexive,
+   antisymmetric and transitive, and `strict partial order` is irreflexive and transitive.
+   The words must not name two different things in one environment. Recommendation: decide
+   when the checker first reads that entry.
+6. **Two places in the corpus text.** Axiom 4 reads `Y = (union X) = {u in U: U in X}`,
+   which uses `U` without binding it, and `Chapter2_Ordinals.txt` has an empty
+   `# Theorem 1.`, so its topic is not known. Ask when those files are next edited.
+7. **Declarations that state their facts** (#171). (a) Should `Let A be a nonempty set.`
+   state `exists u, In(u, A)`, and `Let F be a family of subsets of A.` state `forall S,
+   (In(S, F) -> S subseteq A)`, as J30 made membership declarations state theirs? The issue
+   asks for this confirmation before any job. Recommendation: yes, so that a proof need not
+   restate what its own declaration said. (b) Typed functions (the issue's third item).
+   `Let f: X -> Y be a unary function` declares a function symbol with `domain` and
+   `codomain` metadata that no rule reads, and the corpus says a function is a set of
+   ordered pairs. Recommendation: leave the declaration of functions as it is until the
+   corpus has its functions (part 1, item 2).
+8. **Lower-case spellings of operations as declared names** (Set theory and proof syntax,
+   Definitions). Recommendation: refuse such a declaration, because a name that reads as
+   something else is a silent misreading, and the project refuses a phrase that could mean
+   two things.
+9. **Waiting on the owner, with nothing to recommend yet:** whether to authorize #144;
+   whether J35 and the number-theory axiom question (#98) resume (item 1); and, once the
+   corpus has entries, whether to authorize items 10(a) and 10(b).
+
+## Project-state update: 2026-11-05 (historical; Where things stand is current)
 
 - Named Python test suites are implemented. `default` is the PR/local project
   suite; `extended` contains red-team, audit, and mutation-tool modules, and
@@ -487,7 +721,9 @@ and collaboration handoff before starting.
     Not built, each its own decision: (a) reading the corpus's own entries
     (`# Axiom N:`, `# Definition N.`, `# Theorem N.`), so that the files of
     `SetTheoryCorpus/` are checked and their theorems cited; (b) `Use` choosing the
-    theory environment, which the default environment still loads whole.
+    theory environment, which the default environment still loads whole. The owner
+    asked on 2026-11-21 that the corpus be developed first (Current status), so
+    neither is next; The plan gives them their place.
 
 ## Owner decisions
 
@@ -585,6 +821,16 @@ Current implementation direction:
   (`docs/PROOF_FILE_FORMAT.md`, "Saved results"). A cited file counts as checked
   when a saved result is for its present text; a file is still never checked
   because it is cited. Not built: Remaining work, item 10.
+- Corpus first (owner, 2026-11-21, when Claude proposed building the reading of the
+  corpus's own entries next): "I'm not sure that's the right next move. Seems like we
+  should develop the corpus more first, no?" Claude agreed: the corpus is developed
+  first, and the checker work follows the entries (The plan, part 1 and 2). Who writes
+  the entries was asked on 2026-11-22 and is open.
+- Names of the singleton and the unordered pair, and the identity phrases (owner, on
+  #168, 2026-11-17): `"A is the union of B and C" should be read as "A = Union(B,C)".
+  Your names are good.` The names are `Singleton` and `UnorderedPair`. The jobs J37 and
+  J42 carry both; J37 gives the intersection the same rule as the union, which is
+  Claude's extension of what the owner said.
 
 ## Owner approval required — do not start without approval
 
@@ -594,6 +840,9 @@ Current implementation direction:
 
 - Run `./run_tests.sh`; use `./run_tests.sh --list-suites` to discover suites
   and `./run_tests.sh --suite NAME --verbose` to focus a run.
+  `./run_tests.sh --saved-results` skips the fixture files that an earlier run checked
+  when nothing they depend on has changed. It is off by default and in CI, so a
+  report of a tested commit never rests on it.
 - Add parser expectations to `parse_oracle/` with the intended plain-logic
   reading written independently of the parser. Keep malformed-input rejection
   cases.

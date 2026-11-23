@@ -20,11 +20,24 @@ Integer order support is available through `Less` (`<`) and `LessEqual` (`<=`),
 including natural-language greater-than forms and named transitivity,
 irreflexivity, trichotomy, compatibility, and less-than-or-equal axioms.
 
+Set theory is the current priority (owner direction of 2026-11-05). Definitions
+are a facility of their own: a definition names a thing by a sentence and carries
+the evidence that it exists, and a proof cites it by its title (`Definition of
+union`, `Definition of intersection`, `Definition of power set`). A file of
+several proofs can `Use` another file that was checked and cite its theorems, and
+a run can keep what it checked (`--saved-results`) so that a later run does not
+check it again. `SetTheoryCorpus/` is the owner's set theory corpus, which is
+being written: it has the axioms and five definitions of order theory as
+statements and no proof yet, and the checker does not read it. The owner's
+direction of 2026-11-21 is to develop the corpus before building more of the
+checker.
+
 [PROJECT_STATE.md](PROJECT_STATE.md) maps the project layout and verification
 workflow. The
-[development TODO](todos.txt) is the source of truth for current findings
-and open design decisions. Verification totals belong with the CI run and pull
-request that tested each change.
+[development TODO](todos.txt) is the source of truth for where things stand, the
+plan and its open owner questions, current findings and open design decisions.
+Verification totals belong with the CI run and pull request that tested each
+change.
 
 ## Proof-processing pipeline
 
@@ -74,10 +87,11 @@ there exists a unique set {a, b} that contains exactly a and b
 Citations may be written `Modus Ponens from 2, 3` or `Modus Ponens, 2, 3`.
 
 Set theory is the active frontier. Named axiom-citation rules for Pairing,
-Union, Power Set, and Infinity are implemented, including the Union and Power
-Set instance forms, and they are how those axioms are cited: set theory lists no
-formula for `(Axiom)` and closes its axiom list, so restating one with `(Axiom)`
-is refused, with the name to cite instead. The informational ZFC fixture, whose second inclusion repeats
+Union, Power Set, Infinity, Extensionality, Foundation (Regularity) and Choice
+are implemented, including the Union and Power Set instance forms, and Separation
+and Replacement are cited as schemas. They are how those axioms are cited: set
+theory lists no formula for `(Axiom)` and closes its axiom list, so restating one
+with `(Axiom)` is refused, with the name to cite instead. The informational ZFC fixture, whose second inclusion repeats
 the first with `Mutatis mutandis`, passes. Arbitrary-property WLOG is implemented
 and has focused regression coverage.
 
@@ -86,6 +100,19 @@ and `Finite(A)`/`Infinite(A)`. Typed declarations such as
 `Let A be a finite set` or `Let f: A -> B be a bijection` register the
 corresponding property relation, and bijections transfer finite or infinite
 status between their declared domain and codomain.
+
+### Definitions
+
+A definition gives a name to a thing by a sentence that says what it is, and shows
+first that the thing exists. `source/Definitions.py` is the facility: a theory
+registers its definitions, and a proof cites one by its title. Set theory defines
+`union`, `intersection` and `power set`, so `x is in A union B` is a statement of
+its own, the atom `In(x, Union(A, B))`, and `(Definition of union)` is what lets a
+proof say that it means `x is in A or x is in B`. A definition adds no axiom. A term
+that exists only under a condition (`f(x)`, `max(X)`) has a builder in the facility,
+`unique_or_default_definition`, which no theory uses yet. `CartesianProduct` and
+`Pair` are declared but not yet defined. See "Definitions" in
+`docs/PROOF_FILE_FORMAT.md` and in `ARCHITECTURE_STATUS.md`.
 
 ### Number theory
 
@@ -133,6 +160,29 @@ a compound term such as `A union B`) and at least those properties, and the
 premises it needs are then said of that relation, not of the theorem's own. See
 `tests/testDiscreteMath/promoted_relation_theorems.txt`.
 
+### Files that use files, and saved results
+
+A file of several proofs may begin with `Use NAME.`, where NAME is a theory or
+another file, and then cite that file's theorems. The cited file must have been
+checked: it is never checked because it is cited, so checking each file cited is
+the user's obligation. `./run_tests.sh --saved-results [DIR]` keeps what a run
+checked in a store (by default `.saved_results/`, which git ignores), and a later
+run does not check a file again while nothing that decides the result has changed:
+the text of the file, the files it uses, the checker's code, the Python version and
+the rules it starts from. It is off by default and in CI. See "Using another file"
+and "Saved results" in `docs/PROOF_FILE_FORMAT.md`.
+
+### The set theory corpus
+
+`SetTheoryCorpus/` holds the owner's set theory corpus: a README
+(`README_SetTheory.md`: layout and conventions), the nine axioms as statements
+(`Chapter1_Axioms.txt`), five definitions of order theory (`OrderTheory.txt`) and a
+stub for the ordinals (`Chapter2_Ordinals.txt`). The files are kept in dependency
+order, each beginning with `Use` lines naming what it builds on. No entry has a
+proof yet, and the checker does not read these files: a run on them stops at the
+first line, because they are not numbered proofs. [todos.txt](todos.txt), "The
+plan", says what comes next.
+
 ### Proof context and lexical scoping
 
 `source/ProofContext.py` is the lexical environment used during elaboration.
@@ -161,8 +211,11 @@ Current maintenance priorities:
 
 - Keep the public parsing and proof-checking API documented, including expected
   inputs, outputs, and theory-environment selection.
-- Grow the informational examples and enforced regression corpus with realistic
+- Grow the informational examples and enforced regression fixtures with realistic
   proof patterns and edge cases.
+- Develop the set theory corpus (`SetTheoryCorpus/`) first, and then the checker
+  work that reading it needs (owner direction of 2026-11-21; `todos.txt`, "The
+  plan").
 - Expand mathematical syntax and theory support within approved scope. In
   particular, extending `Mutatis mutandis` beyond names, terms and symbols (to
   a closed block of several lines, say) is not planned for now (owner decision
@@ -181,11 +234,16 @@ Current maintenance priorities:
 - `source/ProofJustification.py` — parses proof-line justifications (e.g.
   "Modus Ponens from 2, 3") into rule citations.
 - `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`,
+  `source/OrderTheory.py` (the order on the integers),
   `source/DiscreteMath.py` (rules in `DiscreteMathCore.py`), plus
   `TermLogic.py` / `FormulaLogic.py` for terms and formulas —
   per-subject theory modules and logic building blocks that extend the base logic (see "What the
   project already supports").
-- `source/validate_all_proofs.py` — multi-proof file runner and theorem promotion.
+- `source/Definitions.py` — the definition facility (see "Definitions").
+- `source/FormulaTextScan.py` — shared lexical scans for formula phrases embedded in
+  proof lines.
+- `source/validate_all_proofs.py` — multi-proof file runner, theorem promotion, and
+  `Use` of other files.
 - `source/SavedChecks.py` — saved results: what a run checked, kept so that a later
   run need not check it again.
 - `tests/` — enforced proof fixtures (plus `tests/setTheoryProofs`, which is
@@ -196,6 +254,14 @@ Current maintenance priorities:
   `SyLoPy.source...`; `pytest_tests/support.py` and `./run_tests.sh` make that
   work whatever the checkout directory is called.
 - `completion/run_tests.bash` — shell completion for the test runner.
+- `SetTheoryCorpus/` — the owner's set theory corpus (see "The set theory corpus").
+- `tools/mutation_check.py` — changes the code one line at a time and runs given
+  tests, to show whether they notice.
+- `.github/workflows/test.yml` — CI, which runs `./run_tests.sh`.
+- `docs/PROOF_FILE_FORMAT.md` — the proof syntax and citation reference.
+- `todos.txt` (where things stand, the plan, owner decisions), `ARCHITECTURE_STATUS.md`,
+  `AGENT_COLLABORATION.md`, `JOBS_FOR_CHATGPT.md`, `PROJECT_STATE.md` — project
+  documents; `PROJECT_STATE.md` says what each is for.
 
 ## Recommended Python API
 

@@ -25,15 +25,24 @@ which [PR #167](https://github.com/axiomtutor/SyLoPy/pull/167) implements:
   "Definitions of the declared set operations" of `source/SetTheory.py` and
   `pytest_tests/test_set_operation_definitions.py` first.
 - The ordered pair will be `{{a}, {a, b}}` with readable syntax. The abstract `Pair`
-  and `CartesianProduct` are declared and have no meaning until then.
+  and `CartesianProduct` are declared and not defined until then.
 - Symbols (`∈`, `∪`, `∀`, …) are accepted as input by the owner (J41).
 
 The "Today" entries were produced by running `pp.parse_formula` and the checker at
 commit 742d2d3 of #167; re-run a row before relying on it and report any that no
 longer holds.
 
-Dependencies: every job needs #167 merged, because its fixtures cite the definitions.
-J36, J41 and J43 need nothing else. J37, J38 and J39 need J36. J42 needs J38, and J40
+Queue state (2026-11-22): #167 merged on 2026-11-15 and #168, which adds these jobs,
+on 2026-11-18. None of J36–J43 has started, and no ChatGPT pull request is open. The
+owner directed on 2026-11-21 that the corpus (`SetTheoryCorpus/`) is developed first
+(`todos.txt`, Current status). Claude's recommendation: begin with J36, J41 and J43,
+which do not depend on the corpus, then J37 and J39, and hold J38, J42 and J40 until
+the owner has decided whether the set operations are defined in the corpus or in Python
+(`todos.txt`, The plan, part 3 and question 4), because they add definitions to the
+Python module.
+
+Dependencies: every job needs #167 merged, because its fixtures cite the definitions
+(it has). J36, J41 and J43 need nothing else. J37, J38 and J39 need J36. J42 needs J38, and J40
 needs J38 and J39 (J38 and J42 both change the tests that pin the list of
 definitions, so they must not run together). Start the jobs that are unblocked in
 this order, within the limit of three open PRs: J36, J41, J43, J38, J37, J39, J42,
@@ -103,7 +112,7 @@ Python 3.12 and 3.13; the PR report is as rule 3 below requires (the tested comm
 the CI run, the totals); the later jobs say "the PR report is as for J36" for this. If
 this one passes about 400 changed lines, send the fixture as a second PR.
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
 
 ### J37 — Every membership phrase is a membership
 
@@ -186,7 +195,7 @@ which takes the disjunction without the definition (refused at that line).
 equations; the seven oracle expectations (five membership, two identity) are the only
 ones changed; both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
 
-Status: queued; needs #167 and J36.
+Status: queued; needs J36 (#167 has merged); not started.
 
 ### J38 — Set difference
 
@@ -241,7 +250,9 @@ definition rule. Run `tools/mutation_check.py` over the new code.
 and refuses as listed; every invalid fixture proof is refused by the definition rule;
 both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
 
-Status: queued; needs #167 and J36.
+Status: queued; needs J36 (#167 has merged); not started. Held until the owner has
+decided whether the set operations are defined in the corpus or in Python (`todos.txt`,
+The plan, question 4).
 
 ### J39 — Laws of set algebra, batch 1: union and intersection
 
@@ -287,8 +298,8 @@ finding with its issue; the pytest module asserts the titles; the invalid proofs
 refused as described; both suites pass on Python 3.12 and 3.13; the PR report is as
 for J36.
 
-Status: queued; needs #167 and J36 (J37 is not needed: the laws use only `is in` and
-`is not in`).
+Status: queued; needs J36 (#167 has merged; J37 is not needed: the laws use only
+`is in` and `is not in`); not started.
 
 ### J40 — Laws of set algebra, batch 2: difference and power set
 
@@ -311,7 +322,8 @@ Laws of the product wait until `CartesianProduct` has a definition (see Planned)
 `PowerSet(A union B) = PowerSet(A) union PowerSet(B)`, and `A subseteq B` implies
 `PowerSet(B) subseteq PowerSet(A)` as the invalid proofs.
 
-Status: queued; needs #167, J38 and J39.
+Status: queued; needs J38 and J39 (#167 has merged); not started. Held with J38 (see
+there).
 
 ### J41 — Symbols as input
 
@@ -378,7 +390,7 @@ fixture proof; the merge conflict is an error; no existing reading changes; both
 pass on Python 3.12 and 3.13; the PR report is as for J36. If J38 has not merged, leave
 `∖` out and add it with J38 (whichever merges second adds the entry).
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
 
 ### J42 — The singleton and the unordered pair
 
@@ -430,7 +442,7 @@ end subproof
 
 3. Both go in `SET_DEFINITIONS`. There is no new surface syntax: `Singleton(a)` and
    `UnorderedPair(a, b)` are ordinary function terms. `Pair` and `pair(...)` are not
-   touched. The names are the owner's to change in review.
+   touched. The owner approved the names on #168 (2026-11-17: "Your names are good.").
 
 **Allowed scope:** `source/SetTheory.py` (the two entries and the proof text);
 `pytest_tests/test_set_operation_definitions.py`: `Operation` entries for both (with
@@ -454,8 +466,8 @@ for constants with no premise, `a is in Singleton(b)` and
 fixture proofs pass and fail as stated; both suites pass on Python 3.12 and 3.13; the PR
 report is as for J36.
 
-Status: queued; needs #167 and J38 (both change the tests that pin the list of
-definitions).
+Status: queued; needs J38 (#167 has merged; both change the tests that pin the list of
+definitions); not started. Held with J38 (see there).
 
 ### J43 — Red-team the definition facility
 
@@ -513,7 +525,7 @@ refusal asserts its reason, not only the refusal; the PR lists the classes with 
 numbers of probes and what each found; both suites pass on Python 3.12 and 3.13; the
 PR report is as for J36.
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
 
 ### Planned, not yet specified
 
@@ -532,8 +544,15 @@ Each waits for the jobs named, and is specified when they have merged:
   use earlier definitions (item 8(d) of `todos.txt`; mine), and the ordered pair must
   exist. Then `A cross B` is defined by Separation over a power set, and its laws are
   added to the library of J39 and J40.
+- **Parser and recipe fixes from the findings #169, #170 and #171** (its first two
+  items): small and independent of the jobs above. #169 and #170 need no owner decision;
+  the first two items of #171 wait for the owner's confirmation that `nonempty` and
+  `family of subsets` declarations should state their facts. Claude writes each as a job
+  when the owner wants ChatGPT started on them; none is written yet (`todos.txt`, The
+  plan, part 3 and question 7).
 - **Owner questions, not jobs:** definitions written in proof files, functions as sets
-  of pairs or as symbols, and declaration facts such as `nonempty`.
+  of pairs or as symbols, and declaration facts such as `nonempty` (`todos.txt`, The
+  plan, Open owner questions).
 
 ## Deferred queue
 
@@ -580,8 +599,11 @@ expectations changed.
 
 Status: Deferred by owner direction of 2026-11-05 while set theory is the
 current development priority. The full job specification and proof-only scope
-are retained unchanged. The proof work has not begun; resume only when the
-owner changes the priority or explicitly re-queues J35.
+are retained unchanged. No pull request has been opened for it. A ChatGPT branch,
+`chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-02; 89 commits
+behind master on 2026-11-22), holds the two files named above; it has never been
+reviewed or run by Claude, and nobody touches it. Resume only when the owner changes
+the priority or explicitly re-queues J35.
 
 ## Recent dispositions
 
@@ -628,7 +650,7 @@ Original specifications and their final dispositions are preserved in the archiv
 1. Add an explicit job before starting delegated work. Each job must state its goal, allowed scope/files, tests or fixtures to add, and an observable “Done when” condition.
 2. Use one small branch and one PR per job; normally keep a PR to about 400 changed lines or fewer. Keep no more than three delegated PRs open at once. The owner merges.
 3. Treat CI as the test run. Keep the PR a draft until its stated completion criteria pass. Report the exact tested commit, CI run, test totals, coverage, enforced fixtures, informational fixtures, and remaining failures; never infer results from an uninspected run.
-4. `source/ProofLogic.py` and `source/ProofJustification.py` are kernel-owned; do not edit them without coordination. Do not alter existing tests, fixtures, or parser-oracle expectations merely to make a change pass. Do not start items marked as requiring owner approval in `todos.txt`.
+4. `source/ProofLogic.py` and `source/ProofJustification.py` are kernel-owned: ChatGPT does not edit them (owner, 2026-11-18), and a kernel defect is a finding for Claude. Do not alter existing tests, fixtures, or parser-oracle expectations merely to make a change pass. Do not start items marked as requiring owner approval in `todos.txt`.
 5. A checker defect is a finding, not a reason to weaken a test. File a focused issue with the smallest proof, exact accepted/rejected behavior or message, suspected rule/file, and `Owner: Claude` when the kernel is involved. Include strict expected-failure regression coverage for an invalid proof that is incorrectly accepted, following the collaboration guide.
 6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
 

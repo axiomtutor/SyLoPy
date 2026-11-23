@@ -32,6 +32,10 @@ A new file goes where its dependencies put it, and the list above is kept in tha
 
 These are decisions recorded in `todos.txt` under "Owner decisions".
 
+# Status
+
+Nothing in this directory has been checked, which is why the headings under "Proved Theorems" are empty.  `Chapter1_Axioms.txt` states the nine axioms and `OrderTheory.txt` five definitions; neither has a proof, and `Chapter2_Ordinals.txt` is a stub.  The checker does not read these files yet.  Run on them it stops at the first line, because they are not files of numbered proofs (`# 1: Title`), and the entries here (`# Axiom N:`, `# Definition N.`, `# Theorem N.`) are not a format it accepts.  The corpus comes first (owner, 2026-11-21); `todos.txt`, "The plan", proposes the next entries (part 1) and lists what the checker needs in order to read them (part 2).
+
 # Proved Theorems
 
 One heading per file, in the order of the Layout.

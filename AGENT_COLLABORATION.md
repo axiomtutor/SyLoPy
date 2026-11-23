@@ -149,19 +149,20 @@ This section is a dated record; the rules above are the stable part.
 
 ### In numbers
 
-GitHub history from the first PR (2026-08-19) to 2026-11-17:
+GitHub history from the first PR (2026-08-19) to 2026-11-22 (refreshed on that date; the figures of 2026-11-17 were 153 PRs, 144 merged, medians 106 and 461):
 
 | | |
 |---|---|
-| Pull requests | 153: 122 from ChatGPT, 27 from Claude, 4 other (#1, the first consolidation, and #154–#156, three large PRs of 2026-11-02 from `agents/…` branches) |
-| Outcome | 144 merged; 7 closed unmerged (all ChatGPT's); 2 open (#168 from Claude, #174 from ChatGPT) |
-| Median size, changed lines (additions plus deletions) | ChatGPT 106; Claude 461 |
-| Pace | The PR workflow began on 2026-10-06 (#2). Merges per week, for the weeks starting Mondays 2026-10-05 to 2026-11-16: 26, 51, 25, 24, 14, 1, 2 (the last week is partial). Work waits for the owner's merge, so make each PR easy to decide. |
-| CI on master | Red on every run from 2026-10-04 until #121 merged on 2026-10-23; green on every run since. |
+| Pull requests | 158: 122 from ChatGPT, 32 from Claude, 4 other (#1, the first consolidation, and #154–#156, three large PRs of 2026-11-02 from `agents/…` branches) |
+| Outcome | 151 merged; 7 closed unmerged (all ChatGPT's); none open |
+| Median size, changed lines (additions plus deletions) | ChatGPT 106; Claude 469 |
+| Pace | The PR workflow began on 2026-10-06 (#2). Merges per week, for the weeks starting Mondays 2026-10-05 to 2026-11-16: 26, 51, 25, 24, 14, 1, 9. Work waits for the owner's merge, so make each PR easy to decide. |
+| CI on master | Red on every run from 2026-10-04 until #121 merged on 2026-10-23 (122 runs); green on every run since (36 runs). |
 
 ### What has worked
 
-- **Small frequent PRs from ChatGPT, larger designed changes from Claude.** In the six weeks from 2026-10-07, 114 of ChatGPT's PRs and 26 of Claude's merged.
+- **Small frequent PRs from ChatGPT, larger designed changes from Claude.** From 2026-10-07 to 2026-11-22, 115 of ChatGPT's PRs and 32 of Claude's merged.
+- **One purpose per PR, with its verification record in the description.** Claude's #175 to #179 (2026-11-18 to 2026-11-22; from 33 to 1,647 changed lines) each merged on the day it was opened.
 - **Red-team first, fix second.** ChatGPT writes the audit or the probe; Claude fixes the kernel and keeps the probe as the acceptance test. #41 (an audit of registered rules, 2026-10-13) became #56 (2026-10-15), whose description begins "Implements the registered-rule soundness fixes whose acceptance tests landed in #41".
 - **Review with evidence, fixes the same day.** On #174 Claude compared old and new parser behavior on 35,238 inputs and found one unannounced change; the review's other findings were gaps in the tests and explanations the rewrite had deleted. ChatGPT answered all five findings in eleven commits, pushed 14 to 18 minutes after the review. The re-check found nothing further.
 - **Decisions in writing.** The owner's answers are recorded in `todos.txt` with their date, and later work starts from them.
@@ -174,5 +175,6 @@ GitHub history from the first PR (2026-08-19) to 2026-11-17:
 | #161 (reviewed 2026-11-05): a documentation consolidation dropped the owner's authorization quote from `todos.txt` and two contract sentences from the architecture reference, and its new tests caught 4 of 11 plausible wrong versions of the code they pinned. | Short version 3; "Refactors and optimizations". |
 | #164 (merged 2026-11-06): a test meant to reach the multi-proof path passed `"# 1\\n"` and never did. #174 repeated the slip. | "Line breaks in test strings are `\n`". |
 | #174 (reviewed 2026-11-17): an optimization also made labeled case blocks parse inside an implicit block without saying so, and several explanatory comments were deleted. The new behavior is correct; the tests did not pin it. | "Refactors and optimizations": contract tests first, "Behavior changes", keep the reasons. |
+| #179 (2026-11-22, Claude's): a new optional argument of the fixture runner broke three tests of another module that replace the runner with a fake of the old signature. The whole `./run_tests.sh` from a fresh clone found it, and the fix went in before the PR was opened. | Run the whole `./run_tests.sh` from a fresh clone before opening a PR: a changed signature breaks the tests that fake the function. |
 | 2026-10-04 to 2026-10-23: every CI run on master failed, and the known cause was one failing test (a ZFC fixture waiting for the Mutatis mutandis rule). Each PR had to explain "the known failure", and a real regression in `tests/testSetTheory` (#37) had to be told apart from it by comparing counts. | "A red run is a stop sign"; strict expected failures instead of failing tests. |
 | Seven ChatGPT PRs were closed unmerged, none on its merits: two stacked PRs were re-opened from master so CI would run (#32 → #33, #64 → #65), two narrower PRs were folded into #67 (#62, #66), #148 was superseded, #36 was cancelled when Claude's kernel change landed, and #33 was withdrawn because it edited kernel files reserved for Claude. | Branch from master and never stack; look for concurrent work before opening a PR; the kernel is Claude's. |
