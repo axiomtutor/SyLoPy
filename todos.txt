@@ -89,7 +89,7 @@ commit.
   code. No pull request is open. ChatGPT's queue, J36–J43 (`JOBS_FOR_CHATGPT.md`), is
   unblocked and none of it has started; it moves when the owner starts a ChatGPT
   session on a job. One ChatGPT branch holds work that never became a pull request:
-  `chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-02, 89 commits
+  `chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-03, 89 commits
   behind master) has the two files J35 names, a fixture and a test, not reviewed and
   not run by Claude. J35 is deferred and the branch is left alone.
 

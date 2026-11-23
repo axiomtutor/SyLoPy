@@ -149,7 +149,7 @@ This section is a dated record; the rules above are the stable part.
 
 ### In numbers
 
-GitHub history from the first PR (2026-08-19) to 2026-11-22 (refreshed on that date; the figures of 2026-11-17 were 153 PRs, 144 merged, medians 106 and 461):
+GitHub history from the first PR (2026-08-19) to 2026-11-22, before the pull request that carries this refresh (the figures of 2026-11-17 were 153 PRs, 144 merged, medians 106 and 461):
 
 | | |
 |---|---|
@@ -162,7 +162,7 @@ GitHub history from the first PR (2026-08-19) to 2026-11-22 (refreshed on that d
 ### What has worked
 
 - **Small frequent PRs from ChatGPT, larger designed changes from Claude.** From 2026-10-07 to 2026-11-22, 115 of ChatGPT's PRs and 32 of Claude's merged.
-- **One purpose per PR, with its verification record in the description.** Claude's #175 to #179 (2026-11-18 to 2026-11-22; from 33 to 1,647 changed lines) each merged on the day it was opened.
+- **One purpose per PR, with its verification record in the description.** Claude's #175 to #179 (2026-11-18 to 2026-11-22; from 33 to 1,647 changed lines) were each merged within 15 hours of being opened.
 - **Red-team first, fix second.** ChatGPT writes the audit or the probe; Claude fixes the kernel and keeps the probe as the acceptance test. #41 (an audit of registered rules, 2026-10-13) became #56 (2026-10-15), whose description begins "Implements the registered-rule soundness fixes whose acceptance tests landed in #41".
 - **Review with evidence, fixes the same day.** On #174 Claude compared old and new parser behavior on 35,238 inputs and found one unannounced change; the review's other findings were gaps in the tests and explanations the rewrite had deleted. ChatGPT answered all five findings in eleven commits, pushed 14 to 18 minutes after the review. The re-check found nothing further.
 - **Decisions in writing.** The owner's answers are recorded in `todos.txt` with their date, and later work starts from them.
