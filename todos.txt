@@ -86,7 +86,7 @@ commit.
   what statements and definitions mean, and merges. Claude owns the kernel and the
   soundness argument, designs, writes the jobs, reviews and re-checks by running code.
   ChatGPT implements the jobs and red-teams, through CI only, because it cannot run
-  code. No pull request is open. ChatGPT's queue, J36–J43 (`JOBS_FOR_CHATGPT.md`), is
+  code. No pull request is open. ChatGPT's queue, J36–J46 (`JOBS_FOR_CHATGPT.md`), is
   unblocked and none of it has started; it moves when the owner starts a ChatGPT
   session on a job. One ChatGPT branch holds work that never became a pull request:
   `chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-03, 89 commits
@@ -115,26 +115,33 @@ commit.
   with precisions (behavior identical on the premise and line paths; tests that state
   behavior, not internals; the contract documented in three places). Nothing has been
   implemented. It waits for the owner.
-- [Issue #169](https://github.com/axiomtutor/SyLoPy/issues/169): open finding. The
-  premise line `A and B are equal.` (also `are not equal`, `different`, `distinct`)
-  is read as the start of a declaration, not as `A = B`, as `A and B are disjoint.`
-  was before #151. A parser fix; the finding asks that the rule decide it (what
-  follows `are`), not one more word in a list. No owner decision needed.
-- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding.
-  `Let P be a proposition.`, `a strict order on X` and `a bijection from A to B`
-  declare the name as a plain object, so the first line that uses it as a statement,
-  a relation or a function is refused at the use. Recipes are the fix. No owner
-  decision needed.
+- [Issue #169](https://github.com/axiomtutor/SyLoPy/issues/169): open finding; the owner
+  approved its direction on 2026-11-23 ("Decide s declaration by what follows `are`.",
+  read as "a declaration"). The premise line `A and B are equal.` (also `are not equal`,
+  `different`, `distinct`) is read as the start of a declaration, not as `A = B`, as
+  `A and B are disjoint.` was before #151. A parser fix by a rule, not by one more word in
+  a list: job J44.
+- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding; "Agreed"
+  (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
+  from A to B` declare the name as a plain object, so the first line that uses it as a
+  statement, a relation or a function is refused at the use. Recipes are the fix: job J45.
 - [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): open finding.
   Declarations that say something but state nothing: `a nonempty set`, `a family of
-  subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain`
-  no rule reads). The first two are a recipe each, and the issue asks first for a
-  confirmation that they should state their facts, as J30 made membership declarations
-  do (question 7(a) of The plan). The third depends on how functions are represented,
-  which the corpus's convention changes (question 7(b)). #169 to #171 were filed on
-  2026-11-08 for the parser and recipes, which is ChatGPT's maintenance area; the three
-  reproductions were run again on 2026-11-22 against master `6d91cef` and each still
-  gives the result its issue describes. No job has been written for them yet.
+  subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain` no rule
+  reads). The owner confirmed on 2026-11-23 ("Confirmed.") that the first two should state
+  their facts, as J30 made membership declarations do: job J46. The typed function depends
+  on how functions are represented, which the corpus's convention changes, and `a
+  partition of A` and `a set of sets`, which the issue says are in the same state, were
+  not part of the confirmation (question 7).
+- [Issue #181](https://github.com/axiomtutor/SyLoPy/issues/181): open finding, filed on
+  2026-11-23 while J46 was written. The plural declarations `Let A, B be finite sets.`,
+  `infinite sets` and `finite sets of cardinality 3` state nothing, although the singular
+  states `Finite(A)`. The same family as #171; it needs no owner decision and is part of
+  J46.
+
+#169 to #171 were filed on 2026-11-08 for the parser and recipes, which is ChatGPT's
+maintenance area. Their reproductions were run again on 2026-11-22 against master
+`6d91cef`, and each still gave the result its issue describes.
 
 ## The plan (2026-11-22)
 
@@ -191,20 +198,22 @@ text.
 
 ### 3. Delegated work (ChatGPT; `JOBS_FOR_CHATGPT.md`)
 
-Who: ChatGPT, when the owner starts it on a job. All of J36–J43 are unblocked (#167
-merged on 2026-11-15 and the jobs on 2026-11-18) and none has started. The file's order,
-within three open pull requests, is J36, J41, J43, J38, J37, J39, J42, J40. Claude's
-recommendation: begin with J36 (nested set terms), J41 (symbols as input, accepted by the
-owner on 2026-11-09) and J43 (red-team the definition facility), then J37 and J39. Hold J38,
-J42 and J40 until question 4 is answered, because they register more definitions in
-Python that the corpus may define instead.
+Who: ChatGPT, when the owner starts it on a job. All of J36–J46 are unblocked (#167
+merged on 2026-11-15, the jobs J36–J43 on 2026-11-18) and none has started. The file's
+order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
+J40. Claude's recommendation: begin with J45 (a declaration phrase gives the name its kind;
+`Let P be a proposition.` is the first thing a new user writes) and J44 (a premise
+`A and B are equal.` reads as `A = B`), then J36 (nested set terms), J41 (symbols as input,
+accepted by the owner on 2026-11-09) and J43 (red-team the definition facility), then J46
+(declarations state their facts), J37 and J39. Hold J38, J42 and J40 until question 4 is
+answered, because they register more definitions in Python that the corpus may define
+instead.
 
-Findings #169 and #170 are parser and recipe fixes, and their issues say that no owner
-decision is needed. The first two items of #171 are the same kind of fix, but wait for
-the owner's confirmation (question 7(a)); its third item waits for a decision (question
-7(b)). Claude writes each as a job (scope, tests, Done when) when the owner wants ChatGPT
-started on them; no job has been written. The optional standalone fixtures of J33 and J34
-stay optional, and J35 is deferred (item 1).
+Findings #169, #170, #171 and #181 are parser and recipe fixes, and the owner approved
+them on 2026-11-23 in comments on the issues; they are the jobs J44, J45 and J46. The
+typed function, `a partition of A` and `a set of sets` wait for the owner (question 7).
+The optional standalone fixtures of J33 and J34 stay optional, and J35 is deferred
+(item 1).
 
 ### 4. Claude's maintenance
 
@@ -258,15 +267,14 @@ each question.
 6. **Two places in the corpus text.** Axiom 4 reads `Y = (union X) = {u in U: U in X}`,
    which uses `U` without binding it, and `Chapter2_Ordinals.txt` has an empty
    `# Theorem 1.`, so its topic is not known. Ask when those files are next edited.
-7. **Declarations that state their facts** (#171). (a) Should `Let A be a nonempty set.`
-   state `exists u, In(u, A)`, and `Let F be a family of subsets of A.` state `forall S,
-   (In(S, F) -> S subseteq A)`, as J30 made membership declarations state theirs? The issue
-   asks for this confirmation before any job. Recommendation: yes, so that a proof need not
-   restate what its own declaration said. (b) Typed functions (the issue's third item).
-   `Let f: X -> Y be a unary function` declares a function symbol with `domain` and
-   `codomain` metadata that no rule reads, and the corpus says a function is a set of
+7. **What else a declaration states** (#171). The owner confirmed on 2026-11-23 that
+   `nonempty` and `family of subsets` state their facts (job J46). Still open: (a) the typed
+   function. `Let f: X -> Y be a unary function` declares a function symbol with `domain`
+   and `codomain` metadata that no rule reads, and the corpus says a function is a set of
    ordered pairs. Recommendation: leave the declaration of functions as it is until the
-   corpus has its functions (part 1, item 2).
+   corpus has its functions (part 1, item 2). (b) `Let P be a partition of A.` and
+   `Let F be a set of sets.` state nothing today. Recommendation: decide what each states
+   when the first corpus entry needs it, as with question 5(b).
 8. **Lower-case spellings of operations as declared names** (Set theory and proof syntax,
    Definitions). Recommendation: refuse such a declaration, because a name that reads as
    something else is a silent misreading, and the project refuses a phrase that could mean
@@ -831,6 +839,13 @@ Current implementation direction:
   Your names are good.` The names are `Singleton` and `UnorderedPair`. The jobs J37 and
   J42 carry both; J37 gives the intersection the same rule as the union, which is
   Claude's extension of what the owner said.
+- Findings #169, #170 and #171 (owner, 2026-11-23, comments on the issues): on #169,
+  "Decide s declaration by what follows `are`." (read as "a declaration"), the issue's
+  suggested direction: a rule, not a word list; on #170, "Agreed", to its suggested
+  direction (recipes for `proposition`, `strict order` and `bijection from A to B`); on
+  #171, "Confirmed.", to the request that `a nonempty set` and `a family of subsets of A`
+  state their facts. The jobs are J44, J45 and J46. The typed function, `a partition of A`
+  and `a set of sets` were not part of the confirmation (question 7).
 
 ## Owner approval required — do not start without approval
 
