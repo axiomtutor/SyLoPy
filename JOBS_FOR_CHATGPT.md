@@ -838,12 +838,7 @@ Original specifications and their final dispositions are preserved in the archiv
 
 ## Rules for new jobs
 
-1. Add an explicit job before starting delegated work. Each job must state its goal, allowed scope/files, tests or fixtures to add, and an observable “Done when” condition.
-2. Use one small branch and one PR per job; normally keep a PR to about 400 changed lines or fewer. Keep no more than three delegated PRs open at once. The owner merges.
-3. Treat CI as the test run. Keep the PR a draft until its stated completion criteria pass. Report the exact tested commit, CI run, test totals, coverage, enforced fixtures, informational fixtures, and remaining failures; never infer results from an uninspected run.
-4. `source/ProofLogic.py` and `source/ProofJustification.py` are kernel-owned: ChatGPT does not edit them (owner, 2026-11-18), and a kernel defect is a finding for Claude. Do not alter existing tests, fixtures, or parser-oracle expectations merely to make a change pass. Do not start items marked as requiring owner approval in `todos.txt`.
-5. A checker defect is a finding, not a reason to weaken a test. File a focused issue with the smallest proof, exact accepted/rejected behavior or message, suspected rule/file, and `Owner: Claude` when the kernel is involved. Include strict expected-failure regression coverage for an invalid proof that is incorrectly accepted, following the collaboration guide.
-6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
+The rules for jobs (what a job states, branch and PR size, CI reporting, kernel ownership, findings, and when a job is complete) are in `AGENT_COLLABORATION.md`, which is the single place they are kept. In short: add an explicit job here before starting delegated work; the owner merges; `source/ProofLogic.py` and `source/ProofJustification.py` are not edited by ChatGPT; a job is complete only after its PR is merged and the status table above is updated.
 
 Historical note: this tracker replaces the former long-form queue. Archived job text is retained for provenance, but current repository guidance and explicit owner decisions take precedence.
 

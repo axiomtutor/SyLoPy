@@ -219,9 +219,8 @@ The optional standalone fixtures of J33 and J34 stay optional, and J35 is deferr
 
 No owner decision is needed for these, and none has started except this documentation.
 
-- Shrink the six "Rules for new jobs" in `JOBS_FOR_CHATGPT.md` to a pointer to
-  `AGENT_COLLABORATION.md`, so that the two cannot drift. (Rule 4 had fallen behind the
-  owner's decision of 2026-11-18 and is corrected together with this update.)
+- (Done, pending merge: the "Rules for new jobs" in `JOBS_FOR_CHATGPT.md` are now a pointer to
+  `AGENT_COLLABORATION.md`, so that the two cannot drift.)
 - #144, once the owner authorizes it.
 - Branch hygiene: the eight merged `claude/*` branches and the backup
   `claude/set-operation-definitions-wip` (superseded by #167) can be deleted. Claude
