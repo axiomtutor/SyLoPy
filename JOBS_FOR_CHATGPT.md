@@ -25,19 +25,33 @@ which [PR #167](https://github.com/axiomtutor/SyLoPy/pull/167) implements:
   "Definitions of the declared set operations" of `source/SetTheory.py` and
   `pytest_tests/test_set_operation_definitions.py` first.
 - The ordered pair will be `{{a}, {a, b}}` with readable syntax. The abstract `Pair`
-  and `CartesianProduct` are declared and have no meaning until then.
+  and `CartesianProduct` are declared and not defined until then.
 - Symbols (`∈`, `∪`, `∀`, …) are accepted as input by the owner (J41).
 
 The "Today" entries were produced by running `pp.parse_formula` and the checker at
 commit 742d2d3 of #167; re-run a row before relying on it and report any that no
 longer holds.
 
-Dependencies: every job needs #167 merged, because its fixtures cite the definitions.
-J36, J41 and J43 need nothing else. J37, J38 and J39 need J36. J42 needs J38, and J40
-needs J38 and J39 (J38 and J42 both change the tests that pin the list of
-definitions, so they must not run together). Start the jobs that are unblocked in
-this order, within the limit of three open PRs: J36, J41, J43, J38, J37, J39, J42,
-J40. A job starts only after the PR that adds it has merged, as below.
+Queue state (2026-11-23): #167 merged on 2026-11-15 and #168, which adds J36–J43,
+on 2026-11-18. None of J36–J46 has started, and no ChatGPT pull request is open. The
+owner directed on 2026-11-21 that the corpus (`SetTheoryCorpus/`) is developed first
+(`todos.txt`, Current status). Claude's recommendation: begin with J36, J41 and J43,
+which do not depend on the corpus, then J37 and J39, and hold J38, J42 and J40 until
+the owner has decided whether the set operations are defined in the corpus or in Python
+(`todos.txt`, The plan, part 3 and question 4), because they add definitions to the
+Python module. J44, J45 and J46 fix the findings #169, #170, #171 and #181; the owner
+approved their directions in comments on the issues on 2026-11-23. They are small, and
+they change the declaration code, not the term parsers of J36–J43.
+
+Dependencies: every job needs #167 merged, because its fixtures cite the definitions
+(it has). J36, J41, J43, J44, J45 and J46 need nothing else. J37, J38 and J39 need J36.
+J42 needs J38, and J40 needs J38 and J39. J38 and J42 both change the tests that pin
+the list of definitions, so they must not run together, and J44, J45 and J46 change the
+same declaration code and recipes, so they must not run together either. Start the jobs
+that are unblocked in this order, within the limit of three open PRs: J45, J44, J36,
+J41, J43, J46, J38, J37, J39, J42, J40. J45 is first because `Let P be a proposition.`
+is the first thing a new user writes. A job starts only after the PR that adds it has
+merged, as below.
 
 ### J36 — Nested set-operation terms
 
@@ -103,7 +117,7 @@ Python 3.12 and 3.13; the PR report is as rule 3 below requires (the tested comm
 the CI run, the totals); the later jobs say "the PR report is as for J36" for this. If
 this one passes about 400 changed lines, send the fixture as a second PR.
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
 
 ### J37 — Every membership phrase is a membership
 
@@ -186,7 +200,7 @@ which takes the disjunction without the definition (refused at that line).
 equations; the seven oracle expectations (five membership, two identity) are the only
 ones changed; both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
 
-Status: queued; needs #167 and J36.
+Status: queued; needs J36 (#167 has merged); not started.
 
 ### J38 — Set difference
 
@@ -241,7 +255,9 @@ definition rule. Run `tools/mutation_check.py` over the new code.
 and refuses as listed; every invalid fixture proof is refused by the definition rule;
 both suites pass on Python 3.12 and 3.13; the PR report is as for J36.
 
-Status: queued; needs #167 and J36.
+Status: queued; needs J36 (#167 has merged); not started. Held until the owner has
+decided whether the set operations are defined in the corpus or in Python (`todos.txt`,
+The plan, question 4).
 
 ### J39 — Laws of set algebra, batch 1: union and intersection
 
@@ -287,8 +303,8 @@ finding with its issue; the pytest module asserts the titles; the invalid proofs
 refused as described; both suites pass on Python 3.12 and 3.13; the PR report is as
 for J36.
 
-Status: queued; needs #167 and J36 (J37 is not needed: the laws use only `is in` and
-`is not in`).
+Status: queued; needs J36 (#167 has merged; J37 is not needed: the laws use only
+`is in` and `is not in`); not started.
 
 ### J40 — Laws of set algebra, batch 2: difference and power set
 
@@ -311,7 +327,8 @@ Laws of the product wait until `CartesianProduct` has a definition (see Planned)
 `PowerSet(A union B) = PowerSet(A) union PowerSet(B)`, and `A subseteq B` implies
 `PowerSet(B) subseteq PowerSet(A)` as the invalid proofs.
 
-Status: queued; needs #167, J38 and J39.
+Status: queued; needs J38 and J39 (#167 has merged); not started. Held with J38 (see
+there).
 
 ### J41 — Symbols as input
 
@@ -378,7 +395,7 @@ fixture proof; the merge conflict is an error; no existing reading changes; both
 pass on Python 3.12 and 3.13; the PR report is as for J36. If J38 has not merged, leave
 `∖` out and add it with J38 (whichever merges second adds the entry).
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
 
 ### J42 — The singleton and the unordered pair
 
@@ -430,7 +447,7 @@ end subproof
 
 3. Both go in `SET_DEFINITIONS`. There is no new surface syntax: `Singleton(a)` and
    `UnorderedPair(a, b)` are ordinary function terms. `Pair` and `pair(...)` are not
-   touched. The names are the owner's to change in review.
+   touched. The owner approved the names on #168 (2026-11-17: "Your names are good.").
 
 **Allowed scope:** `source/SetTheory.py` (the two entries and the proof text);
 `pytest_tests/test_set_operation_definitions.py`: `Operation` entries for both (with
@@ -454,8 +471,8 @@ for constants with no premise, `a is in Singleton(b)` and
 fixture proofs pass and fail as stated; both suites pass on Python 3.12 and 3.13; the PR
 report is as for J36.
 
-Status: queued; needs #167 and J38 (both change the tests that pin the list of
-definitions).
+Status: queued; needs J38 (#167 has merged; both change the tests that pin the list of
+definitions); not started. Held with J38 (see there).
 
 ### J43 — Red-team the definition facility
 
@@ -513,7 +530,199 @@ refusal asserts its reason, not only the refusal; the PR lists the classes with 
 numbers of probes and what each found; both suites pass on Python 3.12 and 3.13; the
 PR report is as for J36.
 
-Status: queued; needs #167.
+Status: queued; unblocked (#167 has merged); not started.
+
+### J44 — Declaration or formula: decide by what follows `are` ([#169](https://github.com/axiomtutor/SyLoPy/issues/169))
+
+**Goal:** A premise line, or a clause of a compound `Let`, of the shape
+`NAME and NAME are ...` is a declaration or a formula according to what follows `are`,
+decided by a rule. Today one word list decides it: `_looks_like_disjointness_formula`
+(`source/ProofParser.py`, made for #151) is asked by the plain `X and Y are ...`
+declaration step, by `_text_after_is_declaration_start` and by the split of a
+coordinated `Let` body. Any other word after `are` is read as a descriptor, so the
+clause declares the two names. The owner's decision (comment on #169, 2026-11-23:
+"Decide s declaration by what follows `are`.", read as "a declaration") makes it a rule.
+
+| Text | Today | Reads |
+| --- | --- | --- |
+| `A and B are equal.` after `Let A, B be sets.` | refused: "symbol 'A' is already declared as object" | `A = B` |
+| `A and B are not equal.`, `A and B are different.`, `A and B are distinct.` | the same | `not (A = B)` |
+| `A and B are equal.` with `A` and `B` not declared | accepted as a declaration of two objects described as "equal", which states no formula | `A = B`, refused as `A = B. (Premise)` is: "constant 'A' is used but has not been declared" |
+| `Let A and B be sets, and A and B are equal.` | refused: "symbol 'A' is already declared as object" | the declaration, then the premise `A = B` (as `are disjoint` is read there today) |
+| `A and B are disjoint.`, `A and B are not disjoint.`, `A is disjoint from B.` | formulas, since #151 | unchanged, by the rule and not by the list |
+| `A and B are sets.`, `A and B are integers.`, `A and B are relations on X.` | declarations | unchanged |
+
+The "Today" entries were produced by running the checker at master `6d91cef`; re-run a
+row before relying on it and report any that no longer holds.
+
+**Decisions already made** (do not reopen; if one cannot work, report it as a finding):
+
+1. The rule: what follows `are` decides. The clause is a formula when a formula parser
+   of the base logic or of an active theory reads the whole text, and a declaration
+   otherwise, as today. A descriptor that nothing reads stays an ordinary typed object
+   (`A and B are integers.`, `Let a be an integer.`).
+2. The words belong to the theory that owns them. `equal`, `not equal`, `different` and
+   `distinct` are equality's, so the base logic's; `disjoint` is set theory's, whose
+   phrase patterns already exist and stay there. No list of such words remains in
+   `source/ProofParser.py`: `_looks_like_disjointness_formula` goes away, and its three
+   users ask the rule.
+3. A text that a recipe reads as a declaration and a formula parser reads as a formula
+   is a finding, not a choice made silently. None is known.
+4. Not in this job: `A is equal to B` and `A equals B`, which are refused today with
+   "Unrecognized formula syntax" (the safe direction). Phrases for them are a separate
+   request.
+
+**Allowed scope:** `source/ProofParser.py` (the decision, and the base phrases for
+equality); `source/SetTheory.py` only so that `disjoint` is read through the rule; the
+paragraph of `docs/PROOF_FILE_FORMAT.md` on premises and declarations; the entry for
+#169 in `todos.txt`; new `pytest_tests/test_declaration_or_formula.py` and enforced
+fixture `tests/testSetTheory/premises_that_are_formulas.txt`. Not `source/ProofLogic.py`
+or `source/ProofJustification.py`.
+
+**Tests:** the parse oracle calls the line parsers directly and cannot see this step,
+so the cases are at the proof-line level: every row through `pp.parse_proof_text` (the
+justification kind, the formula's `repr` and the declarations, as
+`pytest_tests/test_compound_declarations.py` does for `disjoint`), and the refusal of
+the undeclared row pinned by line, category and message through
+`validate_all_proofs.run_multi_proof_file`. The symbolic twin of each reading (`A = B`,
+`not (A = B)`) gives the same entry; the existing `disjoint` cases are unchanged; `are`
+followed by a descriptor that nothing reads still declares. The fixture has at least
+four valid proofs (each reading as a premise after `Let A, B be sets.`, and one in a
+compound `Let`) and four invalid ones, each refused for its reason and not for a parse
+or declaration error (for example `A = B` claimed from `A and B are different.`). Run
+`tools/mutation_check.py` over the new decision code and report mutants made and
+survivors.
+
+**Done when:** every row reads as stated; the refusal carries the stated message; no
+list of formula words remains in `source/ProofParser.py` (say how you checked); the
+tests above pass; `./run_tests.sh` and `./run_tests.sh --suite extended` pass on Python
+3.12 and 3.13; the PR report is as for J36.
+
+Status: queued; the owner approved the direction on 2026-11-23; unblocked; not started.
+
+### J45 — Declaration phrases that give the name its kind ([#170](https://github.com/axiomtutor/SyLoPy/issues/170))
+
+**Goal:** Three natural declaration phrases declare the name as a plain `object`, so the
+first line that uses it as a statement, a relation or a function is refused by the
+kernel's kind check: accurate, but at the use, and without saying that the phrase is the
+cause. Give each the kind its working sibling gets. The first row matters most:
+propositional logic is the base of every theory, and `Let P be a proposition.` is the
+first thing a new user writes.
+
+| Declaration | Later line | Today | Reads |
+| --- | --- | --- | --- |
+| `Let P be a proposition.` (also `Let P, Q be propositions.`, `a statement`, `statements`, `a propositional variable`, `propositional variables`) | `P or not P. (Premise)` | "symbol 'P' is declared as object, but is used as a proposition" | `P` is a 0-ary predicate, as `Let P be a predicate.` makes it (`docs/PROOF_FILE_FORMAT.md`) |
+| `Let X be any set, R be a strict order on X, a, b be in X.` | `R(a, b). (Premise)` | "symbol 'R' is declared as object, but is used as a predicate" | a relation on X with carrier X, as `a strict partial order on X` is read today (`strict order` is another spelling of it) |
+| `Let A, B be any set, f be a bijection from A to B, a be in A.` | `f(a) = f(a). (Reflexivity)` | "symbol 'f' is declared as object, but is used as a function" | the typed bijection that `f: A -> B be a bijection` makes |
+
+The "Today" entries were produced by running the checker at master `6d91cef`; re-run a
+row before relying on it and report any that no longer holds.
+
+**Decisions already made** (owner, comment on #170, 2026-11-23: "Agreed", to the
+suggested direction of the issue; do not reopen):
+
+1. Recipes, not special cases: `proposition`, `statement` and `propositional variable`,
+   singular and plural, among the base declaration recipes; `strict order` beside
+   `partial order` and `total order` (`RelationDeclarationRecipe` in
+   `source/DiscreteMath.py`, or wherever `strict partial order` is registered); and
+   `bijection from A to B` beside the typed-bijection recipe (`BijectionDeclarationRecipe`
+   in `source/SetTheory.py`).
+2. A descriptor that no recipe knows stays an ordinary typed object: `Let a be an
+   integer.` keeps working. This job does not refuse unknown descriptors.
+3. What the working siblings state does not change, and nothing is renamed. (What the
+   corpus's `partial ordering` means is the owner's open question 5 in `todos.txt`.)
+
+**Allowed scope:** the recipes named above and the code they register through;
+`docs/PROOF_FILE_FORMAT.md` (the declaration phrases); the entry for #170 in
+`todos.txt`; new `pytest_tests/test_declaration_phrase_kinds.py` and enforced fixtures
+`tests/testProofs/proposition_declarations.txt` (the base logic) and
+`tests/testSetTheory/declaration_phrase_kinds.txt`. Not `source/ProofLogic.py` or
+`source/ProofJustification.py`.
+
+**Tests:** every row through `pp.parse_proof_text` (the declared kind and arity, and the
+facts the line states) and through the full pipeline; each new spelling gives the same
+declarations as its working sibling (`predicate`, `strict partial order`, the
+`f: A -> B` form); `Let a be an integer.` still declares an object. The fixtures have
+valid proofs that use each name as the kind it was declared (a statement in `P or not P`
+and in a proof by cases, a relation `R(a, b)`, a function `f(a)`) and invalid ones, each
+refused for its reason and not for a declaration error (a proposition applied to an
+argument; a relation used as a term). Run `tools/mutation_check.py` over the new recipe
+code and report mutants made and survivors.
+
+**Done when:** every row reads as stated and the siblings are unchanged; the tests above
+pass; `./run_tests.sh` and `./run_tests.sh --suite extended` pass on Python 3.12 and
+3.13; the PR report is as for J36.
+
+Status: queued; the owner agreed on 2026-11-23; unblocked; not started.
+
+### J46 — Declarations that state their facts: `nonempty`, `family of subsets`, plural `finite` ([#171](https://github.com/axiomtutor/SyLoPy/issues/171), [#181](https://github.com/axiomtutor/SyLoPy/issues/181))
+
+**Goal:** A declaration that says something states it, as J30 made membership
+declarations do. Today the first three rows below state no formula, so a proof must
+restate what its own declaration said and is refused with a message ("cites ['1'],
+which is not defined or not in scope") that does not point at the declaration; and the
+plural forms of the finite and infinite declarations state nothing, although the singular
+states its fact.
+
+| Declaration | Today | States |
+| --- | --- | --- |
+| `Let A be a nonempty set.` | no formula | `exists u, In(u, A)` (so that `Existence from 1` opens it) |
+| `Let A, B be nonempty sets.` | no formula | the same for each name |
+| `Let F be a family of subsets of A.` | no formula | `forall S, (In(S, F) -> S subseteq A)` |
+| `Let A, B be finite sets.`, `Let A and B be finite sets.` | no formula | `Finite(A)` and `Finite(B)` |
+| `Let A, B be infinite sets.` | no formula | `Infinite(A)` and `Infinite(B)` |
+| `Let A, B be finite sets of cardinality 3.` | no formula | `Finite(A)` and `Cardinality(A, 3)`, and the same for `B` |
+
+The singular `finite set`, `infinite set` and `finite set of cardinality n` declarations
+state `Finite(A)`, `Infinite(A)` and `[Finite(A), Cardinality(A, n)]` today and do not
+change. The "Today" entries were produced at master `6d91cef`; re-run a row before
+relying on it and report any that no longer holds.
+
+**Decisions already made** (do not reopen; if one cannot work, report it as a finding):
+
+1. `nonempty` and `family of subsets` state their facts (owner, comment on #171,
+   2026-11-23: "Confirmed.", to the request of the issue). The plural forms of a
+   descriptor that states its fact in the singular state it for each name; that is
+   #181 and needs no decision.
+2. A clause with several names states the facts of each, as `Let a, b be in X.` states
+   `[In(a, X), In(b, X)]`; a declaration of several clauses states the facts of every
+   clause.
+3. The two proofs of #171 are accepted: `exists u, In(u, A)` and
+   `forall S, (In(S, F) -> S subseteq A)`, each by `Reiteration from 1`. If the kernel's
+   `Reiteration` needs the names of bound variables to be those of the issue, state the
+   facts with `u` and `S`, and report it.
+4. Not in this job: the typed function `f: X -> Y` (the third item of #171; how a
+   function is represented in set theory is the owner's open question 7 in `todos.txt`),
+   and `a partition of A` and `a set of sets`, which #171 says are in the same state and
+   about which the owner has not been asked. Report in the PR what each of the three
+   states today, and change nothing.
+
+**Allowed scope:** `source/SetTheory.py` (`FiniteInfiniteSetDeclarationRecipe`, which
+already loops over the names of a clause, and the new recipes), and the clause parser in
+`source/ProofParser.py` only as far as the plural descriptors need it to reach a recipe;
+`docs/PROOF_FILE_FORMAT.md` (the declaration phrases); the entries for #171 and #181 in
+`todos.txt`; new `pytest_tests/test_declaration_facts.py` and enforced fixture
+`tests/testSetTheory/declaration_facts.txt`. Not `source/ProofLogic.py` or
+`source/ProofJustification.py`.
+
+**Tests:** every row through `pp.parse_proof_text` (the formulas the line states), with
+its singular or sibling twin; the two proofs of #171 and the proof of #181 through the
+full pipeline; a declaration with several clauses (`Let A, B be sets, C be a nonempty
+set.`). The fixture has at least four valid proofs that use the stated facts (an element
+of a nonempty set named by `Existence from 1`; a member of a family used as a subset;
+`Finite(B)` for the second name of a plural declaration) and four invalid ones, each
+refused for its reason and not for a parse error (`exists u, In(u, B)` from
+`Let A be a nonempty set.`; `A` nonempty from `Let A be a set.`; `Finite(B)` from
+`Let A be a finite set, B be a set.`). Run `tools/mutation_check.py` over the new recipe
+code and report mutants made and survivors.
+
+**Done when:** every row states what it says; the three declarations that #171 leaves
+open are reported and unchanged; the tests above pass; `./run_tests.sh` and
+`./run_tests.sh --suite extended` pass on Python 3.12 and 3.13; the PR report is as for
+J36.
+
+Status: queued; the owner confirmed `nonempty` and `family of subsets` on 2026-11-23;
+unblocked; not started.
 
 ### Planned, not yet specified
 
@@ -533,7 +742,8 @@ Each waits for the jobs named, and is specified when they have merged:
   exist. Then `A cross B` is defined by Separation over a power set, and its laws are
   added to the library of J39 and J40.
 - **Owner questions, not jobs:** definitions written in proof files, functions as sets
-  of pairs or as symbols, and declaration facts such as `nonempty`.
+  of pairs or as symbols, and what the declarations of a typed function, `a partition of
+  A` and `a set of sets` state (`todos.txt`, The plan, Open owner questions).
 
 ## Deferred queue
 
@@ -580,8 +790,11 @@ expectations changed.
 
 Status: Deferred by owner direction of 2026-11-05 while set theory is the
 current development priority. The full job specification and proof-only scope
-are retained unchanged. The proof work has not begun; resume only when the
-owner changes the priority or explicitly re-queues J35.
+are retained unchanged. No pull request has been opened for it. A ChatGPT branch,
+`chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-03; 89 commits
+behind master on 2026-11-22), holds the two files named above; it has never been
+reviewed or run by Claude, and nobody touches it. Resume only when the owner changes
+the priority or explicitly re-queues J35.
 
 ## Recent dispositions
 
@@ -628,7 +841,7 @@ Original specifications and their final dispositions are preserved in the archiv
 1. Add an explicit job before starting delegated work. Each job must state its goal, allowed scope/files, tests or fixtures to add, and an observable “Done when” condition.
 2. Use one small branch and one PR per job; normally keep a PR to about 400 changed lines or fewer. Keep no more than three delegated PRs open at once. The owner merges.
 3. Treat CI as the test run. Keep the PR a draft until its stated completion criteria pass. Report the exact tested commit, CI run, test totals, coverage, enforced fixtures, informational fixtures, and remaining failures; never infer results from an uninspected run.
-4. `source/ProofLogic.py` and `source/ProofJustification.py` are kernel-owned; do not edit them without coordination. Do not alter existing tests, fixtures, or parser-oracle expectations merely to make a change pass. Do not start items marked as requiring owner approval in `todos.txt`.
+4. `source/ProofLogic.py` and `source/ProofJustification.py` are kernel-owned: ChatGPT does not edit them (owner, 2026-11-18), and a kernel defect is a finding for Claude. Do not alter existing tests, fixtures, or parser-oracle expectations merely to make a change pass. Do not start items marked as requiring owner approval in `todos.txt`.
 5. A checker defect is a finding, not a reason to weaken a test. File a focused issue with the smallest proof, exact accepted/rejected behavior or message, suspected rule/file, and `Owner: Claude` when the kernel is involved. Include strict expected-failure regression coverage for an invalid proof that is incorrectly accepted, following the collaboration guide.
 6. A job is complete only after its PR is merged and the status table above is updated. Preserve its full specification and task-specific notes in the archive rather than keeping completed instructions in this live tracker.
 

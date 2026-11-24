@@ -220,7 +220,7 @@ tests.
 The `Use discrete math.` directive is currently validated and accepted, while
 the default environment remains backward-compatible and loads the available
 theory modules. A future language-version change can make directives select
-theory environments strictly after the existing proof corpus has been
+theory environments strictly after the existing proof fixtures have been
 updated.
 
 A file of several proofs may also `Use` another file, and its proofs then cite
@@ -238,7 +238,9 @@ finds the key reports the saved results and takes the saved theorems, and any
 change to the file, to a file below it or to the checker means another key. The
 kernel is unchanged, and a saved result is trusted as far as the checker's own
 files are (`docs/PROOF_FILE_FORMAT.md`, "Saved results";
-`source/SavedChecks.py`). Not built: `Use` selecting an environment.
+`source/SavedChecks.py`). Not built: `Use` selecting an environment, and reading
+the entries of `SetTheoryCorpus/` (`# Axiom N:`, `# Definition N.`, `# Theorem N.`),
+which the runner does not accept today (`todos.txt`, Remaining work, item 10).
 
 The repository has `.gitignore` hygiene and GitHub Actions that run the same
 complete test command used locally. Test counts are intentionally not
