@@ -472,7 +472,7 @@ def parse_declaration_prefix(
 
         # A whole clause recognized by the active formula parsers is a
         # premise, not a declaration whose descriptor happens to match it.
-        if _reads_as_formula(declaration_text, environment):
+        if formula_text is None and _reads_as_formula(declaration_text, environment):
             return [], None
 
         try:
@@ -988,8 +988,9 @@ def parse_surface_declaration_statement(
     """Parse the coordinated surface language beginning with `Let`.
 
     This is intentionally a small hand-written grammar. It recognizes
-    declaration clauses and premise clauses independently; formulas are not
-    parsed until elaboration.
+    declaration clauses and premise clauses independently. A whole-clause
+    formula parse decides ambiguous be/are clauses; expressions are lowered
+    into the proof only during elaboration.
     """
     if environment is None:
         environment = _cached_default_environment()
@@ -1363,7 +1364,9 @@ def _parse_surface_sequence(
         line_span = _surface_span(item, label)
         declaration_statement = None
         if justification_text.strip().lower() in {"declaration", "declare"}:
-            declaration_statement = parse_surface_declaration_statement(formula_text, line_span, environment)
+            declaration_statement = parse_surface_declaration_statement(
+                formula_text, line_span, environment
+            )
         line = SurfaceLine(
             label=label,
             formula_text=formula_text,
@@ -1378,8 +1381,8 @@ def _parse_surface_sequence(
             while index < len(lines) and _BEGIN_SUBPROOF_RE.match(lines[index].text.strip()):
                 begin_item = lines[index]
                 body, next_index = _parse_surface_sequence(
-                lines, index + 1, stop_at_end=True, environment=environment
-            )
+                    lines, index + 1, stop_at_end=True, environment=environment
+                )
                 end_item = lines[next_index - 1]
                 line.subproofs.append(SurfaceSubproof(
                     body,
