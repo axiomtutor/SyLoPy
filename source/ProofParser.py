@@ -970,10 +970,10 @@ def _surface_declaration_from_clause(
     )
 
 
-def parse_surface_declaration_statement(
+def _parse_surface_declaration_statement_with_environment(
     text: str,
     span: SourceSpan,
-    environment: Optional[TheoryEnvironment] = None,
+    environment: TheoryEnvironment,
 ) -> Optional[SurfaceDeclarationStatement]:
     """Parse the coordinated surface language beginning with `Let`.
 
@@ -982,9 +982,16 @@ def parse_surface_declaration_statement(
     formula parse decides ambiguous be/are clauses; expressions are lowered
     into the proof only during elaboration.
     """
-    if environment is None:
-        environment = _cached_default_environment()
-    source = text.strip().rstrip('.').strip()
+    # Keep the policy wrapper's "such that" normalization when this helper
+    # is called with an explicitly selected theory environment.
+    normalized_text = re.sub(
+        r"\bsuch\s+that\s*(?!:)",
+        "such that: ",
+        text,
+        count=1,
+        flags=re.I,
+    )
+    source = normalized_text.strip().rstrip('.').strip()
     if not re.match(r'^let\b', source, re.I):
         return None
 
@@ -1041,6 +1048,15 @@ def parse_surface_declaration_statement(
 
     return SurfaceDeclarationStatement(clauses, span)
 
+
+def parse_surface_declaration_statement(
+    text: str,
+    span: SourceSpan,
+) -> Optional[SurfaceDeclarationStatement]:
+    """Public two-argument parser retained for the policy/line-break wrappers."""
+    return _parse_surface_declaration_statement_with_environment(
+        text, span, _cached_default_environment()
+    )
 
 
 def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause, is_declared=None) -> DeclarationClause:
@@ -1354,8 +1370,8 @@ def _parse_surface_sequence(
         line_span = _surface_span(item, label)
         declaration_statement = None
         if justification_text.strip().lower() in {"declaration", "declare"}:
-            declaration_statement = parse_surface_declaration_statement(
-                formula_text, line_span, environment
+            declaration_statement = _parse_surface_declaration_statement_with_environment(
+                formula_text, line_span, environment or _cached_default_environment()
             )
         line = SurfaceLine(
             label=label,
