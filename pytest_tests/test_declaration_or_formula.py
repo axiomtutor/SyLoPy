@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from SyLoPy.source.ProofElaboration import TheoryEnvironment
+
 from .support import mp, pl, pp
 
 
@@ -74,6 +76,20 @@ def test_unrecognized_descriptors_remain_declarations(descriptor):
         ("A", pl.DeclarationKind.OBJECT, descriptor),
         ("B", pl.DeclarationKind.OBJECT, descriptor),
     ]
+
+
+
+def test_base_equality_phrase_is_available_in_an_explicit_theory_environment():
+    environment = TheoryEnvironment(name="bare test theory")
+    entries, _ = pp.parse_proof_text(
+        "1. Let A and B be sets, and A and B are equal. (Declaration)\n",
+        environment=environment,
+    )
+
+    _label, formula, justification = entries[0]
+    assert repr(formula) == "A = B"
+    assert justification[0] == "premise"
+    assert [declaration.name for declaration in justification[1]] == ["A", "B"]
 
 
 def test_relation_descriptor_remains_a_relation_declaration():
