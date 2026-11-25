@@ -20,6 +20,10 @@ def _parse_surface(surface: str, context: str):
 
 @pytest.mark.parametrize("case", _CASES, ids=[case["id"] for case in _CASES])
 def test_symbolic_surface_has_the_word_form_reading(case):
+    if case["expect"] == "REJECT":
+        with pytest.raises((TypeError, ValueError)):
+            _parse_surface(case["surface"], case["context"])
+        return
     actual = _parse_surface(case["surface"], case["context"])
     expected = pp.parse_formula(case["expect"])
     assert pl._alpha_eq(actual, expected), (
