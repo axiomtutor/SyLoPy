@@ -445,7 +445,7 @@ def parse_declaration_prefix(
             return [], None
 
         declarations: List[pl.Declaration] = []
-        for clause in split_declaration_clauses(m.group(1), environment):
+        for clause in split_declaration_clauses(m.group(1)):
             dc = parse_declaration_clause(clause)
             if dc.domain is not None:
                 raise ValueError(
