@@ -16,6 +16,21 @@ def test_ambiguous_unparenthesized_operation_chains_require_parentheses(term):
         st.try_parse_set_term(term)
 
 
+@pytest.mark.parametrize(
+    ("surface", "symbol"),
+    [
+        ("A UNION B", "Union"),
+        ("A InTeRsEcTiOn B", "Intersection"),
+        ("A CrOsS B", "CartesianProduct"),
+    ],
+)
+def test_set_operation_words_are_case_insensitive(surface, symbol):
+    expected = tl.FunctionTerm(
+        symbol,
+        [tl.ConstantTerm("A", "A"), tl.ConstantTerm("B", "B")],
+    )
+    assert st.try_parse_set_term(surface) == expected
+
 def test_one_operator_table_drives_infix_recognition_and_symbol_mapping(monkeypatch):
     # J38 should be able to add an infix operator by adding one table entry.
     st._try_parse_set_term_cached.cache_clear()
