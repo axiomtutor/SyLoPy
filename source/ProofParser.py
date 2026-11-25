@@ -656,6 +656,38 @@ class TypedFunctionDeclarationRecipe:
 
 
 
+class PropositionDeclarationRecipe:
+    """Declare proposition-like names as zero-argument predicates."""
+
+    name = "proposition"
+    _descriptors = {
+        "proposition",
+        "propositions",
+        "statement",
+        "statements",
+        "propositional variable",
+        "propositional variables",
+    }
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        if clause.domain is not None or clause.is_tuple:
+            return None
+        if clause.normalized_descriptor not in self._descriptors:
+            return None
+        declarations = [
+            pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.PREDICATE,
+                arity=0,
+            )
+            for name in clause.names
+        ]
+        return (1, declarations, [], [])
+
+
 _IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 _BARE_NAME_LIST_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*\s*,?$')
 
@@ -1553,7 +1585,10 @@ def default_theory_environment() -> TheoryEnvironment:
     environment = TheoryEnvironment(
         line_elaborators=list(_base_line_elaborators()),
         rules=[pl.AlgebraRule()],
-        declaration_recipes=[TypedFunctionDeclarationRecipe()],
+        declaration_recipes=[
+            PropositionDeclarationRecipe(),
+            TypedFunctionDeclarationRecipe(),
+        ],
     )
     try:
         import SyLoPy.source.SetTheory as st
