@@ -92,20 +92,16 @@ def test_base_equality_phrase_is_available_in_an_explicit_theory_environment():
     assert [declaration.name for declaration in justification[1]] == ["A", "B"]
 
 
-def test_relation_descriptor_remains_a_relation_declaration():
+def test_relation_descriptor_remains_a_declaration():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be a set. (Declaration)\n"
-        "2. A and B are relations on X. (Declaration)\n"
+        "1. Let X be a set. (Declaration)\\n"
+        "2. A and B are relations on X. (Declaration)\\n"
     )
 
     _label, formula, justification = entries[1]
-    assert isinstance(formula, list)
-    assert len(formula) == 2
-    assert justification[0] == "premise"
-    assert [(d.name, d.kind, d.arity) for d in justification[1]] == [
-        ("A", pl.DeclarationKind.PREDICATE, 2),
-        ("B", pl.DeclarationKind.PREDICATE, 2),
-    ]
+    assert formula is None
+    assert justification[0] == "declare"
+    assert [declaration.name for declaration in justification[1]] == ["A", "B"]
 
 
 def test_undeclared_equality_phrase_fails_at_its_own_line_as_a_formula():
