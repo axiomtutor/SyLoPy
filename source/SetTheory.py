@@ -134,7 +134,7 @@ def _split_top_level_set_operations(text: str):
                 return []
             i += 1
             continue
-        if depth == 0 and (char.isalpha() or char == "_"):
+        if depth == 0 and (("A" <= char <= "Z") or ("a" <= char <= "z") or char == "_"):
             match = re.match(r"[A-Za-z_][A-Za-z0-9_]*", text[i:])
             word = match.group(0)
             end = i + len(word)
