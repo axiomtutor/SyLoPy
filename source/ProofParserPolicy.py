@@ -15,6 +15,7 @@ from SyLoPy.source.FormulaTextScan import (
 )
 
 from SyLoPy.source.LineBreakSyntax import install as _install_line_break_syntax
+from .Notation import rewrite_formula_symbols
 
 
 # Initialized by install_parser_extensions. These indirections let policy
@@ -291,7 +292,7 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
       9. a fully parenthesized remainder, e.g. ``(A and B)`` -> unwrap and
          re-parse the inside
       10. ``not ...`` / ``¬...``
-      11. ``=/=`` (negated equality between two Terms)
+      11. ``=/=``, ``!=`` and ``≠`` (negated equality between two Terms)
       12. ``=`` (equality between two Terms -- see `FormulaLogic.Equals`)
       13. theory syntax from `environment.nested_formula_parsers` (e.g.
           SetTheory's "a is in X", NumberTheory's "a|n") -- tried after
@@ -353,7 +354,7 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
     if environment is None:
         environment = _parser._cached_default_environment()
 
-    s = s.strip()
+    s = rewrite_formula_symbols(s.strip(), environment.notation_table)
 
     m = re.match(
         r"^let\s+([A-Za-z_][A-Za-z0-9_]*)\s+be\s+(?:in\s+the\s+domain|arbitrary)\.?$",
@@ -505,6 +506,20 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
             fl.Equals(
                 _parser.parse_term(parts[0], bound_vars, environment),
                 _parser.parse_term(parts[1], bound_vars, environment),
+            )
+        )
+
+    inequality_text = re.sub(r"\s*(?:!=|≠)\s*", " != ", s)
+    parts = _parser.split_top_level(inequality_text, " != ")
+    if len(parts) > 1:
+        if len(parts) != 2 or not all(part.strip() for part in parts):
+            raise ValueError(
+                f"Not-equal notation requires exactly two terms: {s!r}"
+            )
+        return fl.Not(
+            fl.Equals(
+                _parser.parse_term(parts[0].strip(), bound_vars, environment),
+                _parser.parse_term(parts[1].strip(), bound_vars, environment),
             )
         )
 
