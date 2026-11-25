@@ -2958,8 +2958,8 @@ class BijectionDeclarationRecipe:
         elif domain is None or codomain is None:
             return None
         else:
-            descriptor = re.sub(r"\\s+", " ", clause.normalized_descriptor).strip().lower()
-            descriptor = re.sub(r"^(?:a|an|the)\\s+", "", descriptor)
+            descriptor = re.sub(r"\s+", " ", clause.normalized_descriptor).strip().lower()
+            descriptor = re.sub(r"^(?:a|an|the)\s+", "", descriptor)
             if descriptor != "bijection" and not descriptor.startswith("bijective"):
                 return None
 
