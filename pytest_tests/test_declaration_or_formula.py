@@ -52,7 +52,7 @@ def test_are_equality_phrases_are_premises_not_declarations(phrase, symbolic):
 )
 def test_equality_formula_can_follow_a_compound_let_declaration(phrase, expected):
     entries, _ = pp.parse_proof_text(
-        "1. Let A and B be sets, and " + phrase + ". (Declaration)\\n"
+        "1. Let A and B be sets, and " + phrase + ". (Declaration)\n"
     )
 
     label, formula, justification = entries[0]
