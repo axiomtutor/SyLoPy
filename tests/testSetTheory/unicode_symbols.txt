@@ -20,8 +20,9 @@
 ## Proof that
 ### ¬P ∨ ¬Q.
 
-1. ¬(P ∧ Q). (Premise)
-2. ¬P ∨ ¬Q. (De Morgans from 1)
+1. Let P, Q be propositions. (Declaration)
+2. ¬(P ∧ Q). (Premise)
+3. ¬P ∨ ¬Q. (De Morgans from 2)
 
 # 4: Invalid: nonmembership does not imply membership
 ## Invalid: the premise states nonmembership, not membership
