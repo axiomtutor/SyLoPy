@@ -21,6 +21,13 @@ def rewrite_formula_symbols(text: str, notation_table: Mapping[str, str]) -> str
     if not isinstance(text, str):
         raise TypeError("formula text must be a string")
 
+    for quantifier in re.finditer(r"[∀∃]", text):
+        remainder = text[quantifier.end():]
+        if re.match(r"\s*[A-Za-z_][A-Za-z0-9_]*", remainder) is None:
+            raise ValueError(
+                f"quantifier symbol {quantifier.group()!r} must be followed by a variable"
+            )
+
     rewritten = _BOUNDED_QUANTIFIER_MEMBERSHIP.sub(r"\1 in ", text)
     for symbol in sorted(notation_table, key=len, reverse=True):
         reading = notation_table[symbol]
