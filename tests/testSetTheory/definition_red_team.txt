@@ -81,14 +81,14 @@ end subproof
 2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
 3. In(x, Union(B, A)) iff (In(x, B) or In(x, A)). (Mutatis mutandis, 2)
 
-# 10: WLOG replay keeps a definition citation in the region
+# 10: WLOG replay keeps a definition citation in the repeated region
 ## Proof that
-### then In(x, A) or In(x, B).
+### then In(y, A) or In(y, B).
 
-1. Let A, B be any set, and a, b, c, x be any object. (Declaration)
-2. In(x, Union(A, B)). (Premise)
-3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
-4. In(x, A) or In(x, B). (Set property from 3, 2)
-5. a = b or a = c. (Premise)
-6. a = b. (WLOG from 5)
-7. In(x, A) or In(x, B). (Reiteration from 4)
+1. Let A, B be any set, and a, x, y be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. y is in A union B. (Premise)
+4. a = x or a = y. (Premise)
+5. a = x. (WLOG from 4)
+6. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+7. In(x, A) or In(x, B). (Set property from 6, 2)
