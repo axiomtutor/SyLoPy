@@ -103,12 +103,7 @@ commit.
   ChatGPT branch holds an unreviewed draft, see Where things stand). The
   deferral does not authorize or require any change to existing number-theory
   code or axioms.
-- [Issue #151](https://github.com/axiomtutor/SyLoPy/issues/151): resolved. Disjointness
-  premises are parsed as formulas, not declaration clauses; compound-declaration
-  coverage is in `pytest_tests/test_compound_declarations.py`.
-- [Issue #152](https://github.com/axiomtutor/SyLoPy/issues/152): resolved. Relation
-  descriptors after commas, including `irreflexive`, `asymmetric`, and `total`,
-  compose with the existing descriptor and property parsing paths.
+- Issues #151 and #152: resolved (disjointness premises are formulas; relation descriptors after commas compose). Coverage: `pytest_tests/test_compound_declarations.py`.
 - [Issue #144](https://github.com/axiomtutor/SyLoPy/issues/144): proposal to put the
   top-level formula-parser dispatch of `source/ProofParser.py` in one helper. It says
   that no implementation is authorized. Claude reviewed it on 2026-11-05 and agreed,
@@ -282,32 +277,6 @@ each question.
 9. **Waiting on the owner, with nothing to recommend yet:** whether to authorize #144;
    whether J35 and the number-theory axiom question (#98) resume (item 1); and, once the
    corpus has entries, whether to authorize items 10(a) and 10(b).
-
-## Project-state update: 2026-11-05 (historical; Where things stand is current)
-
-- Named Python test suites are implemented. `default` is the PR/local project
-  suite; `extended` contains red-team, audit, and mutation-tool modules, and
-  `all` runs both suites. The classification is centralized in
-  `pytest_tests/conftest.py` so those modules remain discoverable without
-  adding markers to every test file.
-- `./run_tests.sh` runs the `default` suite plus every enforced and informational
-  proof fixture suite.
-- Named set-theory axiom citations now include extensionality, foundation/regularity,
-  and choice, each accepted for exactly one sentence (see Set theory and proof
-  syntax). Existing equality/subset reasoning remains the implementation of
-  the extensionality theorem's mutual-subset direction.
-- Replay counterpart matching treats equality and biconditional sides
-  symmetrically, while implication remains directional.
-- There are no active pytest `xfail` tests or fixture-expected-failure markers.
-- Verification totals change with added tests; report totals from a fresh run
-  of the exact commit instead of maintaining a fixed count here.
-- Symbol/function/predicate replay in `Mutatis mutandis` and promotion over
-  declared relation structure are integrated. PR #158 queues J35, a proof-only
-  task for four basic divisibility identities; it changes no tests or source
-  code. PR #160 tightens Extensionality, Foundation, and Choice citations to
-  their canonical sentences. Do not copy test totals here; report results from
-  CI for the exact commit.
-
 
 ## Architecture and correctness invariants
 

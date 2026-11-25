@@ -7,7 +7,6 @@ declarations and partial/total-order metadata remain owned by DiscreteMath.
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.NumberTheory as nt

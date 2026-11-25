@@ -29,11 +29,9 @@ from SyLoPy.source.Definitions import (
     definition_titles,
 )
 from SyLoPy.source.ProofElaboration import (
-    CoreOrigin,
     ElaborationError,
     SurfaceExpression,
     SurfaceLine,
-    SurfaceSubproof,
     TheoryEnvironment,
 )
 
