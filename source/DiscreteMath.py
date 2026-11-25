@@ -62,6 +62,7 @@ class RelationDeclarationRecipe:
         "partial order": {"reflexive", "antisymmetric", "transitive"},
         "poset": {"reflexive", "antisymmetric", "transitive"},
         "strict partial order": {"irreflexive", "transitive"},
+        "strict order": {"irreflexive", "transitive"},
         "strict poset": {"irreflexive", "transitive"},
         "total order": {"reflexive", "antisymmetric", "transitive", "total"},
         "linear order": {"reflexive", "antisymmetric", "transitive", "total"},
