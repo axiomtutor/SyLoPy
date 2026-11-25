@@ -94,8 +94,8 @@ def test_base_equality_phrase_is_available_in_an_explicit_theory_environment():
 
 def test_relation_descriptor_remains_a_declaration():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be a set. (Declaration)\\n"
-        "2. A and B are relations on X. (Declaration)\\n"
+        "1. Let X be a set. (Declaration)\n"
+        "2. A and B are relations on X. (Declaration)\n"
     )
 
     _label, formula, justification = entries[1]
