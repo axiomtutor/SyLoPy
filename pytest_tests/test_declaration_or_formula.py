@@ -92,6 +92,35 @@ def test_base_equality_phrase_is_available_in_an_explicit_theory_environment():
     assert [declaration.name for declaration in justification[1]] == ["A", "B"]
 
 
+
+def test_active_theory_phrase_parser_decides_plain_and_compound_clauses():
+    def parse_peers(text, bound_vars):
+        if text.strip().lower() != "a and b are peers":
+            return None
+        return fl.Equals(tl.ConstantTerm("A", "A"), tl.ConstantTerm("B", "B"))
+
+    environment = pp.default_theory_environment().extended(
+        TheoryEnvironment(phrase_parsers=[parse_peers])
+    )
+
+    plain, _ = pp.parse_proof_text(
+        "1. Let A, B be sets. (Declaration)\n"
+        "2. A and B are peers. (Premise)\n",
+        environment=environment,
+    )
+    assert repr(plain[1][1]) == "A = B"
+    assert plain[1][2] == ("premise",)
+
+    compound, _ = pp.parse_proof_text(
+        "1. Let A and B be sets, and A and B are peers. (Declaration)\n",
+        environment=environment,
+    )
+    assert repr(compound[0][1]) == "A = B"
+    assert compound[0][2][0] == "premise"
+    assert [declaration.name for declaration in compound[0][2][1]] == ["A", "B"]
+
+
+
 def test_relation_descriptor_remains_a_declaration():
     entries, _ = pp.parse_proof_text(
         "1. Let X be a set. (Declaration)\n"
