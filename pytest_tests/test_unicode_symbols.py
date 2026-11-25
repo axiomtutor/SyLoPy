@@ -92,7 +92,7 @@ def test_explicit_set_theory_environment_includes_base_and_set_notation():
 def test_symbol_rewriting_pads_tokens_and_preserves_bounded_quantifiers():
     notation = pp.default_theory_environment().notation_table
 
-    assert rewrite_formula_symbols("x∈A", notation) == "x  is in A"
+    assert rewrite_formula_symbols("x∈A", notation) == "x is in A"
     assert rewrite_formula_symbols("∀x∈A, P(x)", notation) == "forall x in A, P(x)"
     assert rewrite_formula_symbols("¬P(x)∧Q(x)", notation) == "not P(x) and Q(x)"
 
