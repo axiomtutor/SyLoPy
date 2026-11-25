@@ -1318,7 +1318,9 @@ def _parse_surface_sequence(
             return entries, index + 1
 
         if _BEGIN_SUBPROOF_RE.match(stripped):
-            body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True , environment=environment)
+            body, next_index = _parse_surface_sequence(
+                lines, index + 1, stop_at_end=True, environment=environment
+            )
             end_item = lines[next_index - 1]
             entries.append(SurfaceSubproof(
                 body,
@@ -1333,7 +1335,9 @@ def _parse_surface_sequence(
         rest = match.group(2) if match else stripped
 
         if _BEGIN_SUBPROOF_RE.match(rest):
-            body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True , environment=environment)
+            body, next_index = _parse_surface_sequence(
+                lines, index + 1, stop_at_end=True, environment=environment
+            )
             end_item = lines[next_index - 1]
             entries.append(SurfaceSubproof(
                 body,
@@ -1368,7 +1372,9 @@ def _parse_surface_sequence(
         if 'below' in justification_text.lower():
             while index < len(lines) and _BEGIN_SUBPROOF_RE.match(lines[index].text.strip()):
                 begin_item = lines[index]
-                body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True , environment=environment)
+                body, next_index = _parse_surface_sequence(
+                lines, index + 1, stop_at_end=True, environment=environment
+            )
                 end_item = lines[next_index - 1]
                 line.subproofs.append(SurfaceSubproof(
                     body,
@@ -1386,8 +1392,11 @@ def _parse_surface_sequence(
                 if _is_descendant_label(next_label, label):
                     body_start = index
                     body, end = _parse_surface_sequence(
-                        lines, body_start, implicit_parent_label=label
-                     , environment=environment)
+                        lines,
+                        body_start,
+                        implicit_parent_label=label,
+                        environment=environment,
+                    )
                     if end <= body_start:
                         raise ElaborationError("could not determine implicit subproof boundary", line.span)
                     span = SourceSpan(
