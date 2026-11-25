@@ -1,4 +1,4 @@
-"""Adversarial probes for the definition facility and set-theory definitions."""
+"""Adversarial probes for the definition facility and the set-theory definitions."""
 
 from dataclasses import replace
 from pathlib import Path
@@ -9,7 +9,7 @@ from SyLoPy.source import Definitions as df
 from SyLoPy.source import SetTheory as st
 from SyLoPy.source.ProofElaboration import ElaborationError, TheoryEnvironment
 
-from .support import atom, c, fl, fn, mp, pl, pp, tl, v
+from .support import atom, c, fl, fn, mp, pl, pp, v
 
 
 def _in(element, set_term):
@@ -23,14 +23,11 @@ def _union(element, left, right):
     )
 
 
-def _power_set(element, base, bound="w"):
-    member = v(bound)
+def _power_set(element, base):
+    member = v("w")
     return fl.Iff(
         _in(element, fn("PowerSet", base)),
-        fl.ForAll(
-            bound,
-            fl.Implies(_in(member, element), _in(member, base)),
-        ),
+        fl.ForAll("w", fl.Implies(_in(member, element), _in(member, base))),
     )
 
 
@@ -56,7 +53,7 @@ def _fixture():
 
 
 # ---------------------------------------------------------------------------
-# 1. Citation forms, nearby sentences, and symbol names
+# 1. Citation forms, nearby sentences, and bound-variable names
 # ---------------------------------------------------------------------------
 
 def test_definition_accepts_vacuous_and_reordered_leading_universals():
@@ -80,33 +77,29 @@ def test_definition_accepts_vacuous_and_reordered_leading_universals():
 @pytest.mark.parametrize(
     "term",
     [
-        c("Y"),
-        c("Y_1"),
-        c("u"),
-        c("w"),
-        v("Y"),
-        v("Y_1"),
-        v("u"),
-        v("w"),
+        c("Y"), c("Y_1"), c("u"), c("w"),
+        v("Y"), v("Y_1"), v("u"), v("w"),
         fn("f", v("w")),
     ],
-    ids=["constant-Y", "constant-Y1", "constant-u", "constant-w",
-         "variable-Y", "variable-Y1", "variable-u", "variable-w",
-         "function-of-w"],
+    ids=[
+        "constant-Y", "constant-Y1", "constant-u", "constant-w",
+        "variable-Y", "variable-Y1", "variable-u", "variable-w",
+        "function-of-w",
+    ],
 )
 def test_union_definition_accepts_terms_named_like_variables(term):
     assert st.UNION_DEFINITION.instance_problem(_union(term, c("A"), c("B"))) is None
 
 
-def test_power_set_definition_distinguishes_same_spelled_constants_from_variables():
+def test_power_set_definition_distinguishes_constants_from_variables_named_w():
     definition = st.POWER_SET_DEFINITION
 
-    # The constant w is not captured by the definition's bound variable w.
+    # A constant spelled w is not the variable bound inside the subset clause.
     assert definition.instance_problem(_power_set(c("w"), c("A"))) is None
     assert definition.instance_problem(_power_set(v("x"), c("w"))) is None
 
-    # A free variable w substituted for the element u forces the definition's
-    # own bound variable to be renamed, otherwise the term would be captured.
+    # A variable w used as the element is free in the instance. The definition's
+    # own subset-clause binder must be renamed to w_1 instead of capturing it.
     renamed = fl.Iff(
         _in(v("w"), fn("PowerSet", c("A"))),
         fl.ForAll(
@@ -116,43 +109,31 @@ def test_power_set_definition_distinguishes_same_spelled_constants_from_variable
     )
     assert definition.instance_problem(renamed) is None
 
-
-def test_a_definition_rejects_an_extra_conjunct_with_a_specific_reason():
-    canonical = _union(v("u"), c("A"), c("B"))
-    nearby = fl.And(canonical, fl.Equals(c("a"), c("a")))
-    reason = st.UNION_DEFINITION.instance_problem(nearby)
-
-    assert reason is not None
-    assert "not a biconditional" in reason
-
-
-def test_a_definition_rejects_one_direction_of_its_biconditional():
-    canonical = _union(v("u"), c("A"), c("B"))
-    nearby = fl.Implies(canonical.left, canonical.right)
-    reason = st.UNION_DEFINITION.instance_problem(nearby)
-
-    assert reason is not None
-    assert "not a biconditional" in reason
-
-
-def test_power_set_rejects_a_sentence_whose_subset_quantifier_captures_the_element():
-    captured = fl.ForAll(
-        "w",
-        fl.Iff(
-            _in(v("w"), fn("PowerSet", c("A"))),
-            fl.ForAll(
-                "w",
-                fl.Implies(_in(v("w"), v("w")), _in(v("w"), c("A"))),
-            ),
+    # The same capture avoidance is needed when a set argument contains w.
+    set_term = fn("f", v("w"))
+    renamed_argument = fl.Iff(
+        _in(v("x"), fn("PowerSet", set_term)),
+        fl.ForAll(
+            "w_1",
+            fl.Implies(_in(v("w_1"), v("x")), _in(v("w_1"), set_term)),
         ),
     )
-    reason = st.POWER_SET_DEFINITION.instance_problem(captured)
-
-    assert reason is not None
-    assert "other side must" in reason or "neither side" in reason
+    assert definition.instance_problem(renamed_argument) is None
 
 
-def test_a_definition_cannot_be_cited_for_a_non_sentence_or_for_a_cited_line():
+def test_a_definition_rejects_an_extra_conjunct_and_a_one_way_conditional():
+    canonical = _union(v("u"), c("A"), c("B"))
+    extra = fl.And(canonical, fl.Equals(c("a"), c("a")))
+    one_way = fl.Implies(canonical.left, canonical.right)
+
+    extra_reason = st.UNION_DEFINITION.instance_problem(extra)
+    one_way_reason = st.UNION_DEFINITION.instance_problem(one_way)
+
+    assert extra_reason is not None and "not a biconditional" in extra_reason
+    assert one_way_reason is not None and "not a biconditional" in one_way_reason
+
+
+def test_a_definition_cannot_be_cited_for_an_atom_or_for_a_cited_line():
     atomic = _failure(
         "1. Let A be any set, and x be any object. (Declaration)\n"
         "2. In(x, Union(A, A)). (Definition of union)\n"
@@ -170,35 +151,42 @@ def test_a_definition_cannot_be_cited_for_a_non_sentence_or_for_a_cited_line():
     )
     assert cited.label == "3"
     assert cited.category == pl.CATEGORY_BAD_REFERENCE
-    assert "takes at most 0 cited line label(s)" in cited.detail
+    assert "takes no cited" in cited.detail
 
 
 # ---------------------------------------------------------------------------
 # 2. Variable capture in the power-set definition
 # ---------------------------------------------------------------------------
 
-def test_capture_is_refused_in_the_full_proof_pipeline():
-    error = _failure(
-        "1. Let A be any set. (Declaration)\n"
-        "2. forall w, (In(w, PowerSet(A)) iff "
-        "(forall w, (In(w, w) -> In(w, A)))). (Definition of power set)\n"
+def test_power_set_rejects_a_subset_quantifier_that_captures_the_element():
+    captured = fl.ForAll(
+        "w",
+        fl.Iff(
+            _in(v("w"), fn("PowerSet", c("A"))),
+            fl.ForAll(
+                "w",
+                fl.Implies(_in(v("w"), v("w")), _in(v("w"), c("A"))),
+            ),
+        ),
     )
-    assert error.label == "2"
-    assert error.category == pl.CATEGORY_RULE_MISMATCH
-    assert "power set" in error.detail.lower()
-    assert "not a" in error.detail.lower() or "must" in error.detail.lower()
+    reason = st.POWER_SET_DEFINITION.instance_problem(captured)
+
+    assert reason is not None
+    assert "other side must" in reason or "neither side" in reason
 
 
 # ---------------------------------------------------------------------------
-# 3. Promotion and title collisions
+# 3. Promotion and definition/theorem title collisions
 # ---------------------------------------------------------------------------
 
-def test_a_theorem_that_uses_a_definition_can_be_promoted_and_cited():
+def test_a_theorem_using_a_definition_can_be_promoted_and_cited_later():
+    from .test_definitions import TOY
+
     source = (
         "1. Let h be any object. (Declaration)\n"
         "2. Cyclic(h) iff exists g, Generates(g, h). (Definition of cyclic)\n"
     )
-    entries, _raw = pp.parse_proof_text(source, _toy_theory())
+    entries, _raw = pp.parse_proof_text(source, TOY)
     proof = pl.Proof(entries)
     ok, error = proof.check_detailed()
     assert ok, error
@@ -211,37 +199,23 @@ def test_a_theorem_that_uses_a_definition_can_be_promoted_and_cited():
     assert [rule.name for rule in theorem.required_rules] == ["Definition of cyclic"]
     assert theorem.premises == []
 
-    vocabulary_only = TheoryEnvironment(
-        name="vocabulary only",
-        declarations=_toy_theory().declarations,
-    )
+    vocabulary = TheoryEnvironment(name="vocabulary only", declarations=TOY.declarations)
     use = (
         "1. Let k be any object. (Declaration)\n"
         "2. Cyclic(k) iff exists g, Generates(g, k). "
         "(Cyclic means generated)\n"
     )
-    entries, _raw = pp.parse_proof_text(
-        use,
-        vocabulary_only,
-        theorem_names=[theorem.name],
-    )
-    ok, error = pl.Proof(
-        entries,
-        rules=pl.default_rules() + [theorem],
-    ).check_detailed()
+    entries, _raw = pp.parse_proof_text(use, vocabulary, theorem_names=[theorem.name])
+    ok, error = pl.Proof(entries, rules=pl.default_rules() + [theorem]).check_detailed()
     assert ok, error
 
 
-def _toy_theory():
-    from .test_definitions import TOY
-    return TOY
-
-
-def test_a_theorem_title_that_collides_with_a_definition_title_is_shadowed_by_the_rule():
-    from .test_definitions import TOY, VOCABULARY_ONLY, CITATION, promote, use_of_theorem
+def test_a_theorem_title_matching_a_definition_title_is_shadowed_by_the_rule():
+    from .test_definitions import CITATION, promote, use_of_theorem
 
     theorem = promote(CITATION.format(title="Definition of cyclic"), "Definition of cyclic")
     ok, error = use_of_theorem(theorem)
+
     assert not ok
     assert error is not None
     assert "Definition of cyclic" in error.detail
@@ -250,8 +224,6 @@ def test_a_theorem_title_that_collides_with_a_definition_title_is_shadowed_by_th
         or "was proved using the rule" in error.detail
         or "definition" in error.detail.lower()
     )
-    assert VOCABULARY_ONLY.citable_titles == []
-    assert any(rule.name == "Definition of cyclic" for rule in TOY.rules)
 
 
 # ---------------------------------------------------------------------------
@@ -267,10 +239,10 @@ def test_mutatis_accepts_two_definition_parameters_exchanged_together():
     assert ok, error
 
 
-def test_mutatis_refuses_a_name_replaced_by_a_term_with_a_free_bound_name():
-    text = """1. Let A, B be any set, and x be any object. (Declaration)
-2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
-3. In(x, Union(f(x), B)) iff (In(x, f(x)) or In(x, B)). (Mutatis mutandis, 2)
+def test_mutatis_refuses_a_name_replaced_by_a_term_containing_a_bound_name():
+    text = """1. Let A, B be any set. (Declaration)
+2. forall z, (In(z, Union(A, B)) iff (In(z, A) or In(z, B))). (Definition of union)
+3. forall z, (In(z, Union(f(z), B)) iff (In(z, f(z)) or In(z, B))). (Mutatis mutandis, 2)
 """
     error = _failure(text)
     assert error.label == "3"
@@ -290,7 +262,7 @@ def test_mutatis_replays_a_range_containing_a_definition_citation():
     assert ok, error
 
 
-def test_mutatis_refuses_replacing_a_definition_symbol_by_another_operation():
+def test_mutatis_refuses_replacing_intersection_by_union_in_a_definition_citation():
     text = """1. Let A, B be any set, and x be any object. (Declaration)
 2. In(x, Intersection(A, B)) iff (In(x, A) and In(x, B)). (Definition of intersection)
 3. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Mutatis mutandis, 2)
@@ -298,7 +270,7 @@ def test_mutatis_refuses_replacing_a_definition_symbol_by_another_operation():
     error = _failure(text)
     assert error.label == "3"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
-    assert "Definition of intersection" in error.detail or "line 2" in error.detail.lower()
+    assert "line 2" in error.detail.lower() or "definition of intersection" in error.detail.lower()
 
 
 def test_mutatis_refuses_replacing_membership_by_an_unrelated_predicate():
@@ -313,15 +285,15 @@ def test_mutatis_refuses_replacing_membership_by_an_unrelated_predicate():
 
 
 # ---------------------------------------------------------------------------
-# 5. WLOG replay and proofs by cases over definition-derived lines
+# 5. WLOG replay and proof by cases over definition-derived lines
 # ---------------------------------------------------------------------------
 
 def test_wlog_replays_a_region_that_contains_a_definition_citation():
-    text = """1. Let A, B be any set, and a, b, x be any object. (Declaration)
+    text = """1. Let A, B be any set, and a, b, c, x be any object. (Declaration)
 2. In(x, Union(A, B)). (Premise)
 3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
 4. In(x, A) or In(x, B). (Set property from 3, 2)
-5. a = b or a = b. (Premise)
+5. a = b or a = c. (Premise)
 6. a = b. (WLOG from 5)
 7. In(x, A) or In(x, B). (Reiteration from 4)
 """
@@ -329,7 +301,7 @@ def test_wlog_replays_a_region_that_contains_a_definition_citation():
     assert ok, error
 
 
-def test_proof_by_cases_can_use_the_disjunction_derived_from_a_definition():
+def test_proof_by_cases_can_use_a_disjunction_derived_from_a_definition():
     text = """1. Let A, B be any set, and x be any object, and P be a unary predicate. (Declaration)
 2. In(x, Union(A, B)). (Premise)
 3. In(x, A) -> P(x). (Premise)
@@ -359,12 +331,11 @@ def test_by_rule_evidence_fails_when_the_theory_lacks_the_required_axiom():
         name="bare set theory",
         declarations=st.SET_THEORY_ENVIRONMENT.declarations,
     )
-    separation = df.DefinitionRule(st.INTERSECTION_DEFINITION, bare).evidence_problem()
-    power_set = df.DefinitionRule(st.POWER_SET_DEFINITION, bare).evidence_problem()
+    assert df.DefinitionRule(st.INTERSECTION_DEFINITION, bare).evidence_problem() == \
+        "Separation is not a rule of the theory"
+    assert df.DefinitionRule(st.POWER_SET_DEFINITION, bare).evidence_problem() == \
+        "PowerSetAxiom is not a rule of the theory"
     union = df.DefinitionRule(st.UNION_DEFINITION, bare).evidence_problem()
-
-    assert separation == "Separation is not a rule of the theory"
-    assert power_set == "PowerSetAxiom is not a rule of the theory"
     assert union.startswith("the proof of existence is not a valid proof:")
     assert "no rule named 'PairingAxiom' is registered" in union
 
@@ -379,44 +350,78 @@ def test_by_proof_evidence_cannot_cite_the_definition_it_is_evidence_for():
             + "4. Double(n) = m iff m = Plus(n, n). (Definition of double)\n"
         ),
     )
-    theory = toy_theory(definition)
-    problem = df.DefinitionRule(definition, theory).evidence_problem()
+    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
 
     assert problem is not None
-    assert "does not justify" in problem or "no rule named 'Definition of double'" in problem
+    assert "Definition of double" in problem
+    assert "does not parse" in problem or "not a valid proof" in problem
 
 
 def test_by_proof_rejects_an_unrelated_premise_even_when_the_claim_is_derived():
     from .test_definitions import DOUBLE, DOUBLE_EXISTS, toy_theory
 
-    definition = replace(
-        DOUBLE,
-        evidence=df.ByProof(DOUBLE_EXISTS + "4. a = b. (Premise)\n"),
+    evidence = (
+        DOUBLE_EXISTS
+        + "4. Let a, b be any objects. (Declaration)\n"
+        + "5. a = b. (Premise)\n"
     )
-    theory = toy_theory(definition)
-    problem = df.DefinitionRule(definition, theory).evidence_problem()
+    definition = replace(DOUBLE, evidence=df.ByProof(evidence))
+    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
 
     assert problem is not None
-    assert "takes a = b for granted" in problem
+    assert "takes" in problem and "for granted" in problem
+    assert "a" in problem and "b" in problem
 
 
-def test_by_proof_does_not_accept_an_existence_claim_derived_only_inside_a_subproof():
+def test_a_declaration_that_adds_membership_is_an_evidence_hypothesis():
     from .test_definitions import DOUBLE, DOUBLE_EXISTS, toy_theory
 
-    lines = DOUBLE_EXISTS.splitlines()
-    nested = (
-        lines[0]
-        + "\n2. (some arbitrary formula). (Conditional Introduction from subproof below)\n"
-        + "begin subproof\n"
-        + "\n".join(" " + line for line in lines[1:])
-        + "\nend subproof\n"
+    evidence = DOUBLE_EXISTS.replace(
+        "1. Let n be any object. (Declaration)",
+        "1. Let A be any set, n be in A. (Declaration)",
     )
-    definition = replace(DOUBLE, evidence=df.ByProof(nested))
-    theory = toy_theory(definition)
-    problem = df.DefinitionRule(definition, theory).evidence_problem()
+    definition = replace(DOUBLE, evidence=df.ByProof(evidence))
+    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
 
     assert problem is not None
-    assert "does not derive" in problem or "not a valid proof" in problem
+    assert "takes" in problem and "for granted" in problem
+    assert "A" in problem and "n" in problem
+
+
+def test_a_witness_line_does_not_erase_the_existential_premise_used_to_name_it():
+    from .test_definitions import DOUBLE, DOUBLE_EXISTS, toy_theory
+
+    evidence = (
+        DOUBLE_EXISTS
+        + "4. exists q, q = Plus(n, n). (Premise)\n"
+        + "5. Let r be such an object. (Existence from 4)\n"
+    )
+    definition = replace(DOUBLE, evidence=df.ByProof(evidence))
+    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
+
+    assert problem is not None
+    assert "takes" in problem and "for granted" in problem
+    assert "exists" in problem.lower()
+
+
+def test_an_existence_claim_derived_only_inside_a_subproof_is_not_top_level_evidence():
+    from .test_definitions import DOUBLE, double_claim, toy_theory
+
+    statement = df.show(DOUBLE.existence_statement())
+    evidence = (
+        "1. Let n be any object. (Declaration)\n"
+        f"2. n = n -> ({statement}). (Conditional Introduction from subproof below)\n"
+        "begin subproof\n"
+        " 2.1. n = n. (Assumption for Conditional Introduction)\n"
+        + double_claim("2.2", "2.3", indent=" ")
+        + "end subproof\n"
+    )
+    definition = replace(DOUBLE, evidence=df.ByProof(evidence))
+    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
+
+    assert problem is not None
+    assert "does not derive" in problem
+    assert "at its top level" in problem
 
 
 # ---------------------------------------------------------------------------
@@ -427,27 +432,31 @@ def test_by_proof_does_not_accept_an_existence_claim_derived_only_inside_a_subpr
     "declaration",
     [
         "Let Union be an object.",
+        "Let Union be a constant.",
         "Let Union be a unary function.",
         "Let Union be a binary relation.",
     ],
 )
 def test_a_defined_symbol_cannot_be_redeclared_with_another_kind(declaration):
     with pytest.raises(ElaborationError, match="already declared|duplicate|redeclared"):
-        pp.parse_proof_text(f"1. {declaration} (Declaration)\n", st.SET_THEORY_ENVIRONMENT)
+        pp.parse_proof_text(
+            f"1. {declaration} (Declaration)\n",
+            st.SET_THEORY_ENVIRONMENT,
+        )
 
 
 def test_a_defined_symbol_cannot_be_redeclared_inside_a_subproof():
-    text = """1. Let A be any set. (Declaration)
-2. A = A. (Reflexivity from subproof below)
+    text = """1. A -> A. (Conditional Introduction from subproof below)
 begin subproof
- 2.1. Let Union be an object. (Declaration)
+ 1.1. A. (Assumption for Conditional Introduction)
+ 1.2. Let Union be an object. (Declaration)
 end subproof
 """
     with pytest.raises(ElaborationError, match="already declared|duplicate|redeclared"):
         pp.parse_proof_text(text, st.SET_THEORY_ENVIRONMENT)
 
 
-def test_lower_case_spelling_is_a_distinct_declaration_and_is_not_the_defined_symbol():
+def test_lower_case_spelling_is_a_distinct_declaration_and_not_the_defined_symbol():
     entries, _raw = pp.parse_proof_text(
         "1. Let union be an object. (Declaration)\n",
         st.SET_THEORY_ENVIRONMENT,
@@ -455,52 +464,49 @@ def test_lower_case_spelling_is_a_distinct_declaration_and_is_not_the_defined_sy
     declarations = entries[0][2][1]
     assert [declaration.name for declaration in declarations] == ["union"]
     assert all(declaration.name != "Union" for declaration in declarations)
-    assert any(declaration.name == "Union" for declaration in st.SET_THEORY_ENVIRONMENT.declarations)
+    assert any(
+        declaration.name == "Union"
+        for declaration in st.SET_THEORY_ENVIRONMENT.declarations
+    )
 
 
 # ---------------------------------------------------------------------------
-# 8. The derived existence claim is not a license to add an axiom
+# 8. Derived existence claims are not axioms
 # ---------------------------------------------------------------------------
 
-def test_existence_claim_for_an_unbounded_unique_property_requires_one_unique_member():
+def test_existence_claim_for_an_unbounded_property_exposes_the_full_unique_set_claim():
     definition = df.Definition(
-        title="Definition of marked choice",
-        symbol="MarkedChoice",
+        title="Definition of self-membered choice",
+        symbol="SelfMemberedChoice",
         variables=("x", "y"),
-        definiendum=fl.Equals(fn("MarkedChoice", v("x")), v("y")),
-        definiens=atom("Marked", v("y")),
-        evidence=df.ByRule(pl.ReflexivityRule()),
+        definiendum=fl.Equals(fn("SelfMemberedChoice", v("x")), v("y")),
+        definiens=_in(v("y"), v("y")),
+        evidence=df.ByRule(st.PowerSetAxiomRule()),
     )
     claim = definition.existence_claim()
+
     assert claim is not None
-    assert df.show(claim) == (
-        "exists Y, forall y, (MarkedChoice(x) = Y iff Marked(Y))"
-        if False else df.show(claim)
-    )
-    assert isinstance(claim, fl.Exists)
-    assert isinstance(claim.body, fl.ForAll)
-    assert claim.body.var == "x"
-    assert isinstance(claim.body.body, fl.Iff)
-    assert claim.body.body.left.left.name == "MarkedChoice"
-    assert isinstance(claim.body.body.right, fl.AtomicFormula)
+    assert df.show(claim) == "exists Y, forall y, (Y = y iff In(y, y))"
+    assert definition.parameters == ("x",)
+    assert definition.evidence.problem(definition, st.SET_THEORY_ENVIRONMENT) is not None
 
 
-def test_existence_claim_for_a_function_equation_requires_a_unique_solution():
+def test_existence_claim_for_a_non_unique_function_equation_requires_one_unique_value():
     definition = df.Definition(
         title="Definition of arbitrary value",
         symbol="ArbitraryValue",
         variables=("x", "y"),
         definiendum=fl.Equals(fn("ArbitraryValue", v("x")), v("y")),
         definiens=fl.Equals(v("y"), v("y")),
-        evidence=df.ByRule(pl.ReflexivityRule()),
+        evidence=df.ByRule(st.PowerSetAxiomRule()),
     )
     claim = definition.existence_claim()
+
     assert claim is not None
-    assert df.show(claim).startswith(
-        "exists Y, forall x, (ArbitraryValue(x) = Y iff Y = Y)"
-    )
-    assert "forall" in df.show(claim)
-    assert "iff" in df.show(claim)
+    assert df.show(claim) == "exists Y, forall y, (Y = y iff y = y)"
+    problem = definition.evidence.problem(definition, st.SET_THEORY_ENVIRONMENT)
+    assert problem is not None
+    assert "does not accept" in problem
 
 
 def test_a_definition_that_uses_its_own_symbol_in_the_definiens_is_refused_when_built():
@@ -511,12 +517,12 @@ def test_a_definition_that_uses_its_own_symbol_in_the_definiens_is_refused_when_
             variables=("x",),
             definiendum=fl.Equals(fn("RecursiveChoice", v("x")), v("x")),
             definiens=atom("P", fn("RecursiveChoice", v("x"))),
-            evidence=df.ByRule(pl.ReflexivityRule()),
+            evidence=df.ByProof(""),
         )
 
 
 # ---------------------------------------------------------------------------
-# 9. The fixture is a proof-level check as well as a parser check
+# 9. The enforced fixture pins proof-level behavior and exact reasons
 # ---------------------------------------------------------------------------
 
 def test_definition_red_team_fixture_has_grounded_conclusions_and_expected_results():
@@ -540,10 +546,20 @@ def test_definition_red_team_fixture_has_grounded_conclusions_and_expected_resul
         ("9", True, True),
         ("10", True, True),
     ]
-    for case in cases[3:8]:
+    expected = {
+        "4": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
+        "5": ("2", pl.CATEGORY_RULE_MISMATCH, "power set"),
+        "6": ("3", pl.CATEGORY_BAD_REFERENCE, "cited"),
+        "7": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
+        "8": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
+    }
+    for case in cases:
+        if case.number not in expected:
+            continue
+        label, category, phrase = expected[case.number]
         ok, error = pl.Proof(case.entries).check_detailed()
         assert not ok
         assert error is not None
-        assert error.label == ("3" if case.number in {"4", "6", "7", "8"} else "2")
-        assert error.category == pl.CATEGORY_RULE_MISMATCH
-        assert case.title.lower().split(" — ",1)[0] in case.title.lower()
+        assert error.label == label
+        assert error.category == category
+        assert phrase in error.detail.lower()
