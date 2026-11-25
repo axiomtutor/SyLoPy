@@ -1,10 +1,59 @@
-# 1: A three-fold union is an ordinary nested term
+# 1: Union is associative
 ## Proof that
-### then In(x, Union(Union(A, B), C)).
+### then A union (B union C) = (A union B) union C.
 
-1. Let A, B, C be any set, and x be any object. (Declaration)
-2. In(x, Union(Union(A, B), C)). (Premise)
-3. In(x, Union(Union(A, B), C)). (Reiteration from 2)
+1. Let A, B, C be any set. (Declaration)
+2. forall u, (In(u, Union(A, Union(B, C))) iff (In(u, A) or In(u, Union(B, C)))). (Definition of union)
+3. forall u, (In(u, Union(B, C)) iff (In(u, B) or In(u, C))). (Definition of union)
+4. forall u, (In(u, Union(Union(A, B), C)) iff (In(u, Union(A, B)) or In(u, C))). (Definition of union)
+5. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+6. A union (B union C) is a subset of (A union B) union C. (Subset proof below)
+ 6.1. Let x in A union (B union C). (Assumption for subset proof)
+ 6.2. In(x, A) or In(x, Union(B, C)). (Set property from 2, 6.1)
+ 6.3. In(x, Union(Union(A, B), C)). (Proof by Cases from 6.2, subproofs below)
+ begin subproof
+  6.3.1.case1. In(x, A). (Case)
+  6.3.2.case1. In(x, Union(A, B)). (Set property from 5, 6.3.1.case1)
+  6.3.3.case1. In(x, Union(Union(A, B), C)). (Set property from 4, 6.3.2.case1)
+ end subproof
+ begin subproof
+  6.3.1.case2. In(x, Union(B, C)). (Case)
+  6.3.2.case2. In(x, B) or In(x, C). (Set property from 3, 6.3.1.case2)
+  6.3.3.case2. In(x, Union(Union(A, B), C)). (Proof by Cases from 6.3.2.case2, subproofs below)
+  begin subproof
+   6.3.3.1.case1. In(x, B). (Case)
+   6.3.3.2.case1. In(x, Union(A, B)). (Set property from 5, 6.3.3.1.case1)
+   6.3.3.3.case1. In(x, Union(Union(A, B), C)). (Set property from 4, 6.3.3.2.case1)
+  end subproof
+  begin subproof
+   6.3.3.1.case2. In(x, C). (Case)
+   6.3.3.2.case2. In(x, Union(Union(A, B), C)). (Set property from 4, 6.3.3.1.case2)
+  end subproof
+ end subproof
+7. (A union B) union C is a subset of A union (B union C). (Subset proof below)
+ 7.1. Let x in (A union B) union C. (Assumption for subset proof)
+ 7.2. In(x, Union(A, B)) or In(x, C). (Set property from 4, 7.1)
+ 7.3. In(x, Union(A, Union(B, C))). (Proof by Cases from 7.2, subproofs below)
+ begin subproof
+  7.3.1.case1. In(x, Union(A, B)). (Case)
+  7.3.2.case1. In(x, A) or In(x, B). (Set property from 5, 7.3.1.case1)
+  7.3.3.case1. In(x, Union(A, Union(B, C))). (Proof by Cases from 7.3.2.case1, subproofs below)
+  begin subproof
+   7.3.3.1.case1. In(x, A). (Case)
+   7.3.3.2.case1. In(x, Union(A, Union(B, C))). (Set property from 2, 7.3.3.1.case1)
+  end subproof
+  begin subproof
+   7.3.3.1.case2. In(x, B). (Case)
+   7.3.3.2.case2. In(x, Union(B, C)). (Set property from 3, 7.3.3.1.case2)
+   7.3.3.3.case2. In(x, Union(A, Union(B, C))). (Set property from 2, 7.3.3.2.case2)
+  end subproof
+ end subproof
+ begin subproof
+  7.3.1.case2. In(x, C). (Case)
+  7.3.2.case2. In(x, Union(B, C)). (Set property from 3, 7.3.1.case2)
+  7.3.3.case2. In(x, Union(A, Union(B, C))). (Set property from 2, 7.3.2.case2)
+ end subproof
+8. A union (B union C) = (A union B) union C. (Set Equality from 6, 7)
 
 # 2: A member of the power set of a union is a subset of that union
 ## Proof that
