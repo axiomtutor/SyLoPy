@@ -249,7 +249,7 @@ def test_active_theory_parser_is_used_to_split_a_compound_let():
         TheoryEnvironment(phrase_parsers=[parse_relation])
     )
     entries, _ = pp.parse_proof_text(
-        "1. Let X be a set, objects is above integers. (Declaration)\\n",
+        "1. Let X be a set, objects is above integers. (Declaration)\n",
         environment=environment,
     )
 
@@ -287,6 +287,6 @@ def test_clause_recognized_by_formula_parser_and_declaration_recipe_is_reported(
     )
     with pytest.raises(pp.ElaborationError, match="recognized both as a formula"):
         pp.parse_proof_text(
-            "1. A and B are peers. (Premise)\\n",
+            "1. A and B are peers. (Premise)\n",
             environment=environment,
         )
