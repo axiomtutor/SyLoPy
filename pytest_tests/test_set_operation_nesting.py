@@ -1,6 +1,6 @@
 import pytest
 
-from .support import st
+from .support import st, tl
 
 
 @pytest.mark.parametrize(
@@ -14,3 +14,18 @@ from .support import st
 def test_ambiguous_unparenthesized_operation_chains_require_parentheses(term):
     with pytest.raises(ValueError, match="parenthes"):
         st.try_parse_set_term(term)
+
+
+def test_one_operator_table_drives_infix_recognition_and_symbol_mapping(monkeypatch):
+    # J38 should be able to add an infix operator by adding one table entry.
+    st._try_parse_set_term_cached.cache_clear()
+    monkeypatch.setitem(st._SET_OPERATION_SYMBOLS, "difference", "Difference")
+    try:
+        expected = tl.FunctionTerm(
+            "Difference",
+            [tl.ConstantTerm("A", "A"), tl.ConstantTerm("B", "B")],
+        )
+        assert st.try_parse_set_term("A difference B") == expected
+        assert st.try_parse_set_term("difference") is None
+    finally:
+        st._try_parse_set_term_cached.cache_clear()
