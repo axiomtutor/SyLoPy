@@ -61,6 +61,9 @@ def test_definition_accepts_vacuous_and_reordered_leading_universals():
     canonical = _union(v("u"), c("A"), c("B"))
 
     assert definition.instance_problem(canonical) is None
+    assert definition.instance_problem(
+        _union(v("u"), c("B"), c("A"))
+    ) is None
     assert definition.instance_problem(fl.Iff(canonical.right, canonical.left)) is None
     assert definition.instance_problem(fl.ForAll("z", canonical)) is None
 
@@ -79,12 +82,18 @@ def test_definition_accepts_vacuous_and_reordered_leading_universals():
     [
         c("Y"), c("Y_1"), c("u"), c("w"),
         v("Y"), v("Y_1"), v("u"), v("w"),
+        fn("f", c("Y")),
+        fn("f", c("Y_1")),
+        fn("f", c("u")),
+        fn("f", c("w")),
         fn("f", v("w")),
     ],
     ids=[
         "constant-Y", "constant-Y1", "constant-u", "constant-w",
         "variable-Y", "variable-Y1", "variable-u", "variable-w",
-        "function-of-w",
+        "function-of-constant-Y", "function-of-constant-Y1",
+        "function-of-constant-u", "function-of-constant-w",
+        "function-of-variable-w",
     ],
 )
 def test_union_definition_accepts_terms_named_like_variables(term):
@@ -210,20 +219,43 @@ def test_a_theorem_using_a_definition_can_be_promoted_and_cited_later():
     assert ok, error
 
 
-def test_a_theorem_title_matching_a_definition_title_is_shadowed_by_the_rule():
-    from .test_definitions import CITATION, promote, use_of_theorem
+def test_a_theorem_titled_like_a_definition_is_shadowed_when_cited():
+    source = (
+        "1. Let A be any set. (Declaration)\\n"
+        "2. A = A. (Reflexivity)\\n"
+    )
+    entries, _raw = pp.parse_proof_text(source, st.SET_THEORY_ENVIRONMENT)
+    theorem_proof = pl.Proof(entries)
+    theorem_ok, theorem_error = theorem_proof.check_detailed()
+    assert theorem_ok, theorem_error
+    theorem = pl.promote_theorem(
+        "Definition of union",
+        theorem_proof,
+        generalized_names=["A"],
+    )
 
-    theorem = promote(CITATION.format(title="Definition of cyclic"), "Definition of cyclic")
-    ok, error = use_of_theorem(theorem)
+    use = (
+        "1. Let A be any set. (Declaration)\\n"
+        "2. A = A. (Definition of union)\\n"
+    )
+    entries, _raw = pp.parse_proof_text(
+        use,
+        st.SET_THEORY_ENVIRONMENT,
+        theorem_names=[theorem.name],
+    )
+    # The citation is resolved to the definition rule, not the theorem.
+    assert entries[1][2][0] == "rule"
+    proof = pl.Proof(
+        entries,
+        rules=pl.default_rules() + st.SET_THEORY_ENVIRONMENT.rules + [theorem],
+    )
+    ok, error = proof.check_detailed()
 
     assert not ok
     assert error is not None
-    assert "Definition of cyclic" in error.detail
-    assert (
-        "no rule named" in error.detail
-        or "was proved using the rule" in error.detail
-        or "definition" in error.detail.lower()
-    )
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    assert "Definition of union" in error.detail
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +266,15 @@ def test_mutatis_accepts_two_definition_parameters_exchanged_together():
     text = """1. Let A, B be any set, and x be any object. (Declaration)
 2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
 3. In(x, Union(B, A)) iff (In(x, B) or In(x, A)). (Mutatis mutandis, 2)
+"""
+    _entries, (ok, error) = _check(text)
+    assert ok, error
+
+
+def test_mutatis_accepts_a_name_replaced_by_a_closed_function_term():
+    text = """1. Let A, B be any set, and x, a be any object, and f be a unary function. (Declaration)
+2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
+3. In(x, Union(f(a), B)) iff (In(x, f(a)) or In(x, B)). (Mutatis mutandis, 2)
 """
     _entries, (ok, error) = _check(text)
     assert ok, error
@@ -283,19 +324,31 @@ def test_mutatis_refuses_replacing_membership_by_an_unrelated_predicate():
     assert error.category == pl.CATEGORY_RULE_MISMATCH
     assert "line 2" in error.detail.lower() or "definition of union" in error.detail.lower()
 
+def test_mutatis_refuses_replacing_union_by_a_declared_binary_function():
+    text = """1. Let A, B be any set, and x be any object, and f be a binary function. (Declaration)
+2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
+3. In(x, f(A, B)) iff (In(x, A) or In(x, B)). (Mutatis mutandis, 2)
+"""
+    error = _failure(text)
+    assert error.label == "3"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    assert "definition of union" in error.detail.lower()
+
+
+
 
 # ---------------------------------------------------------------------------
 # 5. WLOG replay and proof by cases over definition-derived lines
 # ---------------------------------------------------------------------------
 
 def test_wlog_replays_a_region_that_contains_a_definition_citation():
-    text = """1. Let A, B be any set, and a, b, c, x be any object. (Declaration)
-2. In(x, Union(A, B)). (Premise)
-3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
-4. In(x, A) or In(x, B). (Set property from 3, 2)
-5. a = b or a = c. (Premise)
-6. a = b. (WLOG from 5)
-7. In(x, A) or In(x, B). (Reiteration from 4)
+    text = """1. Let A, B be any set, and a, x, y be any object. (Declaration)
+2. x is in A union B. (Premise)
+3. y is in A union B. (Premise)
+4. a = x or a = y. (Premise)
+5. a = x. (WLOG from 4)
+6. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+7. In(x, A) or In(x, B). (Set property from 6, 2)
 """
     _entries, (ok, error) = _check(text)
     assert ok, error
