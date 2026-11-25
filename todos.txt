@@ -116,10 +116,7 @@ commit.
   `different`, `distinct`) is read as the start of a declaration, not as `A = B`, as
   `A and B are disjoint.` was before #151. A parser fix by a rule, not by one more word in
   a list: job J44.
-- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding; "Agreed"
-  (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
-  from A to B` declare the name as a plain object, so the first line that uses it as a
-  statement, a relation or a function is refused at the use. Recipes are the fix: job J45.
+- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): owner-approved fix (2026-11-23), implemented in draft PR #186. The new recipes declare proposition/statement/propositional-variable phrases as zero-ary predicates, `strict order on X` as an irreflexive transitive relation, and `f be a bijection from A to B` as a typed unary function. The finding remains open until the PR is merged.
 - [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): open finding.
   Declarations that say something but state nothing: `a nonempty set`, `a family of
   subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain` no rule
