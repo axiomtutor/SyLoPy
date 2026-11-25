@@ -74,16 +74,33 @@
 4. In(x, Union(A, B)) and In(x, C). (Set property from 3, 2)
 5. In(x, Union(A, B)). (Conjunction Elimination from 4)
 
-# 4: A nested union has the elements of the left and middle sets
+# 4: A three-fold union unfolds into membership in one of its three sets
 ## Proof that
-### then In(x, A) or In(x, B).
+### then In(x, A) or In(x, B) or In(x, C).
 
 1. Let A, B, C be any set, and x be any object. (Declaration)
 2. In(x, Union(Union(A, B), C)). (Premise)
 3. In(x, Union(Union(A, B), C)) iff (In(x, Union(A, B)) or In(x, C)). (Definition of union)
 4. In(x, Union(A, B)) or In(x, C). (Set property from 3, 2)
 5. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
-6. In(x, A) or In(x, B) or In(x, C). (Set property from 5, 4)
+6. In(x, A) or In(x, B) or In(x, C). (Proof by Cases from 4, subproofs below)
+begin subproof
+ 6.1.case1. In(x, Union(A, B)). (Case)
+ 6.2.case1. In(x, A) or In(x, B). (Set property from 5, 6.1.case1)
+ 6.3.case1. In(x, A) or In(x, B) or In(x, C). (Proof by Cases from 6.2.case1, subproofs below)
+ begin subproof
+  6.3.1.case1. In(x, A). (Case)
+  6.3.2.case1. In(x, A) or In(x, B) or In(x, C). (Disjunction Introduction from 6.3.1.case1)
+ end subproof
+ begin subproof
+  6.3.1.case2. In(x, B). (Case)
+  6.3.2.case2. In(x, A) or In(x, B) or In(x, C). (Disjunction Introduction from 6.3.1.case2)
+ end subproof
+end subproof
+begin subproof
+ 6.1.case2. In(x, C). (Case)
+ 6.2.case2. In(x, A) or In(x, B) or In(x, C). (Disjunction Introduction from 6.1.case2)
+end subproof
 
 # 5: The union definition cannot be used for a different operation
 ## Invalid: definition mismatch — the intersection term is not the union term.
