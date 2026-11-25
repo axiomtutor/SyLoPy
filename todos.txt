@@ -222,9 +222,10 @@ No owner decision is needed for these, and none has started except this document
 - (Done, pending merge: the "Rules for new jobs" in `JOBS_FOR_CHATGPT.md` are now a pointer to
   `AGENT_COLLABORATION.md`, so that the two cannot drift.)
 - #144, once the owner authorizes it.
-- Branch hygiene: the eight merged `claude/*` branches and the backup
-  `claude/set-operation-definitions-wip` (superseded by #167) can be deleted. Claude
-  deletes only its own, and has not yet.
+- Branch hygiene: the merged `claude/*` branches are deleted (owner, 2026-11-24; the
+  session's proxy cannot delete refs, so the owner does it). The backup
+  `claude/set-operation-definitions-wip` (tip `25474a5`, superseded by #167) is kept
+  until the owner says it can go.
 
 ### 5. Not now
 
