@@ -80,6 +80,7 @@ Two things worth knowing before writing new proof text
 
 import re
 import sys
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -110,6 +111,25 @@ from SyLoPy.source.ProofElaboration import (
 # the same pattern at each of the several call sites below.
 _BEGIN_SUBPROOF_RE = re.compile(r'^begin\s+subproof', re.I)
 _END_SUBPROOF_RE = re.compile(r'^end\s+subproof', re.I)
+
+_ACTIVE_DECLARATION_ENVIRONMENT = ContextVar(
+    "active_declaration_environment", default=None
+)
+
+
+def _declaration_environment(environment=None):
+    if environment is not None:
+        return environment
+    active = _ACTIVE_DECLARATION_ENVIRONMENT.get()
+    return active if active is not None else _cached_default_environment()
+
+
+def _split_declaration_clauses_with_environment(text, environment):
+    token = _ACTIVE_DECLARATION_ENVIRONMENT.set(environment)
+    try:
+        return split_declaration_clauses(text)
+    finally:
+        _ACTIVE_DECLARATION_ENVIRONMENT.reset(token)
 
 _USE_THEORY_RE = re.compile(r'^use\s+(.+?)\.?$', re.I)
 _SUPPORTED_THEORIES = {
@@ -425,7 +445,7 @@ def parse_declaration_prefix(
     dispatch path. This fallback does not dispatch structure recipes.
     """
     if environment is None:
-        environment = _cached_default_environment()
+        environment = _declaration_environment()
     s = text.strip().rstrip('.').strip()
 
     # Try to parse as a "Let..." declaration first
@@ -445,7 +465,7 @@ def parse_declaration_prefix(
             return [], None
 
         declarations: List[pl.Declaration] = []
-        for clause in split_declaration_clauses(m.group(1)):
+        for clause in _split_declaration_clauses_with_environment(m.group(1), environment):
             dc = parse_declaration_clause(clause)
             if dc.domain is not None:
                 raise ValueError(
@@ -513,7 +533,7 @@ def split_declaration_clauses(
     theory module might ever declare, not something specific to posets.
     """
     if environment is None:
-        environment = _cached_default_environment()
+        environment = _declaration_environment()
     parts: List[str] = []
     depth = 0
     buf: List[str] = []
@@ -720,7 +740,7 @@ def _reads_as_formula(text: str, environment: Optional[TheoryEnvironment] = None
     must be reported, rather than silently assigned to either grammar.
     """
     if environment is None:
-        environment = _cached_default_environment()
+        environment = _declaration_environment()
     candidate = text.strip().rstrip(".").strip()
     if not candidate:
         return False
@@ -774,7 +794,7 @@ def _split_compound_declaration_items(
     clause separator unless the following text starts another declaration.
     """
     if environment is None:
-        environment = _cached_default_environment()
+        environment = _declaration_environment()
     items: List[str] = []
     buf: List[str] = []
     depth = 0
@@ -997,7 +1017,7 @@ def _surface_declaration_from_clause(
     )
 
 
-def _parse_surface_declaration_statement_with_environment(
+def _parse_surface_declaration_statement_with_environment_impl(
     text: str,
     span: SourceSpan,
     environment: TheoryEnvironment,
@@ -1037,14 +1057,14 @@ def _parse_surface_declaration_statement_with_environment(
     if such_that:
         declaration_body = body[:such_that.start()].strip().rstrip(',')
         premise_body = body[such_that.end():].strip()
-        for item in _split_compound_declaration_items(declaration_body, environment):
+        for item in _split_compound_declaration_items(declaration_body):
             clauses.append(_surface_declaration_from_clause(item, span))
         for formula in split_top_level(premise_body, ' and '):
             if formula.strip():
                 clauses.append(SurfacePremiseClause(formula.strip(), span))
         return SurfaceDeclarationStatement(clauses, span)
 
-    for item in _split_compound_declaration_items(body, environment):
+    for item in _split_compound_declaration_items(body):
         item = item.strip()
         if (re.search(r'\b(?:be|are)\b', item, re.I)
                 and _reads_as_formula(item, environment)):
@@ -1074,6 +1094,21 @@ def _parse_surface_declaration_statement_with_environment(
                         clauses.append(SurfacePremiseClause(formula.strip(), span))
 
     return SurfaceDeclarationStatement(clauses, span)
+
+
+
+def _parse_surface_declaration_statement_with_environment(
+    text: str,
+    span: SourceSpan,
+    environment: TheoryEnvironment,
+) -> Optional[SurfaceDeclarationStatement]:
+    token = _ACTIVE_DECLARATION_ENVIRONMENT.set(environment)
+    try:
+        return _parse_surface_declaration_statement_with_environment_impl(
+            text, span, environment
+        )
+    finally:
+        _ACTIVE_DECLARATION_ENVIRONMENT.reset(token)
 
 
 def parse_surface_declaration_statement(
