@@ -445,7 +445,7 @@ def parse_declaration_prefix(
             return [], None
 
         declarations: List[pl.Declaration] = []
-        for clause in split_declaration_clauses(m.group(1), environment):
+        for clause in split_declaration_clauses(m.group(1)):
             dc = parse_declaration_clause(clause)
             if dc.domain is not None:
                 raise ValueError(
@@ -496,10 +496,7 @@ def parse_declaration_prefix(
 _DECLARATION_CLAUSE_SEPARATORS = (', and let ', ' and let ', ', let ', ' and ')
 
 
-def split_declaration_clauses(
-    s: str,
-    environment: Optional[TheoryEnvironment] = None,
-) -> List[str]:
+def split_declaration_clauses(s: str) -> List[str]:
     """Split the body of a `Let ...` declaration into clauses, paren-depth
     aware -- so the comma inside a tuple target like `(W, <)` is never
     mistaken for a clause boundary -- and accepting a "let" repeated per
@@ -512,8 +509,6 @@ def split_declaration_clauses(
     splitting is the same mechanical problem for every structure type a
     theory module might ever declare, not something specific to posets.
     """
-    if environment is None:
-        environment = _cached_default_environment()
     parts: List[str] = []
     depth = 0
     buf: List[str] = []
@@ -533,7 +528,7 @@ def split_declaration_clauses(
         if depth == 0:
             sep = next((c for c in _DECLARATION_CLAUSE_SEPARATORS if s.startswith(c, i)), None)
             if (sep == ' and ' and _is_bare_name_list(''.join(buf))
-                    and _text_after_is_declaration_start(s[i + len(sep):], environment)):
+                    and _text_after_is_declaration_start(s[i + len(sep):])):
                 sep = None  # "X and Y be sets": this "and" joins the names of one clause
             if sep:
                 parts.append(''.join(buf).strip())
@@ -744,10 +739,7 @@ def _text_after_is_formula_start(s: str) -> bool:
     return bool(_FORMULA_START_RE.match(s.strip()))
 
 
-def _split_compound_declaration_items(
-    body: str,
-    environment: Optional[TheoryEnvironment] = None,
-) -> List[str]:
+def _split_compound_declaration_items(body: str) -> List[str]:
     """Split a coordinated ``Let`` body into declaration and premise clauses.
 
     Commas have two roles in this language: they coordinate clauses and they
@@ -756,8 +748,6 @@ def _split_compound_declaration_items(
     argument lists.  Once a premise clause has begun, a top-level comma is a
     clause separator unless the following text starts another declaration.
     """
-    if environment is None:
-        environment = _cached_default_environment()
     items: List[str] = []
     buf: List[str] = []
     depth = 0
@@ -786,7 +776,7 @@ def _split_compound_declaration_items(
         text = text.strip()
         if not text:
             return False
-        if _reads_as_formula(text, environment):
+        if _reads_as_formula(text):
             return True
         if _text_after_is_formula_start(text):
             return True
@@ -824,11 +814,11 @@ def _split_compound_declaration_items(
             current = ''.join(buf).strip()
             # "Let X and Y be sets" / "Let X, Y and Z be sets": here "and" joins
             # the names of one clause, exactly like the grouped-name commas below.
-            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest, environment):
+            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest):
                 buf.append(body[i:i + 5])
                 i += 5
                 continue
-            if _text_after_is_declaration_start(rest, environment):
+            if _text_after_is_declaration_start(rest):
                 flush()
                 premise_mode = False
                 i += 5
@@ -849,12 +839,12 @@ def _split_compound_declaration_items(
             if re.match(
                 r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*$',
                 current,
-            ) and _text_after_is_declaration_start(rest, environment):
+            ) and _text_after_is_declaration_start(rest):
                 buf.append(ch)
                 i += 1
                 continue
             # A comma followed by another declaration starts a new clause.
-            if _text_after_is_declaration_start(rest, environment):
+            if _text_after_is_declaration_start(rest):
                 flush()
                 premise_mode = False
                 i += 1
@@ -1013,14 +1003,14 @@ def parse_surface_declaration_statement(
     if such_that:
         declaration_body = body[:such_that.start()].strip().rstrip(',')
         premise_body = body[such_that.end():].strip()
-        for item in _split_compound_declaration_items(declaration_body, environment):
+        for item in _split_compound_declaration_items(declaration_body):
             clauses.append(_surface_declaration_from_clause(item, span))
         for formula in split_top_level(premise_body, ' and '):
             if formula.strip():
                 clauses.append(SurfacePremiseClause(formula.strip(), span))
         return SurfaceDeclarationStatement(clauses, span)
 
-    for item in _split_compound_declaration_items(body, environment):
+    for item in _split_compound_declaration_items(body):
         item = item.strip()
         if (re.search(r'\b(?:be|are)\b', item, re.I)
                 and _reads_as_formula(item, environment)):
