@@ -2943,15 +2943,28 @@ class BijectionDeclarationRecipe:
         if index >= len(clauses):
             return None
         clause = clauses[index]
-        if clause.domain is None or clause.codomain is None:
+        domain, codomain = clause.domain, clause.codomain
+        if domain is None and codomain is None:
+            natural_form = re.fullmatch(
+                r"\s*(?:(?:a|an|the)\s+)?bijection\s+from\s+"
+                r"([A-Za-z_][A-Za-z0-9_]*)\s+to\s+"
+                r"([A-Za-z_][A-Za-z0-9_]*)\s*",
+                clause.descriptor,
+                re.I,
+            )
+            if natural_form is None:
+                return None
+            domain, codomain = natural_form.groups()
+        elif domain is None or codomain is None:
             return None
-        descriptor = re.sub(r"\s+", " ", clause.normalized_descriptor).strip().lower()
-        descriptor = re.sub(r"^(?:a|an|the)\s+", "", descriptor)
-        if descriptor != "bijection" and not descriptor.startswith("bijective"):
-            return None
+        else:
+            descriptor = re.sub(r"\\s+", " ", clause.normalized_descriptor).strip().lower()
+            descriptor = re.sub(r"^(?:a|an|the)\\s+", "", descriptor)
+            if descriptor != "bijection" and not descriptor.startswith("bijective"):
+                return None
 
         is_declared = getattr(clause, "is_declared", None)
-        for set_name in (clause.domain, clause.codomain):
+        for set_name in (domain, codomain):
             previous_names = {
                 name
                 for previous in clauses[:index]
@@ -2969,8 +2982,8 @@ class BijectionDeclarationRecipe:
                 arity=1,
                 type_name="bijection",
                 metadata=(
-                    ("domain", clause.domain),
-                    ("codomain", clause.codomain),
+                    ("domain", domain),
+                    ("codomain", codomain),
                     ("bijection", True),
                 ),
             )
@@ -2981,8 +2994,8 @@ class BijectionDeclarationRecipe:
                 "Bijection",
                 [
                     tl.ConstantTerm(name, name),
-                    tl.ConstantTerm(clause.domain, clause.domain),
-                    tl.ConstantTerm(clause.codomain, clause.codomain),
+                    tl.ConstantTerm(domain, domain),
+                    tl.ConstantTerm(codomain, codomain),
                 ],
             )
             for name in clause.names
