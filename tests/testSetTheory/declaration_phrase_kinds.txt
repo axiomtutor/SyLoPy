@@ -4,6 +4,7 @@
 
 1. Let X be any set, R be a strict order on X, a, b be in X. (Declaration)
 2. R(a, b). (Premise)
+3. R(a, b). (Reiteration from 2)
 
 # 2: A bijection may be declared by its domain and codomain
 ## Proof that
