@@ -106,29 +106,75 @@ def try_parse_set_term(text: str, bound_vars: Optional[set] = None) -> Optional[
     return _try_parse_set_term_cached(text, tuple(sorted(bound_vars or set())))
 
 
+def _split_top_level_set_operations(text: str):
+    """Return top-level infix set operations, ignoring parenthesized text.
+
+    Operators are recognized only as standalone words surrounded by
+    whitespace, so function applications such as Union(A, B) remain terms.
+    """
+    operations = []
+    depth = 0
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if char == "(":
+            depth += 1
+            i += 1
+            continue
+        if char == ")":
+            depth -= 1
+            if depth < 0:
+                raise ValueError(f"Unmatched closing parenthesis in set term: {text!r}")
+            i += 1
+            continue
+        if depth == 0 and (char.isalpha() or char == "_"):
+            match = re.match(r"[A-Za-z_][A-Za-z0-9_]*", text[i:])
+            word = match.group(0)
+            end = i + len(word)
+            if (
+                word.lower() in {"union", "intersection", "cross"}
+                and i > 0 and text[i - 1].isspace()
+                and end < len(text) and text[end].isspace()
+            ):
+                operations.append((word.lower(), i, end))
+            i = end
+            continue
+        i += 1
+    if depth:
+        raise ValueError(f"Unmatched opening parenthesis in set term: {text!r}")
+    return operations
+
+
+def _has_outer_set_term_parentheses(text: str) -> bool:
+    """Whether one pair of parentheses encloses the entire expression."""
+    if not text.startswith("(") or not text.endswith(")"):
+        return False
+    depth = 0
+    for index, char in enumerate(text):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0 and index != len(text) - 1:
+                return False
+            if depth < 0:
+                raise ValueError(f"Unmatched closing parenthesis in set term: {text!r}")
+    if depth:
+        raise ValueError(f"Unmatched opening parenthesis in set term: {text!r}")
+    return True
+
+
 def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Optional[tl.Term]:
-    """Parse the small natural-language set-term vocabulary."""
+    """Parse set terms recursively, retaining the declared operation symbols."""
 
     bound_vars = bound_vars or set()
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
     if re.fullmatch(r"(?:the\s+)?empty\s+set|∅", s, flags=re.I):
         return EMPTY_SET
-    operation_match = re.fullmatch(
-        r"([A-Za-z_][A-Za-z0-9_]*)\s+(union|intersection|cross)\s+([A-Za-z_][A-Za-z0-9_]*)",
-        s,
-        flags=re.I,
-    )
-    if operation_match:
-        left, operation, right = operation_match.groups()
-        symbol = {
-            "union": "Union",
-            "intersection": "Intersection",
-            "cross": "CartesianProduct",
-        }[operation.lower()]
-        return tl.FunctionTerm(symbol, [_name_term(left, bound_vars), _name_term(right, bound_vars)])
-    power_match = re.fullmatch(r"(?:the\s+)?power\s+set\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", s, flags=re.I)
-    if power_match:
-        return tl.FunctionTerm("PowerSet", [_name_term(power_match.group(1), bound_vars)])
+    if not s:
+        return None
+
+    # Preserve ordered-pair syntax exactly: its two arguments remain bare names.
     pair_match = re.fullmatch(
         r"(?:ordered\s+)?pair\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
         s,
@@ -139,6 +185,70 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
             "Pair",
             [_name_term(pair_match.group(1), bound_vars), _name_term(pair_match.group(2), bound_vars)],
         )
+    if re.match(r"^(?:ordered\s+)?pair\s*\(", s, flags=re.I):
+        raise ValueError("pair(...) keeps its existing bare-name arguments")
+
+    # Strip parentheses only when they enclose the complete term.
+    if _has_outer_set_term_parentheses(s):
+        inner = s[1:-1].strip()
+        if not inner:
+            raise ValueError("Empty parentheses are not a set term")
+        result = try_parse_set_term(inner, bound_vars)
+        if result is None:
+            raise ValueError(f"Unrecognized set term inside parentheses: {inner!r}")
+        return result
+
+    # Reuse the ordinary function-application parser; it recursively parses
+    # every argument with the theory's active term parsers.
+    import SyLoPy.source.ProofParser as pp
+    applied = pp._match_applied_symbol(s)
+    if applied is not None:
+        symbol, arguments = applied
+        return tl.FunctionTerm(symbol, pp._parse_arg_list(arguments, bound_vars))
+
+    # The power-set operand is a term, not just a bare identifier.
+    power_match = re.fullmatch(r"(?:the\s+)?power\s+set\s+of\s+(.+)", s, flags=re.I)
+    if power_match:
+        operand = try_parse_set_term(power_match.group(1).strip(), bound_vars)
+        if operand is None:
+            raise ValueError(f"Unrecognized power-set operand: {power_match.group(1)!r}")
+        return tl.FunctionTerm("PowerSet", [operand])
+
+    # Split only at top level. One repeated operator associates to the left;
+    # mixed operators have no precedence and cross remains binary.
+    operations = _split_top_level_set_operations(s)
+    if operations:
+        words = [operation for operation, _start, _end in operations]
+        if len(set(words)) > 1:
+            raise ValueError("Mixed set operations have no precedence; parenthesize the intended nesting")
+        operation = words[0]
+        if operation == "cross" and len(words) > 1:
+            raise ValueError("Cartesian product is binary; parenthesize the intended nesting")
+        pieces = []
+        previous = 0
+        for _word, start, end in operations:
+            pieces.append(s[previous:start].strip())
+            previous = end
+        pieces.append(s[previous:].strip())
+        if any(not piece for piece in pieces):
+            raise ValueError("A set operation needs an operand on each side")
+        symbol = {
+            "union": "Union",
+            "intersection": "Intersection",
+            "cross": "CartesianProduct",
+        }[operation]
+        parsed = [try_parse_set_term(piece, bound_vars) for piece in pieces]
+        if any(term is None for term in parsed):
+            raise ValueError(f"Unrecognized operand in set operation: {s!r}")
+        result = parsed[0]
+        for operand in parsed[1:]:
+            result = tl.FunctionTerm(symbol, [result, operand])
+        return result
+
+    # Operator words are reserved for infix syntax, not ordinary set names.
+    if s.lower() in {"union", "intersection", "cross"}:
+        raise ValueError(f"{s!r} is a set-operation word, not a set name")
+
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
         return _name_term(s, bound_vars)
     return None
