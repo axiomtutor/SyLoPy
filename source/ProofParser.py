@@ -89,6 +89,7 @@ import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
 import SyLoPy.source.ProofContext as pc
 from SyLoPy.source.ProofJustification import parse_justification, theorem_titles
+from .Notation import rewrite_formula_symbols
 from SyLoPy.source.ProofElaboration import (
     CoreOrigin,
     ElaboratedEntries,
@@ -111,6 +112,16 @@ from SyLoPy.source.ProofElaboration import (
 # the same pattern at each of the several call sites below.
 _BEGIN_SUBPROOF_RE = re.compile(r'^begin\s+subproof', re.I)
 _END_SUBPROOF_RE = re.compile(r'^end\s+subproof', re.I)
+
+_BASE_LOGICAL_NOTATION_TABLE = {
+    "∧": "and",
+    "∨": "or",
+    "¬": "not",
+    "→": "->",
+    "↔": "<->",
+    "∀": "forall",
+    "∃": "exists",
+}
 
 _ACTIVE_DECLARATION_ENVIRONMENT = ContextVar(
     "active_declaration_environment", default=None
@@ -366,12 +377,22 @@ def _parse_surface_expression(text: str, bound_vars: Optional[set] = None,
     the recursive formula and phrase parser registries.
     """
     bound_vars = bound_vars or set()
+    notation_environment = (
+        environment if environment is not None else _cached_default_environment()
+    )
+    normalized_text = rewrite_formula_symbols(
+        text, notation_environment.notation_table
+    )
     if environment is not None:
         for formula_parser in environment.formula_parsers:
-            expression = formula_parser(text, bound_vars)
+            expression = formula_parser(normalized_text, bound_vars)
             if expression is not None:
                 return expression
-    return SurfaceExpression("core", parse_formula(text, bound_vars, environment), text)
+    return SurfaceExpression(
+        "core",
+        parse_formula(normalized_text, bound_vars, environment),
+        text,
+    )
 
 
 def _parse_premise_part(part: str, environment: Optional[TheoryEnvironment]) -> fl.Formula:
@@ -1700,8 +1721,14 @@ def _base_line_elaborators():
 def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
     """Add base proof syntax to an explicitly selected theory without mutation."""
     base_elaborators = _base_line_elaborators()
+    base_environment = TheoryEnvironment(
+        name="base logic",
+        notation_table=_BASE_LOGICAL_NOTATION_TABLE,
+    )
+    notation_table = base_environment.extended(environment).notation_table
     return replace(
         environment,
+        notation_table=notation_table,
         line_elaborators=[
             *base_elaborators,
             *(item for item in environment.line_elaborators
@@ -1731,8 +1758,10 @@ def default_theory_environment() -> TheoryEnvironment:
     says so: two inductions over different types are two rules.
     """
     environment = TheoryEnvironment(
+        name="base logic",
         line_elaborators=list(_base_line_elaborators()),
         phrase_parsers=[_parse_base_equality_phrase],
+        notation_table=_BASE_LOGICAL_NOTATION_TABLE,
         rules=[pl.AlgebraRule()],
         declaration_recipes=[
             PropositionDeclarationRecipe(),
