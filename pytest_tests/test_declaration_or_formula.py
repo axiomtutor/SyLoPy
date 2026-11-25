@@ -41,17 +41,25 @@ def test_are_equality_phrases_are_premises_not_declarations(phrase, symbolic):
     )
 
 
-def test_equality_formula_can_follow_a_compound_let_declaration():
+@pytest.mark.parametrize(
+    "phrase, expected",
+    [
+        ("A and B are equal", "A = B"),
+        ("A and B are not equal", "¬A = B"),
+        ("A and B are different", "¬A = B"),
+        ("A and B are distinct", "¬A = B"),
+    ],
+)
+def test_equality_formula_can_follow_a_compound_let_declaration(phrase, expected):
     entries, _ = pp.parse_proof_text(
-        "1. Let A and B be sets, and A and B are equal. (Declaration)\n"
+        "1. Let A and B be sets, and " + phrase + ". (Declaration)\\n"
     )
 
     label, formula, justification = entries[0]
     assert label == "1"
-    assert repr(formula) == "A = B"
+    assert repr(formula) == expected
     assert justification[0] == "premise"
     assert [declaration.name for declaration in justification[1]] == ["A", "B"]
-
 
 @pytest.mark.parametrize("descriptor", ["sets", "integers"])
 def test_unrecognized_descriptors_remain_declarations(descriptor):
