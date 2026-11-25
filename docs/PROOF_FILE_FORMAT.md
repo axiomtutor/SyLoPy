@@ -317,12 +317,12 @@ list of formula words in the declaration parser.
 
 Typed unary functions use `Let f: X -> Y be a unary function. (Declaration)`.
 The domain and codomain names must already be declared sets; the declaration
-records both names as function metadata. A set can also receive a symbolic
+records both names as function metadata. A bijection can also be declared without the type-annotation syntax: `Let f be a bijection from A to B.` records the same function kind, domain and codomain. A set can also receive a symbolic
 defining predicate with `Let Y be a set with defining property P. (Declaration)`;
 `P` must already be a declared unary predicate, and this declaration adds the
 ordinary formula `forall u, (In(u, Y) iff P(u))`.
 
-`Let R be a reflexive relation on X` declares R as a relation on X in the usual sense, a subset of X × X, and the declaration line states that as a formula, the way `Let a be in X` states `In(a, X)`: `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))`, one for each relation the declaration names, at the place in the line where the relation is declared. It is the same however the relation is described, and wherever its carrier was declared (in the same statement, on an earlier line, or in an enclosing proof). A proof gets the memberships from a fact `R(a, b)` with the ordinary rules, for terms that were declared in no set at all:
+`Let R be a reflexive relation on X` declares R as a relation on X in the usual sense, a subset of X × X. The phrase `strict order on X` is a synonym for `strict partial order on X`, with properties irreflexive and transitive. The declaration line states the relation's carrier condition as a formula, the way `Let a be in X` states `In(a, X)`: `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))`, one for each relation the declaration names, at the place in the line where the relation is declared. It is the same however the relation is described, and wherever its carrier was declared (in the same statement, on an earlier line, or in an enclosing proof). A proof gets the memberships from a fact `R(a, b)` with the ordinary rules, for terms that were declared in no set at all:
 
 ```text
 1. Let X be any set, R be a relation on X, a, b be objects, R(a,b). (Declaration)

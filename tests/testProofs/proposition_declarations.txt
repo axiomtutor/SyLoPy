@@ -1,0 +1,32 @@
+# 1: A proposition is a zero-ary statement
+## Proof that
+### then P or not P.
+
+1. Let P be a proposition. (Declaration)
+2. P or not P. (Premise)
+3. P or not P. (Reiteration from 2)
+
+# 2: Propositional variables support proof by cases
+## Proof that
+### then R.
+
+1. Let P, Q, R be propositional variables. (Declaration)
+2. P or Q. (Premise)
+3. If P then R. (Premise)
+4. Q -> R. (Premise)
+5. R. (Proof by Cases from 2, subproofs below)
+begin subproof
+ 5.1.case1. P. (Case)
+ 5.2.case1. R. (Modus Ponens from 3, 5.1.case1)
+end subproof
+begin subproof
+ 5.1.case2. Q. (Case)
+ 5.2.case2. R. (Modus Ponens from 4, 5.1.case2)
+end subproof
+
+# 3: A proposition cannot take an argument
+## Invalid: declaration arity — P is zero-ary, so P(a) has the wrong arity.
+### then P(a).
+
+1. Let P be a proposition. (Declaration)
+2. P(a). (Premise)
