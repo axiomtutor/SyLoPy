@@ -4,6 +4,7 @@
 
 1. Let P be a proposition. (Declaration)
 2. P or not P. (Premise)
+3. P or not P. (Reiteration from 2)
 
 # 2: Propositional variables support proof by cases
 ## Proof that
