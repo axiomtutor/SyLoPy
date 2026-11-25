@@ -56,7 +56,7 @@ def test_equality_formula_can_follow_a_compound_let_declaration():
 @pytest.mark.parametrize("descriptor", ["sets", "integers"])
 def test_unrecognized_descriptors_remain_declarations(descriptor):
     entries, _ = pp.parse_proof_text(
-        f"1. A and B are {descriptor}. (Declaration)\\n"
+        f"1. A and B are {descriptor}. (Declaration)\n"
     )
 
     _label, formula, justification = entries[0]
@@ -70,8 +70,8 @@ def test_unrecognized_descriptors_remain_declarations(descriptor):
 
 def test_relation_descriptor_remains_a_relation_declaration():
     entries, _ = pp.parse_proof_text(
-        "1. Let X be a set. (Declaration)\\n"
-        "2. A and B are relations on X. (Declaration)\\n"
+        "1. Let X be a set. (Declaration)\n"
+        "2. A and B are relations on X. (Declaration)\n"
     )
 
     _label, formula, justification = entries[1]
