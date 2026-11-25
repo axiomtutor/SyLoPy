@@ -119,6 +119,16 @@ def test_active_theory_phrase_parser_decides_plain_and_compound_clauses():
     assert compound[0][2][0] == "premise"
     assert [declaration.name for declaration in compound[0][2][1]] == ["A", "B"]
 
+    nested = pp.parse_surface_proof(
+        "begin subproof\n"
+        "1. Let A and B be sets, and A and B are peers. (Declaration)\n"
+        "end subproof\n",
+        environment=environment,
+    )
+    nested_statement = nested.entries[0].entries[0].declaration_statement
+    assert isinstance(nested_statement.clauses[-1], pp.SurfacePremiseClause)
+    assert nested_statement.clauses[-1].formula == "A and B are peers"
+
 
 
 def test_relation_descriptor_remains_a_declaration():
