@@ -353,6 +353,8 @@ def _parse_formula_conventional(s: str, bound_vars=None, environment=None):
         bound_vars = set()
     if environment is None:
         environment = _parser._cached_default_environment()
+    else:
+        environment = _parser._with_base_line_elaborators(environment)
 
     s = rewrite_formula_symbols(s.strip(), environment.notation_table)
 
