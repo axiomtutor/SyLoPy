@@ -6,7 +6,7 @@ from .support import pp, pl
 def _declarations(entries):
     found = []
     for _label, _formula, justification in entries:
-        if len(justification) > 1 and justification[0] in {"declare", "premise"}:
+        if justification and len(justification) > 1 and justification[0] in {"declare", "premise"}:
             found.extend(justification[1])
     return found
 
