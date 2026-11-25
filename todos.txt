@@ -194,8 +194,11 @@ text.
 ### 3. Delegated work (ChatGPT; `JOBS_FOR_CHATGPT.md`)
 
 Who: ChatGPT, when the owner starts it on a job. All of J36–J46 are unblocked (#167
-merged on 2026-11-15, the jobs J36–J43 on 2026-11-18) and none has started. The file's
-order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
+merged on 2026-11-15, the jobs J36–J43 on 2026-11-18). The owner started J45 and J36 on
+2026-11-25: draft PR #186 implements J45 and passes default CI (run #1161); draft PR #187
+implements J36 and passes default CI (run #1170). Both still need the extended suite,
+Python 3.12/3.13 checks and mutation testing; neither is merged. No other job has started.
+The file's order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
 J40. Claude's recommendation: begin with J45 (a declaration phrase gives the name its kind;
 `Let P be a proposition.` is the first thing a new user writes) and J44 (a premise
 `A and B are equal.` reads as `A = B`), then J36 (nested set terms), J41 (symbols as input,
@@ -352,8 +355,9 @@ definitions of union, intersection and power set. Regression references:
   `pair(a, b)` and `the power set of A` lower to declared function symbols, not
   hidden kernel operations. A declared symbol means nothing until defined: only
   `Union`, `Intersection` and `PowerSet` have definitions; `CartesianProduct` and
-  `Pair` have none. Difference and complement are not declared, and these terms do
-  not nest yet (`A union B union C`; J36).
+  `Pair` have none. Difference and complement are not declared. J36 adds nested
+  operands, left association for chains of one operation, and explicit parentheses
+  for mixed operations and longer Cartesian-product chains.
 - **Definitions** (owner, 2026-11-09; `source/Definitions.py`, serving every theory):
   a definition checks that the thing exists, names it and adds no axiom. A
   `Definition` is a symbol, its sentence and, for a symbol that names a thing, the
