@@ -32,6 +32,10 @@ def test_set_operation_words_are_case_insensitive(surface, symbol):
     assert st.try_parse_set_term(surface) == expected
 
 
+def test_non_ascii_identifier_characters_are_rejected_without_crashing():
+    assert st.try_parse_set_term("Å union B") is None
+
+
 def test_one_operator_table_drives_infix_recognition_and_symbol_mapping(monkeypatch):
     # J38 should be able to add an infix operator by adding one table entry.
     st._try_parse_set_term_cached.cache_clear()
