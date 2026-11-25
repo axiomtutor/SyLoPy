@@ -73,7 +73,7 @@ def test_undeclared_equality_phrase_fails_at_its_own_line_as_a_formula():
     assert error is not None
     assert error.label == "1"
     assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL
-    assert error.message == "constant 'A' is used but has not been declared"
+    assert error.detail == "constant 'A' is used but has not been declared"
 
 
 def test_multi_proof_runner_reports_undeclared_equality_at_line_one():
