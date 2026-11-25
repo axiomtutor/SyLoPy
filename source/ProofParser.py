@@ -445,7 +445,7 @@ def parse_declaration_prefix(
             return [], None
 
         declarations: List[pl.Declaration] = []
-        for clause in split_declaration_clauses(m.group(1)):
+        for clause in split_declaration_clauses(m.group(1), environment):
             dc = parse_declaration_clause(clause)
             if dc.domain is not None:
                 raise ValueError(
@@ -496,7 +496,10 @@ def parse_declaration_prefix(
 _DECLARATION_CLAUSE_SEPARATORS = (', and let ', ' and let ', ', let ', ' and ')
 
 
-def split_declaration_clauses(s: str) -> List[str]:
+def split_declaration_clauses(
+    s: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> List[str]:
     """Split the body of a `Let ...` declaration into clauses, paren-depth
     aware -- so the comma inside a tuple target like `(W, <)` is never
     mistaken for a clause boundary -- and accepting a "let" repeated per
@@ -509,6 +512,8 @@ def split_declaration_clauses(s: str) -> List[str]:
     splitting is the same mechanical problem for every structure type a
     theory module might ever declare, not something specific to posets.
     """
+    if environment is None:
+        environment = _cached_default_environment()
     parts: List[str] = []
     depth = 0
     buf: List[str] = []
@@ -528,7 +533,7 @@ def split_declaration_clauses(s: str) -> List[str]:
         if depth == 0:
             sep = next((c for c in _DECLARATION_CLAUSE_SEPARATORS if s.startswith(c, i)), None)
             if (sep == ' and ' and _is_bare_name_list(''.join(buf))
-                    and _text_after_is_declaration_start(s[i + len(sep):])):
+                    and _text_after_is_declaration_start(s[i + len(sep):], environment)):
                 sep = None  # "X and Y be sets": this "and" joins the names of one clause
             if sep:
                 parts.append(''.join(buf).strip())
