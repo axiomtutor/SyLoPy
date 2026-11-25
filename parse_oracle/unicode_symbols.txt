@@ -133,3 +133,26 @@ surface: ∀z, (z ∈ A ∧ P(z))
 expect: forall z, (In(z, A) and P(z))
 why: Symbols are rewritten before recursive parsing of the quantified body.
 
+id: unicode-no-spaces-bounded-forall
+context: nested
+surface: ∀x∈A,P(x)
+expect: forall x, (In(x, A) -> P(x))
+why: The bounded quantifier form is recognized even when its operators and operands have no surrounding spaces.
+
+id: unicode-reject-proper-subset
+context: line
+surface: A ⊂ B
+expect: REJECT
+why: Proper-subset notation is intentionally not in the approved notation table.
+
+id: unicode-reject-circled-plus
+context: nested
+surface: P ⊕ Q
+expect: REJECT
+why: A symbol outside the notation table remains unsupported.
+
+id: unicode-reject-unterminated-forall
+context: line
+surface: ∀
+expect: REJECT
+why: A quantifier without a bound variable and body is malformed.
