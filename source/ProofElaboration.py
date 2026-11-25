@@ -254,9 +254,13 @@ class TheoryEnvironment:
     # title of a proved theorem is (`ProofJustification.theorem_titles`), so a theory
     # adds citable rules without the justification parser knowing its names.
     citable_titles: List[str] = field(default_factory=list)
+    # Surface symbols mapped to their ordinary word-form spellings. Kept at
+    # the end so existing positional construction remains compatible.
+    notation_table: Dict[str, str] = field(default_factory=dict)
 
     def extended(self, *others: "TheoryEnvironment") -> "TheoryEnvironment":
         result = TheoryEnvironment(name=" + ".join([self.name, *[o.name for o in others]]))
+        notation_owners: Dict[str, str] = {}
         for environment in (self, *others):
             # One theory closing its axiom list closes the combination: a
             # theory that extends another does not reopen what it closed.
@@ -272,6 +276,19 @@ class TheoryEnvironment:
             result.phrase_spans.extend(environment.phrase_spans)
             result.declaration_recipes.extend(environment.declaration_recipes)
             result.citable_titles.extend(environment.citable_titles)
+            for symbol, reading in environment.notation_table.items():
+                if symbol in result.notation_table:
+                    previous = result.notation_table[symbol]
+                    if previous != reading:
+                        previous_owner = notation_owners[symbol]
+                        raise ValueError(
+                            f"conflicting notation for symbol {symbol!r}: "
+                            f"{previous_owner!r} maps it to {previous!r}, "
+                            f"{environment.name!r} maps it to {reading!r}"
+                        )
+                else:
+                    result.notation_table[symbol] = reading
+                    notation_owners[symbol] = environment.name
         return result
 
 
