@@ -1,0 +1,97 @@
+# Nested set-operation terms: operands may themselves be set terms.
+
+id: j36-union-chain-membership
+context: line
+surface: x is in A union B union C
+expect: In(x, Union(Union(A, B), C))
+why: A chain of one operation is left-nested, so membership in the three-fold union is still one In atom.
+
+id: j36-parenthesized-union-under-intersection
+context: line
+surface: x is in (A union B) intersection C
+expect: In(x, Intersection(Union(A, B), C))
+why: Parentheses make the union one operand of the outer intersection.
+
+id: j36-nested-union-term-equality
+context: line
+surface: A union (B union C) = (A union B) union C
+expect: Union(A, Union(B, C)) = Union(Union(A, B), C)
+why: Set operations are terms on both sides of an equality, and explicit parentheses determine the nesting.
+
+id: j36-power-set-of-union
+context: line
+surface: x is in the power set of (A union B)
+expect: In(x, PowerSet(Union(A, B)))
+why: The parenthesized union is the operand of the power-set term.
+
+id: j36-capitalized-operation-application
+context: line
+surface: x is in Union(A, B)
+expect: In(x, Union(A, B))
+why: The ordinary function-application spelling of a set operation is accepted in a membership phrase.
+
+id: j36-function-application-with-set-operation-argument
+context: line
+surface: x is in f(A union B)
+expect: In(x, f(Union(A, B)))
+why: Ordinary function arguments use the same recursive term parser, so a set term is valid inside an application.
+
+id: j36-binary-cartesian-product
+context: line
+surface: x is in A cross B
+expect: In(x, CartesianProduct(A, B))
+why: The existing binary cross operation remains available as a set term.
+
+id: j36-intersection-chain
+context: line
+surface: x is in A intersection B intersection C
+expect: In(x, Intersection(Intersection(A, B), C))
+why: A chain of one operation is left-nested for intersection as it is for union.
+
+id: j36-nested-term-under-bound-variable
+context: nested
+surface: forall x, x is in (A union B) intersection C
+expect: forall x, In(x, Intersection(Union(A, B), C))
+why: The bound variable x must remain a variable while the set-term operands are parsed recursively.
+
+id: j36-nested-term-in-larger-formula
+context: nested
+surface: P(x) and x is in A union (B intersection C)
+expect: P(x) and In(x, Union(A, Intersection(B, C)))
+why: The set term must be parsed inside one conjunct without consuming the surrounding conjunction.
+
+id: j36-mixed-operators-require-parentheses
+context: line
+surface: x is in A union B intersection C
+expect: REJECT
+why: Mixed operations have no precedence; the author must parenthesize the intended nesting.
+
+id: j36-long-cartesian-product-chain-requires-parentheses
+context: line
+surface: x is in A cross B cross C
+expect: REJECT
+why: Cartesian product is binary, and a chain of more than two operands needs explicit parentheses.
+
+id: j36-unbalanced-parenthesis
+context: line
+surface: x is in (A union B
+expect: REJECT
+why: A set term with an unbalanced parenthesis is malformed.
+
+id: j36-empty-parentheses
+context: line
+surface: x is in ()
+expect: REJECT
+why: Empty parentheses are not a set term.
+
+id: j36-trailing-operator
+context: line
+surface: x is in A union
+expect: REJECT
+why: An operation must have both operands.
+
+id: j36-operator-word-is-not-a-name
+context: line
+surface: x is in union B
+expect: REJECT
+why: An operation word cannot be used as an ordinary set-name operand.

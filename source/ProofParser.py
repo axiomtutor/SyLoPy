@@ -80,6 +80,7 @@ Two things worth knowing before writing new proof text
 
 import re
 import sys
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -110,6 +111,25 @@ from SyLoPy.source.ProofElaboration import (
 # the same pattern at each of the several call sites below.
 _BEGIN_SUBPROOF_RE = re.compile(r'^begin\s+subproof', re.I)
 _END_SUBPROOF_RE = re.compile(r'^end\s+subproof', re.I)
+
+_ACTIVE_DECLARATION_ENVIRONMENT = ContextVar(
+    "active_declaration_environment", default=None
+)
+
+
+def _declaration_environment(environment=None):
+    if environment is not None:
+        return environment
+    active = _ACTIVE_DECLARATION_ENVIRONMENT.get()
+    return active if active is not None else _cached_default_environment()
+
+
+def _split_declaration_clauses_with_environment(text, environment):
+    token = _ACTIVE_DECLARATION_ENVIRONMENT.set(environment)
+    try:
+        return split_declaration_clauses(text)
+    finally:
+        _ACTIVE_DECLARATION_ENVIRONMENT.reset(token)
 
 _USE_THEORY_RE = re.compile(r'^use\s+(.+?)\.?$', re.I)
 _SUPPORTED_THEORIES = {
@@ -399,7 +419,10 @@ def _fallback_declarations_for_clause(dc: 'DeclarationClause') -> List[pl.Declar
     return [pl.Declaration(name=name, kind=kind, type_name=type_name) for name in dc.names]
 
 
-def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[str]]:
+def parse_declaration_prefix(
+    text: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> Tuple[List[pl.Declaration], Optional[str]]:
     """Parse a leading `Let ...` declaration clause, or a plain declaration like `X and Y are sets`.
 
     Returns `(declarations, formula_text)`.  A declaration-only line has
@@ -421,8 +444,10 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     `elaborate_compound_declaration`, which is the single declaration-recipe
     dispatch path. This fallback does not dispatch structure recipes.
     """
+    if environment is None:
+        environment = _declaration_environment()
     s = text.strip().rstrip('.').strip()
-    
+
     # Try to parse as a "Let..." declaration first
     if re.match(r'^let\b', s, flags=re.I):
         m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
@@ -440,7 +465,7 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
             return [], None
 
         declarations: List[pl.Declaration] = []
-        for clause in split_declaration_clauses(m.group(1)):
+        for clause in _split_declaration_clauses_with_environment(m.group(1), environment):
             dc = parse_declaration_clause(clause)
             if dc.domain is not None:
                 raise ValueError(
@@ -455,8 +480,6 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
     
     # Try to parse as a plain declaration like "X and Y are sets" without "Let"
     if re.search(r'\b(?:be|are)\b', s, flags=re.I):
-        if _looks_like_disjointness_formula(s):
-            return [], None
         m = re.search(r'\bsuch\s+that\s*:?\s*', s, flags=re.I)
         if m:
             declaration_text = s[:m.start()].strip()
@@ -466,6 +489,11 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
         else:
             declaration_text = s
             formula_text = None
+
+        # A whole clause recognized by the active formula parsers is a
+        # premise, not a declaration whose descriptor happens to match it.
+        if formula_text is None and _reads_as_formula(declaration_text, environment):
+            return [], None
 
         try:
             dc = parse_declaration_clause(declaration_text)
@@ -488,7 +516,10 @@ def parse_declaration_prefix(text: str) -> Tuple[List[pl.Declaration], Optional[
 _DECLARATION_CLAUSE_SEPARATORS = (', and let ', ' and let ', ', let ', ' and ')
 
 
-def split_declaration_clauses(s: str) -> List[str]:
+def split_declaration_clauses(
+    s: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> List[str]:
     """Split the body of a `Let ...` declaration into clauses, paren-depth
     aware -- so the comma inside a tuple target like `(W, <)` is never
     mistaken for a clause boundary -- and accepting a "let" repeated per
@@ -501,6 +532,8 @@ def split_declaration_clauses(s: str) -> List[str]:
     splitting is the same mechanical problem for every structure type a
     theory module might ever declare, not something specific to posets.
     """
+    if environment is None:
+        environment = _declaration_environment()
     parts: List[str] = []
     depth = 0
     buf: List[str] = []
@@ -711,19 +744,67 @@ _FORMULA_START_RE = re.compile(
 )
 
 
-def _looks_like_disjointness_formula(text: str) -> bool:
-    s = text.strip().rstrip('.').strip()
-    return bool(re.match(
-        r'^[A-Za-z_][A-Za-z0-9_]*\s+and\s+[A-Za-z_][A-Za-z0-9_]*\s+are\s+(?:not\s+)?disjoint(?:\b|$)',
-        s, flags=re.I,
-    ) or re.match(
-        r'^[A-Za-z_][A-Za-z0-9_]*\s+is\s+disjoint\s+from\s+[A-Za-z_][A-Za-z0-9_]*(?:\b|$)',
-        s, flags=re.I,
-    ))
+def _parse_base_equality_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Read the base-logic equality wordings owned by the equality parser."""
+    s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+    match = re.fullmatch(
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+and\s+([A-Za-z_][A-Za-z0-9_]*)"
+        r"\s+are\s+(not\s+equal|different|distinct|equal)",
+        s,
+        flags=re.I,
+    )
+    if match is None:
+        return None
+
+    left_name, right_name, wording = match.groups()
+
+    def name_term(name: str) -> tl.Term:
+        return tl.VariableTerm(name) if name in bound_vars else tl.ConstantTerm(name, name)
+
+    equality = fl.Equals(name_term(left_name), name_term(right_name))
+    return fl.Not(equality) if wording.lower() != "equal" else equality
 
 
-def _text_after_is_declaration_start(s: str) -> bool:
-    if _looks_like_disjointness_formula(s):
+def _reads_as_formula(text: str, environment: Optional[TheoryEnvironment] = None) -> bool:
+    """Whether the active formula parsers accept the whole clause.
+
+    A clause that is also accepted by a declaration recipe is ambiguous and
+    must be reported, rather than silently assigned to either grammar.
+    """
+    if environment is None:
+        environment = _declaration_environment()
+    candidate = text.strip().rstrip(".").strip()
+    if not candidate:
+        return False
+    try:
+        _parse_surface_expression(candidate, environment=environment)
+    except (TypeError, ValueError):
+        return False
+
+    try:
+        declaration_clause = parse_declaration_clause(candidate)
+    except (TypeError, ValueError):
+        return True
+
+    for recipe in environment.declaration_recipes:
+        try:
+            match = recipe.try_match([declaration_clause], 0)
+        except (TypeError, ValueError):
+            match = None
+        if match is not None:
+            recipe_name = getattr(recipe, "name", type(recipe).__name__)
+            raise ElaborationError(
+                f"clause {candidate!r} is recognized both as a formula and "
+                f"by declaration recipe {recipe_name!r}"
+            )
+    return True
+
+
+def _text_after_is_declaration_start(
+    s: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> bool:
+    if _reads_as_formula(s, environment):
         return False
     return bool(_DECL_START_RE.match(s.strip()))
 
@@ -732,7 +813,10 @@ def _text_after_is_formula_start(s: str) -> bool:
     return bool(_FORMULA_START_RE.match(s.strip()))
 
 
-def _split_compound_declaration_items(body: str) -> List[str]:
+def _split_compound_declaration_items(
+    body: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> List[str]:
     """Split a coordinated ``Let`` body into declaration and premise clauses.
 
     Commas have two roles in this language: they coordinate clauses and they
@@ -741,6 +825,8 @@ def _split_compound_declaration_items(body: str) -> List[str]:
     argument lists.  Once a premise clause has begun, a top-level comma is a
     clause separator unless the following text starts another declaration.
     """
+    if environment is None:
+        environment = _declaration_environment()
     items: List[str] = []
     buf: List[str] = []
     depth = 0
@@ -769,6 +855,8 @@ def _split_compound_declaration_items(body: str) -> List[str]:
         text = text.strip()
         if not text:
             return False
+        if _reads_as_formula(text, environment):
+            return True
         if _text_after_is_formula_start(text):
             return True
         # A symbol named "a" can begin a membership premise ("a in X").
@@ -805,11 +893,11 @@ def _split_compound_declaration_items(body: str) -> List[str]:
             current = ''.join(buf).strip()
             # "Let X and Y be sets" / "Let X, Y and Z be sets": here "and" joins
             # the names of one clause, exactly like the grouped-name commas below.
-            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest):
+            if _is_bare_name_list(current) and _text_after_is_declaration_start(rest, environment):
                 buf.append(body[i:i + 5])
                 i += 5
                 continue
-            if _text_after_is_declaration_start(rest):
+            if _text_after_is_declaration_start(rest, environment):
                 flush()
                 premise_mode = False
                 i += 5
@@ -830,12 +918,12 @@ def _split_compound_declaration_items(body: str) -> List[str]:
             if re.match(
                 r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*$',
                 current,
-            ) and _text_after_is_declaration_start(rest):
+            ) and _text_after_is_declaration_start(rest, environment):
                 buf.append(ch)
                 i += 1
                 continue
             # A comma followed by another declaration starts a new clause.
-            if _text_after_is_declaration_start(rest):
+            if _text_after_is_declaration_start(rest, environment):
                 flush()
                 premise_mode = False
                 i += 1
@@ -961,17 +1049,28 @@ def _surface_declaration_from_clause(
     )
 
 
-def parse_surface_declaration_statement(
+def _parse_surface_declaration_statement_with_environment_impl(
     text: str,
     span: SourceSpan,
+    environment: TheoryEnvironment,
 ) -> Optional[SurfaceDeclarationStatement]:
     """Parse the coordinated surface language beginning with `Let`.
 
     This is intentionally a small hand-written grammar. It recognizes
-    declaration clauses and premise clauses independently; formulas are not
-    parsed until elaboration.
+    declaration clauses and premise clauses independently. A whole-clause
+    formula parse decides ambiguous be/are clauses; expressions are lowered
+    into the proof only during elaboration.
     """
-    source = text.strip().rstrip('.').strip()
+    # Keep the policy wrapper's "such that" normalization when this helper
+    # is called with an explicitly selected theory environment.
+    normalized_text = re.sub(
+        r"\bsuch\s+that\s*(?!:)",
+        "such that: ",
+        text,
+        count=1,
+        flags=re.I,
+    )
+    source = normalized_text.strip().rstrip('.').strip()
     if not re.match(r'^let\b', source, re.I):
         return None
 
@@ -999,7 +1098,8 @@ def parse_surface_declaration_statement(
 
     for item in _split_compound_declaration_items(body):
         item = item.strip()
-        if _looks_like_disjointness_formula(item):
+        if (re.search(r'\b(?:be|are)\b', item, re.I)
+                and _reads_as_formula(item, environment)):
             clauses.append(SurfacePremiseClause(item.rstrip('.'), span))
         elif re.search(r'\b(?:be|are)\b', item, re.I):
             clauses.append(_surface_declaration_from_clause(item, span))
@@ -1027,6 +1127,30 @@ def parse_surface_declaration_statement(
 
     return SurfaceDeclarationStatement(clauses, span)
 
+
+
+def _parse_surface_declaration_statement_with_environment(
+    text: str,
+    span: SourceSpan,
+    environment: TheoryEnvironment,
+) -> Optional[SurfaceDeclarationStatement]:
+    token = _ACTIVE_DECLARATION_ENVIRONMENT.set(environment)
+    try:
+        return _parse_surface_declaration_statement_with_environment_impl(
+            text, span, environment
+        )
+    finally:
+        _ACTIVE_DECLARATION_ENVIRONMENT.reset(token)
+
+
+def parse_surface_declaration_statement(
+    text: str,
+    span: SourceSpan,
+) -> Optional[SurfaceDeclarationStatement]:
+    """Public two-argument parser retained for the policy/line-break wrappers."""
+    return _parse_surface_declaration_statement_with_environment(
+        text, span, _cached_default_environment()
+    )
 
 
 def _surface_clause_to_recipe_clause(clause: SurfaceDeclarationClause, is_declared=None) -> DeclarationClause:
@@ -1274,6 +1398,7 @@ def _parse_surface_sequence(
     *,
     stop_at_end: bool = False,
     implicit_parent_label: Optional[str] = None,
+    environment: Optional[TheoryEnvironment] = None,
 ) -> Tuple[List[Any], int]:
     entries: List[Any] = []
     index = start
@@ -1299,7 +1424,9 @@ def _parse_surface_sequence(
             return entries, index + 1
 
         if _BEGIN_SUBPROOF_RE.match(stripped):
-            body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True)
+            body, next_index = _parse_surface_sequence(
+                lines, index + 1, stop_at_end=True, environment=environment
+            )
             end_item = lines[next_index - 1]
             entries.append(SurfaceSubproof(
                 body,
@@ -1314,7 +1441,9 @@ def _parse_surface_sequence(
         rest = match.group(2) if match else stripped
 
         if _BEGIN_SUBPROOF_RE.match(rest):
-            body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True)
+            body, next_index = _parse_surface_sequence(
+                lines, index + 1, stop_at_end=True, environment=environment
+            )
             end_item = lines[next_index - 1]
             entries.append(SurfaceSubproof(
                 body,
@@ -1335,7 +1464,9 @@ def _parse_surface_sequence(
         line_span = _surface_span(item, label)
         declaration_statement = None
         if justification_text.strip().lower() in {"declaration", "declare"}:
-            declaration_statement = parse_surface_declaration_statement(formula_text, line_span)
+            declaration_statement = _parse_surface_declaration_statement_with_environment(
+                formula_text, line_span, environment or _cached_default_environment()
+            )
         line = SurfaceLine(
             label=label,
             formula_text=formula_text,
@@ -1349,7 +1480,9 @@ def _parse_surface_sequence(
         if 'below' in justification_text.lower():
             while index < len(lines) and _BEGIN_SUBPROOF_RE.match(lines[index].text.strip()):
                 begin_item = lines[index]
-                body, next_index = _parse_surface_sequence(lines, index + 1, stop_at_end=True)
+                body, next_index = _parse_surface_sequence(
+                    lines, index + 1, stop_at_end=True, environment=environment
+                )
                 end_item = lines[next_index - 1]
                 line.subproofs.append(SurfaceSubproof(
                     body,
@@ -1367,7 +1500,10 @@ def _parse_surface_sequence(
                 if _is_descendant_label(next_label, label):
                     body_start = index
                     body, end = _parse_surface_sequence(
-                        lines, body_start, implicit_parent_label=label
+                        lines,
+                        body_start,
+                        implicit_parent_label=label,
+                        environment=environment,
                     )
                     if end <= body_start:
                         raise ElaborationError("could not determine implicit subproof boundary", line.span)
@@ -1388,10 +1524,17 @@ def _parse_surface_sequence(
     return entries, index
 
 
-def parse_surface_proof(text: str) -> SurfaceProof:
+def parse_surface_proof(
+    text: str,
+    environment: Optional[TheoryEnvironment] = None,
+) -> SurfaceProof:
     """Parse proof text without lowering natural-language proof constructs."""
+    if environment is None:
+        environment = _cached_default_environment()
+    else:
+        environment = _with_base_line_elaborators(environment)
     logical_lines, raw_lines = _prepare_surface_lines(text)
-    entries, consumed = _parse_surface_sequence(logical_lines)
+    entries, consumed = _parse_surface_sequence(logical_lines, environment=environment)
     if consumed != len(logical_lines):
         raise ElaborationError("not all proof lines were consumed")
     return SurfaceProof(entries=entries, raw_lines=raw_lines, source_text=text)
@@ -1564,6 +1707,11 @@ def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnviron
             *(item for item in environment.line_elaborators
               if item not in base_elaborators),
         ],
+        phrase_parsers=[
+            _parse_base_equality_phrase,
+            *(item for item in environment.phrase_parsers
+              if item is not _parse_base_equality_phrase),
+        ],
     )
 
 
@@ -1584,6 +1732,7 @@ def default_theory_environment() -> TheoryEnvironment:
     """
     environment = TheoryEnvironment(
         line_elaborators=list(_base_line_elaborators()),
+        phrase_parsers=[_parse_base_equality_phrase],
         rules=[pl.AlgebraRule()],
         declaration_recipes=[
             PropositionDeclarationRecipe(),
@@ -1610,7 +1759,7 @@ def default_theory_environment() -> TheoryEnvironment:
         environment = environment.extended(dm.DISCRETE_MATH_ENVIRONMENT)
     except ImportError:
         pass
-    return environment
+    return _with_base_line_elaborators(environment)
 
 
 class _ElaborationContext:
@@ -1858,7 +2007,7 @@ class _ElaborationContext:
             declarations = []
 
             if tag in ('premise', 'declare'):
-                parsed_declarations, remainder = parse_declaration_prefix(entry.formula_text)
+                parsed_declarations, remainder = parse_declaration_prefix(entry.formula_text, self.environment)
                 if parsed_declarations:
                     declarations = parsed_declarations
                     if remainder is None:
@@ -1952,8 +2101,13 @@ def parse_proof_text(
     titles; the :class:`~ProofLogic.TheoremRule` objects themselves go in the
     ``rules`` of the :class:`~ProofLogic.Proof` that checks the entries.
     """
-    surface = parse_surface_proof(text)
-    entries = elaborate_proof(surface, environment, theorem_names)
+    active_environment = (
+        default_theory_environment()
+        if environment is None
+        else _with_base_line_elaborators(environment)
+    )
+    surface = parse_surface_proof(text, active_environment)
+    entries = elaborate_proof(surface, active_environment, theorem_names)
     return entries, surface.raw_lines
 
 

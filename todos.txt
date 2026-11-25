@@ -112,11 +112,17 @@ commit.
   implemented. It waits for the owner.
 - [Issue #169](https://github.com/axiomtutor/SyLoPy/issues/169): open finding; the owner
   approved its direction on 2026-11-23 ("Decide s declaration by what follows `are`.",
-  read as "a declaration"). The premise line `A and B are equal.` (also `are not equal`,
-  `different`, `distinct`) is read as the start of a declaration, not as `A = B`, as
-  `A and B are disjoint.` was before #151. A parser fix by a rule, not by one more word in
-  a list: job J44.
-- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): owner-approved fix (2026-11-23), implemented in draft PR #186. The new recipes declare proposition/statement/propositional-variable phrases as zero-ary predicates, `strict order on X` as an irreflexive transitive relation, and `f be a bijection from A to B` as a typed unary function. The finding remains open until the PR is merged.
+  read as "a declaration"). J44 replaces the #151-style `disjoint` exception with one
+  rule: the active formula parsers read a whole clause first; otherwise it remains a
+  declaration. Base equality owns `equal`, `not equal`, `different` and `distinct`;
+  set theory continues to own disjointness. Implementation and regression fixture are in
+  [draft PR #188](https://github.com/axiomtutor/SyLoPy/pull/188). Default CI passed on
+  2026-11-25 (run #1193: 2713 passed, 241 skipped; 567/567 proof fixtures); extended,
+  differential, mutation and Python 3.12/3.13 checks remain for review.
+- [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding; "Agreed"
+  (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
+  from A to B` declare the name as a plain object, so the first line that uses it as a
+  statement, a relation or a function is refused at the use. Recipes are the fix: job J45.
 - [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): open finding.
   Declarations that say something but state nothing: `a nonempty set`, `a family of
   subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain` no rule
@@ -191,8 +197,11 @@ text.
 ### 3. Delegated work (ChatGPT; `JOBS_FOR_CHATGPT.md`)
 
 Who: ChatGPT, when the owner starts it on a job. All of J36–J46 are unblocked (#167
-merged on 2026-11-15, the jobs J36–J43 on 2026-11-18) and none has started. The file's
-order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
+merged on 2026-11-15, the jobs J36–J43 on 2026-11-18). The owner started J45 and J36 on
+2026-11-25: draft PR #186 implements J45 and passes default CI (run #1161); draft PR #187
+implements J36 and passes default CI (run #1170). Both still need the extended suite,
+Python 3.12/3.13 checks and mutation testing; neither is merged. No other job has started.
+The file's order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
 J40. Claude's recommendation: begin with J45 (a declaration phrase gives the name its kind;
 `Let P be a proposition.` is the first thing a new user writes) and J44 (a premise
 `A and B are equal.` reads as `A = B`), then J36 (nested set terms), J41 (symbols as input,
@@ -349,8 +358,9 @@ definitions of union, intersection and power set. Regression references:
   `pair(a, b)` and `the power set of A` lower to declared function symbols, not
   hidden kernel operations. A declared symbol means nothing until defined: only
   `Union`, `Intersection` and `PowerSet` have definitions; `CartesianProduct` and
-  `Pair` have none. Difference and complement are not declared, and these terms do
-  not nest yet (`A union B union C`; J36).
+  `Pair` have none. Difference and complement are not declared. J36 adds nested
+  operands, left association for chains of one operation, and explicit parentheses
+  for mixed operations and longer Cartesian-product chains.
 - **Definitions** (owner, 2026-11-09; `source/Definitions.py`, serving every theory):
   a definition checks that the thing exists, names it and adds no axiom. A
   `Definition` is a symbol, its sentence and, for a symbol that names a thing, the

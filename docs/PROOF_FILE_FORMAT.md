@@ -303,7 +303,17 @@ visible outside it.
 
 Declarations support multiple names and ordinary typed/set-membership clauses, for example `Let X, Y be any set. (Declaration)`, `Let a be an integer. (Declaration)`, and `Let R be a reflexive relation on X. (Declaration)`. The names are available at that line and throughout its descendant scopes; declarations made in a closed subproof do not escape it.
 
-A proposition, statement, or propositional variable is declared as a zero-argument predicate: `Let P be a proposition.`, `Let P, Q be statements.`, and `Let P be a propositional variable.` may be used as standalone formulas such as `P or not P`, but not with arguments such as `P(x)`.
+When a phrase of the form `A and B are ...` begins a line or appears as a
+clause in a compound `Let`, SyLoPy first asks the active formula parsers to
+read the whole phrase. If one recognizes it, the phrase is a formula, not a
+declaration. In base logic, `A and B are equal` means `A = B`; `are not
+equal`, `are different` and `are distinct` mean `not (A = B)`. In set
+theory, `A and B are disjoint`, `A and B are not disjoint`, and `A is
+disjoint from B` remain set-theory formulas. If no active formula parser
+recognizes the whole phrase, the declaration grammar applies, so `A and B are
+sets`, `A and B are integers` and `A and B are relations on X` remain
+declarations. The rule is based on the parsers that own each phrase, not a
+list of formula words in the declaration parser.
 
 Typed unary functions use `Let f: X -> Y be a unary function. (Declaration)`.
 The domain and codomain names must already be declared sets; the declaration
@@ -687,6 +697,7 @@ Set theory registers three, each cited for one sentence:
 
 - `u`, `A` and `B` stand for any terms. The line may be the sentence with its `forall` as above (the form `Set property` reads), the instance for particular terms (`x is in A union B iff (x is in A or x is in B)`), or the sentence closed over all its variables (`forall S, forall T, forall u, ...`); the biconditional may be written either way round. A definition takes no cited lines.
 - Nothing else is accepted. A true sentence about an operation, such as `x is in A union B iff x is in B union A`, is derived from the definition (proof 4 of `tests/testSetTheory/set_operation_definitions.txt` derives that union commutes) and is not cited as it. The terms must agree on the two sides, and so must the order of the sets in the disjunction or the conjunction. A refused line is told the sentence to cite.
+- Set-operation terms nest using parentheses: `A union (B intersection C)`, `(A union B) intersection C`, and `the power set of (A union B)`. Chains of one operation associate to the left, so `A union B union C` means `(A union B) union C`; `A intersection B intersection C` is analogous. Mixed chains have no precedence and must be parenthesized. Cartesian product remains binary, so a chain of three or more factors must also be parenthesized. Ordinary function applications may take set terms as arguments, for example `f(A union B)` and `Union(A, B)`.
 - The quantifier of the power set's subset clause must not capture a variable of a term. With `w` as the element or as the set, the clause would say something else (that every set that is not a member of itself is in the power set), so the line is refused. Renaming the bound variable gives the sentence for the same terms, and a constant spelled like a bound variable is another term and is not captured.
 - `x is in A union B` is a statement of its own, the membership `In(x, Union(A, B))`: that `x` has the property that defines the set. That it is the disjunction `x is in A or x is in B` is what the definition says, and a proof cites it to get from the one to the other (proof 9 of the same file). The phrases `x belongs to A union B` and `x is in the union of A and B` are still read as the disjunction itself; making them memberships like the others is planned (`todos.txt`).
 - A definition adds no axiom, and the facility checks that it does not. What has to be shown is read off the sentence, not written by the theory: before a set is named, the definition shows that some set has exactly the members the sentence gives it, by an axiom that says so (Separation for the intersection, Power Set for the power set) or by a proof from the axioms (Pairing and Union for the union: the proof that the union of two sets exists, proof 2 of `tests/setTheoryProofs/set_operation_foundations.txt`). Extensionality gives that there is only one such set. A definition whose evidence fails is refused, and so is every line that cites it. A property that no set bounds, such as "the objects that are not members of `A`", names no set, since nothing says that there is one; it can be defined as a property, and not as a set.
