@@ -117,8 +117,8 @@ commit.
   declaration. Base equality owns `equal`, `not equal`, `different` and `distinct`;
   set theory continues to own disjointness. Implementation and regression fixture are in
   [draft PR #188](https://github.com/axiomtutor/SyLoPy/pull/188). Default CI passed on
-  2026-11-25 (run #1189); extended, differential, mutation and Python 3.12/3.13 checks
-  remain for review.
+  2026-11-25 (run #1193: 2713 passed, 241 skipped; 567/567 proof fixtures); extended,
+  differential, mutation and Python 3.12/3.13 checks remain for review.
 - [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding; "Agreed"
   (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
   from A to B` declare the name as a plain object, so the first line that uses it as a
