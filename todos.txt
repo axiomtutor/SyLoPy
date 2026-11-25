@@ -303,307 +303,219 @@ each question.
 
 ## Current feature status
 
+This section keeps decisions, constraints, known limits and test pointers. How each
+feature is written and what it accepts is in `docs/PROOF_FILE_FORMAT.md` and the
+docstrings of the source named below.
+
 ### Set theory and proof syntax
 
-**Current development focus:** set theory is the active priority until it is
-fully functional. New work should first address set-theory correctness,
-unsupported or awkward proof patterns, clear surface syntax, and adversarial
-regression coverage. Do not advance the deferred number-theory job while this
-priority remains in effect.
+**Focus:** set theory is the priority until it is fully functional (correctness,
+awkward or unsupported proof patterns, clear syntax, adversarial regression
+coverage). The deferred number-theory job stays deferred.
 
-Implemented: named Pairing, Union, Power Set, and Infinity axiom-citation rules,
-which are now the only way to cite those axioms (generic `(Axiom)` is retired, see
-below), and named Extensionality, Foundation (Regularity), and Choice rules, each
-accepted for exactly one sentence (below); Union and Power Set instance forms; scoped witness naming with
-`Let Y be such a set. (Existence from L)`; general `Set property`; set equality
-and subset proofs; unique existence; equality-case WLOG replay; set enumeration,
-set-builder notation, bounded quantifiers, and the documented natural-language
-set phrases; definitions that name the union, the intersection and the power set
-of sets (below).
+Implemented: named Pairing, Union, Power Set, Infinity, Extensionality, Foundation
+(Regularity) and Choice rules; Union and Power Set instance forms; scoped witness
+naming (`Let Y be such a set. (Existence from L)`); general `Set property`; set
+equality and subset proofs; unique existence; equality-case WLOG; set enumeration,
+set-builder notation, bounded quantifiers and the documented set phrases; the
+definitions of union, intersection and power set. Regression references:
+`pytest_tests/test_axiom_citation_rules.py`, `test_set_property.py`,
+`test_wlog_symmetric_citations.py`, `test_wlog_case_blocks.py`,
+`test_set_phrase_parsing.py`, `test_set_enumeration_syntax.py`,
+`test_definitions.py`, `test_set_operation_definitions.py`.
 
-Useful regression references: `pytest_tests/test_axiom_citation_rules.py`,
-`pytest_tests/test_set_property.py`, `pytest_tests/test_wlog_symmetric_citations.py`,
-`pytest_tests/test_wlog_case_blocks.py`, `pytest_tests/test_set_phrase_parsing.py`,
-`pytest_tests/test_set_enumeration_syntax.py`, `pytest_tests/test_definitions.py`,
-and `pytest_tests/test_set_operation_definitions.py`.
-
-Constraints and open decisions:
-
-- **Generic axiom citations (retired):** the four set axioms are cited only by
-  their named rules (`Axiom of pairing`, `Axiom of union`, `Axiom of power set`,
-  `Axiom of infinity`); restating one with `(Axiom)` is refused, with the name to
-  cite instead. The owner approved this on 2026-10-30. It needed a kernel change:
-  an empty axiom list meant "any formula may be cited as an axiom", so emptying
-  `SET_AXIOMS` alone would have loosened set-theory proofs. A theory can now close
-  its axiom list (`TheoryEnvironment.axioms_closed`, carried to
-  `ElaboratedEntries`, `Proof` and `ProofValidator`), so that an empty list means
-  none; set theory lists no axiom and closes it. A theory with a non-empty list
-  needs no flag. `SET_AXIOMS` stays as the four formulas the named rules accept.
-  Regression coverage is `pytest_tests/test_closed_axiom_list.py` and
-  `tests/testSetTheory/axioms_cited_by_name.txt`; focused closed-axiom coverage is
-  present. Optional standalone J34 red-team fixtures remain archived, not active.
-- **Extensionality, Foundation and Choice (one sentence each):** PR #160 fixed
-  unsound shape-based acceptance. Each named rule now checks its canonical
-  sentence up to bound-variable renaming, and no other sentence. Extensionality
-  permits the biconditional in either order; Foundation uses the canonical
-  existence-of-a-member antecedent; Choice uses Zermelo's form for a set of
-  nonempty, pairwise disjoint sets and a selector meeting each in exactly one
-  element. The owner approved Zermelo's form and asked to drop the unnecessary
-  alternate Foundation form in the PR discussion. See `source/SetTheory.py`,
-  `docs/PROOF_FILE_FORMAT.md`, `pytest_tests/test_zfc_axiom_rules.py`, and
-  `tests/testSetTheory/zfc_axioms_exact.txt`.
+- **Axioms are cited by name only** (owner, 2026-10-30). Restating Pairing, Union,
+  Power Set or Infinity with `(Axiom)` is refused, with the name to cite. This
+  needed a kernel change: an empty axiom list meant "any formula may be an
+  axiom", so a theory can now close its list (`TheoryEnvironment.axioms_closed`,
+  carried through `ElaboratedEntries`, `Proof` and `ProofValidator`); set theory
+  lists none and closes it. `SET_AXIOMS` stays as the four formulas the named rules
+  accept. Tests: `test_closed_axiom_list.py`, `tests/testSetTheory/axioms_cited_by_name.txt`.
+- **Extensionality, Foundation, Choice** (PR #160 fixed unsound shape-based
+  acceptance): each rule accepts its canonical sentence up to bound-variable
+  renaming and no other. Extensionality takes the biconditional either way round;
+  Foundation uses the existence-of-a-member antecedent (the alternate form was
+  dropped at the owner's request); Choice is Zermelo's form (owner-approved).
+  Tests: `test_zfc_axiom_rules.py`, `tests/testSetTheory/zfc_axioms_exact.txt`.
 - **Set property:** the membership characterization and an explicitly matching
-  instance determine the inference; the checker must not guess the target term.
-  Equality as a direct property disjunct is handled in the supported direction.
-  An explicit `Substitution` step performs equality replacement; no separate
-  equality-substitution mode for `Set property` is planned under the current
-  decision ([issue #69](https://github.com/axiomtutor/SyLoPy/issues/69)).
-- **Unspecified defining properties:** a set declared without a stated
-  membership characterization does not yet have a symbolic property usable by
-  `Set property`. Implemented for `Let Y be a set with defining property P. (Declaration)`:
-  the declaration requires an already-declared unary predicate `P`, records
-  `defining_property=P` in declaration metadata, and generates the ordinary
-  `forall u, (In(u, Y) iff P(u))` formula. Exact WLOG and Mutatis replay
-  coverage is included in focused tests and proof fixtures.
-- **Declared unary functions:** typed declarations of the form
-  `Let f: X -> Y be a unary function. (Declaration)` lower to unary function
-  declarations with `domain=X` and `codomain=Y` metadata; both set names must
-  already be declared in scope.
-- **Set-operation terms:** parser support now includes names such as
-  `A union B`, `A intersection B`, `A cross B`, `pair(a, b)`, and
-  `the power set of A`; these lower to declared function symbols and ordinary
-  function terms rather than hidden kernel operations. A declared symbol means
-  nothing by itself: the definitions below give `Union`, `Intersection` and
-  `PowerSet` their meaning, and `CartesianProduct` and `Pair` have none yet. Set
-  difference and complement are not yet declared, and a term in the surface syntax
-  cannot yet be nested (`A union B union C` and `(A union B) intersection C` are
-  not terms).
-- **Definitions:** a definition checks that the thing it names exists, names it,
-  and adds no axiom (owner, 2026-11-09). One facility, `source/Definitions.py`,
-  serves every theory. A `Definition` is the new symbol, the sentence that says
-  what it means (`In(u, Union(A, B)) iff (In(u, A) or In(u, B))`, or
-  `Cyclic(G) iff ...` in an algebra module) and, for a symbol that names a thing,
-  the claim that there is one, with the evidence for it: an axiom (`ByRule`) or a
-  proof from the axioms (`ByProof`, checked as a theorem about arbitrary objects
-  and without any definition). A theory registers its definitions
-  (`definition_rules`, `definition_declarations` and `definition_titles` in its
-  `TheoryEnvironment`), and a proof cites one by its title, for its sentence with
-  any terms, with or without leading `forall`s and the biconditional either way
-  round, and for nothing else; the kernel sees an ordinary zero-premise rule. Set
-  theory registers `Definition of union` (evidence: a proof from Pairing and
-  Union), `Definition of intersection` (Separation) and `Definition of power set`
-  (Power Set). A set is defined by a property only if a set bounds the property or
-  an axiom or a proof says there is such a set; "the objects that are not members
-  of A" can be defined as a property (a predicate) and not as a set.
-  `x is in A union B` is the membership atom `In(x, Union(A, B))`, that `x` has the
-  property that defines the set, and the definition is the step to the
-  disjunction. Coverage: `pytest_tests/test_definitions.py` (the facility, on a
-  toy algebra theory), `pytest_tests/test_set_operation_definitions.py` and
-  `tests/testSetTheory/set_operation_definitions.txt`. A proof cannot declare
-  `Union`, `Intersection`, `PowerSet`, `CartesianProduct`, `Pair` or `In` again,
-  in any form (pinned in the second test file), so a definition is always about
-  the symbol the set theory declares. Lower case is not settled: a proof may
-  declare `pair`, `cross` or `union` as a function of its own, and then `pair(a, b)`
-  and `A cross B` still read as the built-in `Pair` and `CartesianProduct`, while
-  `union(A, B)` is the proof's own function, which gets no definition. Decide
-  whether a spelling the parser maps to an operation should be refused as a
-  declared name.
-- **Infinity and finite semantics:** focused support is implemented for
-  `A is finite`, `A is infinite`, `Finite(A)`, `Infinite(A)`, typed finite/infinite
-  and bijection declarations, `Bijection(f, A, B)` claims, and finite/infinite
-  transfer across a bijection. Explicit metatheoretic cardinalities use
-  `Cardinality(A, n)`, zero/successor-free integer arithmetic for finite
-  cardinal operations, cardinal transfer under bijections, and closure rules for
-  subsets, unions, products, and power sets. Python integers remain metadata
-  values rather than object-language quantifiers or proof variables.
+  instance decide the inference; the checker never guesses the target term.
+  Equality replacement is an explicit `Substitution` step; no equality mode for
+  `Set property` is planned ([#69](https://github.com/axiomtutor/SyLoPy/issues/69)).
+- **Defining property:** `Let Y be a set with defining property P. (Declaration)`
+  needs a declared unary predicate `P`, records `defining_property=P` and
+  generates `forall u, (In(u, Y) iff P(u))`. A set declared with no
+  characterization has no property for `Set property` to use.
+- **Typed unary functions:** `Let f: X -> Y be a unary function.` records
+  `domain=X`, `codomain=Y` (both sets already declared). No rule reads them
+  (question 7 of the plan).
+- **Set-operation terms:** `A union B`, `A intersection B`, `A cross B`,
+  `pair(a, b)` and `the power set of A` lower to declared function symbols, not
+  hidden kernel operations. A declared symbol means nothing until defined: only
+  `Union`, `Intersection` and `PowerSet` have definitions; `CartesianProduct` and
+  `Pair` have none. Difference and complement are not declared, and these terms do
+  not nest yet (`A union B union C`; J36).
+- **Definitions** (owner, 2026-11-09; `source/Definitions.py`, serving every theory):
+  a definition checks that the thing exists, names it and adds no axiom. A
+  `Definition` is a symbol, its sentence and, for a symbol that names a thing, the
+  claim that there is one with its evidence: an axiom (`ByRule`) or a proof from
+  the axioms (`ByProof`). A theory registers it (`definition_rules`,
+  `definition_declarations`, `definition_titles`); a proof cites it by title, for
+  its sentence and nothing else; the kernel sees an ordinary zero-premise rule.
+  Union's evidence is a proof from Pairing and Union, intersection's is
+  Separation, the power set's is Power Set. A set is defined by a property only if
+  a set bounds it or an axiom or a proof says there is one; "the objects that are
+  not members of A" is a predicate, not a set. `x is in A union B` is the atom
+  `In(x, Union(A, B))`; the definition is the step to the disjunction. A proof may
+  not declare `Union`, `Intersection`, `PowerSet`, `CartesianProduct`, `Pair` or
+  `In` again. Open: a proof may declare lower-case `pair`, `cross` or `union` as a
+  function of its own; `pair(a, b)` and `A cross B` still read as the built-ins,
+  while `union(A, B)` is the proof's own and gets no definition. Decide whether a
+  spelling the parser maps to an operation should be refused as a declared name
+  (question 8). Coverage: `test_definitions.py` (the facility, on a toy algebra
+  theory), `test_set_operation_definitions.py`, `tests/testSetTheory/set_operation_definitions.txt`.
+- **Infinity and finite semantics:** `A is finite`, `A is infinite`, `Finite(A)`,
+  `Infinite(A)`, typed finite/infinite and bijection declarations,
+  `Bijection(f, A, B)`, finite/infinite transfer across a bijection;
+  `Cardinality(A, n)` with integer arithmetic for finite cardinal operations,
+  transfer under bijections and closure for subsets, unions, products and power
+  sets. Python integers stay metadata, not object-language variables.
 - **Witnesses:** `Existence from L` names a witness from an existing existential
-  through the ordinary scoped declaration path. The axiom citation itself does
-  not introduce the witness. The older direct Pairing-witness form remains for
-  compatibility but must not be extended to other axioms.
+  through the ordinary scoped declaration path; an axiom citation itself introduces
+  none. The older direct Pairing-witness form remains for compatibility and must
+  not be extended to other axioms.
 
 ### WLOG
 
-Equality-case replay is implemented ([PR #63](https://github.com/axiomtutor/SyLoPy/pull/63),
-with the later replay fixes in [PR #86](https://github.com/axiomtutor/SyLoPy/pull/86)
-and [PR #110](https://github.com/axiomtutor/SyLoPy/pull/110)). The cited line must
-be a disjunction and the asserted WLOG formula must be one of its disjuncts;
-equality alternatives may differ in exactly one constant term. The validator
-also accepts arbitrary alternatives that align structurally under a declared,
-one-to-one constant-name exchange. It checks the selected case, transforms and revalidates the
-rest of the current proof block for every alternative, and remaps citations
-without mutating the original proof. Outside citations need a visible counterpart unless exchanging the case
-constants leaves the cited fact invariant (up to commutative ordering of
-`and`/`or`). Nested case blocks are included.
-
-Equality alternatives differing in one constant term remain supported.
-The owner approved arbitrary-property WLOG on 2026-10-30. Replay structurally aligns arbitrary formulas through a one-to-one constant-name
-exchange, while `_UnsafeSubstitution` remains the capture/free-variable guard.
-Coverage includes three alternatives, a selected disjunct in the middle, and
-rejection of undeclared exchange names. Do not weaken negative replay tests.
+Equality-case replay ([PR #63](https://github.com/axiomtutor/SyLoPy/pull/63), fixes
+in [#86](https://github.com/axiomtutor/SyLoPy/pull/86) and
+[#110](https://github.com/axiomtutor/SyLoPy/pull/110)): the cited line is a
+disjunction and the WLOG formula one of its disjuncts. The validator checks the
+selected case, then transforms and revalidates the rest of the block for every
+alternative, remapping citations without mutating the original proof. Arbitrary
+properties are supported (owner, 2026-10-30): alternatives align structurally
+under a declared one-to-one constant-name exchange, and `_UnsafeSubstitution` is
+the capture guard. An outside citation needs a visible counterpart unless the
+exchange leaves the cited fact invariant (up to commutative `and`/`or` order).
+Nested case blocks are included. Tests cover three alternatives, a middle
+disjunct and undeclared exchange names. Do not weaken the negative replay tests.
 
 ### Mutatis mutandis
 
-Implemented in three stages (stage 1 [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121);
-stages 2 and 3 were approved by the owner on 2026-10-24). The rule repeats the
-argument of a derived line after replacing names, and the checker expands and
-validates the repeated argument like any other line rather than trusting a new
-inference rule. So a wrong alignment can only make it refuse a line, never
-accept a false one.
+Three stages (stage 1 [PR #121](https://github.com/axiomtutor/SyLoPy/pull/121);
+stages 2 and 3 approved by the owner on 2026-10-24). The rule repeats a derived
+line's argument with names replaced, and the checker expands and validates the
+repeat like any other line instead of trusting a new inference rule, so a wrong
+alignment can only make it refuse a line, never accept a false one.
 
-- Stage 1: a name is replaced by a name.
-- Stage 2: a name is replaced by a term with no variable in it, so no quantifier
-  can capture it. The replacement is simultaneous and a replacement term is not
-  replaced again.
-- Stage 3: a predicate or function symbol is replaced by another that takes the
-  same number of arguments, everywhere it occurs; two may be exchanged. `=`, the
-  connectives and the quantifiers are never replaced. There is no table of
-  corresponding rules: a rule that reads a relation's declaration reads the new
-  relation's, and a rule about one symbol (`Set property` about `In`) refuses
-  another predicate.
+1. A name is replaced by a name.
+2. A name is replaced by a variable-free term (so nothing captures it); the
+   replacement is simultaneous and a replacement term is not replaced again.
+3. A predicate or function symbol is replaced by another of the same arity,
+   everywhere; two may be exchanged. `=`, the connectives and the quantifiers are
+   never replaced. There is no table of corresponding rules: a rule that reads a
+   relation's declaration reads the new relation's, and a rule about one symbol
+   (`Set property` about `In`) refuses another predicate.
 
-A single-line citation `B` repeats that line and its attached subproofs; `A to B`
-additionally requires a visible counterpart for A, which is checked but not
-repeated. The intervening lines are not replayed. A cited line that mentions a
-replaced name or symbol is replaced by the earliest visible line that says the
-same of the new one.
+`B` repeats that line and its attached subproofs; `A to B` also needs a visible
+counterpart for A (checked, not repeated); lines between are not replayed. A cited
+line that mentions a replaced name or symbol is replaced by the earliest visible
+line that says the same of the new one. Premises, assumptions, witness lines,
+axiom citations, structure declarations and unsupported justifications cannot be
+repeated.
 
-The argument must be safe to repeat: premises, assumptions, witness lines,
-axiom citations, structure declarations, and unsupported justifications are
-rejected. Names and symbols are aligned from the source and target statements;
-replacements must fit those statements, and citations must remain visible or
-have valid counterparts.
+**Substitution guard:** the substitution helpers (`_substitute_constants_in_term`,
+`_substitute_constants_in_formula`, shared with WLOG) refuse a replacement term
+containing a variable (`_UnsafeSubstitution`), as captured under a quantifier or
+free anywhere else; both rules report an ordinary refusal at the line and a
+promoted theorem is not citable at such an instance. Binder matching is strict:
+no alpha-renaming, and no quantifier-rule side condition changed. No proof text
+reaches the guard, so `test_substitution_guard.py` calls it directly, with
+`_mm_align` (or WLOG's substitution) taken away. Details: `docs/PROOF_FILE_FORMAT.md`,
+`test_mutatis_mutandis.py`, `test_mutatis_mutandis_reasons.py`.
 
-The substitution guard belongs to this `Mutatis mutandis` replay path, not to
-quantifier-inference rules. The substitution-application path itself rejects
-invalid or capture-causing variable substitutions rather than relying only on
-`_mm_align` to make bad mappings unreachable: `_substitute_constants_in_term`
-and `_substitute_constants_in_formula` refuse a replacement term with a variable
-in it (`_UnsafeSubstitution`), as captured where a quantifier around the name
-binds the variable and as free anywhere else. `Mutatis mutandis` and the WLOG
-replay report it as an ordinary refusal at the line, and a promoted theorem is
-not citable at such an instance. Strict binder matching is preserved; there is no
-alpha-renaming and no quantifier-inference side condition changed. WLOG shares
-the substitution helpers and its valid behavior is unchanged (it replaces a name
-by a name). No proof text reaches the guard, so
-`pytest_tests/test_substitution_guard.py` calls it directly and with `_mm_align`
-(or WLOG's substitution) taken away. Details and examples are in
-[`docs/PROOF_FILE_FORMAT.md`](https://github.com/axiomtutor/SyLoPy/blob/master/docs/PROOF_FILE_FORMAT.md),
-`pytest_tests/test_mutatis_mutandis.py`, and
-`pytest_tests/test_mutatis_mutandis_reasons.py`.
-
-Not supported, and neither designed nor approved: replacing a compound term as a
-whole; repeating a closed block of several lines, so the second case of a proof
-by cases cannot be written by repeating the first (11 of the 13 Disjunction
-Elimination lines in the corpus have two blocks of the same shape); and
-counterpart lines that differ by the symmetry of `=` or `<->`. Do not implement
-these without an owner decision.
+Neither designed nor approved (owner decision first): replacing a compound term as
+a whole; repeating a closed block of several lines (so the second case of a proof
+by cases cannot be written by repeating the first; 11 of the 13 Disjunction
+Elimination lines in the corpus have two same-shaped blocks); counterpart lines
+that differ by the symmetry of `=` or `<->`.
 
 ### Number theory and discrete mathematics
 
-The owner previously authorized the number-theory module in these terms:
+Authorized by the owner: "Implement this module and create reasonable axioms. For
+example, axioms about 0, 1, addition, multiplication, division. The number theory
+module should supply definitions of divisibility, prime, congruence." The work is
+retained; new implementation is deferred while set theory is the priority, and J35
+is paused, not cancelled.
 
-> Implement this module and create reasonable axioms. For example, axioms about
-> 0, 1, addition, multiplication, division. The number theory module should
-> supply definitions of divisibility, prime, congruence.
-
-That authorization remains part of the project decisions. The existing
-number-theory implementation and its work are retained, but new number-theory
-implementation is deferred while set theory is the active development priority.
-J35 remains specified in the delegated-job tracker and is paused, not cancelled.
-
-- Number theory is about integers, divisibility, primes, and related properties;
-  it is separate from arithmetic foundations such as Peano or Robinson
-  arithmetic. Number theory deliberately supplies only its documented
-  divisibility and integer-operation laws.
-  Check the header of `source/NumberTheory.py` and [issue #98](https://github.com/axiomtutor/SyLoPy/issues/98)
-  before writing a proof that appears to require another law. Do not add axioms
-  as part of an example-writing task.
-- A successor function belongs to natural-number/arithmetic foundations and is
-  not missing machinery for implementing issue #98. Do not infer or propose a
-  `Succ`-based axiom for a divisibility proof merely because successor,
-  induction, or arithmetic was mentioned.
-- A relation on X is a subset of X × X (owner decisions, 2026-10-29, which settled
-  [issue #136](https://github.com/axiomtutor/SyLoPy/issues/136) as no defect and
-  made the subset a fact of the declaration). `Let R be a relation on X` states
-  `forall x, forall y, (R(x, y) -> (In(x, X) and In(y, X)))` as a formula of its
-  line, as sugar (`DiscreteMath.relation_subset_formula`), so `In(a, X)` follows
-  from `R(a, b)` by Universal Instantiation, Universal Modus Ponens and
-  Conjunction Elimination (`tests/testDiscreteMath/relation_subset.txt`,
-  `pytest_tests/test_relation_subset_sugar.py`). The rules that start from a
-  fact `R(a, b)` (symmetry, antisymmetry, asymmetry, transitivity) read only the
-  declared property and take no membership premise; the rules that start from
-  membership (reflexivity, irreflexivity, totality) require the declared
-  carrier. `pytest_tests/test_relation_subset_semantics.py` pins which is which.
-  Known costs: declaration bundles and Mutatis mutandis messages are longer, and
-  repeating an argument that cites a relation declaration for another relation
-  needs that relation on the same carrier. A Universal Modus Ponens over two
-  variables at once would shorten the derivation; nobody has asked for it. The
-  formula is the predicate-language reading of `R ⊆ X × X`: there are no pair
-  terms below). Relation-subset red-team coverage and informational examples are
-  available in the corresponding fixture and pytest modules.
-- Relation declarations and their property/carrier metadata respect nested and
-  sibling proof scopes. Regression coverage: `pytest_tests/test_relation_scope_rules.py`
-  and `pytest_tests/test_rule_context_declarations.py`.
-- Typed declarations such as `Let n be a natural number` add the corresponding
-  ordinary formula (`Nat(n)`); they are not refinement-type checking and do not
-  infer arbitrary type facts.
+- Number theory is integers, divisibility, primes and related properties,
+  separate from arithmetic foundations (Peano, Robinson). It supplies only its
+  documented divisibility and integer-operation laws. Check the header of
+  `source/NumberTheory.py` and [#98](https://github.com/axiomtutor/SyLoPy/issues/98)
+  before writing a proof that seems to need another law; do not add axioms in an
+  example-writing task. A successor function belongs to arithmetic foundations:
+  do not propose a `Succ` axiom for a divisibility proof.
+- **A relation on X is a subset of X × X** (owner, 2026-10-29; settled
+  [#136](https://github.com/axiomtutor/SyLoPy/issues/136) as no defect).
+  `Let R be a relation on X` states `forall x, forall y, (R(x, y) -> (In(x, X) and
+  In(y, X)))` as a formula of its line (sugar: `DiscreteMath.relation_subset_formula`),
+  the predicate-language reading of `R ⊆ X × X` (there are no pair terms yet). The
+  rules that start from a fact `R(a, b)` (symmetry, antisymmetry, asymmetry,
+  transitivity) read the declared property and need no membership premise; those
+  that start from membership (reflexivity, irreflexivity, totality) need the
+  declared carrier (`test_relation_subset_semantics.py`). Costs: longer
+  declaration bundles and Mutatis mutandis messages, and repeating an argument for
+  another relation needs it on the same carrier. A two-variable Universal Modus
+  Ponens would shorten derivations; nobody has asked. Tests:
+  `tests/testDiscreteMath/relation_subset.txt`, `test_relation_subset_sugar.py`.
+- Relation declarations and their metadata respect nested and sibling scopes
+  (`test_relation_scope_rules.py`, `test_rule_context_declarations.py`).
+- `Let n be a natural number` adds the formula `Nat(n)`; it is not refinement-type
+  checking and infers no other type facts.
 
 ### Theorems and promotion
 
-Theorem promotion carries hypotheses, required nonstandard rules, and required
-axioms from the checked proof. An explicit conclusion must be derived at top
-level; generalized names must be declared at top level; structural declaration
-facts not stated by formulas cannot silently become theorem assumptions.
-Premise-carrying theorems can be cited from proof text by title and premise
-lines. See `pytest_tests/test_hypotheses_and_promotion.py`,
-`pytest_tests/test_promotion_requirements.py`,
-`pytest_tests/test_rule_configuration_identity.py`, and
-`pytest_tests/test_theorem_surface_citations.py`.
+Promotion carries the checked proof's hypotheses, nonstandard rules and axioms. An
+explicit conclusion must be derived at top level; generalized names must be
+declared at top level; structural declaration facts not stated as formulas cannot
+silently become theorem assumptions. A premise-carrying theorem is cited by title
+and premise lines. Tests: `test_hypotheses_and_promotion.py`,
+`test_promotion_requirements.py`, `test_rule_configuration_identity.py`,
+`test_theorem_surface_citations.py`.
 
-A theorem is local to the file that proved it, except that a file may `Use`
-another file and cite that file's theorems by title (owner, 2026-11-20; see
-Owner decisions). The checker never checks a file because another cites it.
-`pytest_tests/test_use_file.py` tests it, and `tests/testSetTheory/use_file_base.txt`
-and `use_file_cites.txt` are the enforced example.
+A theorem is local to its file, except that a file may `Use` another and cite its
+theorems by title (owner, 2026-11-20; Owner decisions). The checker never checks a
+file because another cites it (`test_use_file.py`, enforced examples
+`tests/testSetTheory/use_file_base.txt` and `use_file_cites.txt`).
 
 Passing adversarial audits are marked `extended` and excluded from the default
-pytest and fixture runner. Run them explicitly with `pytest --extended`,
-`pytest -m extended`, or `./run_tests.sh --extended`.
+runs; run them with `pytest --extended`, `pytest -m extended` or
+`./run_tests.sh --extended`.
 
-Uniqueness's arbitrary object c and equality target d must be distinct
-constants; c must be genuinely arbitrary, absent from the existence line and
-from every hypothesis in force, and not constrained by declaration metadata.
-The rule explains refusals through those conditions. Regression coverage is in
-`pytest_tests/test_uniqueness_rule.py` and
-`tests/testProofs/uniqueness_red_team.txt`.
+**Uniqueness:** the arbitrary object c and the equality target d must be distinct
+constants; c must be genuinely arbitrary: absent from the existence line and every
+hypothesis in force, and not constrained by declaration metadata. Refusals name
+the condition. Tests: `test_uniqueness_rule.py`, `tests/testProofs/uniqueness_red_team.txt`.
 
-Two policy/design questions were explained to the owner on 2026-10-30 and
-decided on 2026-10-31 (the owner agreed with both recommendations):
+Decided by the owner on 2026-10-31 (he agreed with both recommendations):
 
-- A witness named by a top-level `Existence from L` line is not a default
-  generalized parameter. It is a fixed existential witness; its defining
-  formula remains a premise in the promoted theorem. Ordinary top-level object
-  declarations still generalize by default. Implemented and tested by
-  `test_existence_witness_is_not_a_default_generalized_parameter`.
-- Promoting theorems over declared relation symbols (for example, a theorem about
-  any equivalence relation) generalizes relation predicate symbols and carries
-  the source relation's carrier and property metadata as citation requirements.
-  Citing declarations must provide the matching carrier and at least the declared
-  properties. The route fits the sugar principle: declarations state a relation's
-  properties as formulas, as they now state `R ⊆ X × X`, so a promoted theorem
-  carries them as premises, and generalize over the relation symbol. The same
-  mechanism is what "any group" needs later.
-  The first implementation was unsound and, for another relation's name,
-  unusable: the theorem's premises were left about its own relation symbol (facts
-  about `R` stood in for facts about the `S` of the conclusion, so a plain `S` was
-  proved symmetric), and a carrier instantiated by a compound term (`A union B`)
-  was compared as if it had not been instantiated (a relation reflexive on `X`
-  was accepted as reflexive on `A union B`). Fixed: the premises are instantiated
-  as the conclusion is, and a carrier must be instantiated by a name.
-  `tests/testDiscreteMath/promoted_relation_theorems.txt` (each invalid proof has
-  a valid twin) and `pytest_tests/test_promoted_relation_theorems.py` pin it.
-  Known limit, not a soundness issue: only the conclusion determines the carrier
-  a citation instantiates, so a theorem whose conclusion does not mention its
+- A witness named by a top-level `Existence from L` is a fixed existential
+  witness, not a default generalized parameter; its defining formula stays a
+  premise of the promoted theorem. Ordinary top-level object declarations still
+  generalize (`test_existence_witness_is_not_a_default_generalized_parameter`).
+- Promoting theorems over declared relation symbols (a theorem about any
+  equivalence relation) generalizes the relation symbol and carries the source
+  relation's carrier and property metadata as citation requirements: the citing
+  declarations must provide the matching carrier and at least the declared
+  properties. It fits the sugar principle (declarations state properties as
+  formulas, so a promoted theorem carries them as premises) and is the mechanism
+  "any group" needs later. The first build was unsound: premises stayed about the
+  theorem's own relation (so a plain `S` was proved symmetric from facts about
+  `R`), and a compound carrier (`A union B`) was compared uninstantiated. Fixed:
+  premises are instantiated as the conclusion is, and a carrier must be
+  instantiated by a name. Pinned by `tests/testDiscreteMath/promoted_relation_theorems.txt`
+  (each invalid proof has a valid twin) and `test_promoted_relation_theorems.py`.
+  Known limit, not a soundness issue: only the conclusion determines the carrier a
+  citation instantiates, so a theorem whose conclusion does not mention its
   carrier `X` is citable only for a relation on a set named `X`.
 
 ## Remaining work
@@ -614,35 +526,23 @@ proof-pattern, and coverage gaps before starting new work in another theory.
 Prefer small, independently testable increments; check the current issues, PRs,
 and collaboration handoff before starting.
 
-1. **Deferred — Issue #98 divisibility proofs:** the four candidate algebraic
-   laws are present in `INT_AXIOMS`; J35 preserves the requested checked proof
-   coverage and its existing scope. It is paused until set theory is considered
-   fully functional. The number-theory authorization above is retained, but no
-   new number-theory work is part of the current phase. Broader arithmetic
-   beyond the current integer/divisibility vocabulary remains subject to a
-   separate scoped decision. Number theory remains distinct from Peano/Robinson
-   arithmetic; no successor-based axiom was added. Prime and congruence
-   vocabulary remains implemented.
-2. **Finite/infinite-set semantics:** focused declarations, predicates,
-   bijections, exact cardinalities, and transfer/closure rules are implemented.
-   Cardinal values are metatheoretic nonnegative integers; they are not object-language
-   terms or Python quantifiers inside a proof.
-3. **Relation-symbol and declared-structure theorem promotion:** implemented.
-   Promoted theorems generalize top-level declared predicate/relation symbols and
-   require matching carrier/property metadata on declarations at citation sites.
-4. **Symbolic defining-property coverage:** the basic declaration formula,
-   metadata, exact nested WLOG replay coverage, and positive/negative Mutatis
-   replay fixtures are implemented.
-5. **Standalone target/red-team fixtures:** the implementation work for
-   arbitrary-property WLOG and closed `(Axiom)` behavior is covered by focused
-   tests. Expanding optional standalone J33/J34 target fixtures is still
-   available work, not a correctness blocker.
-6. **Example coverage:** continue adding useful informational proof patterns,
-   especially set-theoretic examples, without duplicating
-   fixtures or changing expected outcomes to conceal failures.
-7. **Public API and documentation alignment:** keep README and
-   `docs/PROOF_FILE_FORMAT.md` synchronized with new syntax, suites, declaration
-   behavior, and verification commands.
+1. **Deferred: #98 divisibility proofs (J35).** The four candidate laws are in
+   `INT_AXIOMS`; J35 keeps the requested proof coverage and is paused until set
+   theory is considered fully functional. The number-theory authorization stands;
+   no new number-theory work is in this phase, broader arithmetic needs a separate
+   scoped decision, and no successor-based axiom was added (prime and congruence
+   vocabulary stay implemented).
+2. **Done, described under Current feature status:** the finite/infinite semantics
+   (cardinal values are metatheoretic nonnegative integers, not object-language
+   terms), promotion over relation symbols and declared structure, and symbolic
+   defining properties with exact WLOG and Mutatis replay coverage.
+3. **Optional coverage, not a correctness blocker:** standalone J33/J34 target
+   fixtures for arbitrary-property WLOG and closed `(Axiom)`; more informational
+   set-theory examples (no duplicated fixtures, and no changed expected outcome to
+   hide a failure).
+4. **Keep README and `docs/PROOF_FILE_FORMAT.md` synchronized** with new syntax,
+   suites, declaration behavior and verification commands.
+(Numbers 5 to 7 are gone; the other items keep their numbers because other documents cite them.)
 8. **Set-operation definitions: what is left.**
    (a) Membership phrases: `x belongs to A union B` and `x is in the union of A and
    B` (and the intersection's) are still read as the disjunction or conjunction
@@ -708,24 +608,13 @@ The owner answered the earlier approval list on 2026-10-30, and the two items
 he asked to have explained (promotion over relation symbols, the witness policy)
 on 2026-10-31.
 
-Approved work (original sequence; current implementation status is shown below):
-
-1. Retiring generic `(Axiom)` citations for the four set axioms. Done: see the
-   set-theory constraints above.
-2. Extending WLOG to arbitrary properties. Implemented with focused coverage;
-   optional standalone target/twin fixtures are archived as J33.
-3. Declared function symbols in proof text and making set operations into terms.
-   Implemented for typed unary declarations and the documented set-operation
-   term forms. Broader declared-symbol and API design remains subject to the
-   existing owner guidance; relation-symbol promotion is implemented separately
-   (item 6).
-4. A symbolic defining property for sets without an explicit characterization.
-   Declaration lowering, metadata, exact WLOG replay, and positive/negative
-   Mutatis replay coverage are implemented.
-5. The broader Infinity/finite-set semantics (after 3, since a bijection is a
-   function). Implemented; see the feature-status section above.
-6. Generalizing promoted theorems over relation symbols and their declared
-   structure. Implemented; see the theorem-promotion section above.
+Approved work of 2026-10-30 (all implemented; see Current feature status): retiring
+generic `(Axiom)` citations for the four set axioms; arbitrary-property WLOG
+(optional standalone fixtures archived as J33); declared function symbols and set
+operations as terms (typed unary declarations and the documented term forms;
+broader declared-symbol and API design stays under the owner's guidance);
+symbolic defining properties; the broader Infinity/finite-set semantics; and
+promotion over relation symbols and their declared structure.
 
 Current implementation direction:
 

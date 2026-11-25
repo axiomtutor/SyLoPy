@@ -2,7 +2,7 @@
 
 A relation declared inside a subproof carries its carrier and properties in
 that subproof and in its descendants, and nowhere else, like every other
-declaration (todos.txt, item 7). These tests pin that contract from both
+declaration (todos.txt, Architecture and correctness invariants). These tests pin that contract from both
 sides: a local declaration is usable where it is visible, and a declaration
 that is not visible -- a sibling's, one from a subproof that has closed --
 never lends its properties to another relation that happens to share its name.
