@@ -342,13 +342,26 @@ def test_mutatis_refuses_replacing_union_by_a_declared_binary_function():
 # ---------------------------------------------------------------------------
 
 def test_wlog_replays_a_region_that_contains_a_definition_citation():
-    text = """1. Let A, B be any set, and a, x, y be any object. (Declaration)
+    text = """1. Let A, B be any set, and a, x, y be any object, and Q be a closed formula. (Declaration)
 2. x is in A union B. (Premise)
 3. y is in A union B. (Premise)
-4. a = x or a = y. (Premise)
-5. a = x. (WLOG from 4)
-6. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
-7. In(x, A) or In(x, B). (Set property from 6, 2)
+4. In(x, A) -> Q. (Premise)
+5. In(x, B) -> Q. (Premise)
+6. In(y, A) -> Q. (Premise)
+7. In(y, B) -> Q. (Premise)
+8. a = x or a = y. (Premise)
+9. a = x. (WLOG from 8)
+10. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+11. In(x, A) or In(x, B). (Set property from 10, 2)
+12. Q. (Proof by Cases from 11, subproofs below)
+begin subproof
+ 12.1.case1. In(x, A). (Case)
+ 12.2.case1. Q. (Modus Ponens from 4, 12.1.case1)
+end subproof
+begin subproof
+ 12.1.case2. In(x, B). (Case)
+ 12.2.case2. Q. (Modus Ponens from 5, 12.1.case2)
+end subproof
 """
     _entries, (ok, error) = _check(text)
     assert ok, error
