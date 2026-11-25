@@ -11,7 +11,7 @@ import pytest
 
 from SyLoPy.source.ProofElaboration import TheoryEnvironment
 
-from .support import mp, pl, pp
+from .support import fl, mp, pl, pp, tl
 
 
 @pytest.mark.parametrize(
