@@ -124,7 +124,7 @@ def _split_top_level_set_operations(text: str):
         if char == ")":
             depth -= 1
             if depth < 0:
-                raise ValueError(f"Unmatched closing parenthesis in set term: {text!r}")
+                return []
             i += 1
             continue
         if depth == 0 and (char.isalpha() or char == "_"):
@@ -141,7 +141,7 @@ def _split_top_level_set_operations(text: str):
             continue
         i += 1
     if depth:
-        raise ValueError(f"Unmatched opening parenthesis in set term: {text!r}")
+        return []
     return operations
 
 
@@ -194,8 +194,6 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         if not inner:
             raise ValueError("Empty parentheses are not a set term")
         result = try_parse_set_term(inner, bound_vars)
-        if result is None:
-            raise ValueError(f"Unrecognized set term inside parentheses: {inner!r}")
         return result
 
     # Reuse the ordinary function-application parser; it recursively parses
@@ -211,7 +209,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
     if power_match:
         operand = try_parse_set_term(power_match.group(1).strip(), bound_vars)
         if operand is None:
-            raise ValueError(f"Unrecognized power-set operand: {power_match.group(1)!r}")
+            return None
         return tl.FunctionTerm("PowerSet", [operand])
 
     # Split only at top level. One repeated operator associates to the left;
@@ -231,7 +229,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
             previous = end
         pieces.append(s[previous:].strip())
         if any(not piece for piece in pieces):
-            raise ValueError("A set operation needs an operand on each side")
+            return None
         symbol = {
             "union": "Union",
             "intersection": "Intersection",
@@ -239,7 +237,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         }[operation]
         parsed = [try_parse_set_term(piece, bound_vars) for piece in pieces]
         if any(term is None for term in parsed):
-            raise ValueError(f"Unrecognized operand in set operation: {s!r}")
+            return None
         result = parsed[0]
         for operand in parsed[1:]:
             result = tl.FunctionTerm(symbol, [result, operand])
@@ -247,7 +245,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
 
     # Operator words are reserved for infix syntax, not ordinary set names.
     if s.lower() in {"union", "intersection", "cross"}:
-        raise ValueError(f"{s!r} is a set-operation word, not a set name")
+        return None
 
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
         return _name_term(s, bound_vars)
