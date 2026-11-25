@@ -42,6 +42,13 @@ EMPTY_SET_SYMBOL = "EmptySet"
 MEMBERSHIP_SYMBOL = "In"
 SUBSET_BOUND_VARIABLE = "__subset_element"
 
+# One registry drives infix recognition, AST construction, and reserved words.
+_SET_OPERATION_SYMBOLS = {
+    "union": "Union",
+    "intersection": "Intersection",
+    "cross": "CartesianProduct",
+}
+
 EMPTY_SET = tl.ConstantTerm(EMPTY_SET_SYMBOL, EMPTY_SET_SYMBOL)
 
 
@@ -132,7 +139,7 @@ def _split_top_level_set_operations(text: str):
             word = match.group(0)
             end = i + len(word)
             if (
-                word.lower() in {"union", "intersection", "cross"}
+                word.lower() in _SET_OPERATION_SYMBOLS
                 and i > 0 and text[i - 1].isspace()
                 and end < len(text) and text[end].isspace()
             ):
@@ -230,11 +237,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         pieces.append(s[previous:].strip())
         if any(not piece for piece in pieces):
             return None
-        symbol = {
-            "union": "Union",
-            "intersection": "Intersection",
-            "cross": "CartesianProduct",
-        }[operation]
+        symbol = _SET_OPERATION_SYMBOLS[operation]
         parsed = [try_parse_set_term(piece, bound_vars) for piece in pieces]
         if any(term is None for term in parsed):
             return None
@@ -244,7 +247,7 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         return result
 
     # Operator words are reserved for infix syntax, not ordinary set names.
-    if s.lower() in {"union", "intersection", "cross"}:
+    if s.lower() in _SET_OPERATION_SYMBOLS:
         return None
 
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", s):
