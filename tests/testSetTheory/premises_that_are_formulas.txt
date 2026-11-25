@@ -1,0 +1,81 @@
+(* 
+Regression proofs for J44. A whole premise clause that a base-logic or
+set-theory formula parser recognizes is a formula, not a declaration.
+*)
+# 1: The equality wording
+## Proof that
+### then A = B.
+
+1. Let A, B be sets. (Declaration)
+2. A and B are equal. (Premise)
+3. A = B. (Reiteration from 2)
+
+# 2: The not-equal wording
+## Proof that
+### then not (A = B).
+
+1. Let A, B be sets. (Declaration)
+2. A and B are not equal. (Premise)
+3. not (A = B). (Reiteration from 2)
+
+# 3: The different wording
+## Proof that
+### then not (A = B).
+
+1. Let A, B be sets. (Declaration)
+2. A and B are different. (Premise)
+3. not (A = B). (Reiteration from 2)
+
+# 4: The distinct wording
+## Proof that
+### then not (A = B).
+
+1. Let A, B be sets. (Declaration)
+2. A and B are distinct. (Premise)
+3. not (A = B). (Reiteration from 2)
+
+# 5: Equality in a compound Let statement
+## Proof that
+### then A = B.
+
+1. Let A and B be sets, and A and B are equal. (Declaration)
+2. A = B. (Reiteration from 1)
+
+# 6: Invalid: not equal does not mean equal
+## Invalid: the premise contradicts the claimed equality
+### then A = B.
+
+1. Let A, B be sets. (Declaration)
+2. A and B are not equal. (Premise)
+3. A = B. (Reiteration from 2)
+
+# 7: Invalid: different does not mean equal
+## Invalid: the premise is the negation of equality
+### then A = B.
+
+1. Let A, B be sets. (Declaration)
+2. A and B are different. (Premise)
+3. A = B. (Reiteration from 2)
+
+# 8: Invalid: distinct does not mean equal
+## Invalid: the premise is the negation of equality
+### then A = B.
+
+1. Let A, B be sets. (Declaration)
+2. A and B are distinct. (Premise)
+3. A = B. (Reiteration from 2)
+
+# 9: Invalid: equality does not mean inequality
+## Invalid: the premise is equality, not its negation
+### then not (A = B).
+
+1. Let A, B be sets. (Declaration)
+2. A and B are equal. (Premise)
+3. not (A = B). (Reiteration from 2)
+
+# 10: Invalid: equality does not declare its names
+## Invalid: A and B have not been declared
+### then A = B.
+
+1. A and B are equal. (Premise)
+2. A = B. (Reiteration from 1)

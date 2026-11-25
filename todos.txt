@@ -112,10 +112,13 @@ commit.
   implemented. It waits for the owner.
 - [Issue #169](https://github.com/axiomtutor/SyLoPy/issues/169): open finding; the owner
   approved its direction on 2026-11-23 ("Decide s declaration by what follows `are`.",
-  read as "a declaration"). The premise line `A and B are equal.` (also `are not equal`,
-  `different`, `distinct`) is read as the start of a declaration, not as `A = B`, as
-  `A and B are disjoint.` was before #151. A parser fix by a rule, not by one more word in
-  a list: job J44.
+  read as "a declaration"). J44 replaces the #151-style `disjoint` exception with one
+  rule: the active formula parsers read a whole clause first; otherwise it remains a
+  declaration. Base equality owns `equal`, `not equal`, `different` and `distinct`;
+  set theory continues to own disjointness. Implementation and regression fixture are in
+  [draft PR #188](https://github.com/axiomtutor/SyLoPy/pull/188). Default CI passed on
+  2026-11-25 (run #1193: 2713 passed, 241 skipped; 567/567 proof fixtures); extended,
+  differential, mutation and Python 3.12/3.13 checks remain for review.
 - [Issue #170](https://github.com/axiomtutor/SyLoPy/issues/170): open finding; "Agreed"
   (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
   from A to B` declare the name as a plain object, so the first line that uses it as a

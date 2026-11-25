@@ -303,6 +303,18 @@ visible outside it.
 
 Declarations support multiple names and ordinary typed/set-membership clauses, for example `Let X, Y be any set. (Declaration)`, `Let a be an integer. (Declaration)`, and `Let R be a reflexive relation on X. (Declaration)`. The names are available at that line and throughout its descendant scopes; declarations made in a closed subproof do not escape it.
 
+When a phrase of the form `A and B are ...` begins a line or appears as a
+clause in a compound `Let`, SyLoPy first asks the active formula parsers to
+read the whole phrase. If one recognizes it, the phrase is a formula, not a
+declaration. In base logic, `A and B are equal` means `A = B`; `are not
+equal`, `are different` and `are distinct` mean `not (A = B)`. In set
+theory, `A and B are disjoint`, `A and B are not disjoint`, and `A is
+disjoint from B` remain set-theory formulas. If no active formula parser
+recognizes the whole phrase, the declaration grammar applies, so `A and B are
+sets`, `A and B are integers` and `A and B are relations on X` remain
+declarations. The rule is based on the parsers that own each phrase, not a
+list of formula words in the declaration parser.
+
 Typed unary functions use `Let f: X -> Y be a unary function. (Declaration)`.
 The domain and codomain names must already be declared sets; the declaration
 records both names as function metadata. A set can also receive a symbolic
