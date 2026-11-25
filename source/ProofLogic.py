@@ -107,7 +107,6 @@ the message text. See `ValidationError` for the full list of categories.
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 import itertools
-import re
 
 import SyLoPy.source.FormulaLogic as fl
 import SyLoPy.source.TermLogic as tl
@@ -194,9 +193,6 @@ class DeclarationScope:
         if self.lookup(declaration.name) is not None:
             raise KeyError(declaration.name)
         self._local[declaration.name] = declaration
-
-    def declarations_here(self) -> List[Declaration]:
-        return list(self._local.values())
 
 
 def _infer_declarations_from_term(term: tl.Term) -> List[Declaration]:
@@ -505,6 +501,36 @@ def _ast_eq(a: Any, b: Any) -> bool:
         return a.var == b.var and _ast_eq(a.body, b.body)
 
     return a == b
+
+
+def _ast_key(a: Any) -> Any:
+    """A hashable key with ``_ast_eq(a, b)`` iff ``_ast_key(a) == _ast_key(b)``,
+    or ``None`` when some node is of a kind `_ast_eq` compares by other means
+    (callers then fall back to `_ast_eq`).  It lets a list of formulas be
+    searched for a duplicate by hashing instead of comparing pairwise."""
+    if isinstance(a, (tl.VariableTerm, tl.ConstantTerm)):
+        return (type(a), a.name)
+    if isinstance(a, tl.FunctionTerm):
+        parts = [_ast_key(x) for x in a.args]
+        return None if None in parts else (type(a), a.symbol, tuple(parts))
+    if isinstance(a, fl.AtomicFormula):
+        parts = [_ast_key(x) for x in a.args]
+        return None if None in parts else (type(a), a.predicate, tuple(parts))
+    if isinstance(a, (fl.And, fl.Or)):
+        parts = [_ast_key(x) for x in (a.conjuncts if isinstance(a, fl.And) else a.disjuncts)]
+        return None if None in parts else (type(a), tuple(parts))
+    if isinstance(a, fl.Not):
+        sub = _ast_key(a.sub)
+        return None if sub is None else (type(a), sub)
+    if isinstance(a, (fl.Implies, fl.Iff, fl.Equals)):
+        pair = ((a.antecedent, a.consequent) if isinstance(a, fl.Implies)
+                else (a.left, a.right))
+        left, right = _ast_key(pair[0]), _ast_key(pair[1])
+        return None if left is None or right is None else (type(a), left, right)
+    if isinstance(a, (fl.ForAll, fl.Exists)):
+        body = _ast_key(a.body)
+        return None if body is None else (type(a), a.var, body)
+    return None
 
 
 def _alpha_eq(a: Any, b: Any) -> bool:
@@ -5977,9 +6003,26 @@ class Proof:
         self.premises = list(premises or [])
 
         self.axioms = list(axioms or [])
+        known_keys = set()
+        unkeyed = []
+        for existing in self.axioms:
+            key = _ast_key(existing)
+            if key is None:
+                unkeyed.append(existing)
+            else:
+                known_keys.add(key)
         for axiom in required_axioms:
-            if not any(_ast_eq(axiom, existing) for existing in self.axioms):
+            key = _ast_key(axiom)
+            if key is None:
+                duplicate = any(_ast_eq(axiom, existing) for existing in self.axioms)
+            else:
+                duplicate = key in known_keys or any(_ast_eq(axiom, e) for e in unkeyed)
+            if not duplicate:
                 self.axioms.append(axiom)
+                if key is None:
+                    unkeyed.append(axiom)
+                else:
+                    known_keys.add(key)
         # An `(Axiom)` line may state only what is listed once there is a list,
         # and a proof given none takes any formula as an axiom -- unless its
         # theory says the list is closed, which is how a theory with nothing to

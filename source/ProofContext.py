@@ -170,9 +170,6 @@ class ProofContext:
     def lookup_declaration(self, name: str) -> Any:
         return self._visible("_declarations", self._require_name(name))
 
-    def declarations_here(self) -> List[Any]:
-        return list(self._declarations.values())
-
     def visible_declarations(self) -> Iterator[Any]:
         seen = set()
         context: Optional[ProofContext] = self
@@ -206,9 +203,6 @@ class ProofContext:
 
     def lookup_label(self, label: str) -> Optional[LabelBinding]:
         return self._visible("_labels", self._require_name(label))
-
-    def labels_here(self) -> List[LabelBinding]:
-        return list(self._labels.values())
 
     def visible_labels(self) -> Iterator[LabelBinding]:
         seen = set()
@@ -339,12 +333,3 @@ class ProofContext:
         if declaration is None:
             raise UnknownBindingError(f"undeclared name {name!r}")
         return declaration
-
-    def local_bindings(self) -> Dict[str, List[Any]]:
-        """Return a diagnostic snapshot of bindings owned by this scope."""
-        return {
-            "declarations": list(self._declarations.values()),
-            "labels": list(self._labels.values()),
-            "assumptions": list(self._assumptions),
-            "arbitrary": list(self._arbitrary.values()),
-        }
