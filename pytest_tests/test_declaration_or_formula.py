@@ -5,6 +5,8 @@ lower-level formula parser: the defect is in the proof-line declaration
 dispatch, before formula parsing would ordinarily begin.
 """
 
+from pathlib import Path
+
 import pytest
 
 from .support import mp, pl, pp
@@ -104,3 +106,54 @@ def test_multi_proof_runner_reports_undeclared_equality_at_line_one():
 def test_unapproved_equality_wordings_remain_refused(text):
     with pytest.raises(pp.ElaborationError, match="Unrecognized formula syntax"):
         pp.parse_proof_text(text)
+
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "A and B are disjoint",
+        "A and B are not disjoint",
+        "A is disjoint from B",
+    ],
+)
+def test_existing_set_theory_disjointness_phrases_remain_premises(phrase):
+    entries, _ = pp.parse_proof_text(
+        "1. Let A, B be sets. (Declaration)\n"
+        f"2. {phrase}. (Premise)\n"
+    )
+
+    assert entries[1][2] == ("premise",)
+    assert entries[1][1] is not None
+
+
+def test_premises_that_are_formulas_fixture_has_grounded_valid_and_invalid_proofs():
+    project = Path(__file__).resolve().parents[1]
+    source = (
+        project / "tests" / "testSetTheory" / "premises_that_are_formulas.txt"
+    ).read_text()
+    cases = mp.parse_multi_proof_file(source)
+
+    assert [case.number for case in cases] == [str(number) for number in range(1, 11)]
+    assert all(case.stated_conclusion is not None for case in cases)
+    assert all(case.parse_error is None for case in cases)
+
+    results = mp.run_multi_proof_file(source)
+    assert [result[0] for result in results] == [case.number for case in cases]
+    assert all(result[1] == result[2] and not result[4] for result in results), [
+        result for result in results if result[1] != result[2] or result[4]
+    ]
+
+    for case in cases:
+        if case.expected_valid:
+            continue
+        ok, error = pl.Proof(case.entries).check_detailed()
+        assert not ok
+        assert error is not None
+        if case.number == "10":
+            assert error.label == "1"
+            assert error.category == pl.CATEGORY_UNDECLARED_SYMBOL
+            assert error.detail == "constant 'A' is used but has not been declared"
+        else:
+            assert error.label == "3"
+            assert error.category == pl.CATEGORY_RULE_MISMATCH
