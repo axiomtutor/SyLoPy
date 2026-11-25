@@ -553,7 +553,7 @@ def split_declaration_clauses(
         if depth == 0:
             sep = next((c for c in _DECLARATION_CLAUSE_SEPARATORS if s.startswith(c, i)), None)
             if (sep == ' and ' and _is_bare_name_list(''.join(buf))
-                    and _text_after_is_declaration_start(s[i + len(sep):], environment)):
+                    and _text_after_is_declaration_start(s[i + len(sep):])):
                 sep = None  # "X and Y be sets": this "and" joins the names of one clause
             if sep:
                 parts.append(''.join(buf).strip())
