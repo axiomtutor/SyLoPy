@@ -70,7 +70,7 @@
 
 1. Let A, B, C be any set, and x be any object. (Declaration)
 2. In(x, Intersection(Union(A, B), C)). (Premise)
-3. In(x, Intersection(Union(A, B), C)) iff (In(x, Union(A, B)) and In(x, C)). (Definition of intersection)
+3. forall u, (In(u, Intersection(Union(A, B), C)) iff (In(u, Union(A, B)) and In(u, C))). (Definition of intersection)
 4. In(x, Union(A, B)) and In(x, C). (Set property from 3, 2)
 5. In(x, Union(A, B)). (Conjunction Elimination from 4)
 
@@ -80,9 +80,9 @@
 
 1. Let A, B, C be any set, and x be any object. (Declaration)
 2. In(x, Union(Union(A, B), C)). (Premise)
-3. In(x, Union(Union(A, B), C)) iff (In(x, Union(A, B)) or In(x, C)). (Definition of union)
+3. forall u, (In(u, Union(Union(A, B), C)) iff (In(u, Union(A, B)) or In(u, C))). (Definition of union)
 4. In(x, Union(A, B)) or In(x, C). (Set property from 3, 2)
-5. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
+5. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
 6. In(x, A) or In(x, B) or In(x, C). (Proof by Cases from 4, subproofs below)
 begin subproof
  6.1.case1. In(x, Union(A, B)). (Case)
