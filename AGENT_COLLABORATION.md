@@ -43,7 +43,7 @@ Where you help most: red-teaming the checker (proofs that must be refused, each 
 
 Work you propose yourself (maintenance, performance, a cleanup) follows the same steps. Say in the first paragraph that it is not from a job and why it deserves the owner's review time.
 
-The six "Rules for new jobs" in `JOBS_FOR_CHATGPT.md` are the short form of this section and of "What every PR contains". If the two ever disagree, follow this file and tell Claude, who will correct the other.
+`JOBS_FOR_CHATGPT.md` points here for the rules for new jobs; this file is the only place they are kept.
 
 ## Before you start
 
