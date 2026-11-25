@@ -3560,4 +3560,12 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     phrase_parsers=[parse_set_formula],
     phrase_spans=[find_phrase_spans, find_bounded_quantifier_spans],
     citable_titles=definition_titles(SET_DEFINITIONS),
+    notation_table={
+        "∈": "is in",
+        "∉": "is not in",
+        "⊆": "subseteq",
+        "∪": "union",
+        "∩": "intersection",
+        "×": "cross",
+    },
 )
