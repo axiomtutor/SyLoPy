@@ -1,0 +1,20 @@
+# 1: A strict order is a relation
+## Proof that
+### then R(a, b).
+
+1. Let X be any set, R be a strict order on X, a, b be in X. (Declaration)
+2. R(a, b). (Premise)
+
+# 2: A bijection may be declared by its domain and codomain
+## Proof that
+### then f(a) = f(a).
+
+1. Let A, B be any set, f be a bijection from A to B, a be in A. (Declaration)
+2. f(a) = f(a). (Reflexivity)
+
+# 3: A relation is not a term
+## Invalid: declaration kind — R is a relation symbol, not an object constant.
+### then R = R.
+
+1. Let X be any set, R be a strict order on X. (Declaration)
+2. R = R. (Premise)
