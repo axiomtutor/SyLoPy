@@ -233,3 +233,60 @@ def test_premises_that_are_formulas_fixture_has_grounded_valid_and_invalid_proof
         else:
             assert error.label == "3"
             assert error.category == pl.CATEGORY_RULE_MISMATCH
+
+
+
+def test_active_theory_parser_is_used_to_split_a_compound_let():
+    def parse_relation(text, bound_vars):
+        if text.strip().lower() != "objects is above integers":
+            return None
+        return fl.Equals(
+            tl.ConstantTerm("objects", "objects"),
+            tl.ConstantTerm("integers", "integers"),
+        )
+
+    environment = pp.default_theory_environment().extended(
+        TheoryEnvironment(phrase_parsers=[parse_relation])
+    )
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be a set, objects is above integers. (Declaration)\\n",
+        environment=environment,
+    )
+
+    label, formula, justification = entries[0]
+    assert label == "1"
+    assert repr(formula) == "objects = integers"
+    assert justification[0] == "premise"
+    assert [declaration.name for declaration in justification[1]] == ["X"]
+
+
+def test_clause_recognized_by_formula_parser_and_declaration_recipe_is_reported():
+    def parse_peers(text, bound_vars):
+        if text.strip().lower() != "a and b are peers":
+            return None
+        return fl.Equals(
+            tl.ConstantTerm("A", "A"),
+            tl.ConstantTerm("B", "B"),
+        )
+
+    class PeerDeclarationRecipe:
+        name = "peer declaration"
+
+        def try_match(self, clauses, index):
+            if index >= len(clauses) or clauses[index].normalized_descriptor != "peers":
+                return None
+            declarations = [
+                pl.Declaration(name=name, kind=pl.DeclarationKind.OBJECT, type_name="peer")
+                for name in clauses[index].names
+            ]
+            return (1, declarations, [], [])
+
+    environment = TheoryEnvironment(
+        phrase_parsers=[parse_peers],
+        declaration_recipes=[PeerDeclarationRecipe()],
+    )
+    with pytest.raises(pp.ElaborationError, match="recognized both as a formula"):
+        pp.parse_proof_text(
+            "1. A and B are peers. (Premise)\\n",
+            environment=environment,
+        )
