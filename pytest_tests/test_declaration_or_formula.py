@@ -53,17 +53,34 @@ def test_equality_formula_can_follow_a_compound_let_declaration():
     assert [declaration.name for declaration in justification[1]] == ["A", "B"]
 
 
-def test_are_unknown_descriptor_remains_a_declaration():
+@pytest.mark.parametrize("descriptor", ["sets", "integers"])
+def test_unrecognized_descriptors_remain_declarations(descriptor):
     entries, _ = pp.parse_proof_text(
-        "1. A and B are integers. (Declaration)\n"
+        f"1. A and B are {descriptor}. (Declaration)\\n"
     )
 
     _label, formula, justification = entries[0]
     assert formula is None
     assert justification[0] == "declare"
     assert [(d.name, d.kind, d.type_name) for d in justification[1]] == [
-        ("A", pl.DeclarationKind.OBJECT, "integers"),
-        ("B", pl.DeclarationKind.OBJECT, "integers"),
+        ("A", pl.DeclarationKind.OBJECT, descriptor),
+        ("B", pl.DeclarationKind.OBJECT, descriptor),
+    ]
+
+
+def test_relation_descriptor_remains_a_relation_declaration():
+    entries, _ = pp.parse_proof_text(
+        "1. Let X be a set. (Declaration)\\n"
+        "2. A and B are relations on X. (Declaration)\\n"
+    )
+
+    _label, formula, justification = entries[1]
+    assert isinstance(formula, list)
+    assert len(formula) == 2
+    assert justification[0] == "premise"
+    assert [(d.name, d.kind, d.arity) for d in justification[1]] == [
+        ("A", pl.DeclarationKind.PREDICATE, 2),
+        ("B", pl.DeclarationKind.PREDICATE, 2),
     ]
 
 
