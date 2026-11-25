@@ -1,0 +1,135 @@
+# J41: mathematical symbols are notation for existing word forms.
+# The expected side uses only the ordinary logical/set-theory vocabulary.
+
+id: unicode-and
+context: nested
+surface: P ∧ Q
+expect: P and Q
+why: Conjunction's logical symbol has the same reading as the word connective.
+
+id: unicode-or
+context: line
+surface: P ∨ Q
+expect: P or Q
+why: Disjunction's logical symbol has the same reading as the word connective.
+
+id: unicode-negation
+context: nested
+surface: ¬P
+expect: not P
+why: Negation's symbol has the same reading as the word form.
+
+id: unicode-implication
+context: nested
+surface: P → Q
+expect: P -> Q
+why: The right arrow denotes implication.
+
+id: unicode-biconditional-existing
+context: line
+surface: P ↔ Q
+expect: P iff Q
+why: The already-supported biconditional symbol retains its existing reading.
+
+id: unicode-forall-comma
+context: nested
+surface: ∀x, P(x)
+expect: forall x, P(x)
+why: The universal quantifier symbol introduces an ordinary universal quantifier.
+
+id: unicode-forall-no-comma
+context: line
+surface: ∀x P(x)
+expect: forall x, P(x)
+why: The universal quantifier symbol supports the existing optional-comma form.
+
+id: unicode-exists
+context: nested
+surface: ∃x, P(x)
+expect: exists x, P(x)
+why: The existential quantifier symbol introduces an ordinary existential quantifier.
+
+id: unicode-bounded-forall
+context: nested
+surface: ∀x ∈ A, P(x)
+expect: forall x, (In(x, A) -> P(x))
+why: Membership restricts the range of the universal quantifier.
+
+id: unicode-bounded-exists
+context: line
+surface: ∃x ∈ A, P(x)
+expect: exists x, (In(x, A) and P(x))
+why: Membership restricts the witness of the existential quantifier.
+
+id: unicode-membership
+context: line
+surface: x ∈ A
+expect: In(x, A)
+why: The membership symbol denotes the set-theory membership predicate.
+
+id: unicode-nonmembership
+context: nested
+surface: x ∉ A
+expect: not (In(x, A))
+why: Nonmembership denotes the negation of the membership predicate.
+
+id: unicode-subseteq
+context: line
+surface: A ⊆ B
+expect: forall q, (In(q, A) -> In(q, B))
+why: Subset inclusion is the universal implication between memberships.
+
+id: unicode-union
+context: nested
+surface: x ∈ A ∪ B
+expect: In(x, Union(A, B))
+why: The union symbol is the binary set-operation term in a membership formula.
+
+id: unicode-intersection
+context: nested
+surface: x ∈ A ∩ B
+expect: In(x, Intersection(A, B))
+why: The intersection symbol is the binary set-operation term in a membership formula.
+
+id: unicode-cartesian-product
+context: line
+surface: x ∈ A × B
+expect: In(x, CartesianProduct(A, B))
+why: The multiplication-shaped symbol denotes Cartesian product in set theory.
+
+id: unicode-not-equal
+context: nested
+surface: a ≠ b
+expect: not (a = b)
+why: The not-equal symbol is negated equality.
+
+id: unicode-not-equal-ascii
+context: line
+surface: a != b
+expect: not (a = b)
+why: The ASCII not-equal spelling has the same reading as the Unicode symbol.
+
+id: unicode-no-spaces-membership
+context: nested
+surface: x∈A
+expect: In(x, A)
+why: Whitespace is not required around a notation symbol.
+
+id: unicode-no-spaces-connectives
+context: nested
+surface: ¬P(x)∧Q(x)
+expect: (not P(x)) and Q(x)
+why: Adjacent symbols are padded before parsing and preserve connective precedence.
+
+id: unicode-symbol-adjacent-to-word
+context: nested
+surface: x ∈ A and P(x)
+expect: In(x, A) and P(x)
+why: A symbol phrase next to a word connective remains a conjunction.
+
+id: unicode-symbols-inside-quantifier
+context: nested
+surface: ∀z, (z ∈ A ∧ P(z))
+expect: forall z, (In(z, A) and P(z))
+why: Symbols are rewritten before recursive parsing of the quantified body.
+
