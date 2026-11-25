@@ -1116,6 +1116,20 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
     """Parse set-bounded quantifiers into ordinary first-order logic."""
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
 
+    def bounded_source(source_text):
+        source_text = source_text.strip()
+        # J36's general term parser accepts ordinary function applications
+        # in membership/subset phrases. Keep the existing bounded-quantifier
+        # grammar unchanged: it does not accept an applied symbol as a range.
+        pair = re.fullmatch(
+            r"(?:ordered\s+)?pair\s*\(\s*[A-Za-z_][A-Za-z0-9_]*\s*,\s*[A-Za-z_][A-Za-z0-9_]*\s*\)",
+            source_text,
+            flags=re.I,
+        )
+        if pair is None and re.match(r"^[A-Za-z_][A-Za-z0-9_]*\s*\(", source_text):
+            return None
+        return try_parse_set_term(source_text, bound_vars)
+
     forall = re.fullmatch(
         rf"(?:for\s+all|for\s+every|forall)\s+({_BOUNDED_QUANTIFIER_NAME})\s+in\s+(.+?)"
         rf"\s*(?:,\s*|we\s+have\s+)(.+)",
@@ -1123,7 +1137,7 @@ def _parse_bounded_quantifier(text: str, bound_vars: set) -> Optional[fl.Formula
     )
     if forall:
         variable, source_text, body_text = forall.groups()
-        source = try_parse_set_term(source_text.strip(), bound_vars)
+        source = bounded_source(source_text)
         if source is None:
             return None
         import SyLoPy.source.ProofParser as pp
