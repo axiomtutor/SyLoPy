@@ -123,7 +123,10 @@ def test_unicode_fixture_proofs_match_their_word_form_rewrites():
         assert len(symbolic.entries) == len(words.entries)
         for symbolic_entry, word_entry in zip(symbolic.entries, words.entries):
             assert symbolic_entry[0] == word_entry[0]
-            assert pl._alpha_eq(symbolic_entry[1], word_entry[1])
+            if symbolic_entry[1] is None or word_entry[1] is None:
+                assert symbolic_entry[1] is None and word_entry[1] is None
+            else:
+                assert pl._alpha_eq(symbolic_entry[1], word_entry[1])
             assert symbolic_entry[2][0] == word_entry[2][0]
 
     results = mp.run_multi_proof_file(source)
