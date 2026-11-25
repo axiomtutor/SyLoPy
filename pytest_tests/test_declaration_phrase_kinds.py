@@ -6,7 +6,7 @@ from .support import pp, pl
 def _declarations(entries):
     found = []
     for _label, _formula, justification in entries:
-        if justification and justification[0] in {"declare", "premise"}:
+        if len(justification) > 1 and justification[0] in {"declare", "premise"}:
             found.extend(justification[1])
     return found
 
@@ -154,7 +154,8 @@ def test_proposition_used_as_predicate_is_refused_for_arity_not_declaration():
     assert not ok
     assert error is not None
     assert error.label == "2"
-    assert "arity" in error.detail.lower()
+    assert error.category == pl.CATEGORY_DECLARATION_ARITY_MISMATCH
+    assert error.detail == "predicate 'P' expects arity 0, but is used with 1 argument(s)"
 
 
 def test_relation_used_as_term_is_refused_for_its_declared_kind():
@@ -166,5 +167,5 @@ def test_relation_used_as_term_is_refused_for_its_declared_kind():
     assert not ok
     assert error is not None
     assert error.label == "2"
-    assert "R" in error.detail
-    assert "term" in error.detail.lower()
+    assert error.category == pl.CATEGORY_DECLARATION_KIND_MISMATCH
+    assert error.detail == "symbol 'R' is declared as predicate, but is used as an object constant"
