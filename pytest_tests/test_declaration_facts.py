@@ -246,6 +246,52 @@ def test_nonempty_declaration_does_not_transfer_to_another_set():
     assert valid, valid_error
 
 
+def test_finiteness_does_not_transfer_to_another_set_but_is_reiterable_for_its_set():
+    invalid_entries, _raw = pp.parse_proof_text(
+        "1. Let A be a finite set, B be a set. (Declaration)\\n"
+        "2. Finite(B). (Reiteration from 1)\\n"
+    )
+    invalid, error = pl.Proof(invalid_entries).check_detailed()
+    assert not invalid
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    expected = repr(fl.AtomicFormula("Finite", [c("B")]))
+    assert error.detail.startswith(
+        f"'Reiteration' does not justify {expected} from the cited line(s) ['1']"
+    ), error.detail
+
+    valid_entries, _raw = pp.parse_proof_text(
+        "1. Let A be a finite set, B be a finite set. (Declaration)\\n"
+        "2. Finite(B). (Reiteration from 1)\\n"
+    )
+    valid, valid_error = pl.Proof(valid_entries).check_detailed()
+    assert valid, valid_error
+
+
+def test_family_declaration_reiterates_member_constraint_but_not_carrier_inclusion():
+    declaration = (
+        "1. Let A, B be any sets, F be a family of subsets of A. (Declaration)\\n"
+    )
+    invalid_entries, _raw = pp.parse_proof_text(
+        declaration + "2. F subseteq A. (Reiteration from 1)\\n"
+    )
+    invalid, error = pl.Proof(invalid_entries).check_detailed()
+    assert not invalid
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    expected = repr(st.subset_formula(c("F"), c("A")))
+    assert error.detail.startswith(
+        f"'Reiteration' does not justify {expected} from the cited line(s) ['1']"
+    ), error.detail
+
+    valid_entries, _raw = pp.parse_proof_text(
+        declaration
+        + "2. forall S, (In(S, F) -> S subseteq A). (Reiteration from 1)\\n"
+    )
+    valid, valid_error = pl.Proof(valid_entries).check_detailed()
+    assert valid, valid_error
+
+
 def test_family_carrier_must_be_declared_before_the_family():
     with pytest.raises(pp.ElaborationError, match="has not been declared yet"):
         pp.parse_proof_text(
