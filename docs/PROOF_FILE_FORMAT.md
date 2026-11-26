@@ -710,7 +710,9 @@ The line states `exists u, In(u, A)`; a plural declaration such as
 existential for each name. A family of subsets is declared with
 `Let F be a family of subsets of A. (Declaration)`. It states
 `forall S, (In(S, F) -> S subseteq A)`: every member of F is a subset of A.
-This does not say that F itself is a subset of A.
+The carrier A must already be declared, either on an earlier line or in an
+earlier clause of the same declaration. This does not say that F itself is a
+subset of A.
 
 Finite and infinite sets can be declared in the singular or plural:
 `Let A be a finite set. (Declaration)`, `Let A, B be finite sets.
