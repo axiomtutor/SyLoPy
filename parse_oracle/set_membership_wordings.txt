@@ -1,0 +1,116 @@
+# Membership wordings and set-operation identity phrases (J37).
+# Each expectation is ordinary first-order logic, independent of the surface parser.
+
+id: j37-is-in-english-union
+context: line
+surface: x is in the union of A and B
+expect: In(x, Union(A, B))
+why: The union phrase is a set term; membership is the atom about that term.
+
+id: j37-belongs-to-infix-union
+context: nested
+surface: P(x) and x belongs to A union B
+expect: P(x) and In(x, Union(A, B))
+why: Belongs-to wording is membership, including when the set term is an infix union.
+
+id: j37-belongs-to-english-intersection
+context: line
+surface: x belongs to the intersection of A and B
+expect: In(x, Intersection(A, B))
+why: The intersection phrase is a set term; membership is not expanded to a conjunction.
+
+id: j37-not-in-english-intersection
+context: nested
+surface: x is not in the intersection of A and B
+expect: not In(x, Intersection(A, B))
+why: Negation applies to the membership atom itself.
+
+id: j37-not-an-element-of
+context: line
+surface: x is not an element of A
+expect: not In(x, A)
+why: The negative element-of wording is the negation of membership.
+
+id: j37-is-a-member-of
+context: line
+surface: x is a member of A
+expect: In(x, A)
+why: Member-of wording states membership.
+
+id: j37-is-not-a-member-of
+context: line
+surface: x is not a member of A
+expect: not In(x, A)
+why: Negative member-of wording states nonmembership.
+
+id: j37-set-contains-element
+context: line
+surface: A contains x
+expect: In(x, A)
+why: The set is the subject of contains; the element is its member.
+
+id: j37-set-does-not-contain-element
+context: nested
+surface: P(x) and A does not contain x
+expect: P(x) and not In(x, A)
+why: Negative contains wording negates membership.
+
+id: j37-contains-nested-operation
+context: nested
+surface: P(x) and (A union B) contains f(a)
+expect: P(x) and In(f(a), Union(A, B))
+why: Set-first contains accepts any set term and any element term.
+
+id: j37-membership-surrounded-by-connectives
+context: nested
+surface: P(x) and x belongs to the union of A and B and y is in C
+expect: P(x) and In(x, Union(A, B)) and In(y, C)
+why: The internal and in the English union term is not a connective; the outer ands are.
+
+id: j37-nested-english-union-term
+context: line
+surface: x is in the union of (A union B) and C
+expect: In(x, Union(Union(A, B), C))
+why: Parenthesized set terms may be operands of the English union term.
+
+id: j37-nested-english-intersection-term
+context: line
+surface: x is in the intersection of A and (B union C)
+expect: In(x, Intersection(A, Union(B, C)))
+why: Parenthesized set terms may be operands of the English intersection term.
+
+id: j37-union-identity-is-equation
+context: line
+surface: A is the union of B and C
+expect: A = Union(B, C)
+why: Identity wording equates the target with the union term; its membership property is supplied by the definition.
+
+id: j37-intersection-identity-is-equation
+context: line
+surface: A is the intersection of B and C
+expect: A = Intersection(B, C)
+why: Identity wording equates the target with the intersection term; its membership property is supplied by the definition.
+
+id: j37-set-in
+context: line
+surface: A set-in B
+expect: forall u, (In(u, A) -> In(u, B))
+why: Set-in is subset notation, not element membership.
+
+id: j37-set-contains
+context: line
+surface: A set-contains B
+expect: forall u, (In(u, B) -> In(u, A))
+why: Set-contains reverses the direction of subset inclusion.
+
+id: j37-not-set-in
+context: line
+surface: A not set-in B
+expect: not (forall u, (In(u, A) -> In(u, B)))
+why: The negative set-in phrase negates subset inclusion.
+
+id: j37-not-set-contains
+context: line
+surface: A not set-contains B
+expect: not (forall u, (In(u, B) -> In(u, A)))
+why: The negative set-contains phrase negates the reversed subset inclusion.
