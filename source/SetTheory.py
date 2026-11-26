@@ -3047,6 +3047,17 @@ class FamilyOfSubsetsDeclarationRecipe:
             return None
 
         carrier_name = match.group(1)
+        previous_names = {
+            name
+            for previous in clauses[:index]
+            for name in getattr(previous, "names", ())
+        }
+        is_declared = getattr(clause, "is_declared", None)
+        if carrier_name not in previous_names and not (
+            is_declared is not None and is_declared(carrier_name)
+        ):
+            return None
+
         carrier = tl.ConstantTerm(carrier_name, carrier_name)
         declarations = []
         formulas = []
