@@ -663,7 +663,7 @@ def _split_top_level_keyword(text: str, keyword: str) -> Optional[Tuple[str, str
     index = 0
     lowered = text.lower()
     needle = keyword.lower()
-    while index <= len(text) - len(needle):
+    while index < len(text):
         char = text[index]
         if char == "(":
             depth += 1
