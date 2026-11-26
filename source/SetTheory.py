@@ -3056,7 +3056,11 @@ class FamilyOfSubsetsDeclarationRecipe:
         if carrier_name not in previous_names and not (
             is_declared is not None and is_declared(carrier_name)
         ):
-            return None
+            family_name = clause.names[0] if clause.names else "family"
+            raise ElaborationError(
+                f"declaration of '{family_name}' refers to '{carrier_name}', which has "
+                "not been declared yet"
+            )
 
         carrier = tl.ConstantTerm(carrier_name, carrier_name)
         declarations = []
