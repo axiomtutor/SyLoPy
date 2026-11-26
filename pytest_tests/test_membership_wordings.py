@@ -101,8 +101,8 @@ def test_membership_phrases_compose_with_connectives_around_english_operation_te
     )
     expected = fl.And(
         atom("P", c("x")),
-        _in(c("x"), fn("Union", fn("Union", c("A"), c("B")), c("C")),
-        _not_in(c("y"), fn("Intersection", c("A"), c("B")),
+        _in(c("x"), fn("Union", fn("Union", c("A"), c("B")), c("C"))),
+        _not_in(c("y"), fn("Intersection", c("A"), c("B"))),
     )
     _assert_formula(surface, expected, nested=True)
 
