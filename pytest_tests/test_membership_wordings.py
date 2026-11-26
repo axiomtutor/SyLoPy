@@ -10,7 +10,7 @@ import pytest
 
 from SyLoPy.source import validate_all_proofs as validator
 
-from .support import atom, c, fl, fn, pl, pp, st, v
+from .support import atom, c, fl, fn, mp, pl, pp, st, v
 
 
 def _in(element, set_term):
@@ -164,7 +164,7 @@ def test_empty_nonempty_and_disjointness_phrases_keep_their_existing_meanings():
 
 @pytest.mark.parametrize("surface", ["x lies in A", "A has x as an element"])
 def test_unapproved_membership_phrases_remain_refused(surface):
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError, match="Unrecognized formula syntax"):
         _parse_line(surface)
 
 
