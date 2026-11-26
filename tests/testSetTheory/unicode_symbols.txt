@@ -1,0 +1,41 @@
+# 1: Bounded universal instantiation using symbolic notation
+## Proof that
+### then P(a).
+
+1. Let A be any set, P be a unary predicate, a be an object. (Declaration)
+2. ∀x ∈ A, P(x). (Premise)
+3. a ∈ A. (Premise)
+4. a ∈ A → P(a). (Universal Instantiation from 2)
+5. P(a). (Modus Ponens from 3, 4)
+
+# 2: A subset of a union
+## Proof that
+### then A ⊆ A ∪ B.
+
+1. Let A, B be any sets. (Declaration)
+2. A ⊆ A ∪ B. (Premise)
+3. A ⊆ A ∪ B. (Reiteration from 2)
+
+# 3: De Morgan's law in symbolic notation
+## Proof that
+### then ¬P ∨ ¬Q.
+
+1. Let P, Q be propositions. (Declaration)
+2. ¬(P ∧ Q). (Premise)
+3. ¬P ∨ ¬Q. (De Morgans from 2)
+
+# 4: Invalid: nonmembership does not imply membership
+## Invalid: the premise states nonmembership, not membership
+### then a ∈ A.
+
+1. Let A be any set, a be an object. (Declaration)
+2. a ∉ A. (Premise)
+3. a ∈ A. (Reiteration from 2)
+
+# 5: Invalid: inequality does not imply equality
+## Invalid: the premise is negated equality
+### then a = b.
+
+1. Let a, b be objects. (Declaration)
+2. a ≠ b. (Premise)
+3. a = b. (Reiteration from 2)

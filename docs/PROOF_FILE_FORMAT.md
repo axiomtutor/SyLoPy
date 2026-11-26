@@ -226,6 +226,43 @@ so formula parentheses are allowed:
 2. (A or B) and not (C or D). (Premise)
 ```
 
+Mathematical symbols are accepted as notation for the corresponding word
+forms. They are rewritten before formula parsing, so they can occur without
+surrounding spaces or inside a larger formula.
+
+Base logic recognizes:
+
+| Symbol | Word form |
+| --- | --- |
+| `P ∧ Q` | `P and Q` |
+| `P ∨ Q` | `P or Q` |
+| `¬P` | `not P` |
+| `P → Q` | `P -> Q` |
+| `P ↔ Q` | `P <-> Q` |
+| `∀x, P(x)` | `forall x, P(x)` |
+| `∃x, P(x)` | `exists x, P(x)` |
+| `a ≠ b`, `a != b` | `not (a = b)` |
+
+Set theory recognizes:
+
+| Symbol | Word form |
+| --- | --- |
+| `x ∈ A` | `x is in A` |
+| `x ∉ A` | `x is not in A` |
+| `A ⊆ B` | `A subseteq B` |
+| `A ∪ B` | `A union B` |
+| `A ∩ B` | `A intersection B` |
+| `A × B` | `A cross B` |
+
+The bounded quantifiers `∀x ∈ A, P(x)` and `∃x ∈ A, P(x)` are read as
+`forall x in A, P(x)` and `exists x in A, P(x)`, respectively. The
+membership sign is not expanded to the phrase `is in` in this position.
+The usual connective precedence is unchanged.
+
+A symbol not listed above is not accepted as an alias. In particular,
+`⊂`, `⊊`, `⊃`, `⊇`, `⊕`, `≤`, `∣` and `ℕ` remain unsupported.
+The set-difference symbol `∖` is not yet supported.
+
 ## 3. Comments
 
 Comments use:
