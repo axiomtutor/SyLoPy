@@ -203,6 +203,12 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         result = try_parse_set_term(inner, bound_vars)
         return result
 
+    # English union/intersection phrases must be recognized before the
+    # generic applied-symbol parser can read "of" as a function name.
+    english_operation = _parse_english_set_operation_term(s, bound_vars)
+    if english_operation is not None:
+        return english_operation
+
     # Reuse the ordinary function-application parser; it recursively parses
     # every argument with the theory's active term parsers.
     import SyLoPy.source.ProofParser as pp
@@ -211,17 +217,13 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         symbol, arguments = applied
         return tl.FunctionTerm(symbol, pp._parse_arg_list(arguments, bound_vars))
 
-    # The power-set and English union/intersection phrases are set terms.
+    # The power-set operand is a term, not just a bare identifier.
     power_match = re.fullmatch(r"(?:the\s+)?power\s+set\s+of\s+(.+)", s, flags=re.I)
     if power_match:
         operand = try_parse_set_term(power_match.group(1).strip(), bound_vars)
         if operand is None:
             return None
         return tl.FunctionTerm("PowerSet", [operand])
-
-    english_operation = _parse_english_set_operation_term(s, bound_vars)
-    if english_operation is not None:
-        return english_operation
 
     # Split only at top level. One repeated operator associates to the left;
     # mixed operators have no precedence and cross remains binary.
@@ -704,7 +706,10 @@ def _is_english_set_operand(text: str, bound_vars: set) -> bool:
         or _has_outer_set_term_parentheses(candidate)
     ):
         return False
-    return try_parse_set_term(candidate, bound_vars) is not None
+    try:
+        return try_parse_set_term(candidate, bound_vars) is not None
+    except ValueError:
+        return False
 
 
 def _parse_english_set_operation_term(text: str, bound_vars: set) -> Optional[tl.Term]:
@@ -736,8 +741,14 @@ def _parse_membership_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]
         if match is None:
             continue
         first_text, second_text = match.groups()
-        first_term = try_parse_set_term(first_text.strip(), bound_vars)
-        second_term = try_parse_set_term(second_text.strip(), bound_vars)
+        try:
+            first_term = try_parse_set_term(first_text.strip(), bound_vars)
+            second_term = try_parse_set_term(second_text.strip(), bound_vars)
+        except ValueError:
+            # A broad candidate can include an outer connective. Leave it to
+            # the formula grammar instead of turning the candidate into a
+            # premature set-term error.
+            continue
         if first_term is None or second_term is None:
             continue
         element, set_term = (
@@ -754,8 +765,11 @@ def _parse_set_subset_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]
     if match is None:
         return None
     left_text, negated, relation, right_text = match.groups()
-    left = try_parse_set_term(left_text.strip(), bound_vars)
-    right = try_parse_set_term(right_text.strip(), bound_vars)
+    try:
+        left = try_parse_set_term(left_text.strip(), bound_vars)
+        right = try_parse_set_term(right_text.strip(), bound_vars)
+    except ValueError:
+        return None
     if left is None or right is None:
         return None
     subset = subset_formula(left, right) if relation.lower() == "in" else subset_formula(right, left)
