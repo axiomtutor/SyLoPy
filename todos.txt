@@ -86,9 +86,9 @@ commit.
   what statements and definitions mean, and merges. Claude owns the kernel and the
   soundness argument, designs, writes the jobs, reviews and re-checks by running code.
   ChatGPT implements the jobs and red-teams, through CI only, because it cannot run
-  code. No pull request is open. ChatGPT's queue, J36–J46 (`JOBS_FOR_CHATGPT.md`), is
-  unblocked and none of it has started; it moves when the owner starts a ChatGPT
-  session on a job. One ChatGPT branch holds work that never became a pull request:
+  code. No pull request is open. ChatGPT's queue (`JOBS_FOR_CHATGPT.md`): J36, J37,
+  J41, J43, J44, J45 and J46 are merged; J39 is left, and J38, J40 and J42 are held;
+  it moves when the owner starts a ChatGPT session on a job. One ChatGPT branch holds work that never became a pull request:
   `chatgpt/j35-divisibility-basic-identities` (two commits of 2026-11-03, 89 commits
   behind master) has the two files J35 names, a fixture and a test, not reviewed and
   not run by Claude. J35 is deferred and the branch is left alone.
@@ -103,6 +103,10 @@ commit.
   ChatGPT branch holds an unreviewed draft, see Where things stand). The
   deferral does not authorize or require any change to existing number-theory
   code or axioms.
+- [Issue #185](https://github.com/axiomtutor/SyLoPy/issues/185): `X is a bijection from A to B`
+  and `X is finite` accept any word as X (`there`, `it`, `some`). Open; no job yet.
+- [Issue #192](https://github.com/axiomtutor/SyLoPy/issues/192): the J43 red-team tests failed
+  under `--suite all`; fixed by #193 and #195, so it can be closed (the owner closes it).
 - Issues #151 and #152: resolved (disjointness premises are formulas; relation descriptors after commas compose). Coverage: `pytest_tests/test_compound_declarations.py`.
 - [Issue #144](https://github.com/axiomtutor/SyLoPy/issues/144): proposal to put the
   top-level formula-parser dispatch of `source/ProofParser.py` in one helper. It says
@@ -189,27 +193,17 @@ text.
   conjunction instead. Do it when one needs it.
 - Surface syntax the entries will want, which are ChatGPT jobs (part 3): `(a, b)` for
   the ordered pair (after J42, "Planned" in `JOBS_FOR_CHATGPT.md`), the membership
-  phrases (J37, item 8(a)) and Unicode symbols (J41, item 8(f), being implemented in
-  draft PR #190).
+  phrases (J37, item 8(a)) and Unicode symbols (J41, item 8(f)), both merged.
 
 ### 3. Delegated work (ChatGPT; `JOBS_FOR_CHATGPT.md`)
 
-Who: ChatGPT, when the owner starts it on a job. All of J36–J46 are unblocked (#167
-merged on 2026-11-15, the jobs J36–J43 on 2026-11-18). The owner merged J45 (#186), J36
-(#187) and J44 (#188) on 2026-11-25. Draft PR #189 carries the post-merge J44 mutation-
-contract fix and passes default CI (run #1208: 2751 passed, 241 skipped; 581/581 proof
-fixtures); review is pending. J41 is now active in draft PR #190; its contract-first
-baseline (run #1209) failed on the expected unsupported notation cases, and the
-implementation is being checked. The file's order, within three open pull requests, is
-J45, J44, J36, J41, J43, J46, J38, J37, J39, J42, J40.
-The file's order, within three open pull requests, is J45, J44, J36, J41, J43, J46, J38, J37, J39, J42,
-J40. Claude's recommendation: begin with J45 (a declaration phrase gives the name its kind;
-`Let P be a proposition.` is the first thing a new user writes) and J44 (a premise
-`A and B are equal.` reads as `A = B`), then J36 (nested set terms), J41 (symbols as input,
-accepted by the owner on 2026-11-09) and J43 (red-team the definition facility), then J46
-(declarations state their facts), J37 and J39. Hold J38, J42 and J40 until question 4 is
+Who: ChatGPT, when the owner starts it on a job. Merged (2026-11-25 and 26): J45 (#186),
+J36 (#187), J44 (#188, #189), J41 (#190), J43 (#191, #193, #195), J46 (#196, #199) and
+J37 (#198). Left: J39, and J38, J42 and J40, which the owner holds until question 4 is
 answered, because they register more definitions in Python that the corpus may define
-instead.
+instead. Master passes `./run_tests.sh --suite all` (3164 tests, 610 proofs). Default CI
+runs `./run_tests.sh`; the extended suite runs only when the owner starts the "Extended
+tests" workflow in the Actions tab (#197).
 
 Findings #169, #170, #171 and #181 are parser and recipe fixes, and the owner approved
 them on 2026-11-23 in comments on the issues; they are the jobs J44, J45 and J46. The
@@ -552,7 +546,7 @@ and collaboration handoff before starting.
    suites, declaration behavior and verification commands.
 (Numbers 5 to 7 are gone; the other items keep their numbers because other documents cite them.)
 8. **Set-operation definitions: what is left.**
-   (a) Implemented in draft PR #198 (J37; pending review and merge): every
+   (a) Done (J37, #198): every
    membership phrase reads as the membership atom (or its negation), including the
    former union/intersection expansions and the contains/member/element-of variants.
    The English union/intersection phrases are set terms; their definitions provide
