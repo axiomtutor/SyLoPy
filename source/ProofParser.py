@@ -129,6 +129,12 @@ _ACTIVE_DECLARATION_ENVIRONMENT = ContextVar(
 
 
 def _declaration_environment(environment=None):
+    """Return the selected theory environment for declaration parsing.
+
+    LineBreakSyntax wraps legacy splitter functions with one-argument
+    callables. The scoped ContextVar carries the active environment through
+    those wrappers without changing their callable signatures.
+    """
     if environment is not None:
         return environment
     active = _ACTIVE_DECLARATION_ENVIRONMENT.get()
@@ -939,7 +945,7 @@ def _split_compound_declaration_items(
             if re.match(
                 r'^[A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*$',
                 current,
-            ) and _text_after_is_declaration_start(rest, environment):
+            ) and _text_after_is_declaration_start(rest):
                 buf.append(ch)
                 i += 1
                 continue
