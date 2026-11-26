@@ -43,3 +43,10 @@ Reviewed from fresh clones on Python 3.12.3 and 3.13.18 with `--suite all` and t
 - **#190 (J41):** correct, with the speed finding of parameter 6.
 - **#191 (J43):** merged with 10 of its 45 tests failing under `--suite all` (parameters 1 and 2).
 - **#193 (follow-up to #192):** half the failures fixed; 5 remained when it was merged (2026-11-25, head `6327743`, with the review comment on the PR unanswered): parameters 2 and 4. Master therefore still fails 5 tests under `--suite all`, and issue #192 is not done until they pass.
+
+### 2026-11-26: review of PRs #195, #198 and #199 (Claude)
+Fresh exports of each head, Python 3.12.3 and 3.13.18, standalone file, `--suite all`, and every mutation candidate in the PR body.
+- **#195 (follow-up to #192):** the first head still failed 3 of the 5 tests (a missing message suffix, a formula indexed as a list, an undeclared constant in fixture case 4). The second head applied exactly the three corrections and passed everything (45 standalone, 3095 under `--suite all` on both versions, 4/4 mutations killed). It is the model for answering a review (parameter 10). Master's 5 failing tests are fixed by it.
+- **#198 (J37):** matches the J37 spec, including the equation reading of the identity phrases; 22 standalone and 3162 under `--suite all` on both versions, 5/5 mutations killed. Small cleanup only: the parenthesis matching in `_consume_simple_set_operand` is written twice.
+- **#199 (J46 tests):** 28 standalone and 3123 under `--suite all` on both versions, 7/7 mutations killed.
+- **Process:** copy the checker's exact message before pinning it; this caused #195's first failures. A pin should come from the checker's own output, not from a similar test.
