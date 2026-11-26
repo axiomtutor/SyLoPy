@@ -1,12 +1,8 @@
-(* 
-J37 treats every membership wording as membership in the set term itself.
-The definitions of union and intersection, rather than the membership phrases,
-give the corresponding disjunction and conjunction.
-*)
+# J37: every membership wording denotes the membership atom; definitions give operation laws.
 
 # 1: A is a subset of a union containing it
 ## Proof that
-### forall u, (In(u, A) -> In(u, Union(A, B))).
+### then forall u, (In(u, A) -> In(u, Union(A, B))).
 1. Let A, B be any set. (Declaration)
 2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
 3. A is a subset of the union of A and B. (Subset proof below)
@@ -16,7 +12,7 @@ give the corresponding disjunction and conjunction.
 
 # 2: Membership in the union leads to a case split
 ## Proof that
-### Q(x).
+### then Q(x).
 1. Let A, B be any set, and x be any object. (Declaration)
 2. Let Q be a predicate. (Declaration)
 3. x is in the union of A and B. (Premise)
@@ -36,14 +32,14 @@ give the corresponding disjunction and conjunction.
 
 # 3: Invalid: membership in a union does not expose the disjunction by itself
 ## Invalid: the definition of union is needed to derive either disjunctive membership fact.
-### In(x, A) or In(x, B).
+### then In(x, A) or In(x, B).
 1. Let A, B be any set, and x be any object. (Declaration)
 2. x is in the union of A and B. (Premise)
 3. In(x, A) or In(x, B). (Set property from 2)
 
 # 4: Membership in the intersection gives both members, by its definition
 ## Proof that
-### In(x, A).
+### then In(x, A).
 1. Let A, B be any set, and x be any object. (Declaration)
 2. x is in the intersection of A and B. (Premise)
 3. forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B))). (Definition of intersection)
@@ -52,7 +48,7 @@ give the corresponding disjunction and conjunction.
 
 # 5: Invalid: membership in an intersection does not expose a conjunct by itself
 ## Invalid: the definition of intersection is needed to derive either conjunct.
-### In(x, A).
+### then In(x, A).
 1. Let A, B be any set, and x be any object. (Declaration)
 2. x is in the intersection of A and B. (Premise)
 3. In(x, A). (Set property from 2)
