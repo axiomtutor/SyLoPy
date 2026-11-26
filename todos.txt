@@ -123,19 +123,16 @@ commit.
   (owner, 2026-11-23). `Let P be a proposition.`, `a strict order on X` and `a bijection
   from A to B` declare the name as a plain object, so the first line that uses it as a
   statement, a relation or a function is refused at the use. Recipes are the fix: job J45.
-- [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): open finding.
-  Declarations that say something but state nothing: `a nonempty set`, `a family of
-  subsets of A`, and the typed function `f: X -> Y` (whose `domain` and `codomain` no rule
-  reads). The owner confirmed on 2026-11-23 ("Confirmed.") that the first two should state
-  their facts, as J30 made membership declarations do: job J46. The typed function depends
-  on how functions are represented, which the corpus's convention changes, and `a
-  partition of A` and `a set of sets`, which the issue says are in the same state, were
-  not part of the confirmation (question 7).
-- [Issue #181](https://github.com/axiomtutor/SyLoPy/issues/181): open finding, filed on
-  2026-11-23 while J46 was written. The plural declarations `Let A, B be finite sets.`,
-  `infinite sets` and `finite sets of cardinality 3` state nothing, although the singular
-  states `Finite(A)`. The same family as #171; it needs no owner decision and is part of
-  J46.
+- [Issue #171](https://github.com/axiomtutor/SyLoPy/issues/171): the confirmed
+  nonempty-set and family-of-subsets portions are implemented in [draft PR #196](https://github.com/axiomtutor/SyLoPy/pull/196):
+  those declarations now state their existential and subset formulas. Verification is
+  pending review and CI. The typed function `f: X -> Y` (whose `domain` and `codomain`
+  metadata no rule reads), `a partition of A` and `a set of sets` remain unchanged:
+  the owner did not include them in the confirmation (question 7).
+- [Issue #181](https://github.com/axiomtutor/SyLoPy/issues/181): the plural finite,
+  infinite and finite-cardinality declarations are implemented in [draft PR #196](https://github.com/axiomtutor/SyLoPy/pull/196).
+  The existing recipe now states the corresponding property for every name in the
+  clause. Verification is pending review and CI.
 
 #169 to #171 were filed on 2026-11-08 for the parser and recipes, which is ChatGPT's
 maintenance area. Their reproductions were run again on 2026-11-22 against master

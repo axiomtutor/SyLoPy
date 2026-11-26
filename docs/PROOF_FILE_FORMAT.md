@@ -704,9 +704,24 @@ After an axiom citation states an existential, name its witness with `Let Y be s
 
 Separation and Replacement are schema citations. For axiom-instance and `Set property` examples that are more representative of set-theory work, see the complete proofs below and the fixtures in `tests/setTheoryProofs/`.
 
-Finite sets can be declared with `Let A be a finite set. (Declaration)` or
-with an exact cardinality: `Let A be a finite set of cardinality 3.
-(Declaration)`. The equivalent formula forms are `A is finite`,
+A nonempty set can be declared with `Let A be a nonempty set. (Declaration)`.
+The line states `exists u, In(u, A)`; a plural declaration such as
+`Let A, B be nonempty sets. (Declaration)` states the corresponding
+existential for each name. A family of subsets is declared with
+`Let F be a family of subsets of A. (Declaration)`. It states
+`forall S, (In(S, F) -> S subseteq A)`: every member of F is a subset of A.
+The carrier A must already be declared, either on an earlier line or in an
+earlier clause of the same declaration. This does not say that F itself is a
+subset of A.
+
+Finite and infinite sets can be declared in the singular or plural:
+`Let A be a finite set. (Declaration)`, `Let A, B be finite sets.
+(Declaration)`, and `Let A, B be infinite sets. (Declaration)`. The
+plural declarations state the corresponding `Finite` or `Infinite`
+formula for each name. An exact finite cardinality works the same way:
+`Let A, B be finite sets of cardinality 3. (Declaration)` states
+`Finite(A)`, `Cardinality(A, 3)`, `Finite(B)`, and
+`Cardinality(B, 3)`. The equivalent formula forms are `A is finite`,
 `A has cardinality 3`, `A has 3 elements`, and `Cardinality(A, 3)`.
 Cardinality arguments are metatheoretic nonnegative integers; they are not
 proof variables or first-order object terms. The set-theory rules cover
