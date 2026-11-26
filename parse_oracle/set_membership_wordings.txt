@@ -64,7 +64,7 @@ why: Set-first contains accepts any set term and any element term.
 id: j37-membership-surrounded-by-connectives
 context: nested
 surface: P(x) and x belongs to the union of A and B and y is in C
-expect: (P(x) and In(x, Union(A, B))) and In(y, C)
+expect: P(x) and In(x, Union(A, B)) and In(y, C)
 why: The internal and in the English union term is not a connective; the outer ands are.
 
 id: j37-nested-english-union-term
