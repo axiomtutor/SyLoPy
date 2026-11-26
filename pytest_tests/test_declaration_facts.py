@@ -228,25 +228,25 @@ def test_nonempty_declaration_does_not_transfer_to_another_set():
 def test_family_carrier_must_be_declared_before_the_family():
     with pytest.raises(pp.ElaborationError, match="has not been declared yet"):
         pp.parse_proof_text(
-            "1. Let F be a family of subsets of A. (Declaration)\\n"
+            "1. Let F be a family of subsets of A. (Declaration)\n"
         )
     with pytest.raises(pp.ElaborationError, match="has not been declared yet"):
         pp.parse_proof_text(
-            "1. Let F be a family of subsets of A, A be any set. (Declaration)\\n"
+            "1. Let F be a family of subsets of A, A be any set. (Declaration)\n"
         )
 
 
 def test_a_family_declared_after_its_carrier_can_use_that_carrier():
     assert_facts(
-        "1. Let A be any set. (Declaration)\\n"
-        "2. Let F be a family of subsets of A. (Declaration)\\n",
+        "1. Let A be any set. (Declaration)\n"
+        "2. Let F be a family of subsets of A. (Declaration)\n",
         [family_formula("F", "A")],
     )
 
 
 def test_the_other_issue_171_descriptors_remain_unimplemented():
     typed_entries, _ = pp.parse_proof_text(
-        "1. Let A, B be sets, f: A -> B be a unary function. (Declaration)\\n"
+        "1. Let A, B be sets, f: A -> B be a unary function. (Declaration)\n"
     )
     typed_declarations = {d.name: d for d in typed_entries[0][2][1]}
     function = typed_declarations["f"]
@@ -257,7 +257,7 @@ def test_the_other_issue_171_descriptors_remain_unimplemented():
     assert typed_entries[0][1] is None
 
     other_entries, _ = pp.parse_proof_text(
-        "1. Let A be a set, P be a partition of A, F be a set of sets. (Declaration)\\n"
+        "1. Let A be a set, P be a partition of A, F be a set of sets. (Declaration)\n"
     )
     assert other_entries[0][1] is None
     other_declarations = {d.name: d for d in other_entries[0][2][1]}
