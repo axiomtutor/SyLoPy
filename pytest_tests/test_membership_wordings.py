@@ -96,6 +96,29 @@ def test_every_membership_wording_uses_the_membership_atom_for_every_set_term():
                 _assert_formula(surface, expected)
 
 
+@pytest.mark.parametrize(
+    "surface,expected",
+    [
+        ("the union of A and B", fn("Union", c("A"), c("B"))),
+        ("the intersection of A and B", fn("Intersection", c("A"), c("B"))),
+        (
+            "the intersection of A and (B union C)",
+            fn("Intersection", c("A"), fn("Union", c("B"), c("C"))),
+        ),
+        (
+            "the intersection of (A union B) and (C union D)",
+            fn(
+                "Intersection",
+                fn("Union", c("A"), c("B")),
+                fn("Union", c("C"), c("D")),
+            ),
+        ),
+    ],
+)
+def test_english_set_operation_terms_parse_directly(surface, expected):
+    assert st.try_parse_set_term(surface) == expected
+
+
 def test_membership_phrases_compose_with_connectives_around_english_operation_terms():
     surface = (
         "P(x) and x belongs to the union of (A union B) and C "
