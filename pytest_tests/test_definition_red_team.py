@@ -427,7 +427,8 @@ def test_by_proof_evidence_cannot_cite_the_definition_it_is_evidence_for():
     assert problem is not None
     assert problem == (
         "the proof of existence is not a valid proof: "
-        "Line 4: no rule named 'Definition of double' is registered for this proof"
+        "Line 4: no rule named 'Definition of double' is registered for this proof "
+        "(check that the relevant Type was combined in)"
     )
 
 
@@ -457,7 +458,7 @@ def test_a_declaration_that_adds_membership_is_an_evidence_hypothesis():
     definition = replace(DOUBLE, evidence=df.ByProof(evidence))
     environment = st.SET_THEORY_ENVIRONMENT.extended(toy_theory(definition))
     entries, _raw = pp.parse_proof_text(evidence, environment)
-    assert [repr(phi) for phi in entries[0][1]] == ["In(n, A)"]
+    assert repr(entries[0][1]) == "In(n, A)"
 
     problem = df.DefinitionRule(definition, environment).evidence_problem()
 
@@ -632,7 +633,7 @@ def test_definition_red_team_fixture_has_grounded_conclusions_and_expected_resul
         "5": ("2", pl.CATEGORY_RULE_MISMATCH, "power set"),
         "6": ("3", pl.CATEGORY_ARITY_MISMATCH, "requires at most 0 cited line label(s)"),
         "7": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
-        "8": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
+        "8": ("2", pl.CATEGORY_RULE_MISMATCH, "neither side of the biconditional"),
     }
     for case in cases:
         if case.number not in expected:
