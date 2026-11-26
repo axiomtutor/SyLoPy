@@ -42,4 +42,4 @@ Reviewed from fresh clones on Python 3.12.3 and 3.13.18 with `--suite all` and t
 - **#188 (J44):** sound approach, but merged with the failing J30 mutation test (parameter 3); #189 fixed it.
 - **#190 (J41):** correct, with the speed finding of parameter 6.
 - **#191 (J43):** merged with 10 of its 45 tests failing under `--suite all` (parameters 1 and 2).
-- **#193 (follow-up to #192):** half the failures fixed; 5 remain (parameters 2 and 4). It was reviewed again on 2026-11-25; the details are on the pull request.
+- **#193 (follow-up to #192):** half the failures fixed; 5 remained when it was merged (2026-11-25, head `6327743`, with the review comment on the PR unanswered): parameters 2 and 4. Master therefore still fails 5 tests under `--suite all`, and issue #192 is not done until they pass.
