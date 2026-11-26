@@ -228,8 +228,8 @@ def test_each_negative_declaration_facts_proof_is_refused(number):
 
 def test_nonempty_declaration_does_not_transfer_to_another_set():
     invalid_entries, _raw = pp.parse_proof_text(
-        "1. Let A be a nonempty set, B be a set. (Declaration)\\n"
-        "2. exists u, In(u, B). (Reiteration from 1)\\n"
+        "1. Let A be a nonempty set, B be a set. (Declaration)\n"
+        "2. exists u, In(u, B). (Reiteration from 1)\n"
     )
     ok, error = pl.Proof(invalid_entries).check_detailed()
     assert not ok
@@ -239,8 +239,8 @@ def test_nonempty_declaration_does_not_transfer_to_another_set():
     assert error.detail.startswith(expected), error.detail
 
     valid_entries, _raw = pp.parse_proof_text(
-        "1. Let A be a nonempty set, B be a nonempty set. (Declaration)\\n"
-        "2. exists u, In(u, B). (Reiteration from 1)\\n"
+        "1. Let A be a nonempty set, B be a nonempty set. (Declaration)\n"
+        "2. exists u, In(u, B). (Reiteration from 1)\n"
     )
     valid, valid_error = pl.Proof(valid_entries).check_detailed()
     assert valid, valid_error
