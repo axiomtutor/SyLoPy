@@ -1,0 +1,107 @@
+(*
+J43 red-team proofs for the definition rules. Each invalid case names the
+specific mismatch, capture, or citation-shape error it is intended to expose.
+*)
+
+# 1: The union definition with a vacuous and reordered universal closure
+## Proof that
+### then forall z, forall B, forall u, forall A, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))).
+
+1. Let A, B be any set. (Declaration)
+2. forall z, forall B, forall u, forall A, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+
+# 2: The power-set definition through subset notation
+## Proof that
+### then forall u, (In(u, PowerSet(A)) iff u subseteq A).
+
+1. Let A be any set. (Declaration)
+2. forall u, (In(u, PowerSet(A)) iff u subseteq A). (Definition of power set)
+
+# 3: A definition-derived disjunction supports proof by cases
+## Proof that
+### then P(x).
+
+1. Let A, B be any set, x be any object, and P be a unary predicate. (Declaration)
+2. In(x, Union(A, B)). (Premise)
+3. In(x, A) -> P(x). (Premise)
+4. In(x, B) -> P(x). (Premise)
+5. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+6. In(x, A) or In(x, B). (Set property from 5, 2)
+7. P(x). (Proof by Cases from 6, subproofs below)
+begin subproof
+ 7.1.case1. In(x, A). (Case)
+ 7.2.case1. P(x). (Modus Ponens from 3, 7.1.case1)
+end subproof
+begin subproof
+ 7.1.case2. In(x, B). (Case)
+ 7.2.case2. P(x). (Modus Ponens from 4, 7.1.case2)
+end subproof
+
+# 4: Invalid: an extra conjunct is not part of the definition
+## Invalid: extra conjunct — the cited line must be the defining biconditional itself.
+### then forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))) and a = a.
+
+1. Let A, B be any set. (Declaration)
+2. (forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B)))) and a = a. (Definition of union)
+
+# 5: Invalid: the subset-clause quantifier captures the element
+## Invalid: variable capture — the inner forall w binds the w that is meant to be the element of the power set.
+### then forall w, (In(w, PowerSet(A)) iff (forall w, (In(w, w) -> In(w, A)))).
+
+1. Let A be any set. (Declaration)
+2. forall w, (In(w, PowerSet(A)) iff (forall w, (In(w, w) -> In(w, A)))). (Definition of power set)
+
+# 6: Invalid: a definition cannot be cited with a line reference
+## Invalid: cited line — a definition is a zero-premise rule and takes no cited lines.
+### then forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))).
+
+1. Let A, B be any set. (Declaration)
+2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+3. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union from 2)
+
+# 7: Invalid: a defining rule is not a rule for an atom
+## Invalid: not a sentence — the cited line is a membership atom, not the definition's biconditional sentence.
+### then In(x, Union(A, B)).
+
+1. Let A, B be any set, and x be any object. (Declaration)
+2. In(x, Union(A, B)). (Definition of union)
+
+# 8: Invalid: the intersection sentence is not the union definition
+## Invalid: wrong operation — the definition of union does not define the members of intersection.
+### then forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B))).
+
+1. Let A, B be any set. (Declaration)
+2. forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B))). (Definition of union)
+
+# 9: A definition citation can be repeated with both set names exchanged
+## Proof that
+### then In(x, Union(B, A)) iff (In(x, B) or In(x, A)).
+
+1. Let A, B be any set, and x be any object. (Declaration)
+2. In(x, Union(A, B)) iff (In(x, A) or In(x, B)). (Definition of union)
+3. In(x, Union(B, A)) iff (In(x, B) or In(x, A)). (Mutatis mutandis, 2)
+
+# 10: WLOG replays a definition-derived case proof to the same conclusion
+## Proof that
+### then Q.
+
+1. Let A, B be any set, and a, x, y be any object, and Q be a closed formula. (Declaration)
+2. x is in A union B. (Premise)
+3. y is in A union B. (Premise)
+4. In(x, A) -> Q. (Premise)
+5. In(x, B) -> Q. (Premise)
+6. In(y, A) -> Q. (Premise)
+7. In(y, B) -> Q. (Premise)
+8. a = x or a = y. (Premise)
+9. a = x. (WLOG from 8)
+10. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+11. In(x, A) or In(x, B). (Set property from 10, 2)
+12. Q. (Proof by Cases from 11, subproofs below)
+begin subproof
+ 12.1.case1. In(x, A). (Case)
+ 12.2.case1. Q. (Modus Ponens from 4, 12.1.case1)
+end subproof
+begin subproof
+ 12.1.case2. In(x, B). (Case)
+ 12.2.case2. Q. (Modus Ponens from 5, 12.1.case2)
+end subproof
