@@ -159,7 +159,7 @@ def test_a_definition_cannot_be_cited_for_an_atom_or_for_a_cited_line():
         "(Definition of union from 2)\n"
     )
     assert cited.label == "3"
-    assert cited.category == pl.CATEGORY_BAD_REFERENCE
+    assert cited.category == pl.CATEGORY_ARITY_MISMATCH
     assert "takes no cited" in cited.detail
 
 
@@ -215,14 +215,16 @@ def test_a_theorem_using_a_definition_can_be_promoted_and_cited_later():
         "(Cyclic means generated)\n"
     )
     entries, _raw = pp.parse_proof_text(use, vocabulary, theorem_names=[theorem.name])
-    ok, error = pl.Proof(entries, rules=pl.default_rules() + [theorem]).check_detailed()
+    ok, error = pl.Proof(
+        entries, rules=pl.default_rules() + TOY.rules + [theorem]
+    ).check_detailed()
     assert ok, error
 
 
 def test_a_theorem_titled_like_a_definition_is_shadowed_when_cited():
     source = (
-        "1. Let A be any set. (Declaration)\\n"
-        "2. A = A. (Reflexivity)\\n"
+        "1. Let A be any set. (Declaration)\n"
+        "2. A = A. (Reflexivity)\n"
     )
     entries, _raw = pp.parse_proof_text(source, st.SET_THEORY_ENVIRONMENT)
     theorem_proof = pl.Proof(entries)
@@ -235,8 +237,8 @@ def test_a_theorem_titled_like_a_definition_is_shadowed_when_cited():
     )
 
     use = (
-        "1. Let A be any set. (Declaration)\\n"
-        "2. A = A. (Definition of union)\\n"
+        "1. Let A be any set. (Declaration)\n"
+        "2. A = A. (Definition of union)\n"
     )
     entries, _raw = pp.parse_proof_text(
         use,
@@ -292,12 +294,13 @@ def test_mutatis_refuses_a_name_replaced_by_a_term_containing_a_bound_name():
 
 
 def test_mutatis_replays_a_range_containing_a_definition_citation():
-    text = """1. Let A, B be any set, and x be any object. (Declaration)
+    text = """1. Let A, B be any set, and x be any object.
 2. x is in A union B. (Premise)
 3. x is in B union A. (Premise)
-4. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
-5. In(x, A) or In(x, B). (Set property from 4, 2)
-6. In(x, B) or In(x, A). (Mutatis mutandis, 4 to 5)
+4. forall u, (In(u, Union(B, A)) iff (In(u, B) or In(u, A))). (Definition of union)
+5. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+6. In(x, A) or In(x, B). (Set property from 5, 2)
+7. In(x, B) or In(x, A). (Mutatis mutandis, 5 to 6)
 """
     _entries, (ok, error) = _check(text)
     assert ok, error
@@ -500,7 +503,7 @@ def test_an_existence_claim_derived_only_inside_a_subproof_is_not_top_level_evid
         "Let Union be an object.",
         "Let Union be a constant.",
         "Let Union be a unary function.",
-        "Let Union be a binary relation.",
+        "Let A be any set, Union be a binary relation on A.",
     ],
 )
 def test_a_defined_symbol_cannot_be_redeclared_with_another_kind(declaration):
@@ -553,7 +556,9 @@ def test_existence_claim_for_an_unbounded_property_exposes_the_full_unique_set_c
 
     assert claim is not None
     assert df.show(claim) == "exists Y, forall y, (Y = y iff In(y, y))"
-    assert definition.parameters == ("x",)
+    # x is an argument to the defined symbol, but the defining property
+    # does not depend on x; the existence claim therefore has no parameters.
+    assert definition.parameters == ()
     assert definition.evidence.problem(definition, st.SET_THEORY_ENVIRONMENT) is not None
 
 
@@ -580,8 +585,8 @@ def test_a_definition_that_uses_its_own_symbol_in_the_definiens_is_refused_when_
         df.Definition(
             title="Definition of recursive choice",
             symbol="RecursiveChoice",
-            variables=("x",),
-            definiendum=fl.Equals(fn("RecursiveChoice", v("x")), v("x")),
+            variables=("x", "y"),
+            definiendum=fl.Equals(fn("RecursiveChoice", v("x")), v("y")),
             definiens=atom("P", fn("RecursiveChoice", v("x"))),
             evidence=df.ByProof(""),
         )
@@ -615,7 +620,7 @@ def test_definition_red_team_fixture_has_grounded_conclusions_and_expected_resul
     expected = {
         "4": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
         "5": ("2", pl.CATEGORY_RULE_MISMATCH, "power set"),
-        "6": ("3", pl.CATEGORY_BAD_REFERENCE, "cited"),
+        "6": ("3", pl.CATEGORY_ARITY_MISMATCH, "takes no cited"),
         "7": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
         "8": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
     }
