@@ -211,13 +211,17 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
         symbol, arguments = applied
         return tl.FunctionTerm(symbol, pp._parse_arg_list(arguments, bound_vars))
 
-    # The power-set operand is a term, not just a bare identifier.
+    # The power-set and English union/intersection phrases are set terms.
     power_match = re.fullmatch(r"(?:the\s+)?power\s+set\s+of\s+(.+)", s, flags=re.I)
     if power_match:
         operand = try_parse_set_term(power_match.group(1).strip(), bound_vars)
         if operand is None:
             return None
         return tl.FunctionTerm("PowerSet", [operand])
+
+    english_operation = _parse_english_set_operation_term(s, bound_vars)
+    if english_operation is not None:
+        return english_operation
 
     # Split only at top level. One repeated operator associates to the left;
     # mixed operators have no precedence and cross remains binary.
@@ -623,15 +627,25 @@ _CONTAINS_EXACTLY_CANDIDATE = re.compile(
 
 
 _SET_OPERATION_NAME = _NAME
+
+# One declarative table defines the supported membership wordings. The final
+# field records whether the set term is written before or after the element.
+_MEMBERSHIP_PHRASES = (
+    ("is not an element of", False, "element-set"),
+    ("is an element of", True, "element-set"),
+    ("is not a member of", False, "element-set"),
+    ("is a member of", True, "element-set"),
+    ("does not belong to", False, "element-set"),
+    ("belongs to", True, "element-set"),
+    ("does not contain", False, "set-element"),
+    ("contains", True, "set-element"),
+    ("is not in", False, "element-set"),
+    ("is in", True, "element-set"),
+)
+
 _SET_OPERATION_SPAN_PATTERNS = tuple(
     re.compile(pattern, re.I)
     for pattern in (
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+in\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+{_SET_OPERATION_NAME}\s+union\s+{_SET_OPERATION_NAME}(?![\w.])",
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+belongs\s+to\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+not\s+in\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+union\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
-        rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+the\s+intersection\s+of\s+{_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}(?![\w.])",
         rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+not\s+disjoint(?![\w.])",
         rf"(?<![\w.]){_SET_OPERATION_NAME}\s+and\s+{_SET_OPERATION_NAME}\s+are\s+disjoint(?![\w.])",
         rf"(?<![\w.]){_SET_OPERATION_NAME}\s+is\s+disjoint\s+from\s+{_SET_OPERATION_NAME}(?![\w.])",
@@ -641,94 +655,139 @@ _SET_OPERATION_SPAN_PATTERNS = tuple(
 )
 
 
+def _split_top_level_keyword(text: str, keyword: str) -> Optional[Tuple[str, str]]:
+    """Split once on a standalone keyword outside parentheses."""
+    depth = 0
+    found = None
+    index = 0
+    lowered = text.lower()
+    needle = keyword.lower()
+    while index <= len(text) - len(needle):
+        char = text[index]
+        if char == "(":
+            depth += 1
+            index += 1
+            continue
+        if char == ")":
+            depth -= 1
+            if depth < 0:
+                return None
+            index += 1
+            continue
+        end = index + len(needle)
+        if (
+            depth == 0
+            and lowered[index:end] == needle
+            and index > 0
+            and end < len(text)
+            and text[index - 1].isspace()
+            and text[end].isspace()
+        ):
+            if found is not None:
+                return None
+            found = (index, end)
+            index = end
+            continue
+        index += 1
+    if depth or found is None:
+        return None
+    start, end = found
+    left, right = text[:start].strip(), text[end:].strip()
+    return (left, right) if left and right else None
+
+
+def _is_english_set_operand(text: str, bound_vars: set) -> bool:
+    """J37's English operation terms take a name or parenthesized set term."""
+    candidate = text.strip()
+    if not (
+        re.fullmatch(_SET_OPERATION_NAME, candidate)
+        or _has_outer_set_term_parentheses(candidate)
+    ):
+        return False
+    return try_parse_set_term(candidate, bound_vars) is not None
+
+
+def _parse_english_set_operation_term(text: str, bound_vars: set) -> Optional[tl.Term]:
+    """Parse the union/intersection of X and Y as an ordinary set term."""
+    match = re.fullmatch(r"the\s+(union|intersection)\s+of\s+(.+)", text.strip(), flags=re.I)
+    if match is None:
+        return None
+    operation, operands_text = match.groups()
+    operands = _split_top_level_keyword(operands_text, "and")
+    if operands is None:
+        return None
+    left_text, right_text = operands
+    if not (
+        _is_english_set_operand(left_text, bound_vars)
+        and _is_english_set_operand(right_text, bound_vars)
+    ):
+        return None
+    symbol = "Union" if operation.lower() == "union" else "Intersection"
+    return tl.FunctionTerm(
+        symbol,
+        [try_parse_set_term(left_text, bound_vars), try_parse_set_term(right_text, bound_vars)],
+    )
+
+
+def _parse_membership_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Read registered membership wordings as In(element, set) or its negation."""
+    for wording, positive, order in _MEMBERSHIP_PHRASES:
+        match = re.fullmatch(rf"(.+?)\s+{re.escape(wording)}\s+(.+)", text, flags=re.I)
+        if match is None:
+            continue
+        first_text, second_text = match.groups()
+        first_term = try_parse_set_term(first_text.strip(), bound_vars)
+        second_term = try_parse_set_term(second_text.strip(), bound_vars)
+        if first_term is None or second_term is None:
+            continue
+        element, set_term = (
+            (first_term, second_term) if order == "element-set" else (second_term, first_term)
+        )
+        membership = membership_formula(element, set_term)
+        return membership if positive else fl.Not(membership)
+    return None
+
+
+def _parse_set_subset_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
+    """Read set-in and set-contains as subset notation, not membership."""
+    match = re.fullmatch(r"(.+?)\s+(not\s+)?set-(in|contains)\s+(.+)", text, flags=re.I)
+    if match is None:
+        return None
+    left_text, negated, relation, right_text = match.groups()
+    left = try_parse_set_term(left_text.strip(), bound_vars)
+    right = try_parse_set_term(right_text.strip(), bound_vars)
+    if left is None or right is None:
+        return None
+    subset = subset_formula(left, right) if relation.lower() == "in" else subset_formula(right, left)
+    return fl.Not(subset) if negated else subset
+
+
 def _parse_set_operation_phrase(text: str, bound_vars: set) -> Optional[fl.Formula]:
-    """Read union/intersection/disjointness wording as ordinary first-order logic."""
+    """Read set membership, subset, identity, and disjointness phrases."""
     s = re.sub(r"\s+", " ", text.strip().rstrip(".")).strip()
+
+    membership = _parse_membership_phrase(s, bound_vars)
+    if membership is not None:
+        return membership
+
+    subset = _parse_set_subset_phrase(s, bound_vars)
+    if subset is not None:
+        return subset
 
     def term(name: str) -> Optional[tl.Term]:
         return try_parse_set_term(name, bound_vars)
 
-    # Membership in the union/intersection: explicit English forms are phrases
-    # because their internal "and" is not a logical connective.
+    # Identity wording equates the target with the corresponding operation term.
     match = re.fullmatch(
-        rf"({_SET_OPERATION_NAME})\s+is\s+in\s+the\s+union\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
+        r"(.+?)\s+is\s+the\s+(union|intersection)\s+of\s+(.+)",
         s, flags=re.I,
     )
     if match:
-        element, left, right = match.groups()
-        element_term, left_term, right_term = term(element), term(left), term(right)
-        if None not in (element_term, left_term, right_term):
-            return fl.Or(
-                membership_formula(element_term, left_term),
-                membership_formula(element_term, right_term),
-            )
-
-    match = re.fullmatch(
-        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+({_SET_OPERATION_NAME})\s+union\s+({_SET_OPERATION_NAME})",
-        s, flags=re.I,
-    )
-    if match:
-        element, left, right = match.groups()
-        element_term, left_term, right_term = term(element), term(left), term(right)
-        if None not in (element_term, left_term, right_term):
-            return fl.Or(
-                membership_formula(element_term, left_term),
-                membership_formula(element_term, right_term),
-            )
-
-    match = re.fullmatch(
-        rf"({_SET_OPERATION_NAME})\s+belongs\s+to\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
-        s, flags=re.I,
-    )
-    if match:
-        element, left, right = match.groups()
-        element_term, left_term, right_term = term(element), term(left), term(right)
-        if None not in (element_term, left_term, right_term):
-            return fl.And(
-                membership_formula(element_term, left_term),
-                membership_formula(element_term, right_term),
-            )
-
-    match = re.fullmatch(
-        rf"({_SET_OPERATION_NAME})\s+is\s+not\s+in\s+the\s+intersection\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
-        s, flags=re.I,
-    )
-    if match:
-        element, left, right = match.groups()
-        element_term, left_term, right_term = term(element), term(left), term(right)
-        if None not in (element_term, left_term, right_term):
-            return fl.Not(fl.And(
-                membership_formula(element_term, left_term),
-                membership_formula(element_term, right_term),
-            ))
-
-    # "A is the union/intersection of B and C" characterizes A by membership.
-    match = re.fullmatch(
-        rf"({_SET_OPERATION_NAME})\s+is\s+the\s+(union|intersection)\s+of\s+({_SET_OPERATION_NAME})\s+and\s+({_SET_OPERATION_NAME})",
-        s, flags=re.I,
-    )
-    if match:
-        target, operation, left, right = match.groups()
-        target_term, left_term, right_term = term(target), term(left), term(right)
-        if None not in (target_term, left_term, right_term):
-            used = set(bound_vars or ())
-            for candidate in (target_term, left_term, right_term):
-                used |= fl.term_names(candidate)
-            element_name = _fresh_generated_variable_name(
-                used, "__set_operation_element", _ELEMENT_NAME_CANDIDATES
-            )
-            element = tl.VariableTerm(element_name)
-            rhs = fl.Or if operation.lower() == "union" else fl.And
-            return fl.ForAll(
-                element_name,
-                fl.Iff(
-                    membership_formula(element, target_term),
-                    rhs(
-                        membership_formula(element, left_term),
-                        membership_formula(element, right_term),
-                    ),
-                ),
-            )
+        target_text, operation, operands_text = match.groups()
+        target_term = term(target_text)
+        operation_term = term(f"the {operation} of {operands_text}")
+        if target_term is not None and operation_term is not None:
+            return fl.Equals(target_term, operation_term)
 
     # Disjointness is universal non-overlap; its negation is witnessed overlap.
     match = re.fullmatch(
@@ -829,14 +888,101 @@ def _parse_set_operation_phrase(text: str, bound_vars: set) -> Optional[fl.Formu
     return None
 
 
+def _consume_simple_set_operand(text: str, start: int) -> Optional[int]:
+    """Return the end of a name, parenthesized term, or simple function term."""
+    while start < len(text) and text[start].isspace():
+        start += 1
+    if start >= len(text):
+        return None
+    if text[start] == "(":
+        depth = 0
+        for index in range(start, len(text)):
+            if text[index] == "(":
+                depth += 1
+            elif text[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    return index + 1
+                if depth < 0:
+                    return None
+        return None
+
+    name = re.match(_SET_OPERATION_NAME, text[start:])
+    if name is None:
+        return None
+    end = start + len(name.group(0))
+    after_name = end
+    while after_name < len(text) and text[after_name].isspace():
+        after_name += 1
+    if after_name < len(text) and text[after_name] == "(":
+        depth = 0
+        for index in range(after_name, len(text)):
+            if text[index] == "(":
+                depth += 1
+            elif text[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    return index + 1
+                if depth < 0:
+                    return None
+        return None
+    return end
+
+
+def _english_operation_term_spans(text: str) -> List[Tuple[int, int]]:
+    """Find English union/intersection terms so their internal and is protected."""
+    spans = []
+    opener = re.compile(r"\bthe\s+(?:union|intersection)\s+of\s+", re.I)
+    for match in opener.finditer(text):
+        operands_start = match.end()
+        depth = 0
+        index = operands_start
+        while index < len(text):
+            char = text[index]
+            if char == "(":
+                depth += 1
+                index += 1
+                continue
+            if char == ")":
+                depth -= 1
+                index += 1
+                continue
+            if (
+                depth == 0
+                and text[index:index + 3].lower() == "and"
+                and index > operands_start
+                and index + 3 < len(text)
+                and text[index - 1].isspace()
+                and text[index + 3].isspace()
+            ):
+                left_text = text[operands_start:index].strip()
+                right_start = index + 3
+                right_end = _consume_simple_set_operand(text, right_start)
+                if right_end is not None:
+                    right_text = text[right_start:right_end].strip()
+                    operation_text = text[match.start():right_end]
+                    if (
+                        _is_english_set_operand(left_text, set())
+                        and _is_english_set_operand(right_text, set())
+                        and try_parse_set_term(operation_text, set()) is not None
+                    ):
+                        spans.append((match.start(), right_end))
+                        break
+                index += 3
+                continue
+            index += 1
+    return spans
+
+
 def find_set_operation_spans(text: str) -> List[Tuple[int, int]]:
-    """Protect set-operation phrases containing connective-looking words."""
+    """Protect connective-looking words inside set-operation phrases and terms."""
     spans = []
     for pattern in _SET_OPERATION_SPAN_PATTERNS:
         for match in pattern.finditer(text):
             if _parse_set_operation_phrase(match.group(0), set()) is not None:
                 spans.append(match.span())
-    return spans
+    spans.extend(_english_operation_term_spans(text))
+    return sorted(set(spans))
 
 
 def find_phrase_spans(text: str) -> List[Tuple[int, int]]:
