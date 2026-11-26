@@ -96,6 +96,11 @@ def test_every_membership_wording_uses_the_membership_atom_for_every_set_term():
                 _assert_formula(surface, expected)
 
 
+def test_parenthesized_nested_set_terms_are_valid_english_operands():
+    assert st.try_parse_set_term("(B union C)") == fn("Union", c("B"), c("C"))
+    assert st.try_parse_set_term("(C union D)") == fn("Union", c("C"), c("D"))
+
+
 @pytest.mark.parametrize(
     "surface,expected",
     [
