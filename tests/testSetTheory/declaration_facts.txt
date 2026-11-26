@@ -1,0 +1,72 @@
+(J46 declaration facts: nonempty sets, families of subsets, and plural finite/infinite sets.
+Each declaration states only the ordinary formula that its words express.
+The invalid controls keep the same symbol names in scope but change the requested
+fact, so a proof cannot obtain a fact for another set or a stronger property.)
+
+Use set theory.
+
+# 1: A nonempty set has a member
+## Proof that
+### then exists u, In(u, A).
+
+1. Let A be a nonempty set. (Declaration)
+2. Let u be such an object. (Existence from 1)
+3. exists u, In(u, A). (Existential Introduction from 2)
+
+# 2: A member of a family of subsets is a subset of the carrier
+## Proof that
+### then T subseteq A.
+
+1. Let A be any set, F be a family of subsets of A, T be any set. (Declaration)
+2. In(T, F). (Premise)
+3. In(T, F) -> T subseteq A. (Universal Instantiation from 1)
+4. T subseteq A. (Modus Ponens from 3, 2)
+
+# 3: Each set in a plural finite declaration is finite
+## Proof that
+### then Finite(B).
+
+1. Let A, B be finite sets. (Declaration)
+2. Finite(B). (Reiteration from 1)
+
+# 4: Each set in a plural infinite declaration is infinite
+## Proof that
+### then Infinite(B).
+
+1. Let A and B be infinite sets. (Declaration)
+2. Infinite(B). (Reiteration from 1)
+
+# 5: Each set in a plural finite-cardinality declaration has that cardinality
+## Proof that
+### then Cardinality(B, 3).
+
+1. Let A, B be finite sets of cardinality 3. (Declaration)
+2. Cardinality(B, 3). (Reiteration from 1)
+
+# 6: Nonemptiness is not transferred to a different set
+## Invalid: wrong set — A is nonempty, but B is only declared to be a set.
+### then exists u, In(u, B).
+
+1. Let A be a nonempty set, B be a set. (Declaration)
+2. exists u, In(u, B). (Reiteration from 1)
+
+# 7: A set declaration does not imply nonemptiness
+## Invalid: no existential fact — declaring A to be a set states no membership existential.
+### then exists u, In(u, A).
+
+1. Let A be a set. (Declaration)
+2. exists u, In(u, A). (Reiteration from 1)
+
+# 8: Finiteness is not transferred to a different set
+## Invalid: wrong set — A is finite, but B is only declared to be a set.
+### then Finite(B).
+
+1. Let A be a finite set, B be a set. (Declaration)
+2. Finite(B). (Reiteration from 1)
+
+# 9: A family of subsets is not itself necessarily a subset of its carrier
+## Invalid: family is not a member — the declaration constrains members of F, not F itself.
+### then F subseteq A.
+
+1. Let A, B be any sets, F be a family of subsets of A. (Declaration)
+2. F subseteq A. (Reiteration from 1)
