@@ -214,11 +214,11 @@ def test_each_negative_declaration_facts_proof_is_refused(number):
 
 
 def test_nonempty_declaration_does_not_transfer_to_another_set():
-    ok, error = pp.parse_proof_text(
+    entries, _raw = pp.parse_proof_text(
         "1. Let A be a nonempty set, B be a set. (Declaration)\\n"
         "2. exists u, In(u, B). (Reiteration from 1)\\n"
     )
-    result, detail = pl.Proof(ok).check_detailed()
-    assert not result
-    assert detail.label == "2"
-    assert detail.category == pl.CATEGORY_RULE_MISMATCH
+    ok, error = pl.Proof(entries).check_detailed()
+    assert not ok
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
