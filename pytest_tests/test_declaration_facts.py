@@ -38,8 +38,8 @@ def facts_of(text, line=0):
     return value if isinstance(value, list) else [value]
 
 
-def assert_facts(text, expected):
-    actual = facts_of(text)
+def assert_facts(text, expected, line=0):
+    actual = facts_of(text, line)
     assert len(actual) == len(expected)
     assert all(pl._ast_eq(left, right) for left, right in zip(actual, expected)), [
         repr(formula) for formula in actual
@@ -241,6 +241,7 @@ def test_a_family_declared_after_its_carrier_can_use_that_carrier():
         "1. Let A be any set. (Declaration)\n"
         "2. Let F be a family of subsets of A. (Declaration)\n",
         [family_formula("F", "A")],
+        line=1,
     )
 
 
