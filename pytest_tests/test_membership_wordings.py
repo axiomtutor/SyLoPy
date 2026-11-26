@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from SyLoPy.source import validate_all_proofs as validator
+
 from .support import atom, c, fl, fn, pl, pp, st, v
 
 
@@ -170,7 +172,7 @@ def test_membership_wordings_fixture_has_grounded_conclusions_and_expected_resul
     project = Path(__file__).resolve().parents[1]
     fixture = project / "tests" / "testSetTheory" / "membership_wordings.txt"
     source = fixture.read_text()
-    cases = mp.parse_multi_proof_file(source)
+    cases = validator.parse_multi_proof_file(source)
     assert len(cases) == 5
     assert all(case.stated_conclusion is not None for case in cases)
 
