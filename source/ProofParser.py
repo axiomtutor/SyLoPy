@@ -1724,9 +1724,43 @@ def _base_line_elaborators():
     )
 
 
+def _carries_base_syntax(environment: TheoryEnvironment, base_elaborators) -> bool:
+    """Does `environment` already hold what `_with_base_line_elaborators` adds?
+
+    It does when the base line elaborators come first, the base equality phrase
+    parser comes first, and every base notation symbol reads as the base table
+    says; adding them again would change nothing.
+    """
+    elaborators = environment.line_elaborators
+    count = len(base_elaborators)
+    if len(elaborators) < count or any(
+        elaborators[index] is not base_elaborators[index] for index in range(count)
+    ):
+        return False
+    if any(item in base_elaborators for item in elaborators[count:]):
+        return False
+    phrase_parsers = environment.phrase_parsers
+    if not phrase_parsers or phrase_parsers[0] is not _parse_base_equality_phrase:
+        return False
+    if any(item is _parse_base_equality_phrase for item in phrase_parsers[1:]):
+        return False
+    table = environment.notation_table
+    return all(
+        table.get(symbol) == reading
+        for symbol, reading in _BASE_LOGICAL_NOTATION_TABLE.items()
+    )
+
+
 def _with_base_line_elaborators(environment: TheoryEnvironment) -> TheoryEnvironment:
-    """Add base proof syntax to an explicitly selected theory without mutation."""
+    """Add base proof syntax to an explicitly selected theory without mutation.
+
+    An environment that already carries the base syntax is returned as it is:
+    adding it again would produce an equal environment, and the recursive
+    formula parsers re-enter here with the environment they were given.
+    """
     base_elaborators = _base_line_elaborators()
+    if _carries_base_syntax(environment, base_elaborators):
+        return environment
     base_environment = TheoryEnvironment(
         name="base logic",
         notation_table=_BASE_LOGICAL_NOTATION_TABLE,

@@ -21,6 +21,15 @@ def rewrite_formula_symbols(text: str, notation_table: Mapping[str, str]) -> str
     if not isinstance(text, str):
         raise TypeError("formula text must be a string")
 
+    present = []
+    for symbol, reading in notation_table.items():
+        if not symbol or not reading:
+            raise ValueError("notation symbols and readings must be nonempty")
+        if symbol in text:
+            present.append(symbol)
+    if not present and "∀" not in text and "∃" not in text:
+        return text.strip()
+
     for quantifier in re.finditer(r"[∀∃]", text):
         remainder = text[quantifier.end():]
         if re.match(r"\s*[A-Za-z_][A-Za-z0-9_]*", remainder) is None:
