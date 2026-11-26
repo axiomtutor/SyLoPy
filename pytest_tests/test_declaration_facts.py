@@ -208,21 +208,88 @@ def test_each_negative_declaration_facts_proof_is_refused(number):
     assert error.label == "2", error
     if number == "7":
         assert error.category == pl.CATEGORY_BAD_REFERENCE, error
-    else:
-        assert error.category == pl.CATEGORY_RULE_MISMATCH, error
-        assert "does not justify" in error.detail, error
+        assert error.detail == (
+            "cites ['1'], which is not defined or not in scope at this point in the proof"
+        )
+        return
+
+    expected_targets = {
+        "6": nonempty_formula("B"),
+        "8": fl.AtomicFormula("Finite", [c("B")]),
+        "9": st.subset_formula(c("F"), c("A")),
+    }
+    assert error.category == pl.CATEGORY_RULE_MISMATCH, error
+    expected_prefix = (
+        f"'Reiteration' does not justify {expected_targets[number]!r} "
+        "from the cited line(s) ['1']"
+    )
+    assert error.detail.startswith(expected_prefix), error.detail
 
 
 def test_nonempty_declaration_does_not_transfer_to_another_set():
-    entries, _raw = pp.parse_proof_text(
+    invalid_entries, _raw = pp.parse_proof_text(
         "1. Let A be a nonempty set, B be a set. (Declaration)\n"
         "2. exists u, In(u, B). (Reiteration from 1)\n"
     )
-    ok, error = pl.Proof(entries).check_detailed()
+    ok, error = pl.Proof(invalid_entries).check_detailed()
     assert not ok
     assert error.label == "2"
     assert error.category == pl.CATEGORY_RULE_MISMATCH
+    expected = f"'Reiteration' does not justify {nonempty_formula('B')!r} from the cited line(s) ['1']"
+    assert error.detail.startswith(expected), error.detail
 
+    valid_entries, _raw = pp.parse_proof_text(
+        "1. Let A be a nonempty set, B be a nonempty set. (Declaration)\n"
+        "2. exists u, In(u, B). (Reiteration from 1)\n"
+    )
+    valid, valid_error = pl.Proof(valid_entries).check_detailed()
+    assert valid, valid_error
+
+
+def test_finiteness_does_not_transfer_to_another_set_but_is_reiterable_for_its_set():
+    invalid_entries, _raw = pp.parse_proof_text(
+        "1. Let A be a finite set, B be a set. (Declaration)\n"
+        "2. Finite(B). (Reiteration from 1)\n"
+    )
+    invalid, error = pl.Proof(invalid_entries).check_detailed()
+    assert not invalid
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    expected = repr(fl.AtomicFormula("Finite", [c("B")]))
+    assert error.detail.startswith(
+        f"'Reiteration' does not justify {expected} from the cited line(s) ['1']"
+    ), error.detail
+
+    valid_entries, _raw = pp.parse_proof_text(
+        "1. Let A be a finite set, B be a finite set. (Declaration)\n"
+        "2. Finite(B). (Reiteration from 1)\n"
+    )
+    valid, valid_error = pl.Proof(valid_entries).check_detailed()
+    assert valid, valid_error
+
+
+def test_family_declaration_reiterates_member_constraint_but_not_carrier_inclusion():
+    declaration = (
+        "1. Let A, B be any sets, F be a family of subsets of A. (Declaration)\n"
+    )
+    invalid_entries, _raw = pp.parse_proof_text(
+        declaration + "2. F subseteq A. (Reiteration from 1)\n"
+    )
+    invalid, error = pl.Proof(invalid_entries).check_detailed()
+    assert not invalid
+    assert error.label == "2"
+    assert error.category == pl.CATEGORY_RULE_MISMATCH
+    expected = repr(st.subset_formula(c("F"), c("A")))
+    assert error.detail.startswith(
+        f"'Reiteration' does not justify {expected} from the cited line(s) ['1']"
+    ), error.detail
+
+    valid_entries, _raw = pp.parse_proof_text(
+        declaration
+        + "2. forall S, (In(S, F) -> S subseteq A). (Reiteration from 1)\n"
+    )
+    valid, valid_error = pl.Proof(valid_entries).check_detailed()
+    assert valid, valid_error
 
 
 def test_family_carrier_must_be_declared_before_the_family():
