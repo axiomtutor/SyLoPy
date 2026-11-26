@@ -248,8 +248,8 @@ def test_nonempty_declaration_does_not_transfer_to_another_set():
 
 def test_finiteness_does_not_transfer_to_another_set_but_is_reiterable_for_its_set():
     invalid_entries, _raw = pp.parse_proof_text(
-        "1. Let A be a finite set, B be a set. (Declaration)\\n"
-        "2. Finite(B). (Reiteration from 1)\\n"
+        "1. Let A be a finite set, B be a set. (Declaration)\n"
+        "2. Finite(B). (Reiteration from 1)\n"
     )
     invalid, error = pl.Proof(invalid_entries).check_detailed()
     assert not invalid
@@ -261,8 +261,8 @@ def test_finiteness_does_not_transfer_to_another_set_but_is_reiterable_for_its_s
     ), error.detail
 
     valid_entries, _raw = pp.parse_proof_text(
-        "1. Let A be a finite set, B be a finite set. (Declaration)\\n"
-        "2. Finite(B). (Reiteration from 1)\\n"
+        "1. Let A be a finite set, B be a finite set. (Declaration)\n"
+        "2. Finite(B). (Reiteration from 1)\n"
     )
     valid, valid_error = pl.Proof(valid_entries).check_detailed()
     assert valid, valid_error
@@ -270,10 +270,10 @@ def test_finiteness_does_not_transfer_to_another_set_but_is_reiterable_for_its_s
 
 def test_family_declaration_reiterates_member_constraint_but_not_carrier_inclusion():
     declaration = (
-        "1. Let A, B be any sets, F be a family of subsets of A. (Declaration)\\n"
+        "1. Let A, B be any sets, F be a family of subsets of A. (Declaration)\n"
     )
     invalid_entries, _raw = pp.parse_proof_text(
-        declaration + "2. F subseteq A. (Reiteration from 1)\\n"
+        declaration + "2. F subseteq A. (Reiteration from 1)\n"
     )
     invalid, error = pl.Proof(invalid_entries).check_detailed()
     assert not invalid
@@ -286,7 +286,7 @@ def test_family_declaration_reiterates_member_constraint_but_not_carrier_inclusi
 
     valid_entries, _raw = pp.parse_proof_text(
         declaration
-        + "2. forall S, (In(S, F) -> S subseteq A). (Reiteration from 1)\\n"
+        + "2. forall S, (In(S, F) -> S subseteq A). (Reiteration from 1)\n"
     )
     valid, valid_error = pl.Proof(valid_entries).check_detailed()
     assert valid, valid_error
