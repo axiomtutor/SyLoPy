@@ -101,6 +101,18 @@ def test_parenthesized_nested_set_terms_are_valid_english_operands():
     assert st.try_parse_set_term("(C union D)") == fn("Union", c("C"), c("D"))
 
 
+def test_english_intersection_operands_split_and_validate_with_parentheses():
+    assert st._split_top_level_keyword("A and (B union C)", "and") == (
+        "A",
+        "(B union C)",
+    )
+    assert st._split_top_level_keyword(
+        "(A union B) and (C union D)", "and"
+    ) == ("(A union B)", "(C union D)")
+    assert st._is_english_set_operand("(B union C)", set())
+    assert st._is_english_set_operand("(A union B)", set())
+
+
 @pytest.mark.parametrize(
     "surface,expected",
     [
