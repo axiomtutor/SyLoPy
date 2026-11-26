@@ -205,9 +205,8 @@ def _try_parse_set_term_impl(text: str, bound_vars: Optional[set] = None) -> Opt
 
     # English union/intersection phrases must be recognized before the
     # generic applied-symbol parser can read "of" as a function name.
-    english_operation = _parse_english_set_operation_term(s, bound_vars)
-    if english_operation is not None:
-        return english_operation
+    if re.match(r"^the\s+(?:union|intersection)\s+of\b", s, flags=re.I):
+        return _parse_english_set_operation_term(s, bound_vars)
 
     # Reuse the ordinary function-application parser; it recursively parses
     # every argument with the theory's active term parsers.
@@ -981,6 +980,22 @@ def _english_operation_term_spans(text: str) -> List[Tuple[int, int]]:
                         and try_parse_set_term(operation_text, set()) is not None
                     ):
                         spans.append((match.start(), right_end))
+                        # In an identity phrase, protect the whole equation,
+                        # not only its right-hand term, so the identity parser
+                        # receives the phrase intact inside a larger formula.
+                        prefix = text[:match.start()]
+                        identity = re.search(
+                            rf"(?<![\w.])({_SET_OPERATION_NAME}|\([^()]*\))\s+is\s+$",
+                            prefix,
+                            flags=re.I,
+                        )
+                        if identity is not None:
+                            try:
+                                target = try_parse_set_term(identity.group(1), set())
+                            except ValueError:
+                                target = None
+                            if target is not None:
+                                spans.append((identity.start(), right_end))
                         break
                 index += 3
                 continue
