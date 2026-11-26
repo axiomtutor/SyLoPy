@@ -1,0 +1,22 @@
+name: Extended tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    name: Extended test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      # The checkout uses the branch selected in the Actions "Run workflow" menu.
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: python3 -m pip install -r requirements-test.txt
+
+      - name: Run extended tests
+        run: ./run_tests.sh --suite extended
