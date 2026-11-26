@@ -6030,7 +6030,12 @@ class Proof:
         self.axioms_closed = bool(self.axioms) or bool(getattr(entries, 'axioms_closed', False))
 
         self.rules = list(rules if rules is not None else default_rules())
+        # A rule is always the same configuration as itself, so the very
+        # object already registered needs no comparison with every other rule.
+        registered_ids = {id(rule) for rule in self.rules}
         for rule in required_rules:
+            if id(rule) in registered_ids:
+                continue
             # Merge by configuration (see `InferenceRule.same_configuration`),
             # the test that authorizes a citation: a required rule that is
             # only the same *kind* of rule as one the caller supplied -- a
@@ -6038,6 +6043,7 @@ class Proof:
             # different rule and must not be dropped for it.
             if not _rule_among(rule, self.rules):
                 self.rules.append(rule)
+                registered_ids.add(id(rule))
 
         self.declarations = list(declarations or [])
         by_name = {declaration.name: declaration for declaration in self.declarations}
