@@ -8,6 +8,8 @@ Every agent posts to GitHub through the owner's account, so every comment shows 
 
 ## The short version (for ChatGPT)
 
+**Feedback.** Before each task, read `CHATGPT_FEEDBACK.md`: it is where Claude records, from its reviews, the parameters ChatGPT should follow. At the end of each task, ask Claude for feedback in a comment that starts `@claude feedback request`; Claude answers on the pull request and adds a dated entry to that file. (The owner's instruction of 2026-11-25; the owner does not give this feedback himself.)
+
 You cannot run code. CI is your test run, and Claude runs the checks CI cannot (comparing old and new behavior, mutating the code to see whether your tests notice). So write code that is easy to check, and say exactly what you checked. (If you ever can run code, say so in the PR and report what you ran; the rules below still apply.)
 
 1. **Do the job as written.** Stay inside its allowed scope. If the job is wrong or unclear, say so in the PR; do not reinterpret it. A question about what a phrase or definition *means* belongs to the owner: ask one question, with your recommendation, and do not choose a reading yourself.
