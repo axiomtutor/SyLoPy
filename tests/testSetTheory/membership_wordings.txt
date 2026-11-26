@@ -1,0 +1,58 @@
+(* 
+J37 treats every membership wording as membership in the set term itself.
+The definitions of union and intersection, rather than the membership phrases,
+give the corresponding disjunction and conjunction.
+*)
+
+# 1: A is a subset of a union containing it
+## Proof that
+### forall u, (In(u, A) -> In(u, Union(A, B))).
+1. Let A, B be any set. (Declaration)
+2. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+3. A is a subset of the union of A and B. (Subset proof below)
+ 3.1. Let x be in A. (Assumption for subset proof)
+ 3.2. In(x, A) or In(x, B). (Disjunction Introduction from 3.1)
+ 3.3. x is in the union of A and B. (Set property from 2, 3.2)
+
+# 2: Membership in the union leads to a case split
+## Proof that
+### Q(x).
+1. Let A, B be any set, and x be any object. (Declaration)
+2. Let Q be a predicate. (Declaration)
+3. x is in the union of A and B. (Premise)
+4. In(x, A) -> Q(x). (Premise)
+5. In(x, B) -> Q(x). (Premise)
+6. forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))). (Definition of union)
+7. In(x, A) or In(x, B). (Set property from 6, 3)
+8. Q(x). (Proof by Cases from 7, subproofs below)
+ begin subproof
+  8.1. In(x, A). (Case)
+  8.2. Q(x). (Modus Ponens from 4, 8.1)
+ end subproof
+ begin subproof
+  8.1. In(x, B). (Case)
+  8.2. Q(x). (Modus Ponens from 5, 8.1)
+ end subproof
+
+# 3: Invalid: membership in a union does not expose the disjunction by itself
+## Invalid: the definition of union is needed to derive either disjunctive membership fact.
+### In(x, A) or In(x, B).
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in the union of A and B. (Premise)
+3. In(x, A) or In(x, B). (Set property from 2)
+
+# 4: Membership in the intersection gives both members, by its definition
+## Proof that
+### In(x, A).
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in the intersection of A and B. (Premise)
+3. forall u, (In(u, Intersection(A, B)) iff (In(u, A) and In(u, B))). (Definition of intersection)
+4. In(x, A) and In(x, B). (Set property from 3, 2)
+5. In(x, A). (Conjunction Elimination from 4)
+
+# 5: Invalid: membership in an intersection does not expose a conjunct by itself
+## Invalid: the definition of intersection is needed to derive either conjunct.
+### In(x, A).
+1. Let A, B be any set, and x be any object. (Declaration)
+2. x is in the intersection of A and B. (Premise)
+3. In(x, A). (Set property from 2)
