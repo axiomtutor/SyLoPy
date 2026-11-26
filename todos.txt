@@ -552,10 +552,12 @@ and collaboration handoff before starting.
    suites, declaration behavior and verification commands.
 (Numbers 5 to 7 are gone; the other items keep their numbers because other documents cite them.)
 8. **Set-operation definitions: what is left.**
-   (a) Membership phrases: `x belongs to A union B` and `x is in the union of A and
-   B` (and the intersection's) are still read as the disjunction or conjunction
-   itself. The owner wants every membership phrase, set displays included, to be a
-   membership atom, with the definitions as the step to the disjunction.
+   (a) Implemented in draft PR #198 (J37; pending review and merge): every
+   membership phrase reads as the membership atom (or its negation), including the
+   former union/intersection expansions and the contains/member/element-of variants.
+   The English union/intersection phrases are set terms; their definitions provide
+   the disjunction/conjunction. Identity phrases read as equations. The new set-in
+   and set-contains phrases are subset relations.
    (b) The ordered pair and the Cartesian product: the ordered pair is
    `{{a}, {a, b}}` in the backend with readable syntax for it, its property
    `(a, b) = (c, d) iff a = c and b = d` is a theorem, and the abstract `Pair` goes
