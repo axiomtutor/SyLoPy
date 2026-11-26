@@ -160,7 +160,10 @@ def test_a_definition_cannot_be_cited_for_an_atom_or_for_a_cited_line():
     )
     assert cited.label == "3"
     assert cited.category == pl.CATEGORY_ARITY_MISMATCH
-    assert "takes no cited" in cited.detail
+    assert cited.detail == (
+        "'Definition of union' requires at most 0 cited line label(s), "
+        "but 1 were given (['2'])"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +297,7 @@ def test_mutatis_refuses_a_name_replaced_by_a_term_containing_a_bound_name():
 
 
 def test_mutatis_replays_a_range_containing_a_definition_citation():
-    text = """1. Let A, B be any set, and x be any object.
+    text = """1. Let A, B be any set, and x be any object. (Declaration)
 2. x is in A union B. (Premise)
 3. x is in B union A. (Premise)
 4. forall u, (In(u, Union(B, A)) iff (In(u, B) or In(u, A))). (Definition of union)
@@ -416,14 +419,16 @@ def test_by_proof_evidence_cannot_cite_the_definition_it_is_evidence_for():
         DOUBLE,
         evidence=df.ByProof(
             DOUBLE_EXISTS
-            + "4. Double(n) = m iff m = Plus(n, n). (Definition of double)\n"
+            + "4. forall m, (Double(n) = m iff m = Plus(n, n)). (Definition of double)\n"
         ),
     )
     problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
 
     assert problem is not None
-    assert "Definition of double" in problem
-    assert "does not parse" in problem or "not a valid proof" in problem
+    assert problem == (
+        "the proof of existence is not a valid proof: "
+        "Line 4: no rule named 'Definition of double' is registered for this proof"
+    )
 
 
 def test_by_proof_rejects_an_unrelated_premise_even_when_the_claim_is_derived():
@@ -450,11 +455,16 @@ def test_a_declaration_that_adds_membership_is_an_evidence_hypothesis():
         "1. Let A be any set, n be in A. (Declaration)",
     )
     definition = replace(DOUBLE, evidence=df.ByProof(evidence))
-    problem = df.DefinitionRule(definition, toy_theory(definition)).evidence_problem()
+    environment = st.SET_THEORY_ENVIRONMENT.extended(toy_theory(definition))
+    entries, _raw = pp.parse_proof_text(evidence, environment)
+    assert [repr(phi) for phi in entries[0][1]] == ["In(n, A)"]
 
-    assert problem is not None
-    assert "takes" in problem and "for granted" in problem
-    assert "A" in problem and "n" in problem
+    problem = df.DefinitionRule(definition, environment).evidence_problem()
+
+    assert problem == (
+        "the proof of existence takes In(n, A) for granted; "
+        "it may name what it has shown to exist and assume nothing else"
+    )
 
 
 def test_a_witness_line_does_not_erase_the_existential_premise_used_to_name_it():
@@ -620,7 +630,7 @@ def test_definition_red_team_fixture_has_grounded_conclusions_and_expected_resul
     expected = {
         "4": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
         "5": ("2", pl.CATEGORY_RULE_MISMATCH, "power set"),
-        "6": ("3", pl.CATEGORY_ARITY_MISMATCH, "takes no cited"),
+        "6": ("3", pl.CATEGORY_ARITY_MISMATCH, "requires at most 0 cited line label(s)"),
         "7": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
         "8": ("2", pl.CATEGORY_RULE_MISMATCH, "not a biconditional"),
     }
