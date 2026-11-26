@@ -36,7 +36,11 @@ SET_TERMS = [
     ("A intersection B", fn("Intersection", c("A"), c("B"))),
     ("A cross B", fn("CartesianProduct", c("A"), c("B"))),
     ("the power set of A", fn("PowerSet", c("A"))),
+    ("the power set of (A union B)", fn("PowerSet", fn("Union", c("A"), c("B")))),
     ("the empty set", st.EMPTY_SET),
+    ("∅", st.EMPTY_SET),
+    ("pair(a, b)", fn("Pair", c("a"), c("b"))),
+    ("f(a, b)", fn("f", c("a"), c("b"))),
     ("the union of A and B", fn("Union", c("A"), c("B"))),
     ("the intersection of A and B", fn("Intersection", c("A"), c("B"))),
     ("the union of (A union B) and C",
@@ -111,6 +115,19 @@ def test_english_intersection_operands_split_and_validate_with_parentheses():
     ) == ("(A union B)", "(C union D)")
     assert st._is_english_set_operand("(B union C)", set())
     assert st._is_english_set_operand("(A union B)", set())
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A and (B union C",
+        "A and B)",
+        "(A union B and C",
+        "A and B and C",
+    ],
+)
+def test_top_level_keyword_split_rejects_unbalanced_or_ambiguous_input(text):
+    assert st._split_top_level_keyword(text, "and") is None
 
 
 @pytest.mark.parametrize(
