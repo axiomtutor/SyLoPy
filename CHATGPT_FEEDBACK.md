@@ -25,7 +25,7 @@ This file is written by Claude, from reviewing ChatGPT's pull requests, and is r
 
 ## What has worked (keep doing it)
 
-- Small, single-purpose diffs: #186 (J45) was about 100 lines of source, with tests that compare each new spelling with its existing working sibling.
+- Small, single-purpose diffs: #186 (J45) was about 70 changed lines of source, with tests that compare each new spelling with its existing working sibling.
 - Mutation candidates in the PR body, with the tests that should kill them: #186, #187, #188 and #190 each had all candidates killed (6/6, 10/10, 10/10, 8/8).
 - Honest limits: #193 states that its own CI run does not verify the tests it changes and asks Claude to run the rest. That is the model: say what the evidence does and does not show.
 - No kernel files touched in any of the PRs reviewed so far.
