@@ -41,7 +41,7 @@ end subproof
 ## Invalid: extra conjunct — the cited line must be the defining biconditional itself.
 ### then forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B))) and a = a.
 
-1. Let A, B be any set. (Declaration)
+1. Let A, B be any set, and a be any object. (Declaration)
 2. (forall u, (In(u, Union(A, B)) iff (In(u, A) or In(u, B)))) and a = a. (Definition of union)
 
 # 5: Invalid: the subset-clause quantifier captures the element
