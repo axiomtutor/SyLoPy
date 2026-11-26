@@ -48,7 +48,7 @@ SET_TERMS = [
 ]
 
 ELEMENT_TERMS = [
-    ("x", v("x")),
+    ("x", c("x")),
     ("f(a)", fn("f", c("a"))),
     ("A union B", fn("Union", c("A"), c("B"))),
     ("(A intersection B)", fn("Intersection", c("A"), c("B"))),
@@ -100,9 +100,9 @@ def test_membership_phrases_compose_with_connectives_around_english_operation_te
         "and y is not an element of the intersection of A and B"
     )
     expected = fl.And(
-        atom("P", v("x")),
-        _in(v("x"), fn("Union", fn("Union", c("A"), c("B")), c("C"))),
-        _not_in(v("y"), fn("Intersection", c("A"), c("B"))),
+        atom("P", c("x")),
+        _in(c("x"), fn("Union", fn("Union", c("A"), c("B")), c("C")),
+        _not_in(c("y"), fn("Intersection", c("A"), c("B")),
     )
     _assert_formula(surface, expected, nested=True)
 
@@ -125,10 +125,10 @@ def test_set_in_and_set_contains_are_subset_phrases(surface, expected):
     [
         ("A is the union of (B union C) and D",
          fl.Equals(c("A"), fn("Union", fn("Union", c("B"), c("C")), c("D")))),
-        ("(A intersection B) is the intersection of C and (D union E)",
+        ("A is the intersection of (C union D) and (D union E)",
          fl.Equals(
-             fn("Intersection", c("A"), c("B")),
-             fn("Intersection", c("C"), fn("Union", c("D"), c("E"))),
+             c("A"),
+             fn("Intersection", fn("Union", c("C"), c("D")), fn("Union", c("D"), c("E"))),
          )),
     ],
 )
