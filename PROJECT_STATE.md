@@ -32,6 +32,7 @@ proof text -> surface AST -> theory elaboration -> core entries -> ProofLogic va
 - `source/ProofLogic.py` — independent kernel validation, scopes, inference rules, and theorem promotion.
 - `source/ProofJustification.py` — justification and rule-alias parsing.
 - `source/Definitions.py` — the definition facility: a `Definition` names a symbol by a sentence and carries the evidence that the thing exists; a theory registers its definitions and a proof cites one by its title (set theory's are `SET_DEFINITIONS` in `source/SetTheory.py`).
+- `source/Notation.py` — rewrites accepted symbols (`∈`, `∪`, `∀`, …) into ordinary surface syntax; each theory's notation table is a field of `TheoryEnvironment` (`source/ProofElaboration.py`), which refuses two theories that read one symbol differently.
 - `source/SetTheory.py`, `source/NatThry.py`, `source/NumberTheory.py`, `source/OrderTheory.py`, `source/DiscreteMath.py`, and `source/DiscreteMathCore.py` — theory extensions.
 - `source/validate_all_proofs.py` — proof-fixture runner: files of several proofs, theorem promotion within a file, `Use NAME.` of another file, and the saved-results options.
 - `source/SavedChecks.py` — saved results: a content-addressed store of what a run checked, so that a later run need not check it again.
@@ -41,7 +42,7 @@ proof text -> surface AST -> theory elaboration -> core entries -> ProofLogic va
 - `SetTheoryCorpus/` — the owner's set theory corpus; its README says what has been checked. No code or test reads it yet.
 - `tools/mutation_check.py` — changes the code one line at a time and runs given tests, to show whether they notice.
 - `completion/run_tests.bash` — shell completion for `run_tests.sh`.
-- `.github/workflows/test.yml` — CI: `./run_tests.sh` on every pull request to master and on pushes to branches whose names have no `/` (master is one), except pushes that change only Markdown files or `todos.txt`; a `claude/...` or `chatgpt/...` branch is tested through its pull request.
+- `.github/workflows/test.yml` — CI: `./run_tests.sh` on every pull request to master and on pushes to branches whose names have no `/` (master is one), except pushes that change only Markdown files or `todos.txt`; a `claude/...` or `chatgpt/...` branch is tested through its pull request. `.github/workflows/extended.yml` runs `./run_tests.sh --suite extended` only when started by hand from the Actions tab.
 - `job_seeds/` — verified seed proofs and cases supplied for the completed jobs J16 to J20 (see the archive); kept for provenance, read by nothing.
 
 ## Verification

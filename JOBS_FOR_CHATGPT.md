@@ -32,25 +32,19 @@ The "Today" entries were produced by running `pp.parse_formula` and the checker 
 commit 742d2d3 of #167; re-run a row before relying on it and report any that no
 longer holds.
 
-Queue state (2026-11-23): #167 merged on 2026-11-15 and #168, which adds J36–J43,
-on 2026-11-18. None of J36–J46 has started, and no ChatGPT pull request is open. The
-owner directed on 2026-11-21 that the corpus (`SetTheoryCorpus/`) is developed first
-(`todos.txt`, Current status). Claude's recommendation: begin with J36, J41 and J43,
-which do not depend on the corpus, then J37 and J39, and hold J38, J42 and J40 until
-the owner has decided whether the set operations are defined in the corpus or in Python
-(`todos.txt`, The plan, part 3 and question 4), because they add definitions to the
-Python module. J44, J45 and J46 fix the findings #169, #170, #171 and #181; the owner
-approved their directions in comments on the issues on 2026-11-23. They are small, and
-they change the declaration code, not the term parsers of J36–J43.
+Queue state (2026-11-26): J36, J37, J41, J43, J44, J45 and J46 are merged (see Completed jobs); no ChatGPT
+pull request is open. Left: J39, and J38, J42 and J40, which the owner holds until the corpus
+decides whether the set operations are defined in the corpus or in Python (`todos.txt`, The
+plan, part 3 and question 4), because they add definitions to the Python module. The owner
+directed on 2026-11-21 that the corpus (`SetTheoryCorpus/`) is developed first.
 
 Dependencies: every job needs #167 merged, because its fixtures cite the definitions
 (it has). J36, J41, J43, J44, J45 and J46 need nothing else. J37, J38 and J39 need J36.
 J42 needs J38, and J40 needs J38 and J39. J38 and J42 both change the tests that pin
 the list of definitions, so they must not run together, and J44, J45 and J46 change the
 same declaration code and recipes, so they must not run together either. Start the jobs
-that are unblocked in this order, within the limit of three open PRs: J45, J44, J36,
-J41, J43, J46, J38, J37, J39, J42, J40. J45 is first because `Let P be a proposition.`
-is the first thing a new user writes. A job starts only after the PR that adds it has
+that are unblocked in this order, within the limit of three open PRs: J39, J38, J42,
+J40 (J38, J42 and J40 are on hold, above). A job starts only after the PR that adds it has
 merged, as below.
 
 ### J36 — Nested set-operation terms
@@ -807,7 +801,7 @@ Original specifications and their final dispositions are preserved in the archiv
 
 ## Completed jobs
 
-Merged, by job and PR number (titles are in the archive and in each PR): J0 #87, J1 #88, J2 #89, J3 #90, J4 #91, J5 #92, J6 #97, J7 #99, J8 #100, J9 #101, J16 #111, J17 #112, J18 #113, J19 #114, J20 #115, J21 #117, J22 #118, J23 #119, J24 #123, J25 #124, J26 #135, J27 #139, J28 #142, J29 #143, J30 #146.
+Merged, by job and PR number (titles are in the archive and in each PR): J0 #87, J1 #88, J2 #89, J3 #90, J4 #91, J5 #92, J6 #97, J7 #99, J8 #100, J9 #101, J16 #111, J17 #112, J18 #113, J19 #114, J20 #115, J21 #117, J22 #118, J23 #119, J24 #123, J25 #124, J26 #135, J27 #139, J28 #142, J29 #143, J30 #146, J36 #187, J37 #198, J41 #190, J43 #191/#193/#195, J44 #188/#189, J45 #186, J46 #196/#199 (2026-11-25 and 26).
 
 ## Rules for new jobs
 
