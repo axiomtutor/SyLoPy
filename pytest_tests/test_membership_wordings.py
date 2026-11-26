@@ -4,6 +4,8 @@ Expected formulas below are built directly from the core AST constructors. They
 do not use the set-theory phrase parser to calculate their expected readings.
 """
 
+from pathlib import Path
+
 import pytest
 
 from .support import atom, c, fl, fn, pl, pp, st, v
@@ -162,3 +164,21 @@ def test_empty_nonempty_and_disjointness_phrases_keep_their_existing_meanings():
 def test_unapproved_membership_phrases_remain_refused(surface):
     with pytest.raises(Exception):
         _parse_line(surface)
+
+
+def test_membership_wordings_fixture_has_grounded_conclusions_and_expected_results():
+    project = Path(__file__).resolve().parents[1]
+    fixture = project / "tests" / "testSetTheory" / "membership_wordings.txt"
+    source = fixture.read_text()
+    cases = mp.parse_multi_proof_file(source)
+    assert len(cases) == 5
+    assert all(case.stated_conclusion is not None for case in cases)
+
+    results = mp.run_multi_proof_file(source)
+    assert [(number, expected, ok, crashed) for number, expected, ok, _message, crashed in results] == [
+        ("1", True, True, False),
+        ("2", True, True, False),
+        ("3", False, False, False),
+        ("4", True, True, False),
+        ("5", False, False, False),
+    ]
