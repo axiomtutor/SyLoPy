@@ -3038,7 +3038,7 @@ class FamilyOfSubsetsDeclarationRecipe:
         clause = clauses[index]
         descriptor = re.sub(r"\s+", " ", clause.descriptor.strip())
         match = re.fullmatch(
-            r"(?:(?:a|an|the)\s+)?family\s+of\s+subsets\s+of\s+"
+            r"(?:(?:a|an|the)\s+)?famil(?:y|ies)\s+of\s+subsets\s+of\s+"
             r"([A-Za-z_][A-Za-z0-9_]*)",
             descriptor,
             flags=re.I,
