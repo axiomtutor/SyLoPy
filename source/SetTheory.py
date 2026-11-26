@@ -2994,6 +2994,84 @@ class SymbolicSetPropertyDeclarationRecipe:
 SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE = SymbolicSetPropertyDeclarationRecipe()
 
 
+class NonemptySetDeclarationRecipe:
+    """State that each declared nonempty set has a member."""
+
+    name = "nonempty set"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        if clause.normalized_descriptor not in {"nonempty set", "nonempty sets"}:
+            return None
+
+        declarations = []
+        formulas = []
+        for name in clause.names:
+            declarations.append(pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.OBJECT,
+                type_name="set",
+                metadata=(("nonempty", True),),
+            ))
+            variable_name = _fresh_generated_variable_name({name}, "u")
+            member = membership_formula(
+                tl.VariableTerm(variable_name),
+                tl.ConstantTerm(name, name),
+            )
+            formulas.append(fl.Exists(variable_name, member))
+        return (1, declarations, formulas, [])
+
+
+NONEMPTY_SET_DECLARATION_RECIPE = NonemptySetDeclarationRecipe()
+
+
+class FamilyOfSubsetsDeclarationRecipe:
+    """State that every member of a family is a subset of its carrier."""
+
+    name = "family of subsets"
+
+    def try_match(self, clauses, index):
+        if index >= len(clauses):
+            return None
+        clause = clauses[index]
+        descriptor = re.sub(r"\s+", " ", clause.descriptor.strip())
+        match = re.fullmatch(
+            r"(?:(?:a|an|the)\s+)?family\s+of\s+subsets\s+of\s+"
+            r"([A-Za-z_][A-Za-z0-9_]*)",
+            descriptor,
+            flags=re.I,
+        )
+        if match is None:
+            return None
+
+        carrier_name = match.group(1)
+        carrier = tl.ConstantTerm(carrier_name, carrier_name)
+        declarations = []
+        formulas = []
+        for name in clause.names:
+            family = tl.ConstantTerm(name, name)
+            variable_name = _fresh_generated_variable_name({name, carrier_name}, "S")
+            member = membership_formula(tl.VariableTerm(variable_name), family)
+            formulas.append(fl.ForAll(
+                variable_name,
+                fl.Implies(
+                    member,
+                    subset_formula(tl.VariableTerm(variable_name), carrier),
+                ),
+            ))
+            declarations.append(pl.Declaration(
+                name=name,
+                kind=pl.DeclarationKind.OBJECT,
+                type_name="set",
+            ))
+        return (1, declarations, formulas, [])
+
+
+FAMILY_OF_SUBSETS_DECLARATION_RECIPE = FamilyOfSubsetsDeclarationRecipe()
+
+
 class FiniteInfiniteSetDeclarationRecipe:
     """Lower finite/infinite set declarations to ordinary set properties."""
 
@@ -3006,7 +3084,7 @@ class FiniteInfiniteSetDeclarationRecipe:
         descriptor = re.sub(r"\s+", " ", clause.normalized_descriptor).strip().lower()
         descriptor = re.sub(r"^(?:a|an|the)\s+", "", descriptor)
         cardinality_match = re.fullmatch(
-            r"(?:finite\s+set|set)\s+(?:of\s+cardinality|with)\s+(\d+)(?:\s+elements?)?",
+            r"(?:finite\s+sets?|sets?)\s+(?:of\s+cardinality|with)\s+(\d+)(?:\s+elements?)?",
             descriptor,
         )
         if cardinality_match:
@@ -3026,9 +3104,9 @@ class FiniteInfiniteSetDeclarationRecipe:
                 formulas.append(fl.AtomicFormula("Finite", [set_term]))
                 formulas.append(fl.AtomicFormula("Cardinality", [set_term, _cardinality_term(number)]))
             return (1, declarations, formulas, [])
-        if descriptor == "finite set":
+        if descriptor in {"finite set", "finite sets"}:
             predicate = "Finite"
-        elif descriptor == "infinite set":
+        elif descriptor in {"infinite set", "infinite sets"}:
             predicate = "Infinite"
         elif descriptor == "finite":
             predicate = "Finite"
@@ -3539,6 +3617,8 @@ SET_THEORY_ENVIRONMENT = TheoryEnvironment(
     line_elaborators=[elaborate_subset_proof, elaborate_pairing_witness],
     declaration_recipes=[
         BIJECTION_DECLARATION_RECIPE,
+        NONEMPTY_SET_DECLARATION_RECIPE,
+        FAMILY_OF_SUBSETS_DECLARATION_RECIPE,
         FINITE_INFINITE_SET_DECLARATION_RECIPE,
         SYMBOLIC_SET_PROPERTY_DECLARATION_RECIPE,
     ],
